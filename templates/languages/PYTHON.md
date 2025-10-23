@@ -389,6 +389,73 @@ where = ["src"]
 your_package = ["py.typed"]
 ```
 
+### PEP 625 Package Naming Convention
+
+**CRITICAL**: Package names must be normalized according to PEP 625.
+
+PyPI requires source distribution filenames to use normalized package names (underscores instead of hyphens).
+
+**Naming Rules:**
+
+1. **Package name in `pyproject.toml`**: Use underscores (`_`)
+   ```toml
+   [project]
+   name = "my_package_name"  # Correct
+   # NOT: name = "my-package-name"  # Will cause deprecation warning
+   ```
+
+2. **Package directory**: Must match with underscores
+   ```
+   src/
+   └── my_package_name/     # Correct
+       ├── __init__.py
+       └── ...
+   ```
+
+3. **Import statement**: Uses underscores
+   ```python
+   import my_package_name
+   from my_package_name import something
+   ```
+
+4. **Distribution filename**: Will be `my_package_name-1.0.0.tar.gz` ✅
+
+**Common Issue:**
+
+If you use hyphens in the package name, PyPI will reject new uploads:
+```toml
+# ❌ WRONG - Will fail PEP 625 compliance
+[project]
+name = "my-package-name"
+
+# Result: my-package-name-1.0.0.tar.gz (non-compliant)
+# PyPI Error: "Filename does not contain normalized project name"
+```
+
+**Correct Approach:**
+```toml
+# ✅ CORRECT - PEP 625 compliant
+[project]
+name = "my_package_name"
+
+# Result: my_package_name-1.0.0.tar.gz (compliant)
+# PyPI: Accepts upload without warnings
+```
+
+**Migration from Hyphenated Names:**
+
+If you previously published with hyphens:
+
+1. Update `pyproject.toml` and `setup.py` to use underscores
+2. Existing uploads remain on PyPI (no action needed)
+3. Future uploads will use normalized name
+4. PyPI will automatically redirect:
+   - `pip install my-package-name` → works (auto-normalized)
+   - `pip install my_package_name` → works (canonical form)
+5. Import statement unchanged: `import my_package_name`
+
+**Reference**: [PEP 625 - File name of a Source Distribution](https://peps.python.org/pep-0625/)
+
 **Publishing Workflow:**
 
 1. Update version in pyproject.toml
@@ -423,10 +490,12 @@ your_package = ["py.typed"]
 - ✅ CHANGELOG.md updated
 - ✅ README.md up to date
 - ✅ LICENSE file present
+- ✅ **Package name uses underscores (PEP 625 compliant)**
 - ✅ `py.typed` marker for type hints
 - ✅ Package builds successfully (`python -m build`)
 - ✅ Package checks pass (`twine check dist/*`)
 - ✅ Manifest complete (`check-manifest`)
+- ✅ **Verify dist filename**: `my_package-1.0.0.tar.gz` (underscores) ✅
 
 **Trusted Publishing (Recommended):**
 
