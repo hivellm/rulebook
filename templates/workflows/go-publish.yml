@@ -1,0 +1,95 @@
+name: Publish Go Module
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g., v1.0.0)'
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: ${{ github.event.inputs.tag || github.ref }}
+        fetch-depth: 0  # Full history for Go modules
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+        cache: true
+    
+    - name: Verify go.mod
+      run: |
+        if [ ! -f go.mod ]; then
+          echo "Error: go.mod not found"
+          exit 1
+        fi
+        go mod verify
+    
+    - name: Download dependencies
+      run: go mod download
+    
+    - name: Run tests
+      run: go test -v -race -coverprofile=coverage.out ./...
+    
+    - name: Run linters
+      run: |
+        go vet ./...
+        go fmt ./...
+        if [ -n "$(gofmt -l .)" ]; then
+          echo "Go files must be formatted with gofmt"
+          exit 1
+        fi
+    
+    - name: Build
+      run: go build -v ./...
+    
+    - name: Verify tag format
+      run: |
+        TAG="${{ github.event.inputs.tag || github.ref_name }}"
+        if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+          echo "Error: Tag must follow semantic versioning (e.g., v1.0.0)"
+          exit 1
+        fi
+        echo "Tag format valid: $TAG"
+    
+    - name: Push tag (if workflow_dispatch)
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        TAG="${{ github.event.inputs.tag }}"
+        git tag -a "$TAG" -m "Release $TAG"
+        git push origin "$TAG"
+    
+    - name: Trigger pkg.go.dev update
+      run: |
+        TAG="${{ github.event.inputs.tag || github.ref_name }}"
+        MODULE=$(go list -m)
+        echo "Module: $MODULE"
+        echo "Version: $TAG"
+        
+        # pkg.go.dev automatically indexes new tags
+        # Trigger manual update if needed
+        curl -X POST "https://proxy.golang.org/$MODULE/@v/$TAG.info" || true
+        
+        echo "Published $MODULE@$TAG"
+        echo "View at: https://pkg.go.dev/$MODULE@$TAG"
+    
+    - name: Create GOPROXY cache entry
+      run: |
+        TAG="${{ github.event.inputs.tag || github.ref_name }}"
+        MODULE=$(go list -m)
+        
+        # Warm up various proxies
+        curl -f "https://proxy.golang.org/$MODULE/@v/$TAG.info" || true
+        curl -f "https://proxy.golang.org/$MODULE/@v/$TAG.mod" || true
+        curl -f "https://proxy.golang.org/$MODULE/@v/$TAG.zip" || true
+        
+        echo "GOPROXY cache warmed for $MODULE@$TAG"
+

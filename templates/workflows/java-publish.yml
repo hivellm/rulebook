@@ -1,0 +1,120 @@
+name: Publish Java Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g., v1.0.0)'
+        required: true
+
+jobs:
+  publish-maven:
+    runs-on: ubuntu-latest
+    if: hashFiles('**/pom.xml') != ''
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: ${{ github.event.inputs.tag || github.ref }}
+    
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'maven'
+        server-id: central  # For Maven Central
+        server-username: MAVEN_USERNAME
+        server-password: MAVEN_PASSWORD
+        gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+        gpg-passphrase: MAVEN_GPG_PASSPHRASE
+    
+    - name: Verify version matches tag
+      run: |
+        TAG="${{ github.event.inputs.tag || github.ref_name }}"
+        TAG_VERSION="${TAG#v}"
+        POM_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+        if [ "$POM_VERSION" != "$TAG_VERSION" ]; then
+          echo "Error: pom.xml version ($POM_VERSION) does not match tag ($TAG_VERSION)"
+          exit 1
+        fi
+        echo "Version check passed: $POM_VERSION"
+    
+    - name: Run tests
+      run: mvn -B test
+    
+    - name: Build package
+      run: mvn -B clean package -DskipTests
+    
+    - name: Publish to GitHub Packages
+      run: mvn -B deploy -DskipTests
+      env:
+        MAVEN_USERNAME: ${{ github.actor }}
+        MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Publish to Maven Central
+      if: secrets.MAVEN_USERNAME != ''
+      run: mvn -B deploy -DskipTests -P release
+      env:
+        MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+        MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+        MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+  
+  publish-gradle:
+    runs-on: ubuntu-latest
+    if: hashFiles('**/build.gradle*') != ''
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: ${{ github.event.inputs.tag || github.ref }}
+    
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'gradle'
+    
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    
+    - name: Verify version matches tag
+      run: |
+        TAG="${{ github.event.inputs.tag || github.ref_name }}"
+        TAG_VERSION="${TAG#v}"
+        GRADLE_VERSION=$(./gradlew properties -q | grep "^version:" | awk '{print $2}')
+        if [ "$GRADLE_VERSION" != "$TAG_VERSION" ]; then
+          echo "Error: build.gradle version ($GRADLE_VERSION) does not match tag ($TAG_VERSION)"
+          exit 1
+        fi
+        echo "Version check passed: $GRADLE_VERSION"
+    
+    - name: Run tests
+      run: ./gradlew test
+    
+    - name: Build package
+      run: ./gradlew build -x test
+    
+    - name: Publish to GitHub Packages
+      run: ./gradlew publish
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Publish to Maven Central
+      if: secrets.SIGNING_KEY != ''
+      run: ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
+      env:
+        SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+        SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+        SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+

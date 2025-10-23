@@ -306,5 +306,76 @@ Must include GitHub Actions workflows for:
    - Verify no type errors
    - Check output artifacts
 
+## Package Publication
+
+### Publishing to npm
+
+**Prerequisites:**
+1. Create npm account at https://www.npmjs.com
+2. Generate npm token (Account Settings → Access Tokens → Generate New Token)
+3. Add `NPM_TOKEN` to GitHub repository secrets
+
+**package.json Configuration:**
+
+```json
+{
+  "name": "@your-org/package-name",
+  "version": "1.0.0",
+  "description": "Package description",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "keywords": ["your", "keywords"],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/package-name"
+  }
+}
+```
+
+**Publishing Workflow:**
+
+1. Update version: `npm version patch|minor|major`
+2. Create release tag: `git push --tags`
+3. GitHub Actions automatically publishes to npm
+4. Or manual publish: `npm publish --access public`
+
+**Publishing Checklist:**
+
+- ✅ All tests passing
+- ✅ Code linted and formatted
+- ✅ Version updated in package.json
+- ✅ CHANGELOG.md updated
+- ✅ README.md up to date
+- ✅ Type declarations generated
+- ✅ Package size reasonable (`npm pack` to check)
+- ✅ .npmignore or package.json "files" configured
+- ✅ Provenance enabled for security
+
+**npm Provenance:**
+
+Enable provenance for better security and transparency:
+```bash
+npm publish --provenance --access public
+```
+
+This links your package to its source code and build process.
+
 <!-- TYPESCRIPT:END -->
 

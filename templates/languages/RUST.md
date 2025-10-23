@@ -247,5 +247,109 @@ Must include GitHub Actions workflows for:
    - Check for typos in code and documentation
    - Fail on errors
 
+## Crate Publication
+
+### Publishing to crates.io
+
+**Prerequisites:**
+1. Create account at https://crates.io
+2. Generate API token: `cargo login`
+3. Add `CARGO_TOKEN` to GitHub repository secrets
+
+**Cargo.toml Configuration:**
+
+```toml
+[package]
+name = "your-crate-name"
+version = "1.0.0"
+edition = "2024"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT OR Apache-2.0"
+description = "A short description of your crate"
+documentation = "https://docs.rs/your-crate-name"
+homepage = "https://github.com/your-org/your-crate-name"
+repository = "https://github.com/your-org/your-crate-name"
+readme = "README.md"
+keywords = ["your", "keywords", "here"]
+categories = ["category"]
+exclude = [
+    ".github/",
+    "tests/",
+    "benches/",
+    "examples/",
+    "*.sh",
+]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+```
+
+**Publishing Workflow:**
+
+1. Update version in Cargo.toml
+2. Update CHANGELOG.md
+3. Run quality checks:
+   ```bash
+   cargo fmt --all
+   cargo clippy --workspace --all-targets -- -D warnings
+   cargo test --all-features
+   cargo doc --no-deps --all-features
+   ```
+4. Create git tag: `git tag v1.0.0 && git push --tags`
+5. GitHub Actions automatically publishes to crates.io
+6. Or manual publish: `cargo publish`
+
+**Publishing Checklist:**
+
+- ✅ All tests passing (`cargo test --all-features`)
+- ✅ No clippy warnings (`cargo clippy -- -D warnings`)
+- ✅ Code formatted (`cargo fmt --all -- --check`)
+- ✅ Documentation builds (`cargo doc --no-deps`)
+- ✅ Version updated in Cargo.toml
+- ✅ CHANGELOG.md updated
+- ✅ README.md up to date
+- ✅ LICENSE file present
+- ✅ Package size < 10MB (check with `cargo package --list`)
+- ✅ Verify with `cargo publish --dry-run`
+
+**Semantic Versioning:**
+
+Follow [SemVer](https://semver.org/) strictly:
+- **MAJOR**: Breaking API changes
+- **MINOR**: New features (backwards compatible)
+- **PATCH**: Bug fixes (backwards compatible)
+
+**Documentation:**
+
+- Use `///` for public API documentation
+- Include examples in doc comments
+- Use `#![deny(missing_docs)]` for libraries
+- Test documentation examples with `cargo test --doc`
+
+```rust
+/// Processes the input data and returns a result.
+///
+/// # Arguments
+///
+/// * `input` - The input string to process
+///
+/// # Examples
+///
+/// ```
+/// use your_crate::process;
+///
+/// let result = process("hello");
+/// assert_eq!(result, "HELLO");
+/// ```
+///
+/// # Errors
+///
+/// Returns an error if the input is empty.
+pub fn process(input: &str) -> Result<String, Error> {
+    // Implementation
+}
+```
+
 <!-- RUST:END -->
 

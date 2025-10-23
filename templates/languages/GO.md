@@ -327,5 +327,135 @@ Must include GitHub Actions workflows for:
    - Build: `go build ./...`
    - Verify binaries work
 
+## Module Publication
+
+### Publishing Go Modules
+
+Go modules are published via Git tags and automatically indexed by pkg.go.dev.
+
+**Prerequisites:**
+1. Public Git repository (GitHub, GitLab, etc.)
+2. Proper go.mod configuration
+3. Semantic versioning tags
+
+**go.mod Configuration:**
+
+```go
+module github.com/your-org/your-module
+
+go 1.22
+
+require (
+    github.com/example/dependency v1.2.3
+)
+```
+
+**Publishing Workflow:**
+
+1. Ensure go.mod is correct:
+   ```bash
+   go mod tidy
+   go mod verify
+   ```
+
+2. Run quality checks:
+   ```bash
+   go fmt ./...
+   go vet ./...
+   golangci-lint run
+   go test -v -race ./...
+   ```
+
+3. Create semantic version tag:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+4. pkg.go.dev automatically indexes the module
+5. Verify at: `https://pkg.go.dev/github.com/your-org/your-module@v1.0.0`
+
+**Publishing Checklist:**
+
+- ✅ All tests passing (`go test ./...`)
+- ✅ No race conditions (`go test -race ./...`)
+- ✅ Code formatted (`go fmt ./...`)
+- ✅ No vet warnings (`go vet ./...`)
+- ✅ golangci-lint passes
+- ✅ go.mod is tidy (`go mod tidy`)
+- ✅ README.md with examples
+- ✅ LICENSE file present
+- ✅ Semantic version tag (v1.0.0)
+- ✅ CHANGELOG.md updated
+
+**Semantic Versioning:**
+
+Go uses semantic versioning strictly:
+
+- **v1.0.0** - First stable release
+- **v1.1.0** - New features (backwards compatible)
+- **v1.0.1** - Bug fixes
+- **v2.0.0** - Breaking changes (requires /v2 in module path)
+
+**Major Version Updates (v2+):**
+
+For v2 and above, update module path:
+
+```go
+// go.mod
+module github.com/your-org/your-module/v2
+
+go 1.22
+```
+
+**Module Documentation:**
+
+Write godoc-compatible comments:
+
+```go
+// Package yourmodule provides functionality for X, Y, and Z.
+//
+// Basic usage:
+//
+//	import "github.com/your-org/your-module"
+//
+//	result, err := yourmodule.Process("input")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+package yourmodule
+
+// Process handles the input and returns a result.
+//
+// Example:
+//
+//	result, err := Process("hello")
+//	if err != nil {
+//	    return err
+//	}
+//	fmt.Println(result)
+func Process(input string) (string, error) {
+    // Implementation
+}
+```
+
+**GOPROXY:**
+
+Go modules are automatically cached in public proxies:
+- https://proxy.golang.org (default)
+- https://goproxy.io
+- https://goproxy.cn
+
+No manual publication needed!
+
+**Retraction:**
+
+To retract a published version:
+
+```go
+// go.mod
+retract v1.0.5 // Critical bug in processing
+```
+
 <!-- GO:END -->
 

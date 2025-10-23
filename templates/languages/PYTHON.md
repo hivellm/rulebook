@@ -327,5 +327,143 @@ Must include GitHub Actions workflows for:
    - Check for vulnerabilities: `pip-audit`
    - Scan dependencies: `safety check`
 
+## Package Publication
+
+### Publishing to PyPI
+
+**Prerequisites:**
+1. Create account at https://pypi.org
+2. Enable 2FA for security
+3. Configure trusted publishing (recommended) or create API token
+4. For trusted publishing: Add GitHub as publisher in PyPI settings
+
+**pyproject.toml Configuration:**
+
+```toml
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "your-package-name"
+version = "1.0.0"
+description = "A short description of your package"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+keywords = ["your", "keywords"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+    "black>=23.12.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/your-package"
+Documentation = "https://your-package.readthedocs.io"
+Repository = "https://github.com/your-org/your-package"
+"Bug Tracker" = "https://github.com/your-org/your-package/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+your_package = ["py.typed"]
+```
+
+**Publishing Workflow:**
+
+1. Update version in pyproject.toml
+2. Update CHANGELOG.md
+3. Run quality checks:
+   ```bash
+   ruff check .
+   ruff format --check .
+   mypy .
+   pytest
+   ```
+4. Build package:
+   ```bash
+   python -m build
+   twine check dist/*
+   ```
+5. Test on Test PyPI (optional):
+   ```bash
+   twine upload --repository testpypi dist/*
+   ```
+6. Create git tag: `git tag v1.0.0 && git push --tags`
+7. GitHub Actions automatically publishes to PyPI
+8. Or manual publish: `twine upload dist/*`
+
+**Publishing Checklist:**
+
+- ✅ All tests passing (`pytest`)
+- ✅ Type checking passes (`mypy .`)
+- ✅ Linting passes (`ruff check .`)
+- ✅ Code formatted (`ruff format .`)
+- ✅ Version updated in pyproject.toml
+- ✅ CHANGELOG.md updated
+- ✅ README.md up to date
+- ✅ LICENSE file present
+- ✅ `py.typed` marker for type hints
+- ✅ Package builds successfully (`python -m build`)
+- ✅ Package checks pass (`twine check dist/*`)
+- ✅ Manifest complete (`check-manifest`)
+
+**Trusted Publishing (Recommended):**
+
+PyPI trusted publishing eliminates the need for API tokens:
+
+1. Go to PyPI → Your Account → Publishing
+2. Add a new pending publisher:
+   - PyPI Project Name: `your-package-name`
+   - Owner: `your-github-org`
+   - Repository: `your-repo-name`
+   - Workflow: `python-publish.yml`
+   - Environment: `release` (optional)
+
+3. GitHub Actions will authenticate automatically using OIDC
+
+**Versioning:**
+
+Use semantic versioning and consider:
+- **Automated versioning**: Use tools like `bump2version` or `setuptools_scm`
+- **Version from git tags**: Configure `setuptools_scm` in pyproject.toml:
+
+```toml
+[build-system]
+requires = ["setuptools>=68.0", "setuptools_scm>=8.0"]
+
+[tool.setuptools_scm]
+version_file = "src/your_package/_version.py"
+```
+
+**Type Hints:**
+
+Include `py.typed` marker for PEP 561 compliance:
+```bash
+touch src/your_package/py.typed
+```
+
+This tells type checkers your package includes type information.
+
 <!-- PYTHON:END -->
 
