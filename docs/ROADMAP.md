@@ -216,8 +216,8 @@
 
 - **Current Version**: v0.9.0 (Extensibility & Automation) ⬆️
 - **Code Coverage**: 90%+ (core modules) ✅
-- **Test Count**: 68+ comprehensive tests (100% passing) ✅
-- **Test Files**: 7 test suites
+- **Test Count**: 90 comprehensive tests (100% passing) ✅ ⬆️
+- **Test Files**: 9 test suites ⬆️
 - **CLI Commands**: 8 (init, workflows, validate, check-deps, check-coverage, version, changelog, health) ⬆️ NEW
 - **Supported Languages**: 11 (Rust, TS, Python, Go, Java, Elixir, C#, PHP, Swift, Kotlin, C/C++)
 - **Supported Modules**: 5 (Vectorizer, Synap, OpenSpec, Context7, GitHub MCP)
