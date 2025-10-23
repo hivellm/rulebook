@@ -197,4 +197,3 @@ Old Rust rules
     });
   });
 });
-

@@ -25,7 +25,7 @@ program
   .action(async (options) => {
     try {
       const cwd = process.cwd();
-      
+
       console.log(chalk.bold.blue('\n🔍 Rulebook Project Initializer\n'));
 
       // Detect project
@@ -37,9 +37,7 @@ program
       if (detection.languages.length > 0) {
         console.log(chalk.green('\n✓ Detected languages:'));
         for (const lang of detection.languages) {
-          console.log(
-            `  - ${lang.language} (${(lang.confidence * 100).toFixed(0)}% confidence)`
-          );
+          console.log(`  - ${lang.language} (${(lang.confidence * 100).toFixed(0)}% confidence)`);
           console.log(`    Indicators: ${lang.indicators.join(', ')}`);
         }
       }
@@ -99,7 +97,7 @@ program
         if (strategy === 'merge') {
           const mergeSpinner = ora('Merging with existing AGENTS.md...').start();
           finalContent = await mergeFullAgents(detection.existingAgents, config);
-          
+
           // Create backup
           const backupPath = await createBackup(agentsPath);
           mergeSpinner.succeed(`Backup created: ${path.basename(backupPath)}`);
@@ -147,4 +145,3 @@ program
   });
 
 program.parse(process.argv);
-

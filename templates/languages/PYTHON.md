@@ -263,7 +263,13 @@ def process_data(input_data: str, options: dict[str, Any] | None = None) -> list
 ```
 project/
 ├── pyproject.toml      # Project metadata and dependencies
-├── README.md
+├── README.md           # Project overview (allowed in root)
+├── CHANGELOG.md        # Version history (allowed in root)
+├── AGENTS.md          # AI assistant rules (allowed in root)
+├── LICENSE            # Project license (allowed in root)
+├── CONTRIBUTING.md    # Contribution guidelines (allowed in root)
+├── CODE_OF_CONDUCT.md # Code of conduct (allowed in root)
+├── SECURITY.md        # Security policy (allowed in root)
 ├── src/
 │   └── mypackage/
 │       ├── __init__.py

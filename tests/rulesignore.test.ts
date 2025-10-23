@@ -25,11 +25,7 @@ typescript/*`;
 
       const result = await parseRulesIgnore(testDir);
 
-      expect(result.patterns).toEqual([
-        'coverage-threshold',
-        'rust/edition-2024',
-        'typescript/*',
-      ]);
+      expect(result.patterns).toEqual(['coverage-threshold', 'rust/edition-2024', 'typescript/*']);
     });
 
     it('should handle empty lines and comments', async () => {
@@ -126,4 +122,3 @@ typescript/*`;
     });
   });
 });
-

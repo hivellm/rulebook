@@ -212,6 +212,13 @@ pub fn process(input: &str) -> Result<String, MyError> {
 project/
 ├── Cargo.toml          # Package manifest
 ├── Cargo.lock          # Dependency lock file (commit this)
+├── README.md           # Project overview (allowed in root)
+├── CHANGELOG.md        # Version history (allowed in root)
+├── AGENTS.md          # AI assistant rules (allowed in root)
+├── LICENSE            # Project license (allowed in root)
+├── CONTRIBUTING.md    # Contribution guidelines (allowed in root)
+├── CODE_OF_CONDUCT.md # Code of conduct (allowed in root)
+├── SECURITY.md        # Security policy (allowed in root)
 ├── src/
 │   ├── lib.rs          # Library root (for libraries)
 │   ├── main.rs         # Binary root (for applications)

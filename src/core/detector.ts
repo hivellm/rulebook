@@ -43,8 +43,8 @@ async function detectLanguages(cwd: string): Promise<LanguageDetection[]> {
       language: 'typescript',
       confidence: tsFiles.length > 0 ? 1.0 : 0.7,
       indicators: [
-        await fileExists(packageJson) ? 'package.json' : '',
-        await fileExists(tsConfig) ? 'tsconfig.json' : '',
+        (await fileExists(packageJson)) ? 'package.json' : '',
+        (await fileExists(tsConfig)) ? 'tsconfig.json' : '',
         `${tsFiles.length} .ts files`,
       ].filter(Boolean),
     });
@@ -64,9 +64,9 @@ async function detectLanguages(cwd: string): Promise<LanguageDetection[]> {
       language: 'python',
       confidence: pyFiles.length > 0 ? 1.0 : 0.7,
       indicators: [
-        await fileExists(pyprojectToml) ? 'pyproject.toml' : '',
-        await fileExists(requirementsTxt) ? 'requirements.txt' : '',
-        await fileExists(setupPy) ? 'setup.py' : '',
+        (await fileExists(pyprojectToml)) ? 'pyproject.toml' : '',
+        (await fileExists(requirementsTxt)) ? 'requirements.txt' : '',
+        (await fileExists(setupPy)) ? 'setup.py' : '',
         `${pyFiles.length} .py files`,
       ].filter(Boolean),
     });
@@ -74,6 +74,11 @@ async function detectLanguages(cwd: string): Promise<LanguageDetection[]> {
 
   // Sort by confidence
   return detections.sort((a, b) => b.confidence - a.confidence);
+}
+
+interface MCPConfig {
+  mcpServers?: Record<string, unknown>;
+  servers?: Record<string, unknown>;
 }
 
 async function detectModules(cwd: string): Promise<ModuleDetection[]> {
@@ -89,7 +94,7 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
   for (const mcpPath of mcpConfigPaths) {
     if (await fileExists(mcpPath)) {
       try {
-        const config = await readJsonFile<any>(mcpPath);
+        const config = await readJsonFile<MCPConfig>(mcpPath);
         if (config) {
           // Check for Vectorizer
           if (config.mcpServers?.vectorizer || config.servers?.vectorizer) {
@@ -206,4 +211,3 @@ function parseAgentBlocks(content: string): AgentBlock[] {
 
   return blocks;
 }
-

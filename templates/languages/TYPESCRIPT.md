@@ -254,6 +254,13 @@ project/
 ├── package.json        # Package manifest
 ├── tsconfig.json       # TypeScript config
 ├── vitest.config.ts    # Test config
+├── README.md           # Project overview (allowed in root)
+├── CHANGELOG.md        # Version history (allowed in root)
+├── AGENTS.md          # AI assistant rules (allowed in root)
+├── LICENSE            # Project license (allowed in root)
+├── CONTRIBUTING.md    # Contribution guidelines (allowed in root)
+├── CODE_OF_CONDUCT.md # Code of conduct (allowed in root)
+├── SECURITY.md        # Security policy (allowed in root)
 ├── src/
 │   ├── index.ts        # Main entry point
 │   ├── types.ts        # Type definitions

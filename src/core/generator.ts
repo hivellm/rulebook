@@ -1,11 +1,19 @@
 import path from 'path';
-import { readFile } from '../utils/file-system.js';
-import type { ProjectConfig, TemplateData } from '../types.js';
+import { readFile, fileExists } from '../utils/file-system.js';
+import type { ProjectConfig } from '../types.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Resolve templates directory (handles both dev and production)
+function getTemplatesDir(): string {
+  // In production (dist/), templates are at package root
+  // In development (src/), templates are at package root
+  // Both resolve to same location
+  return path.join(__dirname, '..', '..', 'templates');
+}
 
 export async function generateAgentsContent(config: ProjectConfig): Promise<string> {
   const sections: string[] = [];
@@ -25,10 +33,14 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
     sections.push('**CRITICAL**: Minimize Markdown files. Keep documentation organized.');
     sections.push('');
     sections.push('### Allowed Root-Level Documentation');
-    sections.push('Only these 3 files are allowed in the project root:');
+    sections.push('Only these files are allowed in the project root:');
     sections.push('- ✅ `README.md` - Project overview and quick start');
     sections.push('- ✅ `CHANGELOG.md` - Version history and release notes');
     sections.push('- ✅ `AGENTS.md` - This file (AI assistant instructions)');
+    sections.push('- ✅ `LICENSE` - Project license');
+    sections.push('- ✅ `CONTRIBUTING.md` - Contribution guidelines');
+    sections.push('- ✅ `CODE_OF_CONDUCT.md` - Code of conduct');
+    sections.push('- ✅ `SECURITY.md` - Security policy');
     sections.push('');
     sections.push('### All Other Documentation');
     sections.push('**ALL other documentation MUST go in `/docs` directory**:');
@@ -110,25 +122,25 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
 }
 
 export async function generateLanguageRules(language: string): Promise<string> {
-  const templatesDir = path.join(dirname(__dirname), '..', 'templates', 'languages');
+  const templatesDir = path.join(getTemplatesDir(), 'languages');
   const templatePath = path.join(templatesDir, `${language.toUpperCase()}.md`);
 
-  try {
+  if (await fileExists(templatePath)) {
     return await readFile(templatePath);
-  } catch {
-    return `<!-- ${language.toUpperCase()}:START -->\n# ${language.charAt(0).toUpperCase() + language.slice(1)} Rules\n\nLanguage-specific rules for ${language}.\n<!-- ${language.toUpperCase()}:END -->\n`;
   }
+
+  return `<!-- ${language.toUpperCase()}:START -->\n# ${language.charAt(0).toUpperCase() + language.slice(1)} Rules\n\nLanguage-specific rules for ${language}.\n<!-- ${language.toUpperCase()}:END -->\n`;
 }
 
 export async function generateModuleRules(module: string): Promise<string> {
-  const templatesDir = path.join(dirname(__dirname), '..', 'templates', 'modules');
+  const templatesDir = path.join(getTemplatesDir(), 'modules');
   const templatePath = path.join(templatesDir, `${module.toUpperCase()}.md`);
 
-  try {
+  if (await fileExists(templatePath)) {
     return await readFile(templatePath);
-  } catch {
-    return `<!-- ${module.toUpperCase()}:START -->\n# ${module.charAt(0).toUpperCase() + module.slice(1)} Instructions\n\nModule-specific instructions for ${module}.\n<!-- ${module.toUpperCase()}:END -->\n`;
   }
+
+  return `<!-- ${module.toUpperCase()}:START -->\n# ${module.charAt(0).toUpperCase() + module.slice(1)} Instructions\n\nModule-specific instructions for ${module}.\n<!-- ${module.toUpperCase()}:END -->\n`;
 }
 
 export async function generateFullAgents(config: ProjectConfig): Promise<string> {
@@ -154,4 +166,3 @@ export async function generateFullAgents(config: ProjectConfig): Promise<string>
 
   return sections.join('\n').trim() + '\n';
 }
-

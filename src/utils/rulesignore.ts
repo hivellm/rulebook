@@ -44,10 +44,6 @@ export async function parseRulesIgnore(cwd: string = process.cwd()): Promise<Rul
   };
 }
 
-export function filterRules<T extends { name: string }>(
-  rules: T[],
-  rulesIgnore: RulesIgnore
-): T[] {
+export function filterRules<T extends { name: string }>(rules: T[], rulesIgnore: RulesIgnore): T[] {
   return rules.filter((rule) => !rulesIgnore.isIgnored(rule.name));
 }
-

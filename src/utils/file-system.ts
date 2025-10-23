@@ -28,7 +28,11 @@ export async function copyFile(source: string, destination: string): Promise<voi
 }
 
 export async function findFiles(pattern: string, cwd: string = process.cwd()): Promise<string[]> {
-  return await glob(pattern, { cwd, absolute: true, ignore: ['node_modules/**', 'target/**', 'dist/**', '.git/**'] });
+  return await glob(pattern, {
+    cwd,
+    absolute: true,
+    ignore: ['node_modules/**', 'target/**', 'dist/**', '.git/**'],
+  });
 }
 
 export async function createBackup(filePath: string): Promise<string> {
@@ -50,4 +54,3 @@ export async function readJsonFile<T>(filePath: string): Promise<T | null> {
     return null;
   }
 }
-

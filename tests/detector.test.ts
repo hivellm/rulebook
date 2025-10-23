@@ -55,10 +55,10 @@ describe('detector', () => {
     });
 
     it('should detect multiple languages', async () => {
+      await fs.mkdir(path.join(testDir, 'src'), { recursive: true });
       await fs.writeFile(path.join(testDir, 'Cargo.toml'), '[package]\nname = "test"');
       await fs.writeFile(path.join(testDir, 'package.json'), '{"name": "test"}');
       await fs.writeFile(path.join(testDir, 'src', 'main.rs'), 'fn main() {}');
-      await fs.mkdir(path.join(testDir, 'src'), { recursive: true });
       await fs.writeFile(path.join(testDir, 'src', 'index.ts'), 'console.log("test")');
 
       const result = await detectProject(testDir);
@@ -114,4 +114,3 @@ describe('detector', () => {
     });
   });
 });
-

@@ -1,9 +1,7 @@
 import inquirer from 'inquirer';
 import type { DetectionResult, ProjectConfig } from '../types.js';
 
-export async function promptProjectConfig(
-  detection: DetectionResult
-): Promise<ProjectConfig> {
+export async function promptProjectConfig(detection: DetectionResult): Promise<ProjectConfig> {
   const questions = [];
 
   // Language selection
@@ -75,10 +73,26 @@ export async function promptProjectConfig(
     name: 'modules',
     message: 'Select MCP modules to include rules for:',
     choices: [
-      { name: 'Vectorizer (semantic search)', value: 'vectorizer', checked: detectedModules.includes('vectorizer') },
-      { name: 'Synap (key-value store)', value: 'synap', checked: detectedModules.includes('synap') },
-      { name: 'OpenSpec (proposal system)', value: 'openspec', checked: detectedModules.includes('openspec') },
-      { name: 'Context7 (library docs)', value: 'context7', checked: detectedModules.includes('context7') },
+      {
+        name: 'Vectorizer (semantic search)',
+        value: 'vectorizer',
+        checked: detectedModules.includes('vectorizer'),
+      },
+      {
+        name: 'Synap (key-value store)',
+        value: 'synap',
+        checked: detectedModules.includes('synap'),
+      },
+      {
+        name: 'OpenSpec (proposal system)',
+        value: 'openspec',
+        checked: detectedModules.includes('openspec'),
+      },
+      {
+        name: 'Context7 (library docs)',
+        value: 'context7',
+        checked: detectedModules.includes('context7'),
+      },
     ],
   });
 
@@ -161,4 +175,3 @@ export async function promptMergeStrategy(): Promise<'merge' | 'replace'> {
 
   return answer.strategy;
 }
-

@@ -56,4 +56,3 @@ export interface TemplateData {
   strictDocs: boolean;
   timestamp: string;
 }
-

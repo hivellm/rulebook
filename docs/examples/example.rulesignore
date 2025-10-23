@@ -1,0 +1,27 @@
+# Example .rulesignore file
+# 
+# This file allows you to selectively disable rules from @hivellm/rulebook
+# Syntax is similar to .gitignore
+
+# Ignore specific rules by exact name
+coverage-threshold
+strict-docs
+
+# Ignore all rules for a language
+typescript/*
+
+# Ignore specific language rules
+rust/edition-2024
+rust/clippy-warnings
+
+# Ignore all module rules
+vectorizer/*
+synap/*
+
+# Use glob patterns
+*-threshold
+test-*
+
+# Comments are supported (lines starting with #)
+# Empty lines are ignored
+

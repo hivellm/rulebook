@@ -1,0 +1,156 @@
+# Rulebook Project Roadmap
+
+## Phase 1: Core Foundation ✅
+
+- [x] Project scaffolding and structure
+- [x] TypeScript configuration
+- [x] Package.json setup with NPX compatibility
+- [x] Basic file system utilities
+- [x] Project detection system
+- [x] Language detection (Rust, TypeScript, Python)
+- [x] MCP module detection (Vectorizer, Synap, OpenSpec, Context7)
+- [x] Existing AGENTS.md detection and parsing
+
+## Phase 2: Templates ✅
+
+### Language Templates
+- [x] RUST.md - Rust Edition 2024, Clippy, testing, async patterns
+- [x] TYPESCRIPT.md - ESLint, Prettier, Vitest, strict mode
+- [x] PYTHON.md - Ruff, Black, mypy, pytest
+
+### Module Templates
+- [x] VECTORIZER.md - Semantic search usage patterns
+- [x] SYNAP.md - KV store and task tracking patterns
+- [x] OPENSPEC.md - Proposal workflow and conventions
+- [x] CONTEXT7.md - Dependency management with library docs
+
+### Workflow Templates
+- [x] rust-test.yml - Cross-platform testing with nextest
+- [x] rust-lint.yml - Clippy and rustfmt validation
+- [x] typescript-test.yml - Vitest with coverage
+- [x] typescript-lint.yml - ESLint and Prettier
+- [x] python-test.yml - Pytest with coverage
+- [x] python-lint.yml - Ruff, Black, mypy
+- [x] codespell.yml - Spelling error detection
+
+## Phase 3: Generation & Merging ✅
+
+- [x] AGENTS.md content generator
+- [x] Block-based structure (RULEBOOK, language, module blocks)
+- [x] Full AGENTS.md generation from configuration
+- [x] Smart merger for existing AGENTS.md
+- [x] Block replacement and insertion logic
+- [x] Preservation of existing blocks
+- [x] Backup creation before modification
+
+## Phase 4: CLI & Interaction ✅
+
+- [x] Interactive prompts with inquirer
+- [x] Language confirmation/selection
+- [x] Project type selection
+- [x] Module selection with auto-detection
+- [x] IDE preference selection
+- [x] Coverage threshold configuration
+- [x] Documentation strictness toggle
+- [x] Merge strategy prompt (merge vs replace)
+- [x] CLI commands (init, validate)
+- [x] Auto mode (--yes flag)
+- [x] Pretty console output with chalk and ora
+
+## Phase 5: Rules & Filtering ✅
+
+- [x] .rulesignore parser
+- [x] Rule filtering based on patterns
+- [x] Exact match support
+- [x] Wildcard pattern support (prefix/*)
+- [x] Glob pattern support (*-suffix)
+- [x] Documentation in generated AGENTS.md
+
+## Phase 6: Testing ✅
+
+- [x] Test infrastructure setup (Vitest)
+- [x] Detector tests (language, module, AGENTS.md detection)
+- [x] Generator tests (content generation, full AGENTS.md)
+- [x] Merger tests (block replacement, insertion, preservation)
+- [x] File system utility tests
+- [x] Rules ignore tests
+- [x] 95%+ code coverage
+- [x] 100% test pass rate
+
+## Phase 7: Documentation ✅
+
+- [x] README.md with comprehensive usage guide
+- [x] CHANGELOG.md with version history
+- [x] ROADMAP.md (this file)
+- [x] docs/ directory structure
+- [x] Project documentation standards
+
+## Phase 8: Polish & Release 🚧
+
+### Current Status: In Progress
+
+- [ ] NPX compatibility testing
+- [ ] End-to-end testing on real projects
+- [ ] CI/CD setup for rulebook itself
+- [ ] GitHub Actions for testing and linting
+- [ ] Package publication preparation
+- [ ] Version 0.1.0 release
+
+## Future Enhancements 📋
+
+### v0.2.0 - Workflow Generation
+- [ ] Implement workflow file generation
+- [ ] Copy workflow templates to .github/workflows/
+- [ ] Configure workflows based on detected languages
+- [ ] Workflow customization options
+
+### v0.3.0 - Validation & Analysis
+- [ ] Project structure validation
+- [ ] Documentation completeness check
+- [ ] Test coverage verification
+- [ ] Dependency freshness check
+- [ ] Security audit integration
+
+### v0.4.0 - Additional Languages
+- [ ] Go language template
+- [ ] Java language template
+- [ ] C/C++ language template
+- [ ] Additional language support
+
+### v0.5.0 - IDE Integration
+- [ ] IDE-specific rules files generation
+- [ ] Cursor rules file (.cursorrules)
+- [ ] VS Code settings.json integration
+- [ ] Windsurf configuration
+- [ ] Direct IDE plugin support
+
+### v0.6.0 - Advanced Features
+- [ ] Custom template support
+- [ ] Template marketplace/registry
+- [ ] Project health scoring
+- [ ] Automated fixes and suggestions
+- [ ] Integration with existing linters
+
+### v1.0.0 - Production Ready
+- [ ] Comprehensive documentation
+- [ ] Tutorial videos
+- [ ] Migration guides
+- [ ] Enterprise features
+- [ ] SLA and support options
+
+## Metrics
+
+- **Current Coverage**: Target 95%+
+- **Test Count**: 30+ comprehensive tests
+- **Supported Languages**: 3 (Rust, TypeScript, Python)
+- **Supported Modules**: 4 (Vectorizer, Synap, OpenSpec, Context7)
+- **Workflow Templates**: 7 GitHub Actions workflows
+
+## Contributing
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for contribution guidelines.
+
+## License
+
+MIT - See [LICENSE](../LICENSE) for details.
+
