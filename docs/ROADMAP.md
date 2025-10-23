@@ -188,16 +188,19 @@
 - [x] Changelog generation from commits ✅
 - [x] Version command (major/minor/patch) ✅
 - [x] Changelog command with conventional commits ✅
-- [ ] Custom template support (v0.9.0)
-- [ ] Template marketplace/registry (v0.9.0)
-- [ ] Project health scoring (v0.9.0)
-- [ ] Workflow customization options (v0.9.0)
-- [ ] Automated npm publishing on release tags (v0.9.0)
-- [ ] Performance benchmarking (v0.9.0)
-- [ ] Direct IDE plugin support (v0.9.0)
-- [ ] Real-time IDE integration (v0.9.0)
-- [ ] Auto-fix suggestions for common issues (v0.9.0)
-- [ ] Template versioning system (v0.9.0)
+
+### v0.9.0 - Extensibility & Automation (Planned)
+
+- [ ] Custom template support
+- [ ] Template marketplace/registry
+- [ ] Project health scoring
+- [ ] Workflow customization options
+- [ ] Automated npm publishing on release tags
+- [ ] Performance benchmarking
+- [ ] Direct IDE plugin support
+- [ ] Real-time IDE integration
+- [ ] Auto-fix suggestions for common issues
+- [ ] Template versioning system
 
 ### v1.0.0 - Production Ready
 - [ ] Comprehensive documentation
