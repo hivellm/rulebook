@@ -105,6 +105,22 @@ async function detectLanguages(cwd: string): Promise<LanguageDetection[]> {
     });
   }
 
+  // Detect C/C++
+  const cmakeLists = path.join(cwd, 'CMakeLists.txt');
+  const makeFile = path.join(cwd, 'Makefile');
+  if ((await fileExists(cmakeLists)) || (await fileExists(makeFile))) {
+    const cppFiles = await findFiles('**/*.{cpp,hpp,cc,h,c}', cwd);
+    detections.push({
+      language: 'cpp',
+      confidence: cppFiles.length > 0 ? 1.0 : 0.8,
+      indicators: [
+        (await fileExists(cmakeLists)) ? 'CMakeLists.txt' : '',
+        (await fileExists(makeFile)) ? 'Makefile' : '',
+        `${cppFiles.length} C/C++ files`,
+      ].filter(Boolean),
+    });
+  }
+
   // Sort by confidence
   return detections.sort((a, b) => b.confidence - a.confidence);
 }
