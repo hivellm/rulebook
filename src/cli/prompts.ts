@@ -27,6 +27,11 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
           { name: 'Python', value: 'python' },
           { name: 'Go', value: 'go' },
           { name: 'Java', value: 'java' },
+          { name: 'Elixir', value: 'elixir' },
+          { name: 'C#', value: 'csharp' },
+          { name: 'PHP', value: 'php' },
+          { name: 'Swift', value: 'swift' },
+          { name: 'Kotlin', value: 'kotlin' },
         ],
         default: detection.languages.map((l) => l.language),
         validate: (answer: string[]) => {
@@ -48,6 +53,11 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
         { name: 'Python', value: 'python' },
         { name: 'Go', value: 'go' },
         { name: 'Java', value: 'java' },
+        { name: 'Elixir', value: 'elixir' },
+        { name: 'C#', value: 'csharp' },
+        { name: 'PHP', value: 'php' },
+        { name: 'Swift', value: 'swift' },
+        { name: 'Kotlin', value: 'kotlin' },
       ],
       validate: (answer: string[]) => {
         if (answer.length < 1) {
@@ -112,6 +122,10 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
       { name: 'Windsurf', value: 'windsurf' },
       { name: 'VS Code', value: 'vscode' },
       { name: 'GitHub Copilot', value: 'copilot' },
+      { name: 'Tabnine', value: 'tabnine' },
+      { name: 'Replit', value: 'replit' },
+      { name: 'JetBrains AI', value: 'jetbrains' },
+      { name: 'Zed', value: 'zed' },
     ],
     default: ['cursor'],
   });
