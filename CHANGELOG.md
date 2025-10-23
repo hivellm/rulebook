@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2024-10-23
+
+### Added
+
+**Project Health Scoring:**
+- New command: `rulebook health`
+- Comprehensive health analysis across 6 categories
+- Scoring system (0-100) with grades (A+ to F)
+- Categories: Documentation, Testing, Quality, Security, CI/CD, Dependencies
+- Detailed recommendations for improvements
+- Weighted scoring algorithm
+
+**Custom Templates:**
+- Support for user-defined templates in `.rulebook/templates/`
+- Custom language, module, workflow, IDE, and CLI templates
+- Automatic detection and merging with built-in templates
+- Template initialization with `init` command
+
+**Workflow Customization:**
+- Configuration file: `.rulebook.json`
+- Customize workflow platforms and versions
+- Enable/disable specific workflow features
+- Custom workflow options per language
+- Example configuration file provided
+
+**Automated Publishing:**
+- New workflow: npm-publish.yml
+- Automatic publishing on release tags
+- npm provenance support
+- Full quality gate enforcement before publish
+
+### Changed
+- CLI commands expanded from 7 to 8 (added health)
+- Core modules expanded from 10 to 11 (added health-scorer, custom-templates)
+- Total templates: 65+ (supports custom templates)
+
+### Improved
+- Better project configuration through .rulebook.json
+- More flexible workflow generation
+- Enhanced project analysis capabilities
+
 ## [0.8.0] - 2024-10-23
 
 ### Added

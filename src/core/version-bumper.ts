@@ -18,7 +18,7 @@ export interface VersionBumpResult {
  */
 export function bumpVersion(version: string, type: BumpType): string {
   const parts = version.replace(/^v/, '').split('.').map(Number);
-  
+
   if (parts.length !== 3 || parts.some(isNaN)) {
     throw new Error(`Invalid version format: ${version}`);
   }
@@ -46,12 +46,9 @@ export function bumpVersion(version: string, type: BumpType): string {
 /**
  * Update version in package.json
  */
-async function updatePackageJson(
-  projectDir: string,
-  newVersion: string
-): Promise<boolean> {
+async function updatePackageJson(projectDir: string, newVersion: string): Promise<boolean> {
   const packagePath = path.join(projectDir, 'package.json');
-  
+
   if (!(await fileExists(packagePath))) {
     return false;
   }
@@ -59,7 +56,7 @@ async function updatePackageJson(
   const content = await readFile(packagePath);
   const pkg = JSON.parse(content);
   pkg.version = newVersion;
-  
+
   await writeFile(packagePath, JSON.stringify(pkg, null, 2) + '\n');
   return true;
 }
@@ -67,22 +64,16 @@ async function updatePackageJson(
 /**
  * Update version in Cargo.toml
  */
-async function updateCargoToml(
-  projectDir: string,
-  newVersion: string
-): Promise<boolean> {
+async function updateCargoToml(projectDir: string, newVersion: string): Promise<boolean> {
   const cargoPath = path.join(projectDir, 'Cargo.toml');
-  
+
   if (!(await fileExists(cargoPath))) {
     return false;
   }
 
   let content = await readFile(cargoPath);
-  content = content.replace(
-    /^version\s*=\s*"[^"]+"/m,
-    `version = "${newVersion}"`
-  );
-  
+  content = content.replace(/^version\s*=\s*"[^"]+"/m, `version = "${newVersion}"`);
+
   await writeFile(cargoPath, content);
   return true;
 }
@@ -90,22 +81,16 @@ async function updateCargoToml(
 /**
  * Update version in pyproject.toml
  */
-async function updatePyprojectToml(
-  projectDir: string,
-  newVersion: string
-): Promise<boolean> {
+async function updatePyprojectToml(projectDir: string, newVersion: string): Promise<boolean> {
   const pyprojectPath = path.join(projectDir, 'pyproject.toml');
-  
+
   if (!(await fileExists(pyprojectPath))) {
     return false;
   }
 
   let content = await readFile(pyprojectPath);
-  content = content.replace(
-    /^version\s*=\s*"[^"]+"/m,
-    `version = "${newVersion}"`
-  );
-  
+  content = content.replace(/^version\s*=\s*"[^"]+"/m, `version = "${newVersion}"`);
+
   await writeFile(pyprojectPath, content);
   return true;
 }
@@ -113,22 +98,16 @@ async function updatePyprojectToml(
 /**
  * Update version in mix.exs (Elixir)
  */
-async function updateMixExs(
-  projectDir: string,
-  newVersion: string
-): Promise<boolean> {
+async function updateMixExs(projectDir: string, newVersion: string): Promise<boolean> {
   const mixPath = path.join(projectDir, 'mix.exs');
-  
+
   if (!(await fileExists(mixPath))) {
     return false;
   }
 
   let content = await readFile(mixPath);
-  content = content.replace(
-    /version:\s*"[^"]+"/,
-    `version: "${newVersion}"`
-  );
-  
+  content = content.replace(/version:\s*"[^"]+"/, `version: "${newVersion}"`);
+
   await writeFile(mixPath, content);
   return true;
 }
@@ -136,22 +115,16 @@ async function updateMixExs(
 /**
  * Update version in build.gradle.kts (Kotlin)
  */
-async function updateGradleKts(
-  projectDir: string,
-  newVersion: string
-): Promise<boolean> {
+async function updateGradleKts(projectDir: string, newVersion: string): Promise<boolean> {
   const gradlePath = path.join(projectDir, 'build.gradle.kts');
-  
+
   if (!(await fileExists(gradlePath))) {
     return false;
   }
 
   let content = await readFile(gradlePath);
-  content = content.replace(
-    /version\s*=\s*"[^"]+"/,
-    `version = "${newVersion}"`
-  );
-  
+  content = content.replace(/version\s*=\s*"[^"]+"/, `version = "${newVersion}"`);
+
   await writeFile(gradlePath, content);
   return true;
 }
@@ -159,26 +132,22 @@ async function updateGradleKts(
 /**
  * Update version in .csproj (C#)
  */
-async function updateCsproj(
-  projectDir: string,
-  newVersion: string
-): Promise<boolean> {
-  const csprojFiles = await execAsync(
-    `find . -maxdepth 2 -name "*.csproj" 2>/dev/null || true`,
-    { cwd: projectDir }
-  );
-  
+async function updateCsproj(projectDir: string, newVersion: string): Promise<boolean> {
+  const csprojFiles = await execAsync(`find . -maxdepth 2 -name "*.csproj" 2>/dev/null || true`, {
+    cwd: projectDir,
+  });
+
   if (!csprojFiles.stdout.trim()) {
     return false;
   }
 
-  const csprojPath = path.join(projectDir, csprojFiles.stdout.trim().split('\n')[0].replace('./', ''));
-  let content = await readFile(csprojPath);
-  content = content.replace(
-    /<Version>[^<]+<\/Version>/,
-    `<Version>${newVersion}</Version>`
+  const csprojPath = path.join(
+    projectDir,
+    csprojFiles.stdout.trim().split('\n')[0].replace('./', '')
   );
-  
+  let content = await readFile(csprojPath);
+  content = content.replace(/<Version>[^<]+<\/Version>/, `<Version>${newVersion}</Version>`);
+
   await writeFile(csprojPath, content);
   return true;
 }
@@ -222,7 +191,7 @@ export async function bumpProjectVersion(
   bumpType: BumpType
 ): Promise<VersionBumpResult> {
   const currentVersion = await getCurrentVersion(projectDir);
-  
+
   if (!currentVersion) {
     throw new Error('Could not find version in project files');
   }
@@ -234,23 +203,23 @@ export async function bumpProjectVersion(
   if (await updatePackageJson(projectDir, newVersion)) {
     filesUpdated.push('package.json');
   }
-  
+
   if (await updateCargoToml(projectDir, newVersion)) {
     filesUpdated.push('Cargo.toml');
   }
-  
+
   if (await updatePyprojectToml(projectDir, newVersion)) {
     filesUpdated.push('pyproject.toml');
   }
-  
+
   if (await updateMixExs(projectDir, newVersion)) {
     filesUpdated.push('mix.exs');
   }
-  
+
   if (await updateGradleKts(projectDir, newVersion)) {
     filesUpdated.push('build.gradle.kts');
   }
-  
+
   if (await updateCsproj(projectDir, newVersion)) {
     filesUpdated.push('*.csproj');
   }
@@ -265,4 +234,3 @@ export async function bumpProjectVersion(
     filesUpdated,
   };
 }
-

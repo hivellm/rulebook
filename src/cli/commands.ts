@@ -430,14 +430,12 @@ export async function versionCommand(options: {
     console.log(chalk.bold.blue('\n📦 Version Bump\n'));
 
     const { bumpProjectVersion } = await import('../core/version-bumper.js');
-    
+
     const spinner = ora('Bumping version...').start();
-    
+
     const result = await bumpProjectVersion(cwd, options.type);
-    
-    spinner.succeed(
-      `Version bumped: ${result.oldVersion} → ${result.newVersion}`
-    );
+
+    spinner.succeed(`Version bumped: ${result.oldVersion} → ${result.newVersion}`);
 
     console.log('');
     console.log(chalk.green('✅ Files updated:\n'));
@@ -449,28 +447,30 @@ export async function versionCommand(options: {
     console.log(chalk.yellow('Next steps:'));
     console.log(chalk.gray('  1. Review changes'));
     console.log(chalk.gray('  2. Update CHANGELOG.md (or run: rulebook changelog)'));
-    console.log(chalk.gray(`  3. Commit: git add . && git commit -m "chore: Release version ${result.newVersion}"`));
-    console.log(chalk.gray(`  4. Tag: git tag -a v${result.newVersion} -m "Release v${result.newVersion}"`));
+    console.log(
+      chalk.gray(
+        `  3. Commit: git add . && git commit -m "chore: Release version ${result.newVersion}"`
+      )
+    );
+    console.log(
+      chalk.gray(`  4. Tag: git tag -a v${result.newVersion} -m "Release v${result.newVersion}"`)
+    );
   } catch (error) {
     console.error(chalk.red('\n❌ Error:'), (error as Error).message);
     process.exit(1);
   }
 }
 
-export async function changelogCommand(options: {
-  version?: string;
-}): Promise<void> {
+export async function changelogCommand(options: { version?: string }): Promise<void> {
   try {
     const cwd = process.cwd();
 
     console.log(chalk.bold.blue('\n📝 Changelog Generation\n'));
 
-    const { generateChangelog, getCurrentVersion } = await import(
-      '../core/changelog-generator.js'
-    );
+    const { generateChangelog, getCurrentVersion } = await import('../core/changelog-generator.js');
 
     const version = options.version || (await getCurrentVersion(cwd));
-    
+
     if (!version) {
       console.error(chalk.red('❌ Could not determine version'));
       console.log(chalk.gray('  Specify version with --version flag'));
@@ -478,14 +478,14 @@ export async function changelogCommand(options: {
     }
 
     const spinner = ora('Generating changelog from commits...').start();
-    
+
     const section = await generateChangelog(cwd, version);
-    
+
     spinner.succeed(`Changelog generated for version ${version}`);
 
     console.log('');
     console.log(chalk.green('✅ Changelog sections:\n'));
-    
+
     if (section.breaking.length > 0) {
       console.log(chalk.red('  Breaking Changes: ') + section.breaking.length);
     }
@@ -502,6 +502,58 @@ export async function changelogCommand(options: {
     console.log('');
     console.log(chalk.gray('CHANGELOG.md has been updated'));
     console.log(chalk.gray('Review and edit as needed before committing'));
+  } catch (error) {
+    console.error(chalk.red('\n❌ Error:'), (error as Error).message);
+    process.exit(1);
+  }
+}
+
+export async function healthCommand(): Promise<void> {
+  try {
+    const cwd = process.cwd();
+
+    console.log(chalk.bold.blue('\n🏥 Project Health Check\n'));
+
+    const { calculateHealthScore, getHealthGrade } = await import('../core/health-scorer.js');
+
+    const spinner = ora('Analyzing project health...').start();
+
+    const health = await calculateHealthScore(cwd);
+
+    spinner.succeed('Health analysis complete');
+
+    console.log('');
+    const grade = getHealthGrade(health.overall);
+    
+    console.log(chalk.bold(`Overall Health Score: ${health.overall}/100 (${grade})`));
+    console.log('');
+
+    console.log(chalk.bold('Category Scores:\n'));
+    console.log(`  📝 Documentation: ${health.categories.documentation}/100`);
+    console.log(`  🧪 Testing: ${health.categories.testing}/100`);
+    console.log(`  🎨 Code Quality: ${health.categories.quality}/100`);
+    console.log(`  🔒 Security: ${health.categories.security}/100`);
+    console.log(`  🔄 CI/CD: ${health.categories.cicd}/100`);
+    console.log(`  📦 Dependencies: ${health.categories.dependencies}/100`);
+    console.log('');
+
+    if (health.recommendations.length > 0) {
+      console.log(chalk.bold.yellow('Recommendations:\n'));
+      health.recommendations.forEach((rec) => {
+        console.log(chalk.yellow(`  ${rec}`));
+      });
+      console.log('');
+    }
+
+    if (health.overall >= 90) {
+      console.log(chalk.green('🌟 Excellent! Your project is in great shape!'));
+    } else if (health.overall >= 70) {
+      console.log(chalk.blue('👍 Good project health. A few improvements suggested.'));
+    } else {
+      console.log(chalk.yellow('⚠️  Project health needs improvement.'));
+      console.log(chalk.gray('  Run: rulebook init --yes'));
+      console.log(chalk.gray('  To generate missing files and improve health.'));
+    }
   } catch (error) {
     console.error(chalk.red('\n❌ Error:'), (error as Error).message);
     process.exit(1);

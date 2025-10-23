@@ -146,6 +146,43 @@ npx @hivellm/rulebook changelog --version 1.2.0
 - Updates CHANGELOG.md with proper formatting
 - Detects breaking changes automatically
 
+### Project Health Check
+
+Analyze project health across multiple dimensions:
+
+```bash
+npx @hivellm/rulebook health
+```
+
+**Analyzes**:
+- 📝 Documentation (README, CHANGELOG, LICENSE, docs/)
+- 🧪 Testing (tests/, coverage, test frameworks)
+- 🎨 Code Quality (linters, formatters, type checking)
+- 🔒 Security (SECURITY.md, .gitignore, secrets detection)
+- 🔄 CI/CD (GitHub Actions workflows)
+- 📦 Dependencies (lock files, vulnerabilities)
+
+**Output**: Overall score (0-100) with grade (A+ to F) and category breakdowns
+
+### Custom Templates
+
+Add your own templates to extend rulebook:
+
+```bash
+# Initialize custom templates directory
+mkdir -p .rulebook/templates/{language,module,workflow,ide,cli}
+
+# Add your custom template
+echo "<!-- CUSTOM:START -->" > .rulebook/templates/language/CUSTOM.md
+# ... add your template content ...
+echo "<!-- CUSTOM:END -->" >> .rulebook/templates/language/CUSTOM.md
+
+# Custom templates are automatically detected
+npx @hivellm/rulebook init
+```
+
+**Supports**: Custom templates for all categories
+
 ### Documentation Structure Generation
 
 Generate complete documentation structure and standard open source files:

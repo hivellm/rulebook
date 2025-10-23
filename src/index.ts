@@ -10,6 +10,7 @@ import {
   generateDocsCommand,
   versionCommand,
   changelogCommand,
+  healthCommand,
 } from './cli/commands.js';
 
 const program = new Command();
@@ -17,7 +18,7 @@ const program = new Command();
 program
   .name('rulebook')
   .description('CLI tool to standardize AI-generated projects with templates and rules')
-  .version('0.8.0');
+  .version('0.9.0');
 
 program
   .command('init')
@@ -69,5 +70,7 @@ program
   .description('Generate changelog from git commits')
   .option('-v, --version <version>', 'Specify version (default: auto-detect)')
   .action(changelogCommand);
+
+program.command('health').description('Check project health score').action(healthCommand);
 
 program.parse(process.argv);

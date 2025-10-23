@@ -33,7 +33,7 @@ export interface ChangelogSection {
 function parseCommit(message: string, hash: string): Commit | null {
   // Conventional commit format: type(scope): subject
   const match = message.match(/^(\w+)(?:\(([^)]+)\))?: (.+)$/);
-  
+
   if (!match) {
     return null;
   }
@@ -53,9 +53,7 @@ function parseCommit(message: string, hash: string): Commit | null {
 /**
  * Get commits since last tag
  */
-export async function getCommitsSinceLastTag(
-  projectDir: string
-): Promise<Commit[]> {
+export async function getCommitsSinceLastTag(projectDir: string): Promise<Commit[]> {
   try {
     // Get last tag
     const { stdout: lastTag } = await execAsync('git describe --tags --abbrev=0', {
@@ -83,10 +81,7 @@ export async function getCommitsSinceLastTag(
   } catch {
     // No tags yet, get all commits
     try {
-      const { stdout } = await execAsync(
-        'git log --pretty=format:"%H|||%s"',
-        { cwd: projectDir }
-      );
+      const { stdout } = await execAsync('git log --pretty=format:"%H|||%s"', { cwd: projectDir });
 
       return stdout
         .trim()
@@ -105,10 +100,7 @@ export async function getCommitsSinceLastTag(
 /**
  * Generate changelog section from commits
  */
-export function generateChangelogSection(
-  commits: Commit[],
-  version: string
-): ChangelogSection {
+export function generateChangelogSection(commits: Commit[], version: string): ChangelogSection {
   const section: ChangelogSection = {
     version,
     date: new Date().toISOString().split('T')[0],
@@ -122,9 +114,7 @@ export function generateChangelogSection(
   };
 
   for (const commit of commits) {
-    const entry = commit.scope
-      ? `**${commit.scope}**: ${commit.subject}`
-      : commit.subject;
+    const entry = commit.scope ? `**${commit.scope}**: ${commit.subject}` : commit.subject;
 
     if (commit.breaking) {
       section.breaking.push(entry);
@@ -235,9 +225,9 @@ export async function updateChangelog(
   section: ChangelogSection
 ): Promise<void> {
   const changelogPath = path.join(projectDir, 'CHANGELOG.md');
-  
+
   let changelog = '';
-  
+
   if (await fileExists(changelogPath)) {
     changelog = await readFile(changelogPath);
   } else {
@@ -255,18 +245,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   // Find where to insert new version
   const newEntry = formatChangelogSection(section);
-  
+
   // Insert after [Unreleased] section
   const unreleasedMatch = changelog.match(/## \[Unreleased\]\n/);
-  
+
   if (unreleasedMatch && unreleasedMatch.index !== undefined) {
     const insertPos = unreleasedMatch.index + unreleasedMatch[0].length;
-    changelog =
-      changelog.slice(0, insertPos) +
-      '\n' +
-      newEntry +
-      '\n' +
-      changelog.slice(insertPos);
+    changelog = changelog.slice(0, insertPos) + '\n' + newEntry + '\n' + changelog.slice(insertPos);
   } else {
     // No [Unreleased] section, prepend
     changelog = newEntry + '\n\n' + changelog;
@@ -292,7 +277,6 @@ export async function generateChangelog(
   const commits = await getCommitsSinceLastTag(projectDir);
   const section = generateChangelogSection(commits, version);
   await updateChangelog(projectDir, section);
-  
+
   return section;
 }
-
