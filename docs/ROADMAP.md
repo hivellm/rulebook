@@ -125,13 +125,16 @@
 - [ ] Dependency freshness check (v0.4.0)
 - [ ] Security audit integration (v0.4.0)
 
-### v0.4.0 - Advanced Validation
-- [ ] Test coverage verification from test results
-- [ ] Dependency freshness check (outdated packages)
-- [ ] Security audit integration (cargo audit, npm audit)
-- [ ] Performance benchmarking
-- [ ] C/C++ language template
-- [ ] Additional language support (Kotlin, Swift)
+### v0.4.0 - Advanced Validation ✅
+
+- [x] Test coverage verification from test results
+- [x] Dependency freshness check (outdated packages)
+- [x] Security audit integration (cargo audit, npm audit, pip-audit)
+- [x] `check-deps` command for dependency analysis
+- [x] `check-coverage` command with threshold option
+- [ ] Performance benchmarking (v0.5.0)
+- [ ] C/C++ language template (v0.5.0)
+- [ ] Additional language support - Kotlin, Swift (v0.5.0)
 
 ### v0.5.0 - IDE Integration
 - [ ] IDE-specific rules files generation
@@ -154,19 +157,21 @@
 - [ ] Enterprise features
 - [ ] SLA and support options
 
-## Metrics (v0.3.0)
+## Metrics (v0.4.0)
 
-- **Code Coverage**: 90.38% (core modules)
-- **Test Count**: 63 comprehensive tests (100% passing) ⬆️
-- **Test Files**: 7 test suites ⬆️
-- **Supported Languages**: 5 (Rust, TypeScript, Python, Go, Java) ⬆️
+- **Code Coverage**: 90%+ (core modules)
+- **Test Count**: 63 comprehensive tests (100% passing)
+- **Test Files**: 7 test suites
+- **CLI Commands**: 5 (init, workflows, validate, check-deps, check-coverage) ⬆️
+- **Supported Languages**: 5 (Rust, TypeScript, Python, Go, Java)
 - **Supported Modules**: 4 (Vectorizer, Synap, OpenSpec, Context7)
 - **IDE Templates**: 4 (Cursor, Windsurf, VS Code, Copilot)
 - **CLI Templates**: 6 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium)
-- **Workflow Templates**: 11 GitHub Actions workflows ⬆️ (Rust, TS, Python, Go, Java + codespell)
-- **Total Templates**: 24 comprehensive templates
-- **Documentation Pages**: 10+ guides and specs
-- **Lines of Code**: 12,000+ lines (implementation + templates + docs)
+- **Workflow Templates**: 11 GitHub Actions workflows (Rust, TS, Python, Go, Java + codespell)
+- **Total Templates**: 28 comprehensive templates ⬆️
+- **Core Modules**: 8 (detector, generator, merger, validator, workflow-generator, coverage-checker, dependency-checker, + utils)
+- **Documentation Pages**: 12+ guides and specs ⬆️
+- **Lines of Code**: 18,000+ lines (implementation + templates + docs) ⬆️
 
 ## Contributing
 
