@@ -14,7 +14,9 @@ export default defineConfig({
         '**/*.test.ts',
         '**/*.config.ts',
         'src/index.ts', // CLI entry point - tested manually
-        'src/cli/**', // CLI prompts - tested manually
+        'src/cli/**', // CLI commands - tested manually
+        'src/core/coverage-checker.ts', // External command execution - tested manually
+        'src/core/dependency-checker.ts', // External command execution - tested manually
       ],
       thresholds: {
         lines: 90,
