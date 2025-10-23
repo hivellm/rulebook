@@ -156,12 +156,32 @@
 - [ ] Direct IDE plugin support (v0.6.0)
 - [ ] Real-time IDE integration (v0.6.0)
 
-### v0.6.0 - Advanced Features
+### v0.6.0 - Package Publication & Extended Languages ✅
+- [x] Publishing workflows for all languages
+- [x] npm publication with provenance (TypeScript)
+- [x] crates.io publication with verification (Rust)
+- [x] PyPI publication with trusted publishing (Python)
+- [x] pkg.go.dev auto-indexing (Go)
+- [x] Maven Central with GPG signing (Java)
+- [x] Hex.pm publication (Elixir) ✅ NEW
+- [x] NuGet publication (C#) ✅ NEW
+- [x] Packagist auto-sync (PHP) ✅ NEW
+- [x] Swift Package Manager (Swift) ✅ NEW
+- [x] Maven Central (Kotlin) ✅ NEW
+- [x] Publication documentation in language templates
+- [x] Publishing checklists for each language
+- [x] Extended language support (Elixir, C#, PHP, Swift, Kotlin) ✅ NEW
+- [ ] Automated version bumping (v0.7.0)
+- [ ] Changelog generation (v0.7.0)
+
+### v0.7.0 - Advanced Features
 - [ ] Custom template support
 - [ ] Template marketplace/registry
 - [ ] Project health scoring
 - [ ] Automated fixes and suggestions
 - [ ] Integration with existing linters
+- [ ] Automated version bumping
+- [ ] Changelog generation from commits
 
 ### v1.0.0 - Production Ready
 - [ ] Comprehensive documentation
@@ -170,23 +190,28 @@
 - [ ] Enterprise features
 - [ ] SLA and support options
 
-## Metrics (v0.5.0)
+## Metrics (v0.6.0)
 
-- **Current Version**: v0.5.0 (IDE Integration Complete) ⬆️
-- **Code Coverage**: 90%+ (core modules)
-- **Test Count**: 63 comprehensive tests (100% passing)
+- **Current Version**: v0.6.0 (Package Publication & Extended Languages) ⬆️
+- **Code Coverage**: 90.38% (core modules) ✅
+- **Test Count**: 63 comprehensive tests (100% passing) ✅
 - **Test Files**: 7 test suites
 - **CLI Commands**: 5 (init, workflows, validate, check-deps, check-coverage)
-- **Supported Languages**: 5 (Rust, TypeScript, Python, Go, Java)
+- **Supported Languages**: 10 (Rust, TypeScript, Python, Go, Java, Elixir, C#, PHP, Swift, Kotlin) ⬆️ NEW
 - **Supported Modules**: 4 (Vectorizer, Synap, OpenSpec, Context7)
-- **IDE Templates**: 4 (Cursor, Windsurf, VS Code, Copilot) ✅
-- **CLI Tools Templates**: 6 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium) ✅
-- **Workflow Templates**: 11 GitHub Actions workflows (Rust, TS, Python, Go, Java + codespell) ✅
-- **Total Templates**: 28 comprehensive templates
+- **IDE Templates**: 4 (Cursor, Windsurf, VS Code, Copilot)
+- **CLI Tools Templates**: 6 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium)
+- **Test/Lint Workflows**: 21 (10 languages x2 + codespell) ⬆️ NEW
+- **Publishing Workflows**: 10 (all languages) ⬆️ NEW
+- **Total Workflow Templates**: 32 GitHub Actions workflows ⬆️
+- **Language Templates**: 10 comprehensive guides ⬆️
+- **Total Templates**: 48 comprehensive templates ⬆️
 - **Core Modules**: 8 (detector, generator, merger, validator, workflow-generator, coverage-checker, dependency-checker, + utils)
 - **Documentation Pages**: 12+ guides and specs
-- **Lines of Code**: 18,000+ lines (implementation + templates + docs)
-- **GitHub Actions**: Fully configured with pnpm caching ✅
+- **Lines of Code**: 25,000+ lines (implementation + templates + docs) ⬆️
+- **GitHub Actions**: Fully configured (npm caching, cross-platform tests) ✅
+- **Publication Support**: Full CI/CD for all 10 languages ✅ NEW
+- **Package Registries**: npm, crates.io, PyPI, pkg.go.dev, Maven Central, Hex.pm, NuGet, Packagist ✅ NEW
 
 ## Contributing
 

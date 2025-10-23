@@ -1,0 +1,29 @@
+name: .NET Lint
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Format check
+      run: dotnet format --verify-no-changes --no-restore
+    
+    - name: Build with warnings as errors
+      run: dotnet build --no-restore --configuration Release /warnaserror
+

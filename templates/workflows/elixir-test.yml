@@ -1,0 +1,54 @@
+name: Elixir Tests
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        elixir: ['1.16', '1.17']
+        otp: ['26', '27']
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: ${{ matrix.elixir }}
+        otp-version: ${{ matrix.otp }}
+    
+    - name: Restore dependencies cache
+      uses: actions/cache@v4
+      with:
+        path: deps
+        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-mix-
+    
+    - name: Install dependencies
+      run: mix deps.get
+    
+    - name: Compile
+      run: mix compile --warnings-as-errors
+    
+    - name: Run tests
+      run: mix test
+    
+    - name: Generate coverage report
+      run: mix coveralls.json
+      if: matrix.elixir == '1.17' && matrix.otp == '27'
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: matrix.elixir == '1.17' && matrix.otp == '27'
+      with:
+        files: ./cover/excoveralls.json
+        flags: unittests
+        fail_ci_if_error: false
+

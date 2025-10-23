@@ -1,0 +1,58 @@
+name: Publish Swift Package
+
+# Note: Swift packages are published via Git tags.
+# This workflow validates the package before tagging.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g., 1.0.0)'
+        required: true
+
+jobs:
+  validate:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: ${{ github.event.inputs.tag || github.ref }}
+    
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_15.2.app
+    
+    - name: Swift version
+      run: swift --version
+    
+    - name: Run SwiftLint
+      run: |
+        brew install swiftlint
+        swiftlint lint --strict
+    
+    - name: Build
+      run: swift build -Xswiftc -warnings-as-errors
+    
+    - name: Run tests
+      run: swift test
+    
+    - name: Generate documentation
+      run: |
+        swift package generate-documentation
+        echo "Documentation generated"
+    
+    - name: Verify package
+      run: |
+        swift package resolve
+        swift package show-dependencies
+    
+    - name: Package validated
+      run: |
+        TAG="${{ github.event.inputs.tag || github.ref_name }}"
+        echo "✅ Package validation successful"
+        echo "Package available at: https://github.com/${{ github.repository }}"
+        echo "Add to Package.swift:"
+        echo ".package(url: \"https://github.com/${{ github.repository }}.git\", from: \"$TAG\")"
+

@@ -1,0 +1,54 @@
+name: PHP Tests
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+        php-version: [ '8.2', '8.3' ]
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, dom, filter, gd, json, pcov
+        coverage: pcov
+    
+    - name: Validate composer.json
+      run: composer validate --strict
+    
+    - name: Cache Composer packages
+      uses: actions/cache@v4
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-php-
+    
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
+    
+    - name: Run tests
+      run: composer test
+    
+    - name: Generate coverage report
+      if: matrix.os == 'ubuntu-latest' && matrix.php-version == '8.3'
+      run: ./vendor/bin/phpunit --coverage-clover coverage.xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: matrix.os == 'ubuntu-latest' && matrix.php-version == '8.3'
+      with:
+        files: ./coverage.xml
+        flags: unittests
+        fail_ci_if_error: false
+

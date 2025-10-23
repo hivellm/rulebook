@@ -1,0 +1,50 @@
+name: Publish to Packagist
+
+# Note: Packagist automatically updates from GitHub when you push tags.
+# This workflow just validates the package before tagging.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g., v1.0.0)'
+        required: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: ${{ github.event.inputs.tag || github.ref }}
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+        extensions: mbstring, xml, ctype, iconv, intl
+    
+    - name: Validate composer.json
+      run: composer validate --strict
+    
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
+    
+    - name: Run tests
+      run: composer test
+    
+    - name: Run PHPStan
+      run: composer stan
+    
+    - name: Run PHP-CS-Fixer
+      run: composer cs-check
+    
+    - name: Package validated
+      run: |
+        echo "✅ Package validation successful"
+        echo "Packagist will automatically update from GitHub tag"
+        echo "View at: https://packagist.org/packages/${{ github.repository }}"
+

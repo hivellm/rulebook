@@ -1,0 +1,49 @@
+name: Publish to Hex.pm
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g., v1.0.0)'
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: ${{ github.event.inputs.tag || github.ref }}
+    
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: '1.17'
+        otp-version: '27'
+    
+    - name: Install dependencies
+      run: mix deps.get
+    
+    - name: Run tests
+      run: mix test
+    
+    - name: Run Credo
+      run: mix credo --strict
+    
+    - name: Run Dialyzer
+      run: mix dialyzer
+    
+    - name: Build docs
+      run: mix docs
+    
+    - name: Build package
+      run: mix hex.build
+    
+    - name: Publish to Hex
+      run: mix hex.publish --yes
+      env:
+        HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+
