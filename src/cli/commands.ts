@@ -372,3 +372,51 @@ export async function checkCoverageCommand(options: { threshold?: number }): Pro
     process.exit(1);
   }
 }
+
+export async function generateDocsCommand(options: { yes?: boolean }): Promise<void> {
+  try {
+    const cwd = process.cwd();
+
+    console.log(chalk.bold.blue('\n📚 Generate Documentation Structure\n'));
+
+    let config;
+
+    if (options.yes) {
+      config = {
+        projectName: path.basename(cwd),
+        description: 'A modern software project',
+        author: 'Your Name',
+        email: '',
+        license: 'MIT',
+      };
+      console.log(chalk.blue('Using defaults...\n'));
+    } else {
+      const { promptDocsConfig } = await import('./docs-prompts.js');
+      config = await promptDocsConfig();
+    }
+
+    const spinner = ora('Generating documentation structure...').start();
+
+    const { generateDocsStructure } = await import('../core/docs-generator.js');
+    const generatedFiles = await generateDocsStructure(config, cwd);
+
+    spinner.succeed(`Generated ${generatedFiles.length} files`);
+
+    console.log('');
+    console.log(chalk.green('✅ Files created:\n'));
+    for (const file of generatedFiles) {
+      console.log(chalk.gray(`  - ${path.relative(cwd, file)}`));
+    }
+
+    console.log('');
+    console.log(chalk.bold.green('✨ Documentation structure ready!\n'));
+    console.log(chalk.gray('Next steps:'));
+    console.log(chalk.gray('  1. Review and customize generated files'));
+    console.log(chalk.gray('  2. Add your project-specific content'));
+    console.log(chalk.gray('  3. Update ROADMAP.md with your milestones'));
+    console.log(chalk.gray('  4. Document architecture in ARCHITECTURE.md\n'));
+  } catch (error) {
+    console.error(chalk.red('\n❌ Error generating docs:'), error);
+    process.exit(1);
+  }
+}

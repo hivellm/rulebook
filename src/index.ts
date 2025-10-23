@@ -7,6 +7,7 @@ import {
   workflowsCommand,
   checkDepsCommand,
   checkCoverageCommand,
+  generateDocsCommand,
 } from './cli/commands.js';
 
 const program = new Command();
@@ -42,5 +43,11 @@ program
   .description('Check test coverage against threshold')
   .option('-t, --threshold <number>', 'Coverage threshold percentage', '95')
   .action((options) => checkCoverageCommand({ threshold: parseInt(options.threshold) }));
+
+program
+  .command('generate-docs')
+  .description('Generate documentation structure and standard files')
+  .option('-y, --yes', 'Skip prompts and use defaults')
+  .action(generateDocsCommand);
 
 program.parse(process.argv);
