@@ -13,7 +13,20 @@ This project follows a strict Git workflow to ensure code quality and proper ver
 
 ### New Project Initialization
 
+**⚠️ CRITICAL**: Only run initialization commands if `.git` directory does NOT exist!
+
 ```bash
+# Check if Git repository already exists
+if [ -d .git ]; then
+  echo "❌ Git repository already initialized. Skipping git init."
+  echo "Current status:"
+  git status
+  git remote -v
+  exit 0
+fi
+
+# If no .git directory exists, initialize:
+
 # Initialize Git repository
 git init
 
@@ -28,6 +41,110 @@ git branch -M main
 
 # Add remote (if applicable)
 git remote add origin <repository-url>
+```
+
+**AI Assistant Behavior:**
+
+```
+BEFORE running any Git initialization commands:
+
+1. Check if .git directory exists
+2. If exists:
+   ✅ Repository already configured
+   ❌ DO NOT run: git init
+   ❌ DO NOT run: git branch -M main
+   ✅ Check status: git status
+   ✅ Show remotes: git remote -v
+   
+3. If not exists:
+   ✅ Safe to initialize
+   ✅ Run full initialization sequence
+```
+
+## AI Assistant Git Checks
+
+**CRITICAL**: AI assistants MUST perform these checks before Git operations:
+
+### Automatic Checks
+
+```bash
+# 1. Check if Git repository exists
+if [ ! -d .git ]; then
+  echo "No Git repository found."
+  # Ask user if they want to initialize
+fi
+
+# 2. Check if there are unstaged changes
+git status --short
+
+# 3. Check current branch
+CURRENT_BRANCH=$(git branch --show-current)
+echo "On branch: $CURRENT_BRANCH"
+
+# 4. Check if remote exists
+git remote -v
+
+# 5. Check for unpushed commits
+git log origin/main..HEAD --oneline 2>/dev/null
+```
+
+### Before Git Commands
+
+**NEVER execute if `.git` directory exists:**
+- ❌ `git init` - Repository already initialized
+- ❌ `git branch -M main` - Branch may already be configured
+- ❌ `git remote add origin` - Remote may already exist (check first with `git remote -v`)
+- ❌ `git config user.name/email` - User configuration is personal
+- ❌ Reconfiguration commands - Repository is already set up
+
+**ALWAYS safe to execute:**
+- ✅ `git status` - Check repository state
+- ✅ `git add` - Stage changes
+- ✅ `git commit` - Create commits (after quality checks)
+- ✅ `git log` - View history
+- ✅ `git diff` - View changes
+- ✅ `git branch` - List branches
+- ✅ `git tag` - Create tags (after quality checks)
+
+**Execute with caution (check first):**
+- ⚠️ `git push` - Follow push mode configuration
+- ⚠️ `git pull` - May cause merge conflicts
+- ⚠️ `git merge` - May cause conflicts
+- ⚠️ `git rebase` - Can rewrite history
+- ⚠️ `git reset --hard` - Destructive, only for rollback
+- ⚠️ `git push --force` - NEVER on main/master
+
+### Repository Detection
+
+**AI Assistant MUST check:**
+
+```bash
+# Before ANY Git operation:
+
+# 1. Does .git exist?
+if [ -d .git ]; then
+  echo "✅ Git repository exists"
+  
+  # 2. Check current state
+  git status
+  
+  # 3. Check branch
+  BRANCH=$(git branch --show-current)
+  echo "On branch: $BRANCH"
+  
+  # 4. Check remote
+  REMOTE=$(git remote -v)
+  if [ -z "$REMOTE" ]; then
+    echo "⚠️  No remote configured"
+  else
+    echo "Remote: $REMOTE"
+  fi
+  
+  # 5. Proceed with normal Git operations
+else
+  echo "⚠️  No Git repository found"
+  echo "Ask user if they want to initialize Git"
+fi
 ```
 
 ## Daily Development Workflow
@@ -347,10 +464,91 @@ git tag -a v1.2.1 -m "Hotfix: Security patch"
 # Manual push if required
 ```
 
+## Critical AI Assistant Rules
+
+### Repository Initialization
+
+**BEFORE any `git init` or setup commands:**
+
+```
+1. Check for .git directory existence
+2. If .git exists:
+   - ❌ STOP - Repository already configured
+   - ❌ DO NOT run git init
+   - ❌ DO NOT run git config
+   - ❌ DO NOT run git branch -M
+   - ❌ DO NOT reconfigure anything
+   - ✅ Use existing repository as-is
+   
+3. If .git does NOT exist:
+   - ✅ Ask user if they want Git initialization
+   - ✅ Run initialization sequence if approved
+```
+
+### Push Command Behavior
+
+**Based on configured push mode:**
+
+```
+Manual Mode (DEFAULT):
+  ❌ NEVER execute: git push
+  ✅ ALWAYS provide: "Run manually: git push origin main"
+  
+Prompt Mode:
+  ⚠️  ALWAYS ask first: "Ready to push. Proceed? [Y/n]"
+  ✅ Execute only if user confirms
+  
+Auto Mode:
+  ⚠️  Check quality first
+  ⚠️  Only if 100% confident
+  ✅ Execute if all checks passed
+```
+
+### Quality Gate Enforcement
+
+**MANDATORY checks before commit:**
+
+```bash
+# Run in this exact order:
+1. npm run lint          # or language equivalent
+2. npm run type-check    # if applicable
+3. npm test             # ALL tests must pass
+4. npm run build        # must succeed
+
+# If ANY fails:
+❌ STOP - DO NOT commit
+❌ Fix issues first
+❌ Re-run all checks
+
+# If ALL pass:
+✅ Safe to commit
+✅ Proceed with git add and commit
+```
+
+**MANDATORY checks before tag:**
+
+```bash
+# Extended checks for version tags:
+1. All commit checks above +
+2. npx codespell        # no typos
+3. npm audit            # no vulnerabilities
+4. CHANGELOG.md updated
+5. Version bumped correctly
+6. Documentation current
+
+# If ANY fails:
+❌ STOP - DO NOT create tag
+❌ Fix issues
+❌ Re-verify everything
+
+# Only create tag if 100% green!
+```
+
 ## Best Practices
 
 ### DO's ✅
 
+- **ALWAYS** check if .git exists before init commands
 - **ALWAYS** run tests before commit
 - **ALWAYS** use conventional commit messages
 - **ALWAYS** update CHANGELOG for versions
@@ -361,9 +559,14 @@ git tag -a v1.2.1 -m "Hotfix: Security patch"
 - **REVERT** when implementation is failing repeatedly
 - **ASK** user before automatic push
 - **PROVIDE** manual commands for SSH password users
+- **CHECK** repository state before operations
+- **RESPECT** existing Git configuration
 
 ### DON'Ts ❌
 
+- **NEVER** run `git init` if .git exists
+- **NEVER** run `git config` (user-specific)
+- **NEVER** reconfigure existing repository
 - **NEVER** commit without passing tests
 - **NEVER** commit with linting errors
 - **NEVER** commit with build failures
@@ -375,6 +578,7 @@ git tag -a v1.2.1 -m "Hotfix: Security patch"
 - **NEVER** force push to main/master
 - **NEVER** rewrite published history
 - **NEVER** skip hooks (--no-verify)
+- **NEVER** assume repository configuration
 
 ## SSH Configuration
 
