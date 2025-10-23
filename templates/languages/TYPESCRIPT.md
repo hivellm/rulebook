@@ -137,10 +137,11 @@ describe('myFunction', () => {
 
 **CRITICAL**: Use consistent package manager across team.
 
-- **Recommended**: pnpm (fast, disk-efficient)
-- **Alternative**: npm 9+
-- **Lockfile**: Always commit `pnpm-lock.yaml` or `package-lock.json`
+- **Default**: npm (most compatible, built-in)
+- **Alternative**: pnpm (fast, disk-efficient) or yarn
+- **Lockfile**: Always commit lockfile (`package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`)
 - **Workspaces**: Use for monorepos
+- **CI/CD**: Update GitHub Actions workflows to match your package manager (see workflow comments)
 
 ### Dependencies
 
