@@ -65,7 +65,7 @@ Use detected defaults without prompts:
 npx @hivellm/rulebook init --yes
 ```
 
-### Validation (Coming Soon)
+### Validation
 
 Validate your project structure against rulebook standards:
 
@@ -73,11 +73,20 @@ Validate your project structure against rulebook standards:
 npx @hivellm/rulebook validate
 ```
 
+**Checks**:
+- AGENTS.md presence and quality
+- Documentation structure (/docs directory)
+- Tests directory existence
+- .rulesignore patterns
+- Project quality score (0-100)
+
 ## Supported Languages
 
 - ✅ **Rust**: Edition 2024, Clippy, Cargo fmt, nextest, llvm-cov
 - ✅ **TypeScript**: ESLint, Prettier, Vitest, strict mode
 - ✅ **Python**: Ruff, Black, mypy, pytest
+- ✅ **Go**: gofmt, golangci-lint, go vet, table-driven tests
+- ✅ **Java**: Maven/Gradle, JUnit 5, Checkstyle, PMD, SpotBugs, Jacoco
 
 ## Supported MCP Modules
 

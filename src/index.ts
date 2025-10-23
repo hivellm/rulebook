@@ -8,7 +8,7 @@ const program = new Command();
 program
   .name('rulebook')
   .description('CLI tool to standardize AI-generated projects with templates and rules')
-  .version('0.2.0');
+  .version('0.3.0');
 
 program
   .command('init')

@@ -113,18 +113,25 @@
 - [ ] Workflow customization options (v0.3.0)
 - [ ] Automated npm publishing on release tags (v0.3.0)
 
-### v0.3.0 - Validation & Analysis
-- [ ] Project structure validation
-- [ ] Documentation completeness check
-- [ ] Test coverage verification
-- [ ] Dependency freshness check
-- [ ] Security audit integration
+### v0.3.0 - Validation & Extended Languages ✅
 
-### v0.4.0 - Additional Languages
-- [ ] Go language template
-- [ ] Java language template
+- [x] Project structure validation
+- [x] Documentation completeness check  
+- [x] AGENTS.md quality verification
+- [x] Quality scoring system (0-100)
+- [x] Go language template and workflows
+- [x] Java language template and workflows
+- [ ] Test coverage verification (v0.4.0)
+- [ ] Dependency freshness check (v0.4.0)
+- [ ] Security audit integration (v0.4.0)
+
+### v0.4.0 - Advanced Validation
+- [ ] Test coverage verification from test results
+- [ ] Dependency freshness check (outdated packages)
+- [ ] Security audit integration (cargo audit, npm audit)
+- [ ] Performance benchmarking
 - [ ] C/C++ language template
-- [ ] Additional language support
+- [ ] Additional language support (Kotlin, Swift)
 
 ### v0.5.0 - IDE Integration
 - [ ] IDE-specific rules files generation
@@ -147,16 +154,16 @@
 - [ ] Enterprise features
 - [ ] SLA and support options
 
-## Metrics (Current)
+## Metrics (v0.3.0)
 
-- **Code Coverage**: 95.28% (core modules) ⬆️
-- **Test Count**: 53 comprehensive tests (100% passing) ⬆️
-- **Test Files**: 6 test suites
-- **Supported Languages**: 3 (Rust, TypeScript, Python)
+- **Code Coverage**: 90.38% (core modules)
+- **Test Count**: 63 comprehensive tests (100% passing) ⬆️
+- **Test Files**: 7 test suites ⬆️
+- **Supported Languages**: 5 (Rust, TypeScript, Python, Go, Java) ⬆️
 - **Supported Modules**: 4 (Vectorizer, Synap, OpenSpec, Context7)
 - **IDE Templates**: 4 (Cursor, Windsurf, VS Code, Copilot)
 - **CLI Templates**: 6 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium)
-- **Workflow Templates**: 7 GitHub Actions workflows
+- **Workflow Templates**: 11 GitHub Actions workflows ⬆️ (Rust, TS, Python, Go, Java + codespell)
 - **Total Templates**: 24 comprehensive templates
 - **Documentation Pages**: 10+ guides and specs
 - **Lines of Code**: 12,000+ lines (implementation + templates + docs)

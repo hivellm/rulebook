@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2024-01-23
+
+### Added
+- Project validation command: `rulebook validate`
+- Validator module with quality scoring system (0-100 points)
+- Go language support with templates and workflows
+- Java language support with templates and workflows (Maven and Gradle)
+- Validation checks for:
+  - AGENTS.md presence and quality
+  - Documentation structure
+  - Tests directory
+  - .rulesignore patterns
+- 10 new tests for validator
+- 4 new GitHub Actions workflows (Go and Java)
+
+### Improved
+- Language detection now supports 5 languages (added Go and Java)
+- Test count increased to 63 (was 53)
+- Better error reporting in validation
+
 ## [0.2.0] - 2024-01-23
 
 ### Added
