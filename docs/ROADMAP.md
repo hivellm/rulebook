@@ -200,12 +200,12 @@
 - **Supported Languages**: 10 (Rust, TypeScript, Python, Go, Java, Elixir, C#, PHP, Swift, Kotlin) ⬆️ NEW
 - **Supported Modules**: 4 (Vectorizer, Synap, OpenSpec, Context7)
 - **IDE Templates**: 4 (Cursor, Windsurf, VS Code, Copilot)
-- **CLI Tools Templates**: 6 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium)
+- **CLI Tools Templates**: 15 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium, Claude Code, Cline, Amazon Q, Auggie, CodeBuddy, Factory Droid, OpenCode, Kilo Code, Codex) ⬆️ NEW
 - **Test/Lint Workflows**: 21 (10 languages x2 + codespell) ⬆️ NEW
 - **Publishing Workflows**: 10 (all languages) ⬆️ NEW
 - **Total Workflow Templates**: 32 GitHub Actions workflows ⬆️
 - **Language Templates**: 10 comprehensive guides ⬆️
-- **Total Templates**: 48 comprehensive templates ⬆️
+- **Total Templates**: 57 comprehensive templates ⬆️
 - **Core Modules**: 8 (detector, generator, merger, validator, workflow-generator, coverage-checker, dependency-checker, + utils)
 - **Documentation Pages**: 12+ guides and specs
 - **Lines of Code**: 25,000+ lines (implementation + templates + docs) ⬆️
