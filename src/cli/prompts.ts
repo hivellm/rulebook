@@ -29,6 +29,12 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
           { name: 'Java', value: 'java' },
         ],
         default: detection.languages.map((l) => l.language),
+        validate: (answer: string[]) => {
+          if (answer.length < 1) {
+            return 'You must select at least one language.';
+          }
+          return true;
+        },
       });
     }
   } else {

@@ -72,6 +72,39 @@ async function detectLanguages(cwd: string): Promise<LanguageDetection[]> {
     });
   }
 
+  // Detect Go
+  const goMod = path.join(cwd, 'go.mod');
+  if (await fileExists(goMod)) {
+    const goFiles = await findFiles('**/*.go', cwd);
+    detections.push({
+      language: 'go',
+      confidence: goFiles.length > 0 ? 1.0 : 0.8,
+      indicators: ['go.mod', `${goFiles.length} .go files`],
+    });
+  }
+
+  // Detect Java
+  const pomXml = path.join(cwd, 'pom.xml');
+  const buildGradle = path.join(cwd, 'build.gradle');
+  const buildGradleKts = path.join(cwd, 'build.gradle.kts');
+  if (
+    (await fileExists(pomXml)) ||
+    (await fileExists(buildGradle)) ||
+    (await fileExists(buildGradleKts))
+  ) {
+    const javaFiles = await findFiles('**/*.java', cwd);
+    detections.push({
+      language: 'java',
+      confidence: javaFiles.length > 0 ? 1.0 : 0.7,
+      indicators: [
+        (await fileExists(pomXml)) ? 'pom.xml' : '',
+        (await fileExists(buildGradle)) ? 'build.gradle' : '',
+        (await fileExists(buildGradleKts)) ? 'build.gradle.kts' : '',
+        `${javaFiles.length} .java files`,
+      ].filter(Boolean),
+    });
+  }
+
   // Sort by confidence
   return detections.sort((a, b) => b.confidence - a.confidence);
 }

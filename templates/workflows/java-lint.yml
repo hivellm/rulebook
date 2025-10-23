@@ -1,0 +1,60 @@
+name: Java Lint
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  lint-maven:
+    runs-on: ubuntu-latest
+    if: hashFiles('**/pom.xml') != ''
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+    
+    - name: Run Checkstyle
+      run: mvn checkstyle:check
+      continue-on-error: true
+    
+    - name: Run PMD
+      run: mvn pmd:check
+      continue-on-error: true
+    
+    - name: Run SpotBugs
+      run: mvn spotbugs:check
+      continue-on-error: true
+
+  lint-gradle:
+    runs-on: ubuntu-latest
+    if: hashFiles('**/build.gradle*') != ''
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+    
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    
+    - name: Run Checkstyle
+      run: ./gradlew checkstyleMain checkstyleTest
+      continue-on-error: true
+    
+    - name: Run SpotBugs
+      run: ./gradlew spotbugsMain spotbugsTest
+      continue-on-error: true
+

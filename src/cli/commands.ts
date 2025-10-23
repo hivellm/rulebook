@@ -147,7 +147,67 @@ export async function initCommand(options: { yes?: boolean }): Promise<void> {
 }
 
 export async function validateCommand(): Promise<void> {
-  console.log(chalk.blue('\n🔍 Validation coming in next version...\n'));
+  try {
+    const cwd = process.cwd();
+
+    console.log(chalk.bold.blue('\n🔍 Rulebook Project Validator\n'));
+
+    const spinner = ora('Validating project structure...').start();
+
+    // Import validator
+    const { validateProject } = await import('../core/validator.js');
+
+    const result = await validateProject(cwd);
+    spinner.stop();
+
+    // Display results
+    if (result.valid) {
+      console.log(chalk.green(`\n✅ Validation passed! Score: ${result.score}/100\n`));
+    } else {
+      console.log(chalk.red(`\n❌ Validation failed. Score: ${result.score}/100\n`));
+    }
+
+    // Show errors
+    if (result.errors.length > 0) {
+      console.log(chalk.red.bold('Errors:'));
+      for (const error of result.errors) {
+        console.log(chalk.red(`  ❌ ${error.category}: ${error.message}`));
+        if (error.file) {
+          console.log(chalk.gray(`     File: ${error.file}`));
+        }
+      }
+      console.log('');
+    }
+
+    // Show warnings
+    if (result.warnings.length > 0) {
+      console.log(chalk.yellow.bold('Warnings:'));
+      for (const warning of result.warnings) {
+        console.log(chalk.yellow(`  ⚠️  ${warning.category}: ${warning.message}`));
+        if (warning.file) {
+          console.log(chalk.gray(`     File: ${warning.file}`));
+        }
+      }
+      console.log('');
+    }
+
+    // Summary
+    if (result.valid && result.warnings.length === 0) {
+      console.log(chalk.green('🎉 Perfect! Your project follows all rulebook standards.\n'));
+    } else if (result.valid) {
+      console.log(
+        chalk.yellow(`✅ Project is valid but has ${result.warnings.length} warnings to address.\n`)
+      );
+    } else {
+      console.log(chalk.red(`❌ Project has ${result.errors.length} errors that must be fixed.\n`));
+      console.log(chalk.gray('Run "rulebook init" to set up missing standards.\n'));
+    }
+
+    process.exit(result.valid ? 0 : 1);
+  } catch (error) {
+    console.error(chalk.red('\n❌ Validation error:'), error);
+    process.exit(1);
+  }
 }
 
 export async function workflowsCommand(): Promise<void> {

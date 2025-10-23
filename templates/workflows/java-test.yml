@@ -1,0 +1,85 @@
+name: Java Tests
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  test-maven:
+    runs-on: ${{ matrix.os }}
+    if: hashFiles('**/pom.xml') != ''
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+        java-version: [ '17', '21' ]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK ${{ matrix.java-version }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
+        cache: maven
+    
+    - name: Build with Maven
+      run: mvn -B compile --file pom.xml
+    
+    - name: Run tests
+      run: mvn -B test --file pom.xml
+    
+    - name: Generate coverage report
+      if: matrix.os == 'ubuntu-latest' && matrix.java-version == '21'
+      run: mvn -B jacoco:report
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: matrix.os == 'ubuntu-latest' && matrix.java-version == '21'
+      with:
+        files: ./target/site/jacoco/jacoco.xml
+        flags: unittests
+        fail_ci_if_error: false
+
+  test-gradle:
+    runs-on: ${{ matrix.os }}
+    if: hashFiles('**/build.gradle*') != ''
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+        java-version: [ '17', '21' ]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK ${{ matrix.java-version }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
+        cache: gradle
+    
+    - name: Grant execute permission for gradlew
+      if: runner.os != 'Windows'
+      run: chmod +x gradlew
+    
+    - name: Build with Gradle
+      run: ./gradlew build -x test
+    
+    - name: Run tests
+      run: ./gradlew test
+    
+    - name: Generate coverage report
+      if: matrix.os == 'ubuntu-latest' && matrix.java-version == '21'
+      run: ./gradlew jacocoTestReport
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: matrix.os == 'ubuntu-latest' && matrix.java-version == '21'
+      with:
+        files: ./build/reports/jacoco/test/jacocoTestReport.xml
+        flags: unittests
+        fail_ci_if_error: false
+

@@ -38,6 +38,16 @@ export async function generateWorkflows(
       const pyTest = await copyWorkflow(templatesDir, 'python-test.yml', workflowsDir);
       const pyLint = await copyWorkflow(templatesDir, 'python-lint.yml', workflowsDir);
       generatedFiles.push(pyTest, pyLint);
+    } else if (language === 'go') {
+      // Copy Go workflows
+      const goTest = await copyWorkflow(templatesDir, 'go-test.yml', workflowsDir);
+      const goLint = await copyWorkflow(templatesDir, 'go-lint.yml', workflowsDir);
+      generatedFiles.push(goTest, goLint);
+    } else if (language === 'java') {
+      // Copy Java workflows
+      const javaTest = await copyWorkflow(templatesDir, 'java-test.yml', workflowsDir);
+      const javaLint = await copyWorkflow(templatesDir, 'java-lint.yml', workflowsDir);
+      generatedFiles.push(javaTest, javaLint);
     }
   }
 
