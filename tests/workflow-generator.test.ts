@@ -120,7 +120,10 @@ describe('workflow-generator', () => {
 
       const files = await generateIDEFiles(config, testDir);
 
-      expect(files.some((f) => f.includes('.vscode/settings.json'))).toBe(true);
+      // Normalize paths for cross-platform compatibility
+      const normalizedFiles = files.map((f) => path.normalize(f));
+      const expectedPath = path.normalize(path.join(testDir, '.vscode', 'settings.json'));
+      expect(normalizedFiles).toContain(expectedPath);
 
       const settingsPath = path.join(testDir, '.vscode', 'settings.json');
       const settings = await fs.readFile(settingsPath, 'utf-8');
