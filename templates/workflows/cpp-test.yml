@@ -1,0 +1,77 @@
+name: C++ Tests
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        compiler: [ gcc, clang ]
+        build_type: [ Debug, Release ]
+        exclude:
+          - os: windows-latest
+            compiler: gcc
+          - os: macos-latest
+            compiler: gcc
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build lcov
+        if [ "${{ matrix.compiler }}" = "clang" ]; then
+          sudo apt-get install -y clang-15
+        fi
+    
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake ninja lcov llvm
+    
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        choco install cmake ninja
+    
+    - name: Configure CMake
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DBUILD_TESTING=ON \
+          -DENABLE_SANITIZERS=${{ matrix.build_type == 'Debug' && runner.os != 'Windows' }}
+      env:
+        CC: ${{ matrix.compiler == 'clang' && 'clang-15' || 'gcc' }}
+        CXX: ${{ matrix.compiler == 'clang' && 'clang++-15' || 'g++' }}
+    
+    - name: Build
+      run: cmake --build build --config ${{ matrix.build_type }}
+    
+    - name: Run tests
+      run: ctest --test-dir build --output-on-failure --build-config ${{ matrix.build_type }}
+    
+    - name: Generate coverage (Debug + GCC only)
+      if: matrix.build_type == 'Debug' && matrix.compiler == 'gcc' && runner.os == 'Linux'
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON
+        cmake --build build
+        ctest --test-dir build
+        lcov --capture --directory build --output-file coverage.info
+        lcov --remove coverage.info '/usr/*' '*/tests/*' --output-file coverage.info
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: matrix.build_type == 'Debug' && matrix.compiler == 'gcc' && runner.os == 'Linux'
+      with:
+        files: ./coverage.info
+        flags: unittests
+        fail_ci_if_error: false
+

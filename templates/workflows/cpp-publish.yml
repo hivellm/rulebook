@@ -1,0 +1,119 @@
+name: Publish C++ Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g., v1.0.0)'
+        required: true
+
+jobs:
+  build-and-publish:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        include:
+          - os: ubuntu-latest
+            artifact_name: linux-x64
+          - os: windows-latest
+            artifact_name: windows-x64
+          - os: macos-latest
+            artifact_name: macos-arm64
+    
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: ${{ github.event.inputs.tag || github.ref }}
+    
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build clang-format-15 clang-tidy-15
+    
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: brew install cmake ninja llvm
+    
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: choco install cmake ninja
+    
+    - name: Run clang-format check
+      if: runner.os == 'Linux'
+      run: |
+        find src include tests -name '*.cpp' -o -name '*.hpp' | \
+        xargs clang-format-15 --dry-run --Werror
+    
+    - name: Run clang-tidy
+      if: runner.os == 'Linux'
+      run: |
+        cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        find src -name '*.cpp' | xargs clang-tidy-15 -p build
+    
+    - name: Configure CMake
+      run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+    
+    - name: Build
+      run: cmake --build build --config Release
+    
+    - name: Run tests
+      run: ctest --test-dir build --output-on-failure --build-config Release
+    
+    - name: Package
+      run: cmake --build build --target package
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: build/*.tar.gz
+    
+    - name: Create GitHub Release
+      if: github.event_name == 'release' && matrix.os == 'ubuntu-latest'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: build/*.tar.gz
+        body: |
+          C++ package release ${{ github.ref_name }}
+          
+          See CHANGELOG.md for details.
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  publish-conan:
+    runs-on: ubuntu-latest
+    if: hashFiles('conanfile.py') != ''
+    
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: ${{ github.event.inputs.tag || github.ref }}
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install Conan
+      run: pip install conan
+    
+    - name: Configure Conan
+      run: |
+        conan profile detect
+        conan remote add conancenter https://center.conan.io
+    
+    - name: Create package
+      run: conan create . --build=missing
+    
+    - name: Upload to Conan Center
+      if: secrets.CONAN_PASSWORD != ''
+      run: |
+        conan remote login conancenter ${{ secrets.CONAN_LOGIN_USERNAME }}
+        conan upload your-project/* -r conancenter --confirm
+      env:
+        CONAN_PASSWORD: ${{ secrets.CONAN_PASSWORD }}
+

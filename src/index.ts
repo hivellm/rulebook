@@ -8,6 +8,8 @@ import {
   checkDepsCommand,
   checkCoverageCommand,
   generateDocsCommand,
+  versionCommand,
+  changelogCommand,
 } from './cli/commands.js';
 
 const program = new Command();
@@ -15,7 +17,7 @@ const program = new Command();
 program
   .name('rulebook')
   .description('CLI tool to standardize AI-generated projects with templates and rules')
-  .version('0.5.0');
+  .version('0.8.0');
 
 program
   .command('init')
@@ -49,5 +51,23 @@ program
   .description('Generate documentation structure and standard files')
   .option('-y, --yes', 'Skip prompts and use defaults')
   .action(generateDocsCommand);
+
+program
+  .command('version')
+  .description('Bump project version (semantic versioning)')
+  .argument('<type>', 'Version bump type: major, minor, or patch')
+  .action((type: string) => {
+    if (!['major', 'minor', 'patch'].includes(type)) {
+      console.error('Error: type must be major, minor, or patch');
+      process.exit(1);
+    }
+    versionCommand({ type: type as 'major' | 'minor' | 'patch' });
+  });
+
+program
+  .command('changelog')
+  .description('Generate changelog from git commits')
+  .option('-v, --version <version>', 'Specify version (default: auto-detect)')
+  .action(changelogCommand);
 
 program.parse(process.argv);

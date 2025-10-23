@@ -420,3 +420,90 @@ export async function generateDocsCommand(options: { yes?: boolean }): Promise<v
     process.exit(1);
   }
 }
+
+export async function versionCommand(options: {
+  type: 'major' | 'minor' | 'patch';
+}): Promise<void> {
+  try {
+    const cwd = process.cwd();
+
+    console.log(chalk.bold.blue('\n📦 Version Bump\n'));
+
+    const { bumpProjectVersion } = await import('../core/version-bumper.js');
+    
+    const spinner = ora('Bumping version...').start();
+    
+    const result = await bumpProjectVersion(cwd, options.type);
+    
+    spinner.succeed(
+      `Version bumped: ${result.oldVersion} → ${result.newVersion}`
+    );
+
+    console.log('');
+    console.log(chalk.green('✅ Files updated:\n'));
+    result.filesUpdated.forEach((file) => {
+      console.log(chalk.gray(`  - ${file}`));
+    });
+
+    console.log('');
+    console.log(chalk.yellow('Next steps:'));
+    console.log(chalk.gray('  1. Review changes'));
+    console.log(chalk.gray('  2. Update CHANGELOG.md (or run: rulebook changelog)'));
+    console.log(chalk.gray(`  3. Commit: git add . && git commit -m "chore: Release version ${result.newVersion}"`));
+    console.log(chalk.gray(`  4. Tag: git tag -a v${result.newVersion} -m "Release v${result.newVersion}"`));
+  } catch (error) {
+    console.error(chalk.red('\n❌ Error:'), (error as Error).message);
+    process.exit(1);
+  }
+}
+
+export async function changelogCommand(options: {
+  version?: string;
+}): Promise<void> {
+  try {
+    const cwd = process.cwd();
+
+    console.log(chalk.bold.blue('\n📝 Changelog Generation\n'));
+
+    const { generateChangelog, getCurrentVersion } = await import(
+      '../core/changelog-generator.js'
+    );
+
+    const version = options.version || (await getCurrentVersion(cwd));
+    
+    if (!version) {
+      console.error(chalk.red('❌ Could not determine version'));
+      console.log(chalk.gray('  Specify version with --version flag'));
+      process.exit(1);
+    }
+
+    const spinner = ora('Generating changelog from commits...').start();
+    
+    const section = await generateChangelog(cwd, version);
+    
+    spinner.succeed(`Changelog generated for version ${version}`);
+
+    console.log('');
+    console.log(chalk.green('✅ Changelog sections:\n'));
+    
+    if (section.breaking.length > 0) {
+      console.log(chalk.red('  Breaking Changes: ') + section.breaking.length);
+    }
+    if (section.added.length > 0) {
+      console.log(chalk.green('  Added: ') + section.added.length);
+    }
+    if (section.changed.length > 0) {
+      console.log(chalk.blue('  Changed: ') + section.changed.length);
+    }
+    if (section.fixed.length > 0) {
+      console.log(chalk.yellow('  Fixed: ') + section.fixed.length);
+    }
+
+    console.log('');
+    console.log(chalk.gray('CHANGELOG.md has been updated'));
+    console.log(chalk.gray('Review and edit as needed before committing'));
+  } catch (error) {
+    console.error(chalk.red('\n❌ Error:'), (error as Error).message);
+    process.exit(1);
+  }
+}

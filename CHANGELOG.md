@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2024-10-23
+
+### Added
+
+**C/C++ Language Support:**
+- Complete C/C++ template with C++20/23, CMake, modern best practices
+- clang-format, clang-tidy, cppcheck integration
+- Google Test framework support
+- Memory safety patterns with RAII and smart pointers
+- Threading and concurrency guidelines
+- Conan and vcpkg package manager support
+- cpp-test.yml, cpp-lint.yml, cpp-publish.yml workflows
+
+**Version Management:**
+- New command: `rulebook version <major|minor|patch>`
+- Automatic version bumping across all language files
+- Supports: package.json, Cargo.toml, pyproject.toml, mix.exs, build.gradle.kts, .csproj
+- Semantic versioning enforcement
+
+**Changelog Automation:**
+- New command: `rulebook changelog`
+- Automatic changelog generation from git commits
+- Conventional commits parsing
+- Categorizes changes: Added, Changed, Fixed, Breaking, etc.
+- Updates CHANGELOG.md with proper formatting
+- Detects breaking changes automatically
+
+### Changed
+- Language support expanded from 10 to 11
+- CLI commands expanded from 5 to 7 (added version, changelog)
+- Total templates expanded from 62 to 65
+- Total workflows expanded from 32 to 35
+
+### Improved
+- CLI version bumped to 0.8.0
+- Better version management workflow
+- Automated changelog generation saves manual work
+- Conventional commits are now parsed and categorized
+
 ## [0.7.0] - 2024-10-23
 
 ### Added

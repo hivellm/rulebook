@@ -16,7 +16,8 @@ export interface LanguageDetection {
     | 'csharp'
     | 'php'
     | 'swift'
-    | 'kotlin';
+    | 'kotlin'
+    | 'cpp';
   confidence: number;
   indicators: string[];
 }

@@ -1,0 +1,47 @@
+name: C++ Lint
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-format-15 clang-tidy-15 cppcheck cmake ninja-build
+    
+    - name: Check formatting
+      run: |
+        find src include tests -name '*.cpp' -o -name '*.hpp' -o -name '*.h' | \
+        xargs clang-format-15 --dry-run --Werror
+    
+    - name: Configure CMake (for compile commands)
+      run: cmake -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    
+    - name: Run clang-tidy
+      run: |
+        find src -name '*.cpp' | \
+        xargs clang-tidy-15 -p build --warnings-as-errors='*'
+    
+    - name: Run cppcheck
+      run: |
+        cppcheck --enable=all --error-exitcode=1 \
+          --suppress=missingIncludeSystem \
+          --suppress=unmatchedSuppression \
+          --inline-suppr \
+          -I include \
+          src/ tests/
+    
+    - name: Build with warnings as errors
+      run: |
+        cmake -B build -G Ninja -DCMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic -Werror"
+        cmake --build build
+

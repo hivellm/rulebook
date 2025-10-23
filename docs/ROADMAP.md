@@ -180,21 +180,24 @@
 - [x] CI/CD failure detection and auto-fix
 - [x] Workflow status monitoring
 
-### v0.8.0 - Advanced Automation (Planned)
+### v0.8.0 - Advanced Automation ✅
 
-- [ ] Custom template support
-- [ ] Template marketplace/registry
-- [ ] Project health scoring
-- [ ] Automated version bumping
-- [ ] Changelog generation from commits
-- [ ] Workflow customization options
-- [ ] Automated npm publishing on release tags
-- [ ] Performance benchmarking
-- [ ] C/C++ language template
-- [ ] Direct IDE plugin support
-- [ ] Real-time IDE integration
-- [ ] Auto-fix suggestions for common issues
-- [ ] Template versioning system
+- [x] C/C++ language template ✅
+- [x] C/C++ test, lint, and publish workflows ✅
+- [x] Automated version bumping ✅
+- [x] Changelog generation from commits ✅
+- [x] Version command (major/minor/patch) ✅
+- [x] Changelog command with conventional commits ✅
+- [ ] Custom template support (v0.9.0)
+- [ ] Template marketplace/registry (v0.9.0)
+- [ ] Project health scoring (v0.9.0)
+- [ ] Workflow customization options (v0.9.0)
+- [ ] Automated npm publishing on release tags (v0.9.0)
+- [ ] Performance benchmarking (v0.9.0)
+- [ ] Direct IDE plugin support (v0.9.0)
+- [ ] Real-time IDE integration (v0.9.0)
+- [ ] Auto-fix suggestions for common issues (v0.9.0)
+- [ ] Template versioning system (v0.9.0)
 
 ### v1.0.0 - Production Ready
 - [ ] Comprehensive documentation
@@ -203,29 +206,31 @@
 - [ ] Enterprise features
 - [ ] SLA and support options
 
-## Metrics (v0.7.0)
+## Metrics (v0.8.0)
 
-- **Current Version**: v0.7.0 (Git Workflow & Complete Ecosystem) ⬆️
-- **Code Coverage**: 90.28% (core modules) ✅
-- **Test Count**: 68 comprehensive tests (100% passing) ✅ ⬆️
+- **Current Version**: v0.8.0 (Advanced Automation) ⬆️
+- **Code Coverage**: 90%+ (core modules) ✅
+- **Test Count**: 68+ comprehensive tests (100% passing) ✅
 - **Test Files**: 7 test suites
-- **CLI Commands**: 5 (init, workflows, validate, check-deps, check-coverage)
-- **Supported Languages**: 10 (Rust, TypeScript, Python, Go, Java, Elixir, C#, PHP, Swift, Kotlin) ⬆️ NEW
-- **Supported Modules**: 5 (Vectorizer, Synap, OpenSpec, Context7, GitHub MCP) ⬆️ NEW
-- **IDE Templates**: 8 (Cursor, Windsurf, VS Code, Copilot, Tabnine, Replit, JetBrains AI, Zed) ⬆️ NEW
-- **CLI Tools Templates**: 15 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium, Claude Code, Cline, Amazon Q, Auggie, CodeBuddy, Factory Droid, OpenCode, Kilo Code, Codex) ⬆️ NEW
-- **Test/Lint Workflows**: 21 (10 languages x2 + codespell) ⬆️ NEW
-- **Publishing Workflows**: 10 (all languages) ⬆️ NEW
-- **Total Workflow Templates**: 32 GitHub Actions workflows ⬆️
-- **Language Templates**: 10 comprehensive guides ⬆️
-- **Git Workflow Templates**: 1 (GIT_WORKFLOW.md with hooks) ✅ NEW
-- **Total Templates**: 62 comprehensive templates ⬆️
-- **Core Modules**: 8 (detector, generator, merger, validator, workflow-generator, coverage-checker, dependency-checker, + utils)
+- **CLI Commands**: 7 (init, workflows, validate, check-deps, check-coverage, version, changelog) ⬆️ NEW
+- **Supported Languages**: 11 (Rust, TS, Python, Go, Java, Elixir, C#, PHP, Swift, Kotlin, C/C++) ⬆️ NEW
+- **Supported Modules**: 5 (Vectorizer, Synap, OpenSpec, Context7, GitHub MCP)
+- **IDE Templates**: 8 (Cursor, Windsurf, VS Code, Copilot, Tabnine, Replit, JetBrains AI, Zed)
+- **CLI Tools Templates**: 15 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium, Claude Code, Cline, Amazon Q, Auggie, CodeBuddy, Factory Droid, OpenCode, Kilo Code, Codex)
+- **Test/Lint Workflows**: 23 (11 languages x2 + codespell) ⬆️ NEW
+- **Publishing Workflows**: 11 (all languages) ⬆️ NEW
+- **Total Workflow Templates**: 35 GitHub Actions workflows ⬆️
+- **Language Templates**: 11 comprehensive guides ⬆️ NEW
+- **Git Workflow Templates**: 1 (GIT_WORKFLOW.md with hooks)
+- **Total Templates**: 65 comprehensive templates ⬆️
+- **Core Modules**: 10 (detector, generator, merger, validator, workflow-generator, coverage-checker, dependency-checker, version-bumper, changelog-generator, + utils) ⬆️ NEW
 - **Documentation Pages**: 12+ guides and specs
-- **Lines of Code**: 25,000+ lines (implementation + templates + docs) ⬆️
+- **Lines of Code**: 27,000+ lines (implementation + templates + docs) ⬆️
 - **GitHub Actions**: Fully configured (npm caching, cross-platform tests) ✅
-- **Publication Support**: Full CI/CD for all 10 languages ✅ NEW
-- **Package Registries**: npm, crates.io, PyPI, pkg.go.dev, Maven Central, Hex.pm, NuGet, Packagist ✅ NEW
+- **Publication Support**: Full CI/CD for all 11 languages ✅ NEW
+- **Package Registries**: npm, crates.io, PyPI, pkg.go.dev, Maven Central, Hex.pm, NuGet, Packagist, Conan, vcpkg ✅ NEW
+- **Version Management**: Automated bumping across all languages ✅ NEW
+- **Changelog**: Automated from conventional commits ✅ NEW
 
 ## Contributing
 

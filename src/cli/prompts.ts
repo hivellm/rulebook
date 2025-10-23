@@ -32,6 +32,7 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
           { name: 'PHP', value: 'php' },
           { name: 'Swift', value: 'swift' },
           { name: 'Kotlin', value: 'kotlin' },
+          { name: 'C/C++', value: 'cpp' },
         ],
         default: detection.languages.map((l) => l.language),
         validate: (answer: string[]) => {
@@ -58,6 +59,7 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
         { name: 'PHP', value: 'php' },
         { name: 'Swift', value: 'swift' },
         { name: 'Kotlin', value: 'kotlin' },
+        { name: 'C/C++', value: 'cpp' },
       ],
       validate: (answer: string[]) => {
         if (answer.length < 1) {

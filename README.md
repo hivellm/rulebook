@@ -109,7 +109,42 @@ npx @hivellm/rulebook check-coverage
 npx @hivellm/rulebook check-coverage --threshold 90
 ```
 
-**Supports**: All languages (Rust, TypeScript, Python, Go, Java)
+**Supports**: All languages (Rust, TypeScript, Python, Go, Java, etc.)
+
+### Version Management
+
+Bump project version automatically:
+
+```bash
+# Bump patch version (1.0.0 → 1.0.1)
+npx @hivellm/rulebook version patch
+
+# Bump minor version (1.0.0 → 1.1.0)
+npx @hivellm/rulebook version minor
+
+# Bump major version (1.0.0 → 2.0.0)
+npx @hivellm/rulebook version major
+```
+
+**Updates**: package.json, Cargo.toml, pyproject.toml, mix.exs, build.gradle.kts, .csproj
+
+### Changelog Generation
+
+Generate CHANGELOG.md from git commits:
+
+```bash
+# Auto-detect version
+npx @hivellm/rulebook changelog
+
+# Specify version
+npx @hivellm/rulebook changelog --version 1.2.0
+```
+
+**Features**:
+- Parses conventional commits
+- Categorizes changes (Added, Changed, Fixed, Breaking)
+- Updates CHANGELOG.md with proper formatting
+- Detects breaking changes automatically
 
 ### Documentation Structure Generation
 
@@ -131,7 +166,7 @@ npx @hivellm/rulebook generate-docs --yes
 - `docs/ARCHITECTURE.md` - System architecture
 - `docs/DAG.md` - Component dependencies
 
-## Supported Languages (10)
+## Supported Languages (11)
 
 - ✅ **Rust**: Edition 2024, Clippy, Cargo fmt, nextest, llvm-cov → crates.io
 - ✅ **TypeScript**: ESLint, Prettier, Vitest, strict mode → npm
@@ -143,6 +178,7 @@ npx @hivellm/rulebook generate-docs --yes
 - ✅ **PHP**: PHP 8.2+, PHPStan, PHP-CS-Fixer, PHPUnit → Packagist
 - ✅ **Swift**: Swift 5.10+, SwiftLint, strict concurrency → SPM
 - ✅ **Kotlin**: Kotlin 2.0+, K2 compiler, Detekt, ktlint → Maven Central
+- ✅ **C/C++**: C++20/23, CMake, clang-format, clang-tidy, Google Test → Conan/vcpkg
 
 ## Supported MCP Modules (5)
 
