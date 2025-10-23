@@ -155,6 +155,15 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
               source: mcpPath,
             });
           }
+
+          // Check for GitHub MCP Server
+          if (config.mcpServers?.github || config.servers?.github) {
+            modules.push({
+              module: 'github',
+              detected: true,
+              source: mcpPath,
+            });
+          }
         }
       } catch {
         // Ignore JSON parse errors

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateAgentsContent, generateFullAgents } from '../src/core/generator';
+import { generateAgentsContent, generateFullAgents, generateGitRules } from '../src/core/generator';
 import type { ProjectConfig } from '../src/types';
 
 describe('generator', () => {
@@ -106,6 +106,57 @@ describe('generator', () => {
       expect(content).toContain('<!-- VECTORIZER:START -->');
       expect(content).toContain('<!-- SYNAP:START -->');
       expect(content).toContain('<!-- CONTEXT7:START -->');
+    });
+
+    it('should include Git workflow when enabled', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        includeGitWorkflow: true,
+        gitPushMode: 'manual',
+      };
+      const content = await generateFullAgents(config);
+
+      expect(content).toContain('<!-- GIT:START -->');
+      expect(content).toContain('<!-- GIT:END -->');
+    });
+
+    it('should exclude Git workflow when disabled', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        includeGitWorkflow: false,
+      };
+      const content = await generateFullAgents(config);
+
+      expect(content).not.toContain('<!-- GIT:START -->');
+    });
+  });
+
+  describe('generateGitRules', () => {
+    it('should generate Git rules with manual push mode', async () => {
+      const content = await generateGitRules('manual');
+
+      expect(content).toContain('<!-- GIT:START -->');
+      expect(content).toContain('<!-- GIT:END -->');
+      expect(content).toContain('MANUAL');
+      expect(content).toContain('Never execute `git push` commands automatically');
+      expect(content).toContain('MANUAL ACTION REQUIRED');
+    });
+
+    it('should generate Git rules with prompt push mode', async () => {
+      const content = await generateGitRules('prompt');
+
+      expect(content).toContain('<!-- GIT:START -->');
+      expect(content).toContain('PROMPT');
+      expect(content).toContain('ask user permission before pushing');
+    });
+
+    it('should generate Git rules with auto push mode', async () => {
+      const content = await generateGitRules('auto');
+
+      expect(content).toContain('<!-- GIT:START -->');
+      expect(content).toContain('AUTO');
+      expect(content).toContain('Automatic push enabled');
+      expect(content).toContain('SSH key has no password');
     });
   });
 });

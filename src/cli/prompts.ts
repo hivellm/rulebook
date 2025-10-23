@@ -109,6 +109,11 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
         value: 'context7',
         checked: detectedModules.includes('context7'),
       },
+      {
+        name: 'GitHub MCP Server (workflow validation & CI/CD monitoring)',
+        value: 'github',
+        checked: detectedModules.includes('github'),
+      },
     ],
   });
 

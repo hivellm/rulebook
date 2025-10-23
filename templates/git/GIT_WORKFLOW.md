@@ -708,6 +708,126 @@ Instead say:
 the changes will pass. Once confirmed, you can push manually."
 ```
 
+## GitHub MCP Server Integration
+
+**If GitHub MCP Server is available**, use it for automated workflow monitoring.
+
+### Workflow Validation After Push
+
+```
+After every git push (manual or auto):
+
+1. Wait 5-10 seconds for workflows to trigger
+
+2. Check workflow status via GitHub MCP:
+   - List workflow runs for latest commit
+   - Check status of each workflow
+
+3. If workflows are RUNNING:
+   ⏳ Report: "CI/CD workflows in progress..."
+   ✅ Continue with other tasks
+   ✅ Check again in next user interaction
+   
+4. If workflows COMPLETED:
+   - All passed: ✅ Report success
+   - Some failed: ❌ Fetch errors and fix
+
+5. If workflows FAILED:
+   a. Fetch complete error logs via GitHub MCP
+   b. Display errors to user
+   c. Analyze against AGENTS.md standards
+   d. Propose specific fixes
+   e. Implement fixes
+   f. Run local quality checks
+   g. Commit fixes
+   h. Provide push command for retry
+```
+
+### Next Interaction Check
+
+```
+On every user message after a push:
+
+if (github_mcp_available && last_push_timestamp) {
+  // Check workflow status
+  const status = await checkWorkflows();
+  
+  if (status.running) {
+    console.log('⏳ CI/CD still running, will check later');
+  } else if (status.failed) {
+    console.log('❌ CI/CD failures detected!');
+    await analyzeAndFixErrors(status.errors);
+  } else {
+    console.log('✅ All CI/CD workflows passed!');
+  }
+}
+```
+
+### Error Analysis Flow
+
+```
+When workflow fails:
+
+1. Fetch error via GitHub MCP:
+   - Workflow name
+   - Job name  
+   - Failed step
+   - Error output
+   - Full logs
+
+2. Categorize error:
+   - Test failure → Fix test or implementation
+   - Lint error → Format/fix code style
+   - Build error → Fix compilation issues
+   - Type error → Fix type definitions
+   - Coverage error → Add more tests
+
+3. Fix following AGENTS.md:
+   - Apply correct pattern from AGENTS.md
+   - Add tests if needed
+   - Verify locally before committing
+
+4. Commit fix:
+   git commit -m "fix: Resolve CI/CD failure - [specific issue]"
+
+5. Provide push command:
+   "Ready to retry. Run: git push origin main"
+
+6. After next push:
+   - Monitor again
+   - Verify fix worked
+```
+
+### CI/CD Confidence Check
+
+**Before suggesting push:**
+
+```
+Assess confidence in CI/CD success:
+
+HIGH confidence (safe to push):
+✅ All local checks passed
+✅ Similar changes passed CI before
+✅ No experimental changes
+✅ Follows AGENTS.md exactly
+✅ Comprehensive tests
+✅ No unusual patterns
+
+MEDIUM confidence (verify first):
+⚠️ First time with this pattern
+⚠️ Modified build configuration
+⚠️ Changed dependencies
+⚠️ Cross-platform concerns
+→ Suggest: "Let's verify locally first"
+
+LOW confidence (don't push yet):
+❌ Experimental implementation
+❌ Skipped some tests
+❌ Uncertain about compatibility
+❌ Modified CI/CD files
+→ Say: "Let's run additional checks first"
+```
+
 ## Troubleshooting
 
 ### Merge Conflicts

@@ -6,13 +6,23 @@ export interface DetectionResult {
 }
 
 export interface LanguageDetection {
-  language: 'rust' | 'typescript' | 'python' | 'go' | 'java' | 'elixir' | 'csharp' | 'php' | 'swift' | 'kotlin';
+  language:
+    | 'rust'
+    | 'typescript'
+    | 'python'
+    | 'go'
+    | 'java'
+    | 'elixir'
+    | 'csharp'
+    | 'php'
+    | 'swift'
+    | 'kotlin';
   confidence: number;
   indicators: string[];
 }
 
 export interface ModuleDetection {
-  module: 'vectorizer' | 'synap' | 'openspec' | 'context7';
+  module: 'vectorizer' | 'synap' | 'openspec' | 'context7' | 'github';
   detected: boolean;
   source?: string;
 }

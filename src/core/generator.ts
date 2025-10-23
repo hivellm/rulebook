@@ -148,7 +148,7 @@ export async function generateGitRules(pushMode: string): Promise<string> {
   const templatePath = path.join(templatesDir, 'GIT_WORKFLOW.md');
 
   let gitRules = '';
-  
+
   if (await fileExists(templatePath)) {
     gitRules = await readFile(templatePath);
   } else {
@@ -157,7 +157,7 @@ export async function generateGitRules(pushMode: string): Promise<string> {
 
   // Add push mode configuration
   const pushModeConfig = `\n**AI Assistant Git Push Mode**: ${pushMode.toUpperCase()}\n\n`;
-  
+
   const pushModeInstructions = {
     manual: `**CRITICAL**: Never execute \`git push\` commands automatically.
 Always provide push commands for manual execution by the user.
@@ -169,7 +169,7 @@ Run these commands manually (SSH password may be required):
   git push origin main
   git push origin v1.0.0
 \`\`\``,
-    
+
     prompt: `**CRITICAL**: Always ask user permission before pushing.
 
 Example:
@@ -179,14 +179,14 @@ Ready to push changes. Execute these commands?
 
 [Y/n]:
 \`\`\``,
-    
+
     auto: `**INFO**: Automatic push enabled.
 AI assistants may execute push commands automatically.
 
 ⚠️ Only use this mode if:
 - SSH key has no password
 - GitHub CLI is authenticated
-- You trust the AI assistant completely`
+- You trust the AI assistant completely`,
   };
 
   // Insert push mode config after <!-- GIT:START -->
