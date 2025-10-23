@@ -96,7 +96,7 @@
 - [x] Documentation complete
 - [x] Templates complete (24 total)
 - [x] Project committed and ready
-- [ ] CI/CD setup for rulebook itself (v0.2.0)
+- [x] CI/CD setup for rulebook itself (GitHub Actions workflows fixed)
 - [ ] Package publication to npm (pending user decision)
 - [ ] Version 0.1.0 release tag (pending user decision)
 
@@ -106,10 +106,11 @@
 
 - [x] Implement workflow file generation and copying to .github/workflows/
 - [x] Configure workflows based on detected languages
-- [x] CI/CD setup for rulebook itself (GitHub Actions: test, lint, build)
+- [x] CI/CD setup for rulebook itself (pnpm workflow order fixed)
 - [x] IDE-specific files generation (.cursorrules, .windsurfrules, etc.)
 - [x] VS Code settings.json and copilot-instructions.md generation
 - [x] New CLI command: `rulebook workflows`
+- [x] Fix pnpm cache setup in GitHub Actions workflows
 - [ ] Workflow customization options (v0.3.0)
 - [ ] Automated npm publishing on release tags (v0.3.0)
 
