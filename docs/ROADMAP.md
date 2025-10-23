@@ -87,18 +87,28 @@
 
 ## Phase 8: Polish & Release ✅
 
-### Current Status: Completed
+### Current Status: v0.5.0 - IDE Integration Complete
 
+**Recent Achievements:**
+- [x] GitHub Actions workflows fixed (pnpm cache order corrected)
+- [x] TypeScript test and lint workflows fully operational
+- [x] All IDE and CLI tool templates implemented
+- [x] Comprehensive validation suite (structure, coverage, dependencies, security)
+- [x] Support for 5 languages (Rust, TypeScript, Python, Go, Java)
+
+**Core Completion:**
 - [x] NPX compatibility testing
 - [x] All quality checks passing (type-check, lint, build, test)
-- [x] Test suite with 41 tests (100% passing)
-- [x] Code coverage 93.96% (core modules)
+- [x] Test suite with 63 tests (100% passing)
+- [x] Code coverage 90%+ (core modules)
 - [x] Documentation complete
-- [x] Templates complete (24 total)
+- [x] Templates complete (28 total)
 - [x] Project committed and ready
 - [x] CI/CD setup for rulebook itself (GitHub Actions workflows fixed)
+
+**Pending Release:**
 - [ ] Package publication to npm (pending user decision)
-- [ ] Version 0.1.0 release tag (pending user decision)
+- [ ] Version tag creation (pending user decision)
 
 ## Future Enhancements 📋
 
@@ -137,12 +147,14 @@
 - [ ] C/C++ language template (v0.5.0)
 - [ ] Additional language support - Kotlin, Swift (v0.5.0)
 
-### v0.5.0 - IDE Integration
-- [ ] IDE-specific rules files generation
-- [ ] Cursor rules file (.cursorrules)
-- [ ] VS Code settings.json integration
-- [ ] Windsurf configuration
-- [ ] Direct IDE plugin support
+### v0.5.0 - IDE Integration ✅
+- [x] IDE-specific rules files generation (v0.2.0)
+- [x] Cursor rules file (.cursorrules) (v0.2.0)
+- [x] VS Code settings.json integration (v0.2.0)
+- [x] Windsurf configuration (v0.2.0)
+- [x] CLI tools configuration (Aider, Continue, Claude, etc.) (v0.2.0)
+- [ ] Direct IDE plugin support (v0.6.0)
+- [ ] Real-time IDE integration (v0.6.0)
 
 ### v0.6.0 - Advanced Features
 - [ ] Custom template support
@@ -158,21 +170,23 @@
 - [ ] Enterprise features
 - [ ] SLA and support options
 
-## Metrics (v0.4.0)
+## Metrics (v0.5.0)
 
+- **Current Version**: v0.5.0 (IDE Integration Complete) ⬆️
 - **Code Coverage**: 90%+ (core modules)
 - **Test Count**: 63 comprehensive tests (100% passing)
 - **Test Files**: 7 test suites
-- **CLI Commands**: 5 (init, workflows, validate, check-deps, check-coverage) ⬆️
+- **CLI Commands**: 5 (init, workflows, validate, check-deps, check-coverage)
 - **Supported Languages**: 5 (Rust, TypeScript, Python, Go, Java)
 - **Supported Modules**: 4 (Vectorizer, Synap, OpenSpec, Context7)
-- **IDE Templates**: 4 (Cursor, Windsurf, VS Code, Copilot)
-- **CLI Templates**: 6 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium)
-- **Workflow Templates**: 11 GitHub Actions workflows (Rust, TS, Python, Go, Java + codespell)
-- **Total Templates**: 28 comprehensive templates ⬆️
+- **IDE Templates**: 4 (Cursor, Windsurf, VS Code, Copilot) ✅
+- **CLI Tools Templates**: 6 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium) ✅
+- **Workflow Templates**: 11 GitHub Actions workflows (Rust, TS, Python, Go, Java + codespell) ✅
+- **Total Templates**: 28 comprehensive templates
 - **Core Modules**: 8 (detector, generator, merger, validator, workflow-generator, coverage-checker, dependency-checker, + utils)
-- **Documentation Pages**: 12+ guides and specs ⬆️
-- **Lines of Code**: 18,000+ lines (implementation + templates + docs) ⬆️
+- **Documentation Pages**: 12+ guides and specs
+- **Lines of Code**: 18,000+ lines (implementation + templates + docs)
+- **GitHub Actions**: Fully configured with pnpm caching ✅
 
 ## Contributing
 
