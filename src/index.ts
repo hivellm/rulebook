@@ -11,6 +11,7 @@ import {
   versionCommand,
   changelogCommand,
   healthCommand,
+  fixCommand,
 } from './cli/commands.js';
 
 const program = new Command();
@@ -72,5 +73,7 @@ program
   .action(changelogCommand);
 
 program.command('health').description('Check project health score').action(healthCommand);
+
+program.command('fix').description('Auto-fix common project issues').action(fixCommand);
 
 program.parse(process.argv);

@@ -183,6 +183,24 @@ npx @hivellm/rulebook init
 
 **Supports**: Custom templates for all categories
 
+### Auto-Fix Common Issues
+
+Automatically fix common project issues:
+
+```bash
+npx @hivellm/rulebook fix
+```
+
+**Fixes**:
+- Creates missing .gitignore with comprehensive patterns
+- Creates missing LICENSE (MIT template)
+- Creates missing README.md with template
+- Creates /docs directory for documentation
+- Runs code formatting (npm run format)
+- Fixes lint errors automatically (npm run lint --fix)
+
+**Integrates with health command**: Improves project health score automatically
+
 ### Documentation Structure Generation
 
 Generate complete documentation structure and standard open source files:

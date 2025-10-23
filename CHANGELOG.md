@@ -38,10 +38,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - npm provenance support
 - Full quality gate enforcement before publish
 
+**Auto-Fix System:**
+- New command: `rulebook fix`
+- Automatically fixes common issues:
+  - Creates missing .gitignore
+  - Creates missing LICENSE (MIT)
+  - Creates missing README.md
+  - Creates /docs directory
+  - Runs code formatting
+  - Fixes lint errors automatically
+
+**C/C++ Detection:**
+- Auto-detects C/C++ projects via CMakeLists.txt or Makefile
+- Scans for .cpp, .hpp, .cc, .h, .c files
+- Confidence scoring based on file count
+
 ### Changed
-- CLI commands expanded from 7 to 8 (added health)
-- Core modules expanded from 10 to 11 (added health-scorer, custom-templates)
+- CLI commands expanded from 7 to 9 (added health, fix)
+- Core modules expanded from 10 to 13 (added health-scorer, custom-templates, auto-fixer)
 - Total templates: 65+ (supports custom templates)
+- Test count: 90 (was 68) ⬆️ +22 tests
+- Test files: 9 (was 7) ⬆️
 
 ### Improved
 - Better project configuration through .rulebook.json

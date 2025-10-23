@@ -345,7 +345,7 @@ async function scoreDependencies(projectDir: string): Promise<{
     const { stdout } = await execAsync('npm audit --json', {
       cwd: projectDir,
     });
-    
+
     const audit = JSON.parse(stdout);
     const vulns = audit.metadata?.vulnerabilities;
 

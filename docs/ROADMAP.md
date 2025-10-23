@@ -198,14 +198,16 @@
 - [x] Health command with detailed analysis ✅
 - [x] Custom templates directory (.rulebook/templates/) ✅
 - [x] Configuration file (.rulebook.json) ✅
-- [ ] Template marketplace/registry (v1.0.0)
-- [ ] Performance benchmarking (v1.0.0)
-- [ ] Direct IDE plugin support (v1.0.0)
-- [ ] Real-time IDE integration (v1.0.0)
-- [ ] Auto-fix suggestions for common issues (v1.0.0)
-- [ ] Template versioning system (v1.0.0)
+- [x] Auto-fix command for common issues ✅
+- [x] C/C++ auto-detection ✅
+- [x] 90 comprehensive tests ✅
 
-### v1.0.0 - Production Ready
+### v1.0.0 - Production Ready (Planned)
+- [ ] Template marketplace/registry
+- [ ] Performance benchmarking
+- [ ] Direct IDE plugin support
+- [ ] Real-time IDE integration
+- [ ] Template versioning system
 - [ ] Comprehensive documentation
 - [ ] Tutorial videos
 - [ ] Migration guides
@@ -218,7 +220,7 @@
 - **Code Coverage**: 90%+ (core modules) ✅
 - **Test Count**: 90 comprehensive tests (100% passing) ✅ ⬆️
 - **Test Files**: 9 test suites ⬆️
-- **CLI Commands**: 8 (init, workflows, validate, check-deps, check-coverage, version, changelog, health) ⬆️ NEW
+- **CLI Commands**: 9 (init, workflows, validate, check-deps, check-coverage, version, changelog, health, fix) ⬆️ NEW
 - **Supported Languages**: 11 (Rust, TS, Python, Go, Java, Elixir, C#, PHP, Swift, Kotlin, C/C++)
 - **Supported Modules**: 5 (Vectorizer, Synap, OpenSpec, Context7, GitHub MCP)
 - **IDE Templates**: 8 (Cursor, Windsurf, VS Code, Copilot, Tabnine, Replit, JetBrains AI, Zed)
@@ -229,7 +231,7 @@
 - **Language Templates**: 11 comprehensive guides
 - **Git Workflow Templates**: 1 (GIT_WORKFLOW.md with hooks)
 - **Total Templates**: 65 built-in + unlimited custom ✅ NEW
-- **Core Modules**: 12 (detector, generator, merger, validator, workflow-generator, coverage-checker, dependency-checker, version-bumper, changelog-generator, health-scorer, custom-templates, + utils) ⬆️ NEW
+- **Core Modules**: 13 (detector, generator, merger, validator, workflow-generator, coverage-checker, dependency-checker, version-bumper, changelog-generator, health-scorer, custom-templates, auto-fixer, + utils) ⬆️ NEW
 - **Documentation Pages**: 12+ guides and specs
 - **Lines of Code**: 28,000+ lines (implementation + templates + docs) ⬆️
 - **GitHub Actions**: Fully configured with automated publishing ✅

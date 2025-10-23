@@ -524,7 +524,7 @@ export async function healthCommand(): Promise<void> {
 
     console.log('');
     const grade = getHealthGrade(health.overall);
-    
+
     console.log(chalk.bold(`Overall Health Score: ${health.overall}/100 (${grade})`));
     console.log('');
 
@@ -551,9 +551,69 @@ export async function healthCommand(): Promise<void> {
       console.log(chalk.blue('👍 Good project health. A few improvements suggested.'));
     } else {
       console.log(chalk.yellow('⚠️  Project health needs improvement.'));
-      console.log(chalk.gray('  Run: rulebook init --yes'));
-      console.log(chalk.gray('  To generate missing files and improve health.'));
+      console.log(chalk.gray('  Run: rulebook fix'));
+      console.log(chalk.gray('  To auto-fix common issues.'));
     }
+  } catch (error) {
+    console.error(chalk.red('\n❌ Error:'), (error as Error).message);
+    process.exit(1);
+  }
+}
+
+export async function fixCommand(): Promise<void> {
+  try {
+    const cwd = process.cwd();
+
+    console.log(chalk.bold.blue('\n🔧 Auto-Fix Common Issues\n'));
+
+    const { autoFixProject, autoFixLint } = await import('../core/auto-fixer.js');
+
+    const spinner = ora('Analyzing and fixing issues...').start();
+
+    const result = await autoFixProject(cwd);
+
+    spinner.succeed('Auto-fix complete');
+
+    console.log('');
+
+    if (result.applied.length > 0) {
+      console.log(chalk.green('✅ Fixed:\n'));
+      result.applied.forEach((fix) => {
+        console.log(chalk.gray(`  - ${fix}`));
+      });
+      console.log('');
+    }
+
+    if (result.skipped.length > 0) {
+      console.log(chalk.blue('ℹ️  Skipped:\n'));
+      result.skipped.forEach((skip) => {
+        console.log(chalk.gray(`  - ${skip}`));
+      });
+      console.log('');
+    }
+
+    if (result.failed.length > 0) {
+      console.log(chalk.yellow('⚠️  Failed:\n'));
+      result.failed.forEach((fail) => {
+        console.log(chalk.gray(`  - ${fail}`));
+      });
+      console.log('');
+    }
+
+    // Try to fix lint errors
+    console.log(chalk.blue('🎨 Attempting to fix lint errors...\n'));
+    const lintFixed = await autoFixLint(cwd);
+
+    if (lintFixed) {
+      console.log(chalk.green('✅ Lint errors fixed'));
+    } else {
+      console.log(chalk.gray('ℹ️  No lint auto-fix available'));
+    }
+
+    console.log('');
+    console.log(chalk.bold.green('✨ Auto-fix complete!\n'));
+    console.log(chalk.gray('Run: rulebook health'));
+    console.log(chalk.gray('To check updated health score.'));
   } catch (error) {
     console.error(chalk.red('\n❌ Error:'), (error as Error).message);
     process.exit(1);
