@@ -143,6 +143,61 @@ export async function generateModuleRules(module: string): Promise<string> {
   return `<!-- ${module.toUpperCase()}:START -->\n# ${module.charAt(0).toUpperCase() + module.slice(1)} Instructions\n\nModule-specific instructions for ${module}.\n<!-- ${module.toUpperCase()}:END -->\n`;
 }
 
+export async function generateGitRules(pushMode: string): Promise<string> {
+  const templatesDir = path.join(getTemplatesDir(), 'git');
+  const templatePath = path.join(templatesDir, 'GIT_WORKFLOW.md');
+
+  let gitRules = '';
+  
+  if (await fileExists(templatePath)) {
+    gitRules = await readFile(templatePath);
+  } else {
+    gitRules = `<!-- GIT:START -->\n# Git Workflow Rules\n\nGit workflow guidelines for this project.\n<!-- GIT:END -->\n`;
+  }
+
+  // Add push mode configuration
+  const pushModeConfig = `\n**AI Assistant Git Push Mode**: ${pushMode.toUpperCase()}\n\n`;
+  
+  const pushModeInstructions = {
+    manual: `**CRITICAL**: Never execute \`git push\` commands automatically.
+Always provide push commands for manual execution by the user.
+
+Example:
+\`\`\`
+✋ MANUAL ACTION REQUIRED:
+Run these commands manually (SSH password may be required):
+  git push origin main
+  git push origin v1.0.0
+\`\`\``,
+    
+    prompt: `**CRITICAL**: Always ask user permission before pushing.
+
+Example:
+\`\`\`
+Ready to push changes. Execute these commands?
+  git push origin main
+
+[Y/n]:
+\`\`\``,
+    
+    auto: `**INFO**: Automatic push enabled.
+AI assistants may execute push commands automatically.
+
+⚠️ Only use this mode if:
+- SSH key has no password
+- GitHub CLI is authenticated
+- You trust the AI assistant completely`
+  };
+
+  // Insert push mode config after <!-- GIT:START -->
+  gitRules = gitRules.replace(
+    '<!-- GIT:START -->',
+    `<!-- GIT:START -->\n${pushModeConfig}${pushModeInstructions[pushMode as keyof typeof pushModeInstructions]}\n`
+  );
+
+  return gitRules;
+}
+
 export async function generateFullAgents(config: ProjectConfig): Promise<string> {
   const sections: string[] = [];
 
@@ -161,6 +216,13 @@ export async function generateFullAgents(config: ProjectConfig): Promise<string>
   for (const module of config.modules) {
     const moduleRules = await generateModuleRules(module);
     sections.push(moduleRules);
+    sections.push('');
+  }
+
+  // Add Git workflow rules if enabled
+  if (config.includeGitWorkflow) {
+    const gitRules = await generateGitRules(config.gitPushMode || 'manual');
+    sections.push(gitRules);
     sections.push('');
   }
 

@@ -6,7 +6,7 @@ export interface DetectionResult {
 }
 
 export interface LanguageDetection {
-  language: 'rust' | 'typescript' | 'python' | 'go' | 'java';
+  language: 'rust' | 'typescript' | 'python' | 'go' | 'java' | 'elixir' | 'csharp' | 'php' | 'swift' | 'kotlin';
   confidence: number;
   indicators: string[];
 }
@@ -39,6 +39,8 @@ export interface ProjectConfig {
   coverageThreshold: number;
   strictDocs: boolean;
   generateWorkflows: boolean;
+  includeGitWorkflow?: boolean;
+  gitPushMode?: 'manual' | 'prompt' | 'auto';
 }
 
 export interface RuleConfig {

@@ -174,14 +174,20 @@
 - [ ] Automated version bumping (v0.7.0)
 - [ ] Changelog generation (v0.7.0)
 
-### v0.7.0 - Advanced Features
-- [ ] Custom template support
-- [ ] Template marketplace/registry
-- [ ] Project health scoring
-- [ ] Automated fixes and suggestions
-- [ ] Integration with existing linters
-- [ ] Automated version bumping
-- [ ] Changelog generation from commits
+### v0.7.0 - Git Workflow & Advanced Features ✅
+- [x] Git workflow template and guidelines ✅ NEW
+- [x] Conventional commits enforcement
+- [x] Quality gates before commit/tag
+- [x] Version management workflow
+- [x] SSH password handling (manual push mode)
+- [x] Rollback strategies
+- [x] Git hooks templates
+- [x] Push mode configuration (manual/prompt/auto)
+- [ ] Custom template support (v0.8.0)
+- [ ] Template marketplace/registry (v0.8.0)
+- [ ] Project health scoring (v0.8.0)
+- [ ] Automated version bumping (v0.8.0)
+- [ ] Changelog generation from commits (v0.8.0)
 
 ### v1.0.0 - Production Ready
 - [ ] Comprehensive documentation
@@ -190,9 +196,9 @@
 - [ ] Enterprise features
 - [ ] SLA and support options
 
-## Metrics (v0.6.0)
+## Metrics (v0.7.0)
 
-- **Current Version**: v0.6.0 (Package Publication & Extended Languages) ⬆️
+- **Current Version**: v0.7.0 (Git Workflow & Complete Ecosystem) ⬆️
 - **Code Coverage**: 90.38% (core modules) ✅
 - **Test Count**: 63 comprehensive tests (100% passing) ✅
 - **Test Files**: 7 test suites
@@ -205,7 +211,8 @@
 - **Publishing Workflows**: 10 (all languages) ⬆️ NEW
 - **Total Workflow Templates**: 32 GitHub Actions workflows ⬆️
 - **Language Templates**: 10 comprehensive guides ⬆️
-- **Total Templates**: 61 comprehensive templates ⬆️
+- **Git Workflow Templates**: 1 (GIT_WORKFLOW.md with hooks) ✅ NEW
+- **Total Templates**: 62 comprehensive templates ⬆️
 - **Core Modules**: 8 (detector, generator, merger, validator, workflow-generator, coverage-checker, dependency-checker, + utils)
 - **Documentation Pages**: 12+ guides and specs
 - **Lines of Code**: 25,000+ lines (implementation + templates + docs) ⬆️

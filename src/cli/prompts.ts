@@ -160,6 +160,39 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
     default: true,
   });
 
+  // Git workflow
+  questions.push({
+    type: 'confirm',
+    name: 'includeGitWorkflow',
+    message: 'Include Git workflow guidelines in AGENTS.md?',
+    default: true,
+  });
+
+  // Git push mode (only if git workflow included)
+  const gitWorkflowAnswer = await inquirer.prompt<{ gitPushMode: 'manual' | 'prompt' | 'auto' }>([
+    {
+      type: 'list',
+      name: 'gitPushMode',
+      message: 'Git push behavior for AI assistants:',
+      choices: [
+        {
+          name: 'Manual - Provide push commands for manual execution (recommended for SSH with password)',
+          value: 'manual',
+        },
+        {
+          name: 'Prompt - Ask before each push',
+          value: 'prompt',
+        },
+        {
+          name: 'Auto - Automatic push (only for passwordless setups)',
+          value: 'auto',
+        },
+      ],
+      default: 'manual',
+      when: (answers: { includeGitWorkflow?: boolean }) => answers.includeGitWorkflow !== false,
+    },
+  ]);
+
   const answers = await inquirer.prompt(questions);
 
   return {
@@ -170,6 +203,8 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
     coverageThreshold: answers.coverageThreshold,
     strictDocs: answers.strictDocs,
     generateWorkflows: answers.generateWorkflows,
+    includeGitWorkflow: answers.includeGitWorkflow,
+    gitPushMode: gitWorkflowAnswer.gitPushMode || 'manual',
   };
 }
 
