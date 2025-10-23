@@ -108,6 +108,26 @@ npx @hivellm/rulebook check-coverage --threshold 90
 
 **Supports**: All languages (Rust, TypeScript, Python, Go, Java)
 
+### Documentation Structure Generation
+
+Generate complete documentation structure and standard open source files:
+
+```bash
+npx @hivellm/rulebook generate-docs
+
+# Auto mode
+npx @hivellm/rulebook generate-docs --yes
+```
+
+**Generates**:
+- `/docs` directory structure (specs, guides, diagrams, benchmarks, etc.)
+- `CONTRIBUTING.md` - Contribution guidelines
+- `CODE_OF_CONDUCT.md` - Code of conduct
+- `SECURITY.md` - Security policy
+- `docs/ROADMAP.md` - Project roadmap
+- `docs/ARCHITECTURE.md` - System architecture
+- `docs/DAG.md` - Component dependencies
+
 ## Supported Languages
 
 - ✅ **Rust**: Edition 2024, Clippy, Cargo fmt, nextest, llvm-cov

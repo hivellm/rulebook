@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2024-01-23
+
+### Added
+- Documentation structure generator: `rulebook generate-docs` command
+- Automatic generation of standard open source files:
+  - CONTRIBUTING.md with contribution guidelines
+  - CODE_OF_CONDUCT.md from Contributor Covenant
+  - SECURITY.md with vulnerability reporting
+  - docs/ROADMAP.md with project phases
+  - docs/ARCHITECTURE.md with system design template
+  - docs/DAG.md with component dependencies
+- Complete /docs directory structure creation
+- Interactive prompts for project metadata
+- Auto mode for documentation generation
+
+### Improved
+- Now 6 CLI commands total
+- Better project setup workflow
+- Comprehensive open source standards
+
 ## [0.4.0] - 2024-01-23
 
 ### Added
