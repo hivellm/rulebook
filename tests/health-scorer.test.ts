@@ -80,7 +80,7 @@ describe('health-scorer', () => {
     it('should score testing category', async () => {
       // Create tests directory
       await fs.mkdir(path.join(testDir, 'tests'));
-      
+
       // Create test framework config
       const packageJson = {
         name: 'test',
@@ -89,10 +89,7 @@ describe('health-scorer', () => {
           vitest: '^1.0.0',
         },
       };
-      await fs.writeFile(
-        path.join(testDir, 'package.json'),
-        JSON.stringify(packageJson, null, 2)
-      );
+      await fs.writeFile(path.join(testDir, 'package.json'), JSON.stringify(packageJson, null, 2));
 
       const health = await calculateHealthScore(testDir);
 
@@ -107,4 +104,3 @@ describe('health-scorer', () => {
     });
   });
 });
-

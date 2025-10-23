@@ -47,10 +47,7 @@ describe('version-bumper', () => {
         name: 'test-package',
         version: '1.2.3',
       };
-      await fs.writeFile(
-        path.join(testDir, 'package.json'),
-        JSON.stringify(packageJson, null, 2)
-      );
+      await fs.writeFile(path.join(testDir, 'package.json'), JSON.stringify(packageJson, null, 2));
 
       const version = await getCurrentVersion(testDir);
       expect(version).toBe('1.2.3');
@@ -80,10 +77,7 @@ edition = "2024"
         name: 'test-package',
         version: '1.0.0',
       };
-      await fs.writeFile(
-        path.join(testDir, 'package.json'),
-        JSON.stringify(packageJson, null, 2)
-      );
+      await fs.writeFile(path.join(testDir, 'package.json'), JSON.stringify(packageJson, null, 2));
 
       const result = await bumpProjectVersion(testDir, 'minor');
 
@@ -91,9 +85,7 @@ edition = "2024"
       expect(result.newVersion).toBe('1.1.0');
       expect(result.filesUpdated).toContain('package.json');
 
-      const updated = JSON.parse(
-        await fs.readFile(path.join(testDir, 'package.json'), 'utf-8')
-      );
+      const updated = JSON.parse(await fs.readFile(path.join(testDir, 'package.json'), 'utf-8'));
       expect(updated.version).toBe('1.1.0');
     });
 
@@ -122,4 +114,3 @@ edition = "2024"
     });
   });
 });
-
