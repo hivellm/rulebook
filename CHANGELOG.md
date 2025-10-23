@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2024-01-23
+
+### Added
+- Workflow generation feature: Copy workflow templates to .github/workflows/
+- IDE file generation: Create .cursorrules, .windsurfrules, VS Code settings
+- New CLI command: `rulebook workflows` to generate workflows only
+- GitHub Actions for rulebook itself (test, lint, build)
+- Command module structure for better code organization
+- 12 new tests for workflow-generator (total: 53 tests)
+
+### Improved
+- Code coverage increased to 95.28% (was 93.96%)
+- Refactored index.ts to use command modules
+- Better separation of concerns
+
+### Fixed
+- Workflow generation now integrated in init command
+- IDE files respect coverage threshold configuration
+
 ### Added
 - Initial project structure and scaffolding
 - Expanded allowed root-level files to include:

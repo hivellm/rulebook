@@ -3,13 +3,13 @@
 ## Overview
 
 **Project**: @hivellm/rulebook
-**Version**: 0.1.0
+**Version**: 0.2.0
 **Status**: ✅ **IMPLEMENTATION COMPLETE**
 **Date**: 2024-01-23
 
 ## Completion Summary
 
-All planned features for v0.1.0 have been successfully implemented. The project is ready for testing and initial release.
+All planned features for v0.2.0 have been successfully implemented. The project includes workflow generation, IDE file generation, and CI/CD for the rulebook itself.
 
 ## Features Implemented
 
@@ -72,6 +72,10 @@ All planned features for v0.1.0 have been successfully implemented. The project 
 - [x] Merge vs Replace strategy
 - [x] Auto mode (--yes flag)
 - [x] Pretty output with chalk and ora
+- [x] Command modules (commands.ts)
+- [x] `init` command - Initialize project
+- [x] `workflows` command - Generate workflows only
+- [x] `validate` command - Validation (coming v0.3.0)
 
 ### ✅ Generation & Merging
 
@@ -82,6 +86,17 @@ All planned features for v0.1.0 have been successfully implemented. The project 
 - [x] Backup creation before modification
 - [x] Multi-language support
 - [x] Multi-module support
+
+### ✅ Workflow & IDE Generation (v0.2.0)
+
+- [x] Workflow generator module (workflow-generator.ts)
+- [x] Copy workflow templates to .github/workflows/
+- [x] Generate .cursorrules for Cursor
+- [x] Generate .windsurfrules for Windsurf
+- [x] Generate .vscode/settings.json
+- [x] Generate .github/copilot-instructions.md
+- [x] Respect existing files (don't overwrite)
+- [x] Language-based workflow selection
 
 ### ✅ Testing
 
@@ -109,15 +124,16 @@ All planned features for v0.1.0 have been successfully implemented. The project 
 
 ## Code Metrics
 
-- **Total Files**: 35+ source files
-- **Test Files**: 5 comprehensive test suites
-- **Test Cases**: 30+ tests
-- **Code Coverage**: Target 95%+
+- **Total Files**: 50+ source files (v0.2.0)
+- **Test Files**: 6 comprehensive test suites
+- **Test Cases**: 53 tests (100% passing)
+- **Code Coverage**: 95.28% (core modules)
 - **Languages Supported**: 3 (Rust, TypeScript, Python)
 - **Modules Supported**: 4 (Vectorizer, Synap, OpenSpec, Context7)
 - **Workflow Templates**: 7 GitHub Actions
 - **IDE Templates**: 4 (Cursor, Windsurf, VS Code, Copilot)
 - **CLI Templates**: 6 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium)
+- **CI/CD**: 3 GitHub Actions workflows for rulebook itself
 
 ## File Structure
 

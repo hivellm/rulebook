@@ -102,13 +102,16 @@
 
 ## Future Enhancements 📋
 
-### v0.2.0 - Workflow Generation & CI/CD
-- [ ] Implement workflow file generation and copying to .github/workflows/
-- [ ] Configure workflows based on detected languages
-- [ ] Workflow customization options
-- [ ] CI/CD setup for rulebook itself (GitHub Actions)
-- [ ] Automated npm publishing on release tags
-- [ ] IDE-specific files generation (.cursorrules, .windsurfrules, etc.)
+### v0.2.0 - Workflow Generation & CI/CD ✅
+
+- [x] Implement workflow file generation and copying to .github/workflows/
+- [x] Configure workflows based on detected languages
+- [x] CI/CD setup for rulebook itself (GitHub Actions: test, lint, build)
+- [x] IDE-specific files generation (.cursorrules, .windsurfrules, etc.)
+- [x] VS Code settings.json and copilot-instructions.md generation
+- [x] New CLI command: `rulebook workflows`
+- [ ] Workflow customization options (v0.3.0)
+- [ ] Automated npm publishing on release tags (v0.3.0)
 
 ### v0.3.0 - Validation & Analysis
 - [ ] Project structure validation
@@ -144,11 +147,11 @@
 - [ ] Enterprise features
 - [ ] SLA and support options
 
-## Metrics (v0.1.0)
+## Metrics (Current)
 
-- **Code Coverage**: 93.96% (core modules)
-- **Test Count**: 41 comprehensive tests (100% passing)
-- **Test Files**: 5 test suites
+- **Code Coverage**: 95.28% (core modules) ⬆️
+- **Test Count**: 53 comprehensive tests (100% passing) ⬆️
+- **Test Files**: 6 test suites
 - **Supported Languages**: 3 (Rust, TypeScript, Python)
 - **Supported Modules**: 4 (Vectorizer, Synap, OpenSpec, Context7)
 - **IDE Templates**: 4 (Cursor, Windsurf, VS Code, Copilot)
