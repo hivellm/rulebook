@@ -121,8 +121,6 @@
 - [x] VS Code settings.json and copilot-instructions.md generation
 - [x] New CLI command: `rulebook workflows`
 - [x] Fix pnpm cache setup in GitHub Actions workflows
-- [ ] Workflow customization options (v0.3.0)
-- [ ] Automated npm publishing on release tags (v0.3.0)
 
 ### v0.3.0 - Validation & Extended Languages ✅
 
@@ -132,9 +130,6 @@
 - [x] Quality scoring system (0-100)
 - [x] Go language template and workflows
 - [x] Java language template and workflows
-- [ ] Test coverage verification (v0.4.0)
-- [ ] Dependency freshness check (v0.4.0)
-- [ ] Security audit integration (v0.4.0)
 
 ### v0.4.0 - Advanced Validation ✅
 
@@ -143,39 +138,35 @@
 - [x] Security audit integration (cargo audit, npm audit, pip-audit)
 - [x] `check-deps` command for dependency analysis
 - [x] `check-coverage` command with threshold option
-- [ ] Performance benchmarking (v0.5.0)
-- [ ] C/C++ language template (v0.5.0)
-- [ ] Additional language support - Kotlin, Swift (v0.5.0)
 
 ### v0.5.0 - IDE Integration ✅
-- [x] IDE-specific rules files generation (v0.2.0)
-- [x] Cursor rules file (.cursorrules) (v0.2.0)
-- [x] VS Code settings.json integration (v0.2.0)
-- [x] Windsurf configuration (v0.2.0)
-- [x] CLI tools configuration (Aider, Continue, Claude, etc.) (v0.2.0)
-- [ ] Direct IDE plugin support (v0.6.0)
-- [ ] Real-time IDE integration (v0.6.0)
+
+- [x] IDE-specific rules files generation
+- [x] Cursor rules file (.cursorrules)
+- [x] VS Code settings.json integration
+- [x] Windsurf configuration
+- [x] CLI tools configuration (Aider, Continue, Claude, etc.)
 
 ### v0.6.0 - Package Publication & Extended Languages ✅
+
 - [x] Publishing workflows for all languages
 - [x] npm publication with provenance (TypeScript)
 - [x] crates.io publication with verification (Rust)
 - [x] PyPI publication with trusted publishing (Python)
 - [x] pkg.go.dev auto-indexing (Go)
 - [x] Maven Central with GPG signing (Java)
-- [x] Hex.pm publication (Elixir) ✅ NEW
-- [x] NuGet publication (C#) ✅ NEW
-- [x] Packagist auto-sync (PHP) ✅ NEW
-- [x] Swift Package Manager (Swift) ✅ NEW
-- [x] Maven Central (Kotlin) ✅ NEW
+- [x] Hex.pm publication (Elixir)
+- [x] NuGet publication (C#)
+- [x] Packagist auto-sync (PHP)
+- [x] Swift Package Manager (Swift)
+- [x] Maven Central (Kotlin)
 - [x] Publication documentation in language templates
 - [x] Publishing checklists for each language
-- [x] Extended language support (Elixir, C#, PHP, Swift, Kotlin) ✅ NEW
-- [ ] Automated version bumping (v0.7.0)
-- [ ] Changelog generation (v0.7.0)
+- [x] Extended language support (Elixir, C#, PHP, Swift, Kotlin)
 
 ### v0.7.0 - Git Workflow & CI/CD Monitoring ✅
-- [x] Git workflow template and guidelines ✅
+
+- [x] Git workflow template and guidelines
 - [x] Conventional commits enforcement
 - [x] Quality gates before commit/tag
 - [x] Version management workflow
@@ -184,15 +175,26 @@
 - [x] Git hooks templates
 - [x] Push mode configuration (manual/prompt/auto)
 - [x] Repository detection (prevent re-init)
-- [x] GitHub MCP Server integration ✅ NEW
-- [x] Automated workflow validation after push ✅ NEW
-- [x] CI/CD failure detection and auto-fix ✅ NEW
-- [x] Workflow status monitoring ✅ NEW
-- [ ] Custom template support (v0.8.0)
-- [ ] Template marketplace/registry (v0.8.0)
-- [ ] Project health scoring (v0.8.0)
-- [ ] Automated version bumping (v0.8.0)
-- [ ] Changelog generation from commits (v0.8.0)
+- [x] GitHub MCP Server integration
+- [x] Automated workflow validation after push
+- [x] CI/CD failure detection and auto-fix
+- [x] Workflow status monitoring
+
+### v0.8.0 - Advanced Automation (Planned)
+
+- [ ] Custom template support
+- [ ] Template marketplace/registry
+- [ ] Project health scoring
+- [ ] Automated version bumping
+- [ ] Changelog generation from commits
+- [ ] Workflow customization options
+- [ ] Automated npm publishing on release tags
+- [ ] Performance benchmarking
+- [ ] C/C++ language template
+- [ ] Direct IDE plugin support
+- [ ] Real-time IDE integration
+- [ ] Auto-fix suggestions for common issues
+- [ ] Template versioning system
 
 ### v1.0.0 - Production Ready
 - [ ] Comprehensive documentation
