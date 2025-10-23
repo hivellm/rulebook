@@ -1,15 +1,18 @@
 # @hivellm/rulebook
 
-CLI tool to standardize AI-generated projects with templates, rules enforcement, workflow generation, and documentation structure for multiple languages and IDEs.
+CLI tool to standardize AI-generated projects with templates, rules enforcement, workflow generation, CI/CD monitoring, and complete publication support for 10 programming languages.
 
 ## Features
 
-- 🔍 **Auto-Detection**: Automatically detects project language (Rust, TypeScript, Python) and MCP modules
-- 📝 **Template System**: Pre-built templates for languages, modules, IDEs, and GitHub workflows
+- 🔍 **Auto-Detection**: Automatically detects project language (10 languages) and MCP modules
+- 📝 **Template System**: 62 pre-built templates for languages, modules, IDEs, workflows, and Git
 - 🔄 **Smart Merging**: Intelligently merges with existing AGENTS.md files without losing content
-- 🎯 **Customizable**: Configure coverage thresholds, documentation strictness, and more
+- 🎯 **Customizable**: Configure coverage thresholds, documentation strictness, Git workflow, and more
 - 🚫 **Rules Ignore**: Selectively disable rules using `.rulesignore` file
-- 🤖 **AI-Optimized**: Generates rules specifically designed for AI assistants (Cursor, Windsurf, etc.)
+- 🤖 **AI-Optimized**: Works with 15+ AI coding assistants and 8 IDEs
+- 📦 **Publication Ready**: Complete CI/CD pipelines for all package registries
+- 🔄 **CI/CD Monitoring**: GitHub MCP integration for automated workflow validation
+- 🎨 **Git Workflow**: Quality gates, conventional commits, and version management
 
 ## Installation
 
@@ -128,36 +131,55 @@ npx @hivellm/rulebook generate-docs --yes
 - `docs/ARCHITECTURE.md` - System architecture
 - `docs/DAG.md` - Component dependencies
 
-## Supported Languages
+## Supported Languages (10)
 
-- ✅ **Rust**: Edition 2024, Clippy, Cargo fmt, nextest, llvm-cov
-- ✅ **TypeScript**: ESLint, Prettier, Vitest, strict mode
-- ✅ **Python**: Ruff, Black, mypy, pytest
-- ✅ **Go**: gofmt, golangci-lint, go vet, table-driven tests
-- ✅ **Java**: Maven/Gradle, JUnit 5, Checkstyle, PMD, SpotBugs, Jacoco
+- ✅ **Rust**: Edition 2024, Clippy, Cargo fmt, nextest, llvm-cov → crates.io
+- ✅ **TypeScript**: ESLint, Prettier, Vitest, strict mode → npm
+- ✅ **Python**: Ruff, Black, mypy, pytest → PyPI
+- ✅ **Go**: gofmt, golangci-lint, go vet, table-driven tests → pkg.go.dev
+- ✅ **Java**: Maven/Gradle, JUnit 5, Checkstyle, PMD, SpotBugs → Maven Central
+- ✅ **Elixir**: Mix, Credo, Dialyzer, ExUnit → Hex.pm
+- ✅ **C#**: .NET 8+, nullable types, Roslyn analyzers → NuGet
+- ✅ **PHP**: PHP 8.2+, PHPStan, PHP-CS-Fixer, PHPUnit → Packagist
+- ✅ **Swift**: Swift 5.10+, SwiftLint, strict concurrency → SPM
+- ✅ **Kotlin**: Kotlin 2.0+, K2 compiler, Detekt, ktlint → Maven Central
 
-## Supported MCP Modules
+## Supported MCP Modules (5)
 
 - ✅ **Vectorizer**: Semantic search and codebase exploration
 - ✅ **Synap**: Key-value store for task and data persistence
 - ✅ **OpenSpec**: Change proposal and specification workflow
 - ✅ **Context7**: Library documentation for dependency management
+- ✅ **GitHub MCP**: Automated workflow validation and CI/CD monitoring
 
-## Supported IDEs & AI Tools
+## Supported IDEs & AI Tools (23 total)
 
-### IDEs
+### IDEs (8)
 - ✅ **Cursor**: Cursor-specific rules format (Agent mode, Composer)
 - ✅ **Windsurf**: Windsurf configuration (Cascade AI, Flow State)
 - ✅ **VS Code**: VS Code AI extensions (Copilot, Cody, Continue)
 - ✅ **GitHub Copilot**: Copilot instructions and best practices
+- ✅ **Tabnine**: Multi-IDE AI completion (VS Code, JetBrains, Vim, Sublime)
+- ✅ **Replit**: Cloud IDE with Ghostwriter AI
+- ✅ **JetBrains AI**: AI Assistant (IntelliJ, PyCharm, WebStorm, GoLand, RustRover, Rider, CLion, PhpStorm)
+- ✅ **Zed**: High-performance collaborative editor (Rust-powered)
 
-### CLI & API Agents
+### CLI & API Agents (15)
 - ✅ **Aider**: AI pair programming in terminal
 - ✅ **Continue**: Open-source Copilot alternative
-- ✅ **Claude Code**: Anthropic Claude API/CLI (200K context)
+- ✅ **Claude**: Anthropic Claude API/CLI (200K context)
+- ✅ **Claude Code**: Advanced Anthropic coding assistant
 - ✅ **Gemini**: Google Gemini API/CLI (2M context)
 - ✅ **Cursor CLI**: Cursor automation and scripting
 - ✅ **Codeium**: Free AI coding assistant
+- ✅ **Cline**: VS Code extension and CLI with quality gates
+- ✅ **Amazon Q Developer**: AWS-focused with security scanning
+- ✅ **Auggie** (Augment CLI): TDD mode and intelligent refactoring
+- ✅ **CodeBuddy Code**: Intelligent pair programming
+- ✅ **Factory Droid**: Code generation and automation
+- ✅ **OpenCode**: Open-source AI assistant
+- ✅ **Kilo Code**: Lightweight coding companion
+- ✅ **Codex**: OpenAI code generation integration
 
 ## Documentation Structure
 
@@ -210,22 +232,37 @@ typescript/*
 *-threshold
 ```
 
-## Generated Workflows
+## Generated Workflows (32 total)
 
 When workflow generation is enabled, rulebook creates GitHub Actions workflows:
 
-### Rust
-- `rust-test.yml`: Cross-platform testing with nextest
-- `rust-lint.yml`: Clippy and rustfmt checks
-- `codespell.yml`: Spelling error detection
+### Test & Lint Workflows (21)
+- **Rust**: rust-test.yml, rust-lint.yml
+- **TypeScript**: typescript-test.yml, typescript-lint.yml
+- **Python**: python-test.yml, python-lint.yml
+- **Go**: go-test.yml, go-lint.yml
+- **Java**: java-test.yml, java-lint.yml
+- **Elixir**: elixir-test.yml, elixir-lint.yml
+- **C#**: dotnet-test.yml, dotnet-lint.yml
+- **PHP**: php-test.yml, php-lint.yml
+- **Swift**: swift-test.yml, swift-lint.yml
+- **Kotlin**: kotlin-test.yml, kotlin-lint.yml
+- **Universal**: codespell.yml (typo detection)
 
-### TypeScript
-- `typescript-test.yml`: Vitest with coverage reporting
-- `typescript-lint.yml`: ESLint, Prettier, and type checking
+### Publishing Workflows (10)
+- **TypeScript**: typescript-publish.yml → npm (with provenance)
+- **Rust**: rust-publish.yml → crates.io
+- **Python**: python-publish.yml → PyPI (trusted publishing)
+- **Go**: go-publish.yml → pkg.go.dev
+- **Java**: java-publish.yml → Maven Central + GitHub Packages
+- **Elixir**: elixir-publish.yml → Hex.pm
+- **C#**: dotnet-publish.yml → NuGet
+- **PHP**: php-publish.yml → Packagist (auto-sync validation)
+- **Swift**: swift-publish.yml → Swift Package Manager
+- **Kotlin**: kotlin-publish.yml → Maven Central
 
-### Python
-- `python-test.yml`: Pytest with coverage
-- `python-lint.yml`: Ruff, Black, and mypy
+### Git Workflow (1)
+- Complete Git workflow guidelines with quality gates and CI/CD monitoring
 
 ## Example AGENTS.md Output
 
