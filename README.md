@@ -80,6 +80,34 @@ npx @hivellm/rulebook validate
 - .rulesignore patterns
 - Project quality score (0-100)
 
+### Dependency Checking
+
+Check for outdated and vulnerable dependencies:
+
+```bash
+npx @hivellm/rulebook check-deps
+```
+
+**Supports**:
+- npm (package.json)
+- Cargo (Cargo.toml)
+- Python (requirements.txt, pyproject.toml)
+- Go (go.mod)
+- Maven/Gradle (pom.xml, build.gradle)
+
+### Coverage Verification
+
+Verify test coverage meets threshold:
+
+```bash
+npx @hivellm/rulebook check-coverage
+
+# Custom threshold
+npx @hivellm/rulebook check-coverage --threshold 90
+```
+
+**Supports**: All languages (Rust, TypeScript, Python, Go, Java)
+
 ## Supported Languages
 
 - ✅ **Rust**: Edition 2024, Clippy, Cargo fmt, nextest, llvm-cov

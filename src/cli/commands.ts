@@ -252,3 +252,123 @@ export async function workflowsCommand(): Promise<void> {
     process.exit(1);
   }
 }
+
+export async function checkDepsCommand(): Promise<void> {
+  try {
+    const cwd = process.cwd();
+
+    console.log(chalk.bold.blue('\n🔍 Checking Dependencies\n'));
+
+    const spinner = ora('Analyzing dependencies...').start();
+
+    const { checkDependencies } = await import('../core/dependency-checker.js');
+    const result = await checkDependencies(cwd);
+
+    spinner.succeed('Analysis complete');
+
+    console.log('');
+    console.log(chalk.bold('Dependency Summary:'));
+    console.log(chalk.gray(`  Total: ${result.total}`));
+    console.log(chalk.green(`  Up-to-date: ${result.upToDate}`));
+
+    if (result.outdated.length > 0) {
+      console.log(chalk.yellow(`  Outdated: ${result.outdated.length}`));
+    }
+
+    if (result.vulnerable.length > 0) {
+      console.log(chalk.red(`  Vulnerable: ${result.vulnerable.length}`));
+    }
+
+    // Show outdated
+    if (result.outdated.length > 0) {
+      console.log('');
+      console.log(chalk.yellow.bold('Outdated Dependencies:'));
+      for (const dep of result.outdated.slice(0, 10)) {
+        console.log(chalk.yellow(`  ↑ ${dep.name}: ${dep.current} → ${dep.latest}`));
+      }
+      if (result.outdated.length > 10) {
+        console.log(chalk.gray(`  ... and ${result.outdated.length - 10} more`));
+      }
+    }
+
+    // Show vulnerable
+    if (result.vulnerable.length > 0) {
+      console.log('');
+      console.log(chalk.red.bold('Vulnerable Dependencies:'));
+      for (const vuln of result.vulnerable.slice(0, 5)) {
+        console.log(chalk.red(`  ❌ ${vuln.name} (${vuln.severity}): ${vuln.title}`));
+      }
+      if (result.vulnerable.length > 5) {
+        console.log(chalk.gray(`  ... and ${result.vulnerable.length - 5} more`));
+      }
+      console.log('');
+      console.log(chalk.red.bold('⚠️  SECURITY: Update vulnerable dependencies immediately!'));
+    }
+
+    console.log('');
+
+    if (result.outdated.length === 0 && result.vulnerable.length === 0) {
+      console.log(chalk.green('✅ All dependencies are up-to-date and secure!\n'));
+    }
+  } catch (error) {
+    console.error(chalk.red('\n❌ Error checking dependencies:'), error);
+    process.exit(1);
+  }
+}
+
+export async function checkCoverageCommand(options: { threshold?: number }): Promise<void> {
+  try {
+    const cwd = process.cwd();
+    const threshold = options.threshold || 95;
+
+    console.log(chalk.bold.blue('\n📊 Checking Test Coverage\n'));
+
+    const spinner = ora('Running coverage analysis...').start();
+
+    const { checkCoverage } = await import('../core/coverage-checker.js');
+    const result = await checkCoverage(cwd, threshold);
+
+    spinner.succeed('Coverage analysis complete');
+
+    console.log('');
+    console.log(chalk.bold('Coverage Summary:'));
+    console.log(chalk.gray(`  Threshold: ${threshold}%`));
+    console.log(
+      result.meetsThreshold
+        ? chalk.green(`  Actual: ${result.percentage.toFixed(2)}% ✅`)
+        : chalk.red(`  Actual: ${result.percentage.toFixed(2)}% ❌`)
+    );
+
+    if (result.details) {
+      console.log('');
+      console.log(chalk.bold('Details:'));
+      if (result.details.lines) {
+        console.log(chalk.gray(`  Lines: ${result.details.lines.toFixed(2)}%`));
+      }
+      if (result.details.statements) {
+        console.log(chalk.gray(`  Statements: ${result.details.statements.toFixed(2)}%`));
+      }
+      if (result.details.functions) {
+        console.log(chalk.gray(`  Functions: ${result.details.functions.toFixed(2)}%`));
+      }
+      if (result.details.branches) {
+        console.log(chalk.gray(`  Branches: ${result.details.branches.toFixed(2)}%`));
+      }
+    }
+
+    console.log('');
+
+    if (result.meetsThreshold) {
+      console.log(chalk.green(`✅ Coverage meets threshold of ${threshold}%!\n`));
+    } else {
+      console.log(
+        chalk.red(`❌ Coverage ${result.percentage.toFixed(2)}% is below threshold ${threshold}%\n`)
+      );
+      console.log(chalk.gray('Add more tests to increase coverage.\n'));
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error(chalk.red('\n❌ Error checking coverage:'), error);
+    process.exit(1);
+  }
+}

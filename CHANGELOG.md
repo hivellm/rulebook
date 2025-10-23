@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2024-01-23
+
+### Added
+- Dependency checker: `rulebook check-deps` command
+- Coverage checker: `rulebook check-coverage` command
+- Support for checking outdated dependencies across all languages
+- Support for vulnerability scanning (npm audit, cargo audit, pip-audit)
+- Coverage verification for all supported languages
+- Advanced CLI commands with threshold options
+
+### Improved
+- Enhanced validation capabilities
+- Better error reporting for dependency issues
+- Multi-language dependency checking
+- Coverage analysis for Rust, TypeScript, Python, Go, Java
+
 ## [0.3.0] - 2024-01-23
 
 ### Added

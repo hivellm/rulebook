@@ -1,14 +1,20 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { initCommand, validateCommand, workflowsCommand } from './cli/commands.js';
+import {
+  initCommand,
+  validateCommand,
+  workflowsCommand,
+  checkDepsCommand,
+  checkCoverageCommand,
+} from './cli/commands.js';
 
 const program = new Command();
 
 program
   .name('rulebook')
   .description('CLI tool to standardize AI-generated projects with templates and rules')
-  .version('0.3.0');
+  .version('0.4.0');
 
 program
   .command('init')
@@ -25,5 +31,16 @@ program
   .command('validate')
   .description('Validate project structure against rulebook standards')
   .action(validateCommand);
+
+program
+  .command('check-deps')
+  .description('Check for outdated and vulnerable dependencies')
+  .action(checkDepsCommand);
+
+program
+  .command('check-coverage')
+  .description('Check test coverage against threshold')
+  .option('-t, --threshold <number>', 'Coverage threshold percentage', '95')
+  .action((options) => checkCoverageCommand({ threshold: parseInt(options.threshold) }));
 
 program.parse(process.argv);
