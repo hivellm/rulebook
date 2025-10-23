@@ -13,26 +13,27 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     
-    - name: Install pnpm
-      uses: pnpm/action-setup@v3
-      with:
-        version: 8
+    # For pnpm projects, add this step before setup-node:
+    # - name: Install pnpm
+    #   uses: pnpm/action-setup@v3
+    #   with:
+    #     version: 8
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
-        cache: 'pnpm'
+        cache: 'npm'  # Change to 'pnpm' or 'yarn' as needed
     
     - name: Install dependencies
-      run: pnpm install --frozen-lockfile
+      run: npm ci  # For pnpm: pnpm install --frozen-lockfile | For yarn: yarn install --frozen-lockfile
     
     - name: Type check
-      run: pnpm run type-check
+      run: npm run type-check  # For pnpm: pnpm run type-check | For yarn: yarn type-check
     
     - name: Run ESLint
-      run: pnpm run lint
+      run: npm run lint  # For pnpm: pnpm run lint | For yarn: yarn lint
     
     - name: Check code formatting
-      run: pnpm run format -- --check
+      run: npm run format -- --check  # For pnpm: pnpm run format -- --check | For yarn: yarn format --check
 
