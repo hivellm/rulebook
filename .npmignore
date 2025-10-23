@@ -1,0 +1,34 @@
+# Source files
+src/
+tests/
+*.test.ts
+
+# Configuration  
+tsconfig.json
+vitest.config.ts
+.eslintrc.json
+.prettierrc.json
+
+# Documentation (most docs stay in GitHub only)
+docs/
+PUBLISH.md
+scripts/
+
+# Development
+.github/
+coverage/
+*.log
+*.tgz
+
+# Git
+.git/
+.gitignore
+
+# Keep in package
+!dist/
+!templates/
+!README.md
+!LICENSE
+!CHANGELOG.md
+!QUICKSTART.md
+!AGENTS.md
