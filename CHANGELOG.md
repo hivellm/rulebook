@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- GitHub Actions workflows now correctly use `pnpm` instead of `npm`
+- Updated workflow templates to include `pnpm/action-setup@v3`
+- Fixed cache configuration to use `cache: 'pnpm'` in `actions/setup-node@v4`
+- Added `pnpm install --frozen-lockfile` for deterministic dependency installation
+
 ## [0.5.0] - 2024-01-23
 
 ### Added
