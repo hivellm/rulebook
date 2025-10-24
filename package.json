@@ -1,6 +1,6 @@
 {
   "name": "@hivellm/rulebook",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "CLI tool to standardize AI-generated projects with templates, rules enforcement, and automation",
   "type": "module",
   "main": "dist/index.js",

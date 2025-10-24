@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2025-10-24
+
 ### Added
 - **Python PEP 625 Package Naming Rules**: Added comprehensive documentation about PEP 625 compliance
   - Package naming convention (underscores vs hyphens)
