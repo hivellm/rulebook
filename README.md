@@ -250,20 +250,59 @@ rulebook agent --dry-run
 
 # With watcher integration
 rulebook agent --watch
-
-# Features:
-# - Automatic CLI tool detection
-# - Task execution workflow
-# - Quality checks (lint, test, coverage)
-# - Git commits and status updates
 ```
 
-**cursor-agent Integration:**
-- Requires `cursor-agent` CLI installed and authenticated (`cursor-agent login`)
-- Uses `--force` flag to auto-approve commands  
-- Uses `--approve-mcps` flag to auto-approve MCP servers
-- Default timeout: 120 seconds (cursor-agent connects to remote server)
-- Supports all tool operations: read, write, bash commands
+**✨ cursor-agent Integration (Fully Implemented)**
+
+The `cursor-agent` CLI provides the most advanced integration with:
+
+- **Real-time Progress**: Live streaming of AI responses and tool calls
+- **JSON Stream Parsing**: Processes events as they arrive (system, user, assistant, tool_call, result)
+- **Automatic Completion**: Detects when tasks finish and continues workflow
+- **Tool Call Tracking**: Shows all file reads, writes, and bash commands in real-time
+- **Auto-approval Flags**: Uses `--force` and `--approve-mcps` for non-interactive execution
+- **Long Timeout**: 30-minute default for complex tasks
+- **Detailed Logging**: Full visibility into what the AI is doing
+
+**Installation:**
+```bash
+# Install cursor-agent globally
+npm install -g cursor-agent
+
+# Authenticate (required)
+cursor-agent login
+
+# Test installation
+cursor-agent --version
+```
+
+**Example Output:**
+```
+🔗 Connecting to cursor-agent...
+✅ Received first response from cursor-agent!
+
+🤖 Using model: Auto
+📁 Working directory: /project
+
+📝 Generating: 189 chars
+📖 Tool #1: Reading src/index.ts
+   ✅ Read 150 lines
+🔧 Tool #2: Creating tests/index.test.ts
+   ✅ Created 45 lines (1024 bytes)
+
+🎯 Completed in 5432ms (6s total)
+📊 Final stats: 2 tools, 189 chars generated
+```
+
+**🔧 claude-code & gemini-cli** (Coming Soon)
+- Basic integration available
+- Advanced features planned (see `openspec/changes/standardize-cli-agents/`)
+
+**Features:**
+- Automatic CLI tool detection
+- Task execution workflow
+- Quality checks (lint, test, coverage)
+- Git commits and status updates
 
 #### Configuration Management
 
