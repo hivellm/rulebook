@@ -292,14 +292,14 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'Info message');
     console.logActivity('warn', 'Warning message');
     console.logActivity('error', 'Error message');
     console.logActivity('debug', 'Debug message');
-    
+
     expect(logSpy).toHaveBeenCalledTimes(4);
   });
 
@@ -307,13 +307,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'Simple message');
     console.logActivity('info', 'Message with data', { key: 'value' });
     console.logActivity('info', 'Message with timestamp', undefined, new Date());
-    
+
     expect(logSpy).toHaveBeenCalledTimes(3);
   });
 
@@ -321,13 +321,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', '');
     console.logActivity('info', 'Very long message '.repeat(100));
     console.logActivity('info', 'Message with special chars: !@#$%^&*()');
-    
+
     expect(logSpy).toHaveBeenCalledTimes(3);
   });
 
@@ -335,12 +335,12 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'Message with null data', null);
     console.logActivity('info', 'Message with undefined data', undefined);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(2);
   });
 
@@ -348,18 +348,18 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     const complexData = {
       nested: { value: 123 },
       array: [1, 2, 3],
       func: () => 'test',
       date: new Date(),
     };
-    
+
     console.logActivity('info', 'Complex data message', complexData);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -367,17 +367,17 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     const now = new Date();
     const past = new Date(now.getTime() - 1000);
     const future = new Date(now.getTime() + 1000);
-    
+
     console.logActivity('info', 'Past message', undefined, past);
     console.logActivity('info', 'Current message', undefined, now);
     console.logActivity('info', 'Future message', undefined, future);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(3);
   });
 
@@ -385,15 +385,15 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     const levels = ['trace', 'debug', 'info', 'warn', 'error', 'fatal'];
-    
-    levels.forEach(level => {
+
+    levels.forEach((level) => {
       console.logActivity(level as any, `${level} message`);
     });
-    
+
     expect(logSpy).toHaveBeenCalledTimes(levels.length);
   });
 
@@ -401,13 +401,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', '');
     console.logActivity('info', '   ');
     console.logActivity('info', '\t\n\r');
-    
+
     expect(logSpy).toHaveBeenCalledTimes(3);
   });
 
@@ -415,13 +415,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'Unicode: 🚀 🎉 ✅ ❌');
     console.logActivity('info', 'Emoji: 😀 😁 😂 🤣 😃');
     console.logActivity('info', 'Symbols: α β γ δ ε');
-    
+
     expect(logSpy).toHaveBeenCalledTimes(3);
   });
 
@@ -429,12 +429,12 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     const longMessage = 'A'.repeat(10000);
     console.logActivity('info', longMessage);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -442,13 +442,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'Special chars: !@#$%^&*()_+-=[]{}|;:,.<>?');
     console.logActivity('info', 'Quotes: "double" and \'single\'');
     console.logActivity('info', 'Backslashes: \\ and forward slashes: /');
-    
+
     expect(logSpy).toHaveBeenCalledTimes(3);
   });
 
@@ -456,15 +456,15 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'String data', 'string');
     console.logActivity('info', 'Number data', 123);
     console.logActivity('info', 'Boolean data', true);
     console.logActivity('info', 'Array data', [1, 2, 3]);
     console.logActivity('info', 'Object data', { key: 'value' });
-    
+
     expect(logSpy).toHaveBeenCalledTimes(5);
   });
 
@@ -472,13 +472,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'Message', { data: 'value' }, new Date());
     console.logActivity('warn', 'Warning', null, undefined);
     console.logActivity('error', 'Error', undefined, new Date());
-    
+
     expect(logSpy).toHaveBeenCalledTimes(3);
   });
 
@@ -486,13 +486,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'Zero timestamp', undefined, new Date(0));
     console.logActivity('info', 'Negative timestamp', undefined, new Date(-1));
     console.logActivity('info', 'Max timestamp', undefined, new Date(Number.MAX_SAFE_INTEGER));
-    
+
     expect(logSpy).toHaveBeenCalledTimes(3);
   });
 
@@ -500,14 +500,14 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     const circular: any = { name: 'test' };
     circular.self = circular;
-    
+
     console.logActivity('info', 'Circular reference', circular);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -515,15 +515,15 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     const testFunction = () => 'test';
     const asyncFunction = async () => 'async test';
-    
+
     console.logActivity('info', 'Function data', testFunction);
     console.logActivity('info', 'Async function data', asyncFunction);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(2);
   });
 
@@ -531,17 +531,17 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     const promise = Promise.resolve('resolved');
     const rejectedPromise = Promise.reject('rejected');
-    
+
     console.logActivity('info', 'Promise data', promise);
     console.logActivity('info', 'Rejected promise data', rejectedPromise);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(2);
-    
+
     // Handle the rejected promise to avoid unhandled rejection
     try {
       await rejectedPromise;
@@ -554,15 +554,15 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     const symbol = Symbol('test');
     const symbolKey = Symbol.for('test');
-    
+
     console.logActivity('info', 'Symbol data', symbol);
     console.logActivity('info', 'Symbol key data', symbolKey);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(2);
   });
 
@@ -570,15 +570,15 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     const bigInt = BigInt(123456789);
     const bigIntMax = BigInt(Number.MAX_SAFE_INTEGER);
-    
+
     console.logActivity('info', 'BigInt data', bigInt);
     console.logActivity('info', 'BigInt max data', bigIntMax);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(2);
   });
 
@@ -586,12 +586,12 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'Undefined data', undefined);
     console.logActivity('info', 'Null data', null);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(2);
   });
 
@@ -599,13 +599,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'NaN data', NaN);
     console.logActivity('info', 'Infinity data', Infinity);
     console.logActivity('info', 'Negative Infinity data', -Infinity);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(3);
   });
 
@@ -613,15 +613,15 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'Info message');
     console.logActivity('success', 'Success message');
     console.logActivity('warning', 'Warning message');
     console.logActivity('error', 'Error message');
     console.logActivity('tool', 'Tool message');
-    
+
     expect(logSpy).toHaveBeenCalledTimes(5);
   });
 
@@ -629,13 +629,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'Short');
     console.logActivity('info', 'Medium length message');
     console.logActivity('info', 'Very long message '.repeat(100));
-    
+
     expect(logSpy).toHaveBeenCalledTimes(3);
   });
 
@@ -643,13 +643,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'RegExp data', /test/gi);
     console.logActivity('info', 'Date data', new Date());
     console.logActivity('info', 'Error data', new Error('test'));
-    
+
     expect(logSpy).toHaveBeenCalledTimes(3);
   });
 
@@ -657,21 +657,21 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     const nestedObj = {
       level1: {
         level2: {
           level3: {
-            value: 'deep'
-          }
-        }
-      }
+            value: 'deep',
+          },
+        },
+      },
     };
-    
+
     console.logActivity('info', 'Nested object', nestedObj);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -679,14 +679,14 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'String array', ['a', 'b', 'c']);
     console.logActivity('info', 'Number array', [1, 2, 3]);
     console.logActivity('info', 'Mixed array', ['a', 1, true, null]);
     console.logActivity('info', 'Empty array', []);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(4);
   });
 
@@ -694,13 +694,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'ISO string', undefined, new Date().toISOString());
     console.logActivity('info', 'Unix timestamp', undefined, Date.now());
     console.logActivity('info', 'Date object', undefined, new Date());
-    
+
     expect(logSpy).toHaveBeenCalledTimes(3);
   });
 
@@ -708,13 +708,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'Message with newlines\nand tabs\tand spaces');
     console.logActivity('info', 'Message with quotes "double" and \'single\'');
     console.logActivity('info', 'Message with backslashes \\ and forward slashes /');
-    
+
     expect(logSpy).toHaveBeenCalledTimes(3);
   });
 
@@ -722,15 +722,15 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     const levels = ['info', 'success', 'warning', 'error', 'tool'];
-    
-    levels.forEach(level => {
+
+    levels.forEach((level) => {
       console.logActivity(level as any, `${level} message`);
     });
-    
+
     expect(logSpy).toHaveBeenCalledTimes(levels.length);
   });
 
@@ -738,17 +738,17 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     const complexData = {
       array: [1, 2, { nested: true }],
       object: { key: 'value', nested: { deep: 'value' } },
-      mixed: [1, 'string', { obj: true }, null, undefined]
+      mixed: [1, 'string', { obj: true }, null, undefined],
     };
-    
+
     console.logActivity('info', 'Complex nested structure', complexData);
-    
+
     expect(logSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -756,13 +756,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     for (let i = 0; i < 50; i++) {
       console.logActivity('info', `Message ${i}`);
     }
-    
+
     // Note: spy might capture internal calls too
     expect(logSpy).toHaveBeenCalled();
     expect(logSpy.mock.calls.length).toBeGreaterThanOrEqual(50);
@@ -772,13 +772,13 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'First message');
     console.logActivity('success', 'Second message');
     console.logActivity('error', 'Third message');
-    
+
     expect(logSpy).toHaveBeenCalled();
   });
 
@@ -786,17 +786,17 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     const largeArray = Array.from({ length: 1000 }, (_, i) => ({
       id: i,
       value: `Item ${i}`,
-      nested: { data: `Data ${i}` }
+      nested: { data: `Data ${i}` },
     }));
-    
+
     console.logActivity('info', 'Large data', largeArray);
-    
+
     expect(logSpy).toHaveBeenCalled();
   });
 
@@ -804,9 +804,9 @@ describe('createModernConsole', () => {
     const console = createModernConsole({
       projectRoot: tempDir,
     });
-    
+
     const logSpy = vi.spyOn(console, 'logActivity');
-    
+
     console.logActivity('info', 'String message');
     console.logActivity('info', 'Number', 42);
     console.logActivity('info', 'Boolean', true);
@@ -814,7 +814,7 @@ describe('createModernConsole', () => {
     console.logActivity('info', 'Array', [1, 2, 3]);
     console.logActivity('info', 'Null', null);
     console.logActivity('info', 'Undefined', undefined);
-    
+
     expect(logSpy).toHaveBeenCalled();
   });
 });

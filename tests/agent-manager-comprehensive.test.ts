@@ -619,4 +619,25 @@ describe('Agent Manager Comprehensive Tests', () => {
       expect(capabilities).toEqual(['implement', 'test', 'lint', 'format']);
     });
   });
+
+  describe('Agent manager additional tests', () => {
+    it('should handle initialization and cleanup', async () => {
+      mockCLIBridge.killAllProcesses.mockResolvedValue();
+
+      await agentManager.initialize();
+      await agentManager['cleanup']();
+
+      expect(mockCLIBridge.killAllProcesses).toHaveBeenCalled();
+      expect(mockLogger.close).toHaveBeenCalled();
+    });
+
+    it('should handle startAgent with no CLI tools available', async () => {
+      mockCLIBridge.detectCLITools.mockResolvedValue([]);
+
+      await agentManager.initialize();
+      await agentManager.startAgent({ maxIterations: 1 });
+
+      expect(mockCLIBridge.detectCLITools).toHaveBeenCalled();
+    });
+  });
 });

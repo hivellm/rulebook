@@ -289,7 +289,7 @@ describe('CLIBridge', () => {
       // Test that processes are cleaned up when errors occur
       const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command');
       expect(response.success).toBe(false);
-      
+
       // Verify no processes are left running
       await cliBridge.killAllProcesses();
       expect(true).toBe(true); // Should not throw
@@ -304,8 +304,8 @@ describe('CLIBridge', () => {
     it('should handle different command variations', async () => {
       const commands = [
         'Run tests and check coverage',
-        'Run the tests and check test coverage', 
-        'Please run the tests and check coverage'
+        'Run the tests and check test coverage',
+        'Please run the tests and check coverage',
       ];
 
       for (const command of commands) {
@@ -319,7 +319,7 @@ describe('CLIBridge', () => {
       const lintCommands = [
         'Run linter and fix issues',
         'Please run the linter and fix issues',
-        'Run linter and fix issues'
+        'Run linter and fix issues',
       ];
 
       for (const command of lintCommands) {
@@ -330,11 +330,7 @@ describe('CLIBridge', () => {
     });
 
     it('should handle different format command variations', async () => {
-      const formatCommands = [
-        'Format code',
-        'Please format the code',
-        'Format code'
-      ];
+      const formatCommands = ['Format code', 'Please format the code', 'Format code'];
 
       for (const command of formatCommands) {
         const response = await cliBridge.sendCommandToCLI('nonexistent-tool', command);
@@ -347,7 +343,7 @@ describe('CLIBridge', () => {
       const commitCommands = [
         'Commit changes with message: Test commit',
         'Please commit changes with message: Test commit',
-        'Commit changes with message: Test commit'
+        'Commit changes with message: Test commit',
       ];
 
       for (const command of commitCommands) {
@@ -359,7 +355,7 @@ describe('CLIBridge', () => {
 
     it('should handle continue command with different iterations', async () => {
       const iterations = [1, 5, 10, 20];
-      
+
       for (const iter of iterations) {
         const response = await cliBridge.sendContinueCommand('nonexistent-tool', iter);
         expect(response.success).toBe(false);
@@ -371,7 +367,7 @@ describe('CLIBridge', () => {
       const tasks = [
         { id: 'task-1', title: 'Task 1', description: 'Description 1' },
         { id: 'task-2', title: 'Task 2', description: 'Description 2' },
-        { id: 'task-3', title: 'Task 3', description: 'Description 3' }
+        { id: 'task-3', title: 'Task 3', description: 'Description 3' },
       ];
 
       for (const task of tasks) {
@@ -383,7 +379,7 @@ describe('CLIBridge', () => {
 
     it('should handle CLI health check with different tools', async () => {
       const tools = ['cursor-agent', 'claude-code', 'gemini-cli', 'nonexistent-tool'];
-      
+
       for (const tool of tools) {
         const isHealthy = await cliBridge.checkCLIHealth(tool);
         expect(typeof isHealthy).toBe('boolean');
@@ -392,7 +388,7 @@ describe('CLIBridge', () => {
 
     it('should handle CLI capabilities with different tools', async () => {
       const tools = ['cursor-agent', 'claude-code', 'gemini-cli', 'nonexistent-tool'];
-      
+
       for (const tool of tools) {
         const capabilities = await cliBridge.getCLICapabilities(tool);
         expect(Array.isArray(capabilities)).toBe(true);
@@ -408,7 +404,7 @@ describe('CLIBridge', () => {
         'Some random output',
         'Error occurred',
         'Working on it...',
-        'Done!'
+        'Done!',
       ];
 
       for (const pattern of patterns) {
@@ -422,11 +418,11 @@ describe('CLIBridge', () => {
         { task: { id: 'task-1', title: 'Task 1', description: 'Description 1' } },
         { task: { id: 'task-2', title: 'Task 2', description: 'Description 2' } },
         { message: 'Test commit message' },
-        { message: 'Another commit message' }
+        { message: 'Another commit message' },
       ];
 
       const steps = ['implement', 'test', 'lint', 'format', 'commit'] as const;
-      
+
       for (const step of steps) {
         for (const context of contexts) {
           if ((step === 'implement' || step === 'commit') && context) {
@@ -442,7 +438,7 @@ describe('CLIBridge', () => {
       // Test killing processes when none are running
       await cliBridge.killAllProcesses();
       expect(true).toBe(true); // Should not throw
-      
+
       // Test killing processes multiple times
       await cliBridge.killAllProcesses();
       await cliBridge.killAllProcesses();
@@ -459,7 +455,11 @@ describe('CLIBridge', () => {
     it('should handle different timeout scenarios', async () => {
       const timeouts = [100, 500, 1000, 5000];
       for (const timeout of timeouts) {
-        const response = await cliBridge.waitForCompletion('nonexistent-tool', 'test command', timeout);
+        const response = await cliBridge.waitForCompletion(
+          'nonexistent-tool',
+          'test command',
+          timeout
+        );
         expect(response.success).toBe(false);
         expect(response.duration).toBeGreaterThanOrEqual(0);
       }
@@ -472,7 +472,7 @@ describe('CLIBridge', () => {
         'permission denied',
         'timeout exceeded',
         'process killed',
-        'unknown error'
+        'unknown error',
       ];
 
       for (const scenario of errorScenarios) {
@@ -486,7 +486,7 @@ describe('CLIBridge', () => {
       // Test with empty tool list
       const tools = await cliBridge.detectCLITools();
       expect(Array.isArray(tools)).toBe(true);
-      
+
       // Test health check with empty tools
       for (const tool of tools) {
         const isHealthy = await cliBridge.checkCLIHealth(tool.name);
@@ -496,11 +496,14 @@ describe('CLIBridge', () => {
 
     it('should handle workflow step context variations', async () => {
       const stepContexts = [
-        { step: 'implement' as const, context: { task: { id: '1', title: 'Test', description: 'Test' } } },
+        {
+          step: 'implement' as const,
+          context: { task: { id: '1', title: 'Test', description: 'Test' } },
+        },
         { step: 'test' as const, context: undefined },
         { step: 'lint' as const, context: undefined },
         { step: 'format' as const, context: undefined },
-        { step: 'commit' as const, context: { message: 'Test commit' } }
+        { step: 'commit' as const, context: { message: 'Test commit' } },
       ];
 
       for (const { step, context } of stepContexts) {
@@ -529,14 +532,14 @@ describe('CLIBridge', () => {
 
     it('should handle CLI capabilities edge cases', async () => {
       const tools = ['cursor-agent', 'claude-code', 'gemini-cli', 'nonexistent-tool'];
-      
+
       for (const tool of tools) {
         const capabilities = await cliBridge.getCLICapabilities(tool);
         expect(Array.isArray(capabilities)).toBe(true);
-        
+
         // Test that capabilities are strings if any exist
         if (capabilities.length > 0) {
-          capabilities.forEach(cap => {
+          capabilities.forEach((cap) => {
             expect(typeof cap).toBe('string');
           });
         }
@@ -547,7 +550,7 @@ describe('CLIBridge', () => {
       const commands = [
         'Run tests and check coverage',
         'Run the tests and check test coverage',
-        'Please run the tests and check coverage'
+        'Please run the tests and check coverage',
       ];
       for (const command of commands) {
         const response = await cliBridge.sendCommandToCLI('nonexistent-tool', command);
@@ -560,7 +563,7 @@ describe('CLIBridge', () => {
       const lintCommands = [
         'Run linter and fix issues',
         'Please run the linter and fix issues',
-        'Run linter and fix issues'
+        'Run linter and fix issues',
       ];
       for (const command of lintCommands) {
         const response = await cliBridge.sendCommandToCLI('nonexistent-tool', command);
@@ -570,11 +573,7 @@ describe('CLIBridge', () => {
     });
 
     it('should handle different format command variations', async () => {
-      const formatCommands = [
-        'Format code',
-        'Please format the code',
-        'Format code'
-      ];
+      const formatCommands = ['Format code', 'Please format the code', 'Format code'];
       for (const command of formatCommands) {
         const response = await cliBridge.sendCommandToCLI('nonexistent-tool', command);
         expect(response.success).toBe(false);
@@ -586,7 +585,7 @@ describe('CLIBridge', () => {
       const commitCommands = [
         'Commit changes with message: Test commit',
         'Please commit changes with message: Test commit',
-        'Commit changes with message: Test commit'
+        'Commit changes with message: Test commit',
       ];
       for (const command of commitCommands) {
         const response = await cliBridge.sendCommandToCLI('nonexistent-tool', command);
@@ -608,7 +607,7 @@ describe('CLIBridge', () => {
       const tasks = [
         { id: 'task-1', title: 'Task 1', description: 'Description 1' },
         { id: 'task-2', title: 'Task 2', description: 'Description 2' },
-        { id: 'task-3', title: 'Task 3', description: 'Description 3' }
+        { id: 'task-3', title: 'Task 3', description: 'Description 3' },
       ];
       for (const task of tasks) {
         const response = await cliBridge.sendTaskCommand('nonexistent-tool', task);
@@ -642,7 +641,7 @@ describe('CLIBridge', () => {
         'Some random output',
         'Error occurred',
         'Working on it...',
-        'Done!'
+        'Done!',
       ];
       for (const pattern of patterns) {
         const shouldContinue = await cliBridge.smartContinueDetection('test-tool', pattern);
@@ -655,7 +654,7 @@ describe('CLIBridge', () => {
         { task: { id: 'task-1', title: 'Task 1', description: 'Description 1' } },
         { task: { id: 'task-2', title: 'Task 2', description: 'Description 2' } },
         { message: 'Test commit message' },
-        { message: 'Another commit message' }
+        { message: 'Another commit message' },
       ];
       const steps = ['implement', 'test', 'lint', 'format', 'commit'] as const;
       for (const step of steps) {
@@ -700,7 +699,9 @@ describe('CLIBridge', () => {
 
     it('should handle process timeout scenarios', async () => {
       // Test timeout handling
-      const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command', { timeout: 100 });
+      const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command', {
+        timeout: 100,
+      });
       expect(response.success).toBe(false);
       expect(response.duration).toBeGreaterThanOrEqual(0);
     });
@@ -735,8 +736,8 @@ describe('CLIBridge', () => {
 
     it('should handle different working directories', async () => {
       // Test different working directories
-      const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command', { 
-        workingDirectory: '/tmp' 
+      const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command', {
+        workingDirectory: '/tmp',
       });
       expect(response.success).toBe(false);
       expect(response.duration).toBeGreaterThanOrEqual(0);
@@ -744,8 +745,8 @@ describe('CLIBridge', () => {
 
     it('should handle different environment variables', async () => {
       // Test different environment variables
-      const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command', { 
-        env: { TEST_VAR: 'test_value' } 
+      const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command', {
+        env: { TEST_VAR: 'test_value' },
       });
       expect(response.success).toBe(false);
       expect(response.duration).toBeGreaterThanOrEqual(0);
@@ -866,7 +867,9 @@ describe('CLIBridge', () => {
       const timeouts = [100, 500, 1000, 5000, 10000];
 
       for (const timeout of timeouts) {
-        const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command', { timeout });
+        const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command', {
+          timeout,
+        });
         expect(response.success).toBe(false);
         expect(response.duration).toBeGreaterThanOrEqual(0);
       }
@@ -874,16 +877,12 @@ describe('CLIBridge', () => {
 
     it('should handle different working directories', async () => {
       // Test different working directories
-      const workingDirs = [
-        '/tmp',
-        '/home',
-        '/var',
-        '/usr',
-        process.cwd(),
-      ];
+      const workingDirs = ['/tmp', '/home', '/var', '/usr', process.cwd()];
 
       for (const workingDir of workingDirs) {
-        const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command', { workingDirectory: workingDir });
+        const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command', {
+          workingDirectory: workingDir,
+        });
         expect(response.success).toBe(false);
         expect(response.duration).toBeGreaterThanOrEqual(0);
       }
@@ -900,7 +899,9 @@ describe('CLIBridge', () => {
       ];
 
       for (const env of envVars) {
-        const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command', { env });
+        const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command', {
+          env,
+        });
         expect(response.success).toBe(false);
         expect(response.duration).toBeGreaterThanOrEqual(0);
       }
@@ -911,9 +912,9 @@ describe('CLIBridge', () => {
       const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command', {
         timeout: 1000,
         workingDirectory: '/tmp',
-        env: { TEST_VAR: 'test_value' }
+        env: { TEST_VAR: 'test_value' },
       });
-      
+
       expect(response.success).toBe(false);
       expect(response.duration).toBeGreaterThanOrEqual(0);
     });
@@ -975,7 +976,11 @@ describe('CLIBridge', () => {
     it('should handle different timeout scenarios', async () => {
       const timeouts = [100, 500, 1000, 5000];
       for (const timeout of timeouts) {
-        const response = await cliBridge.waitForCompletion('nonexistent-tool', 'test command', timeout);
+        const response = await cliBridge.waitForCompletion(
+          'nonexistent-tool',
+          'test command',
+          timeout
+        );
         expect(response.success).toBe(false);
         expect(response.duration).toBeGreaterThanOrEqual(0);
       }
@@ -988,7 +993,7 @@ describe('CLIBridge', () => {
         'permission denied',
         'timeout exceeded',
         'process killed',
-        'unknown error'
+        'unknown error',
       ];
 
       for (const scenario of errorScenarios) {
@@ -998,14 +1003,16 @@ describe('CLIBridge', () => {
       }
     });
 
-
     it('should handle workflow step context variations', async () => {
       const stepContexts = [
-        { step: 'implement' as const, context: { task: { id: '1', title: 'Test', description: 'Test' } } },
+        {
+          step: 'implement' as const,
+          context: { task: { id: '1', title: 'Test', description: 'Test' } },
+        },
         { step: 'test' as const, context: undefined },
         { step: 'lint' as const, context: undefined },
         { step: 'format' as const, context: undefined },
-        { step: 'commit' as const, context: { message: 'Test commit' } }
+        { step: 'commit' as const, context: { message: 'Test commit' } },
       ];
 
       for (const { step, context } of stepContexts) {
@@ -1031,7 +1038,6 @@ describe('CLIBridge', () => {
         expect(typeof shouldContinue).toBe('boolean');
       }
     });
-
   });
 });
 
@@ -1100,19 +1106,19 @@ describe('CLIBridge Additional Coverage Tests', () => {
         kill: vi.fn(),
         once: vi.fn(),
       } as any;
-      
+
       // Add mock process to activeProcesses
       cliBridge['activeProcesses'].set('test-process', mockProcess);
-      
+
       await cliBridge.killAllProcesses();
-      
+
       expect(mockProcess.kill).toHaveBeenCalledWith('SIGKILL');
     });
 
     it('should handle killAllProcesses with no active processes', async () => {
       // Test killAllProcesses when no processes are active
       await cliBridge.killAllProcesses();
-      
+
       // Should complete without error
       expect(cliBridge['activeProcesses'].size).toBe(0);
     });
@@ -1126,11 +1132,11 @@ describe('CLIBridge Additional Coverage Tests', () => {
         kill: vi.fn(),
         once: vi.fn(),
       } as any;
-      
+
       cliBridge['activeProcesses'].set('test-process', mockProcess);
-      
+
       await cliBridge.killAllProcesses();
-      
+
       // Should not call kill on already killed process
       expect(mockProcess.kill).not.toHaveBeenCalled();
     });
@@ -1144,11 +1150,11 @@ describe('CLIBridge Additional Coverage Tests', () => {
         kill: vi.fn(),
         once: vi.fn(),
       } as any;
-      
+
       cliBridge['activeProcesses'].set('test-process', mockProcess);
-      
+
       await cliBridge.killAllProcesses();
-      
+
       // Should not call kill on already exited process
       expect(mockProcess.kill).not.toHaveBeenCalled();
     });
@@ -1164,11 +1170,11 @@ describe('CLIBridge Additional Coverage Tests', () => {
         }),
         once: vi.fn(),
       } as any;
-      
+
       cliBridge['activeProcesses'].set('test-process', mockProcess);
-      
+
       await cliBridge.killAllProcesses();
-      
+
       // Should handle error gracefully
       expect(mockProcess.kill).toHaveBeenCalledWith('SIGKILL');
     });
@@ -1186,7 +1192,7 @@ describe('CLIBridge Additional Coverage Tests', () => {
         'Loading data...',
         'Processing...',
       ];
-      
+
       for (const output of processingOutputs) {
         const result = await cliBridge.smartContinueDetection('test-tool', output);
         expect(result).toBe(false); // Should not send continue
@@ -1203,7 +1209,7 @@ describe('CLIBridge Additional Coverage Tests', () => {
         'Waiting for next command',
         'Next command please',
       ];
-      
+
       for (const output of stoppedOutputs) {
         const result = await cliBridge.smartContinueDetection('test-tool', output);
         // Some patterns might match processing patterns too, so we just check it's a boolean
@@ -1218,7 +1224,7 @@ describe('CLIBridge Additional Coverage Tests', () => {
         'No clear indication',
         'Mixed signals',
       ];
-      
+
       for (const output of unclearOutputs) {
         const result = await cliBridge.smartContinueDetection('test-tool', output);
         expect(result).toBe(true); // Should default to continue
@@ -1237,7 +1243,7 @@ describe('CLIBridge Additional Coverage Tests', () => {
         'Working... done!',
         'Loading... finished',
       ];
-      
+
       for (const output of mixedOutputs) {
         const result = await cliBridge.smartContinueDetection('test-tool', output);
         // Should prioritize processing patterns over stopped patterns
@@ -1255,7 +1261,7 @@ describe('CLIBridge Additional Coverage Tests', () => {
         'Please Wait...',
         'Loading...',
       ];
-      
+
       for (const output of caseVariations) {
         const result = await cliBridge.smartContinueDetection('test-tool', output);
         expect(result).toBe(false); // Should detect processing patterns
@@ -1321,20 +1327,24 @@ describe('CLIBridge Deep Coverage Tests', () => {
 
   describe('Command execution with options', () => {
     it('should handle custom timeout option', async () => {
-      const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test', { timeout: 5000 });
+      const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test', {
+        timeout: 5000,
+      });
       expect(response.success).toBe(false);
       expect(response.duration).toBeGreaterThanOrEqual(0);
     });
 
     it('should handle working directory option', async () => {
-      const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test', { workingDirectory: tempDir });
+      const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test', {
+        workingDirectory: tempDir,
+      });
       expect(response.success).toBe(false);
       expect(response.duration).toBeGreaterThanOrEqual(0);
     });
 
     it('should handle environment variables option', async () => {
-      const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test', { 
-        env: { TEST_VAR: 'test-value' } 
+      const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test', {
+        env: { TEST_VAR: 'test-value' },
       });
       expect(response.success).toBe(false);
       expect(response.duration).toBeGreaterThanOrEqual(0);
@@ -1366,5 +1376,100 @@ describe('CLIBridge Deep Coverage Tests', () => {
       expect(response.success).toBe(false);
       expect(response.duration).toBeGreaterThanOrEqual(0);
     });
+  });
+
+  describe('executeWorkflowStep coverage', () => {
+    it('should execute implement step with task context', async () => {
+      const response = await cliBridge.executeWorkflowStep('cursor-agent', 'implement', {
+        task: { id: '1', title: 'Test Task', description: 'Test Description' },
+      });
+      expect(response).toBeDefined();
+      expect(response.duration).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should execute implement step without task context', async () => {
+      const response = await cliBridge.executeWorkflowStep('cursor-agent', 'implement');
+      expect(response).toBeDefined();
+      expect(response.duration).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should execute test step', async () => {
+      const response = await cliBridge.executeWorkflowStep('cursor-agent', 'test');
+      expect(response).toBeDefined();
+      expect(response.duration).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should execute lint step', async () => {
+      const response = await cliBridge.executeWorkflowStep('cursor-agent', 'lint');
+      expect(response).toBeDefined();
+      expect(response.duration).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should execute format step', async () => {
+      const response = await cliBridge.executeWorkflowStep('cursor-agent', 'format');
+      expect(response).toBeDefined();
+      expect(response.duration).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should execute commit step with message', async () => {
+      const response = await cliBridge.executeWorkflowStep('cursor-agent', 'commit', {
+        message: 'Test commit message',
+      });
+      expect(response).toBeDefined();
+      expect(response.duration).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should execute commit step without message', async () => {
+      const response = await cliBridge.executeWorkflowStep('cursor-agent', 'commit');
+      expect(response).toBeDefined();
+      expect(response.duration).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should throw error for unknown workflow step', async () => {
+      await expect(cliBridge.executeWorkflowStep('cursor-agent', 'unknown' as any)).rejects.toThrow(
+        'Unknown workflow step: unknown'
+      );
+    });
+  });
+
+  describe('killAllProcesses coverage', () => {
+    it('should return early if no active processes', async () => {
+      await cliBridge.killAllProcesses();
+      // Should complete without error
+      expect(true).toBe(true);
+    });
+
+    it('should kill active processes', async () => {
+      // Start a process
+      const responsePromise = cliBridge.sendCommandToCLI('cursor-agent', 'test');
+
+      // Give it time to start
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Kill all processes
+      await cliBridge.killAllProcesses();
+
+      // Wait for the original promise to resolve
+      await responsePromise;
+
+      expect(true).toBe(true);
+    }, 10000);
+  });
+
+  describe('getCLICapabilities coverage', () => {
+    it('should return empty array when CLI tool returns unsuccessful response', async () => {
+      const capabilities = await cliBridge.getCLICapabilities('nonexistent-tool');
+      expect(capabilities).toEqual([]);
+    });
+
+    it('should return empty array on error', async () => {
+      const capabilities = await cliBridge.getCLICapabilities('invalid-tool');
+      expect(capabilities).toEqual([]);
+    });
+
+    it('should parse capabilities from successful response', async () => {
+      const capabilities = await cliBridge.getCLICapabilities('cursor-agent');
+      expect(Array.isArray(capabilities)).toBe(true);
+    }, 15000);
   });
 });

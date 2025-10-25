@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ClaudeCodeStreamParser, parseClaudeCodeLine } from '../src/agents/claude-code.js';
 import { GeminiStreamParser, parseGeminiLine } from '../src/agents/gemini-cli.js';
-import { CursorAgentStreamParser, parseStreamLine, parseCursorAgentOutput } from '../src/agents/cursor-agent.js';
+import {
+  CursorAgentStreamParser,
+  parseStreamLine,
+  parseCursorAgentOutput,
+} from '../src/agents/cursor-agent.js';
 
 describe('Agent Stream Parsers', () => {
   describe('ClaudeCodeStreamParser', () => {
@@ -94,14 +98,13 @@ describe('Agent Stream Parsers', () => {
     it('should accumulate text content', () => {
       const textLine1 = '{"type": "text", "message": "Hello "}';
       const textLine2 = '{"type": "text", "message": "World"}';
-      
+
       parser.processLines(textLine1 + '\n' + textLine2);
 
       const result = parser.getResult();
       expect(result.text).toContain('Hello');
       expect(result.text).toContain('World');
     });
-
 
     it('should handle JSON parse errors gracefully', () => {
       const invalidJson = '{"type": "progress", "message": "Processing...", "invalid": }';
@@ -207,14 +210,13 @@ describe('Agent Stream Parsers', () => {
     it('should accumulate text content', () => {
       const textLine1 = 'Hello ';
       const textLine2 = 'World';
-      
+
       parser.processLines(textLine1 + '\n' + textLine2);
 
       const result = parser.getResult();
       expect(result.text).toContain('Hello');
       expect(result.text).toContain('World');
     });
-
 
     it('should handle JSON parse errors gracefully', () => {
       const invalidJson = '{"event": "progress", "data": "Processing...", "invalid": }';
@@ -277,7 +279,8 @@ describe('Agent Stream Parsers', () => {
     });
 
     it('should parse system init events', () => {
-      const systemLine = '{"type": "system", "subtype": "init", "apiKeySource": "env", "cwd": "/test", "session_id": "test-session", "model": "claude-3", "permissionMode": "auto"}';
+      const systemLine =
+        '{"type": "system", "subtype": "init", "apiKeySource": "env", "cwd": "/test", "session_id": "test-session", "model": "claude-3", "permissionMode": "auto"}';
       const result = parseStreamLine(systemLine);
 
       expect(result).toBeDefined();
@@ -288,7 +291,8 @@ describe('Agent Stream Parsers', () => {
     });
 
     it('should parse user message events', () => {
-      const userLine = '{"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": "Hello"}]}, "session_id": "test-session"}';
+      const userLine =
+        '{"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": "Hello"}]}, "session_id": "test-session"}';
       const result = parseStreamLine(userLine);
 
       expect(result).toBeDefined();
@@ -296,7 +300,8 @@ describe('Agent Stream Parsers', () => {
     });
 
     it('should parse assistant message events', () => {
-      const assistantLine = '{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Hi there"}]}, "session_id": "test-session"}';
+      const assistantLine =
+        '{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Hi there"}]}, "session_id": "test-session"}';
       const result = parseStreamLine(assistantLine);
 
       expect(result).toBeDefined();
@@ -304,7 +309,8 @@ describe('Agent Stream Parsers', () => {
     });
 
     it('should parse tool call started events', () => {
-      const toolLine = '{"type": "tool_call", "subtype": "started", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
+      const toolLine =
+        '{"type": "tool_call", "subtype": "started", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
       const result = parseStreamLine(toolLine);
 
       expect(result).toBeDefined();
@@ -315,7 +321,8 @@ describe('Agent Stream Parsers', () => {
     });
 
     it('should parse tool call completed events', () => {
-      const toolLine = '{"type": "tool_call", "subtype": "completed", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
+      const toolLine =
+        '{"type": "tool_call", "subtype": "completed", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
       const result = parseStreamLine(toolLine);
 
       expect(result).toBeDefined();
@@ -326,7 +333,8 @@ describe('Agent Stream Parsers', () => {
     });
 
     it('should parse result events', () => {
-      const resultLine = '{"type": "result", "content": "Task completed", "session_id": "test-session"}';
+      const resultLine =
+        '{"type": "result", "content": "Task completed", "session_id": "test-session"}';
       const result = parseStreamLine(resultLine);
 
       expect(result).toBeDefined();
@@ -340,15 +348,17 @@ describe('Agent Stream Parsers', () => {
       const mockCallback = vi.fn();
       parser.onComplete(mockCallback);
 
-      const resultLine = '{"type": "result", "content": "Task completed", "session_id": "test-session"}';
+      const resultLine =
+        '{"type": "result", "content": "Task completed", "session_id": "test-session"}';
       parser.processLines(resultLine);
 
       expect(mockCallback).toHaveBeenCalled();
     });
 
     it('should accumulate text content from assistant messages', () => {
-      const assistantLine = '{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Hello World"}]}, "session_id": "test-session"}';
-      
+      const assistantLine =
+        '{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Hello World"}]}, "session_id": "test-session"}';
+
       parser.processLines(assistantLine);
 
       const result = parser.getResult();
@@ -356,8 +366,9 @@ describe('Agent Stream Parsers', () => {
     });
 
     it('should track tool calls', () => {
-      const toolLine = '{"type": "tool_call", "subtype": "started", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
-      
+      const toolLine =
+        '{"type": "tool_call", "subtype": "started", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
+
       parser.processLines(toolLine);
 
       const result = parser.getResult();
@@ -369,7 +380,7 @@ describe('Agent Stream Parsers', () => {
       const lines = [
         '{"type": "system", "subtype": "init", "session_id": "test-session"}',
         '{"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": "Hello"}]}, "session_id": "test-session"}',
-        '{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Hi"}]}, "session_id": "test-session"}'
+        '{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Hi"}]}, "session_id": "test-session"}',
       ];
 
       parser.processLines(lines.join('\n'));
@@ -391,10 +402,14 @@ describe('Agent Stream Parsers', () => {
     });
 
     it('should handle different tool call types', () => {
-      const writeTool = '{"type": "tool_call", "subtype": "started", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
-      const readTool = '{"type": "tool_call", "subtype": "started", "tool_call": {"readToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
-      const bashTool = '{"type": "tool_call", "subtype": "started", "tool_call": {"bashToolCall": {"args": {"command": "ls -la"}}}, "session_id": "test-session"}';
-      const editTool = '{"type": "tool_call", "subtype": "started", "tool_call": {"editToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
+      const writeTool =
+        '{"type": "tool_call", "subtype": "started", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
+      const readTool =
+        '{"type": "tool_call", "subtype": "started", "tool_call": {"readToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
+      const bashTool =
+        '{"type": "tool_call", "subtype": "started", "tool_call": {"bashToolCall": {"args": {"command": "ls -la"}}}, "session_id": "test-session"}';
+      const editTool =
+        '{"type": "tool_call", "subtype": "started", "tool_call": {"editToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
 
       parser.processLines(writeTool + '\n' + readTool + '\n' + bashTool + '\n' + editTool);
 
@@ -407,8 +422,10 @@ describe('Agent Stream Parsers', () => {
     });
 
     it('should handle tool call completion', () => {
-      const startedTool = '{"type": "tool_call", "subtype": "started", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt", "contents": "test content"}}}, "session_id": "test-session"}';
-      const completedTool = '{"type": "tool_call", "subtype": "completed", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt", "contents": "test content"}, "result": {"success": {"linesCreated": 1, "fileSize": 12}}}}, "session_id": "test-session"}';
+      const startedTool =
+        '{"type": "tool_call", "subtype": "started", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt", "contents": "test content"}}}, "session_id": "test-session"}';
+      const completedTool =
+        '{"type": "tool_call", "subtype": "completed", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt", "contents": "test content"}, "result": {"success": {"linesCreated": 1, "fileSize": 12}}}}, "session_id": "test-session"}';
 
       parser.processLines(startedTool + '\n' + completedTool);
 

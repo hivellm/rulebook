@@ -127,7 +127,10 @@ describe('detector', () => {
     it('should detect Java project with pom.xml', async () => {
       await fs.writeFile(path.join(testDir, 'pom.xml'), '<project></project>');
       await fs.mkdir(path.join(testDir, 'src', 'main', 'java'), { recursive: true });
-      await fs.writeFile(path.join(testDir, 'src', 'main', 'java', 'Main.java'), 'public class Main {}');
+      await fs.writeFile(
+        path.join(testDir, 'src', 'main', 'java', 'Main.java'),
+        'public class Main {}'
+      );
 
       const result = await detectProject(testDir);
 
@@ -137,7 +140,10 @@ describe('detector', () => {
     });
 
     it('should detect C++ project with CMakeLists.txt', async () => {
-      await fs.writeFile(path.join(testDir, 'CMakeLists.txt'), 'cmake_minimum_required(VERSION 3.0)');
+      await fs.writeFile(
+        path.join(testDir, 'CMakeLists.txt'),
+        'cmake_minimum_required(VERSION 3.0)'
+      );
       await fs.writeFile(path.join(testDir, 'main.cpp'), 'int main() { return 0; }');
 
       const result = await detectProject(testDir);
@@ -162,8 +168,8 @@ describe('detector', () => {
       const packageJson = {
         name: 'test',
         dependencies: {
-          'playwright': '^1.40.0'
-        }
+          playwright: '^1.40.0',
+        },
       };
       await fs.writeFile(path.join(testDir, 'package.json'), JSON.stringify(packageJson, null, 2));
 
@@ -179,9 +185,9 @@ describe('detector', () => {
       const mcpConfig = {
         mcpServers: {
           context7: {
-            command: 'mcp-context7'
-          }
-        }
+            command: 'mcp-context7',
+          },
+        },
       };
       await fs.writeFile(path.join(testDir, 'mcp.json'), JSON.stringify(mcpConfig, null, 2));
 
@@ -196,9 +202,9 @@ describe('detector', () => {
       const mcpConfig = {
         mcpServers: {
           synap: {
-            command: 'mcp-synap'
-          }
-        }
+            command: 'mcp-synap',
+          },
+        },
       };
       await fs.writeFile(path.join(testDir, 'mcp.json'), JSON.stringify(mcpConfig, null, 2));
 
@@ -213,16 +219,16 @@ describe('detector', () => {
       const mcpConfig = {
         mcpServers: {
           umicp: {
-            command: 'mcp-umicp'
-          }
-        }
+            command: 'mcp-umicp',
+          },
+        },
       };
       await fs.writeFile(path.join(testDir, 'mcp.json'), JSON.stringify(mcpConfig, null, 2));
 
       const result = await detectProject(testDir);
 
       // UMICP might not be in the modules list yet
-      const moduleNames = result.modules.map(m => m.module);
+      const moduleNames = result.modules.map((m) => m.module);
       expect(Array.isArray(moduleNames)).toBe(true);
     });
 
@@ -232,14 +238,14 @@ describe('detector', () => {
           vectorizer: { command: 'mcp-vectorizer' },
           context7: { command: 'mcp-context7' },
           synap: { command: 'mcp-synap' },
-          playwright: { command: 'mcp-playwright' }
-        }
+          playwright: { command: 'mcp-playwright' },
+        },
       };
       await fs.writeFile(path.join(testDir, 'mcp.json'), JSON.stringify(mcpConfig, null, 2));
 
       const result = await detectProject(testDir);
 
-      const detectedModules = result.modules.filter(m => m.detected);
+      const detectedModules = result.modules.filter((m) => m.detected);
       // At least vectorizer, context7, and synap should be detected
       expect(detectedModules.length).toBeGreaterThanOrEqual(2);
     });
@@ -260,17 +266,20 @@ describe('detector', () => {
       const result = await detectProject(testDir);
 
       // Should not throw, just not detect any modules from MCP
-      expect(result.modules.filter(m => m.detected)).toHaveLength(0);
+      expect(result.modules.filter((m) => m.detected)).toHaveLength(0);
     });
 
     it('should detect Ruby project with Gemfile', async () => {
-      await fs.writeFile(path.join(testDir, 'Gemfile'), "source 'https://rubygems.org'\n\ngem 'rails'");
+      await fs.writeFile(
+        path.join(testDir, 'Gemfile'),
+        "source 'https://rubygems.org'\n\ngem 'rails'"
+      );
       await fs.writeFile(path.join(testDir, 'app.rb'), 'puts "Hello"');
 
       const result = await detectProject(testDir);
 
       // Ruby detection might not be implemented yet
-      const ruby = result.languages.find(l => l.language === 'ruby');
+      const ruby = result.languages.find((l) => l.language === 'ruby');
       if (ruby) {
         expect(ruby.indicators).toContain('Gemfile');
       }
@@ -285,7 +294,7 @@ describe('detector', () => {
       const result = await detectProject(testDir);
 
       // PHP detection might not be implemented yet
-      const php = result.languages.find(l => l.language === 'php');
+      const php = result.languages.find((l) => l.language === 'php');
       if (php) {
         expect(php.indicators).toContain('composer.json');
       }
@@ -297,7 +306,7 @@ describe('detector', () => {
       const result = await detectProject(testDir);
 
       expect(result.languages).toEqual([]);
-      expect(result.modules.every(m => !m.detected)).toBe(true);
+      expect(result.modules.every((m) => !m.detected)).toBe(true);
       expect(result.existingAgents).toBeNull();
     });
 
@@ -312,7 +321,7 @@ describe('detector', () => {
       const result = await detectProject(customDir);
 
       expect(result.languages.length).toBeGreaterThanOrEqual(1);
-      const rust = result.languages.find(l => l.language === 'rust');
+      const rust = result.languages.find((l) => l.language === 'rust');
       expect(rust).toBeDefined();
     });
   });

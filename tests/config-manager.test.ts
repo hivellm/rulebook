@@ -164,7 +164,7 @@ describe('getDefaultConfig', () => {
   it('should have unique project IDs', () => {
     const config1 = getDefaultConfig();
     const config2 = getDefaultConfig();
-    
+
     expect(config1.projectId).not.toBe(config2.projectId);
   });
 
@@ -173,14 +173,14 @@ describe('getDefaultConfig', () => {
     const now = new Date();
     const installedAt = new Date(config.installedAt);
     const updatedAt = new Date(config.updatedAt);
-    
+
     expect(installedAt.getTime()).toBeLessThanOrEqual(now.getTime());
     expect(updatedAt.getTime()).toBeLessThanOrEqual(now.getTime());
   });
 
   it('should have all required features', () => {
     const config = getDefaultConfig();
-    
+
     expect(config.features).toHaveProperty('openspec');
     expect(config.features).toHaveProperty('watcher');
     expect(config.features).toHaveProperty('agent');
@@ -200,7 +200,7 @@ describe('getDefaultConfig', () => {
 
   it('should have correct timeout values', () => {
     const config = getDefaultConfig();
-    
+
     expect(config.timeouts.taskExecution).toBe(300000);
     expect(config.timeouts.cliResponse).toBe(60000);
     expect(config.timeouts.testRun).toBe(120000);
@@ -208,7 +208,7 @@ describe('getDefaultConfig', () => {
 
   it('should have empty CLI tools array', () => {
     const config = getDefaultConfig();
-    
+
     expect(config.cliTools).toEqual([]);
   });
 });
@@ -243,7 +243,7 @@ describe('ConfigManager edge cases and error handling', () => {
     } as any;
 
     const migrated = await configManager.migrateConfig(oldConfig);
-    
+
     expect(migrated.version).toBe('1.0.0');
     expect(migrated.features.openspec).toBe(true);
     expect(migrated.features.watcher).toBe(false);
@@ -251,12 +251,24 @@ describe('ConfigManager edge cases and error handling', () => {
 
   it('should handle feature enablement edge cases', async () => {
     await configManager.initializeConfig();
-    
+
     // Test all feature keys
     const features = [
-      'openspec', 'watcher', 'agent', 'logging', 'telemetry',
-      'notifications', 'dryRun', 'gitHooks', 'repl', 'templates',
-      'context', 'health', 'plugins', 'parallel', 'smartContinue'
+      'openspec',
+      'watcher',
+      'agent',
+      'logging',
+      'telemetry',
+      'notifications',
+      'dryRun',
+      'gitHooks',
+      'repl',
+      'templates',
+      'context',
+      'health',
+      'plugins',
+      'parallel',
+      'smartContinue',
     ] as const;
 
     for (const feature of features) {
@@ -267,15 +279,15 @@ describe('ConfigManager edge cases and error handling', () => {
 
   it('should handle config summary edge cases', async () => {
     await configManager.initializeConfig();
-    
+
     const summary = await configManager.getConfigSummary();
-    
+
     expect(summary).toHaveProperty('version');
     expect(summary).toHaveProperty('projectId');
     expect(summary).toHaveProperty('enabledFeatures');
     expect(summary).toHaveProperty('coverageThreshold');
     expect(summary).toHaveProperty('cliTools');
-    
+
     expect(Array.isArray(summary.enabledFeatures)).toBe(true);
     expect(Array.isArray(summary.cliTools)).toBe(true);
     expect(typeof summary.coverageThreshold).toBe('number');
@@ -284,7 +296,7 @@ describe('ConfigManager edge cases and error handling', () => {
   it('should handle save config error scenarios', async () => {
     // Test with invalid path
     const invalidManager = createConfigManager('/invalid/path/that/does/not/exist');
-    
+
     try {
       await invalidManager.saveConfig(getDefaultConfig());
       // Should not reach here
@@ -319,7 +331,7 @@ describe('ConfigManager edge cases and error handling', () => {
 
   it('should handle feature enablement with invalid feature names', async () => {
     await configManager.initializeConfig();
-    
+
     try {
       await configManager.isFeatureEnabled('invalidFeature' as any);
       // Should not reach here
@@ -331,15 +343,15 @@ describe('ConfigManager edge cases and error handling', () => {
 
   it('should handle config summary with disabled features', async () => {
     await configManager.initializeConfig();
-    
+
     // Disable some features
     const config = await configManager.loadConfig();
     config.features.watcher = false;
     config.features.agent = false;
     await configManager.saveConfig(config);
-    
+
     const summary = await configManager.getConfigSummary();
-    
+
     expect(summary.enabledFeatures).not.toContain('watcher');
     expect(summary.enabledFeatures).not.toContain('agent');
     expect(summary.enabledFeatures).toContain('openspec');
@@ -347,53 +359,53 @@ describe('ConfigManager edge cases and error handling', () => {
 
   it('should handle config summary with custom CLI tools', async () => {
     await configManager.initializeConfig();
-    
+
     // Add custom CLI tools
     const config = await configManager.loadConfig();
     config.cliTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
     await configManager.saveConfig(config);
-    
+
     const summary = await configManager.getConfigSummary();
-    
+
     expect(summary.cliTools).toEqual(['cursor-agent', 'claude-code', 'gemini-cli']);
   });
 
   it('should handle config summary with custom coverage threshold', async () => {
     await configManager.initializeConfig();
-    
+
     // Set custom coverage threshold
     const config = await configManager.loadConfig();
     config.coverageThreshold = 80;
     await configManager.saveConfig(config);
-    
+
     const summary = await configManager.getConfigSummary();
-    
+
     expect(summary.coverageThreshold).toBe(80);
   });
 
   it('should handle config summary with custom project ID', async () => {
     await configManager.initializeConfig();
-    
+
     // Set custom project ID
     const config = await configManager.loadConfig();
     config.projectId = 'custom-project-id';
     await configManager.saveConfig(config);
-    
+
     const summary = await configManager.getConfigSummary();
-    
+
     expect(summary.projectId).toBe('custom-project-id');
   });
 
   it('should handle config summary with custom version', async () => {
     await configManager.initializeConfig();
-    
+
     // Set custom version
     const config = await configManager.loadConfig();
     config.version = '2.0.0';
     await configManager.saveConfig(config);
-    
+
     const summary = await configManager.getConfigSummary();
-    
+
     expect(summary.version).toBe('2.0.0');
   });
 });
