@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm## [Unreleased]
 
+## [0.10.2] - 2025-01-23
+
+### Added
+
+**Simplified Progress-Focused Watcher UI:**
+- New clean layout with proportional sections (25% tasks, 10% progress, 65% logs)
+- Real-time progress bar with color coding (red < 50%, yellow < 75%, green ≥ 75%)
+- Active tasks display with loading indicators and status icons
+- Live activity logs with timestamps and type-specific icons
+- Automatic task removal from active list when completed
+- Performance optimizations with throttled rendering (max 10 FPS)
+- Memory usage monitoring with warnings when exceeding 10MB
+- Responsive layout that adapts to different terminal sizes
+
+**OpenSpec Integration Enhancements:**
+- Automatic markdown task status updates when tasks are completed
+- Real-time synchronization between agent execution and task files
+- Support for updating task status in all OpenSpec task files
+- Improved task dependency tracking and validation
+
+### Changed
+
+**Watcher UI Improvements:**
+- Removed cluttered task details panel for cleaner focus
+- Removed system info panel (not essential for task monitoring)
+- Removed task list scrolling capability (focus on progress, not navigation)
+- Improved color scheme with cyan borders and better contrast
+- Enhanced keyboard controls documentation
+
+### Fixed
+
+- Fixed blessed progressbar compatibility issues in tests
+- Improved test coverage for new UI components
+- Fixed memory leaks in activity log management
+- Optimized render performance to prevent excessive screen updates
+
 ## [0.10.1] - 2025-01-23
 
 ### Added

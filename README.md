@@ -216,19 +216,40 @@ npx @hivellm/rulebook fix
 
 #### Real-time Watcher
 
-Monitor task progress with modern full-screen interface:
+Monitor task progress with simplified progress-focused interface:
 
 ```bash
-# Start modern watcher (htop-style)
+# Start modern watcher (simplified UI)
 rulebook watcher
 
 # Features:
-# - Full-screen interface with multiple panels
-# - Real-time task progress
-# - Interactive navigation
-# - System monitoring
-# - Activity logs
+# - Clean progress-focused layout (25% tasks, 10% progress, 65% logs)
+# - Real-time progress bar with color coding
+# - Active tasks display with loading indicators
+# - Live activity logs with timestamps
+# - Automatic task removal on completion
+# - Performance optimized (throttled rendering)
+# - Memory usage monitoring
 # - Ctrl+C/F10 to exit
+```
+
+**New Simplified UI Layout:**
+```
+┌─────────────────────────────────────────────────────┐
+│ 🤖 RULEBOOK WATCHER                          [F10] │
+├─────────────────────────────────────────────────────┤
+│ 📊 PROGRESS                                        │
+│ ████████████████████░░░░░░░░░░░░░░░░░░░░ 65% - 13/20 │
+├─────────────────────────────────────────────────────┤
+│ 📋 ACTIVE TASKS                                    │
+│ ▶ abc12345 - Implement cursor-agent parser         │
+│ ○ def67890 - Write integration tests               │
+├─────────────────────────────────────────────────────┤
+│ 📝 ACTIVITY LOGS                                   │
+│ [14:32:15] ✓ Task completed: Add parser tests      │
+│ [14:32:18] i Starting task: Implement parser       │
+│ [14:32:20] › Reading src/parser.ts                 │
+└─────────────────────────────────────────────────────┘
 ```
 
 #### Autonomous Agent

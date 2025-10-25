@@ -23,6 +23,12 @@ vi.mock('blessed', () => ({
       setScrollPerc: vi.fn(),
       height: 10,
     })),
+    text: vi.fn(() => ({
+      setContent: vi.fn(),
+      focus: vi.fn(),
+      on: vi.fn(),
+      style: { fg: 'green', bg: 'black' },
+    })),
     list: vi.fn(() => ({
       clearItems: vi.fn(),
       addItem: vi.fn(),
@@ -238,7 +244,6 @@ describe('ModernConsole', () => {
       expect(modernConsole).toBeDefined();
 
       // Verify that removed components are not present
-      expect(modernConsole).not.toHaveProperty('tasksBox');
       expect(modernConsole).not.toHaveProperty('detailsBox');
       expect(modernConsole).not.toHaveProperty('systemBox');
     });
@@ -246,7 +251,6 @@ describe('ModernConsole', () => {
     it('should not have any removed UI components', () => {
       // Comprehensive test to ensure all removed UI components are not present
       const removedComponents = [
-        'tasksBox',
         'detailsBox',
         'systemBox',
         'taskDetailsPanel',

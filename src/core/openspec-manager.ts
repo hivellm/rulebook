@@ -1,10 +1,11 @@
-import { readFile, existsSync, mkdirSync, readdirSync } from 'fs';
+import { readFile, writeFile, existsSync, mkdirSync, readdirSync } from 'fs';
 import { promisify } from 'util';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import type { OpenSpecData, OpenSpecTask } from '../types.js';
 
 const readFileAsync = promisify(readFile);
+const writeFileAsync = promisify(writeFile);
 
 const OPENSPEC_DIR = 'openspec';
 const CHANGES_DIR = 'changes';
@@ -337,6 +338,11 @@ export class OpenSpecManager {
 
     this.data = data;
     await this.saveOpenSpec();
+
+    // Update markdown files for all status changes (only for relevant statuses)
+    if (status === 'completed' || status === 'in-progress' || status === 'failed') {
+      await this.updateMarkdownTaskStatus(taskId, status);
+    }
   }
 
   /**
@@ -344,6 +350,72 @@ export class OpenSpecManager {
    */
   async markTaskComplete(taskId: string): Promise<void> {
     await this.updateTaskStatus(taskId, 'completed');
+    
+    // Automatically update OpenSpec markdown files
+    await this.updateMarkdownTaskStatus(taskId, 'completed');
+  }
+
+  /**
+   * Update task status in markdown files
+   */
+  private async updateMarkdownTaskStatus(taskId: string, status: 'completed' | 'in-progress' | 'failed'): Promise<void> {
+    try {
+      // Find all tasks.md files in the changes directory
+      const changesDirs = readdirSync(this.changesPath, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => dirent.name);
+
+      for (const dir of changesDirs) {
+        const tasksFilePath = join(this.changesPath, dir, TASKS_FILE);
+        
+        if (existsSync(tasksFilePath)) {
+          const content = await readFileAsync(tasksFilePath, 'utf8');
+          
+          // Update task status in markdown
+          const updatedContent = this.updateTaskInMarkdown(content, taskId, status);
+          
+          if (updatedContent !== content) {
+            await writeFileAsync(tasksFilePath, updatedContent, 'utf8');
+            
+            if (this.onLog) {
+              this.onLog('success', `Updated task status in ${join(dir, TASKS_FILE)}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      if (this.onLog) {
+        this.onLog('warning', `Failed to update markdown files: ${error}`);
+      }
+    }
+  }
+
+  /**
+   * Update task status in markdown content
+   */
+  private updateTaskInMarkdown(content: string, taskId: string, status: 'completed' | 'in-progress' | 'failed'): string {
+    // Create regex pattern to match task lines with the specific task ID
+    const taskPattern = new RegExp(`(- \\[ \\] \\*\\*${taskId}\\*\\*.*?)(?=\\n|$)`, 'g');
+    
+    let updatedContent = content;
+    let hasChanges = false;
+    
+    // Replace pending tasks with completed/in-progress/failed
+    updatedContent = updatedContent.replace(taskPattern, (match) => {
+      hasChanges = true;
+      
+      if (status === 'completed') {
+        return match.replace('- [ ]', '- [x]');
+      } else if (status === 'in-progress') {
+        return match.replace('- [ ]', '- [~]'); // Using ~ for in-progress
+      } else if (status === 'failed') {
+        return match.replace('- [ ]', '- [!]'); // Using ! for failed
+      }
+      
+      return match;
+    });
+    
+    return hasChanges ? updatedContent : content;
   }
 
   /**

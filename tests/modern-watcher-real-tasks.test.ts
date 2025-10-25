@@ -32,6 +32,12 @@ vi.mock('blessed', () => ({
       setContent: vi.fn(),
       focus: vi.fn(),
     })),
+    text: vi.fn(() => ({
+      setContent: vi.fn(),
+      focus: vi.fn(),
+      on: vi.fn(),
+      style: { fg: 'green', bg: 'black' },
+    })),
     list: vi.fn(() => ({
       top: 3,
       left: 0,
