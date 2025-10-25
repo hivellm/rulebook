@@ -186,7 +186,7 @@ export class ModernConsole {
       left: 0,
       width: '100%',
       height: 1,
-      content: this.getStatusContent(),
+      content: 'Loading...',
       tags: true,
       style: {
         bg: 'green',
@@ -241,19 +241,33 @@ export class ModernConsole {
     return `{center}{bold}Rulebook Watcher v0.10.0{/bold} - {bold}Modern Console{/bold} - {bold}${now}{/bold}{/center}`;
   }
 
-  private getStatusContent(): string {
-    const tasks = this.getTasksSummary();
+  private async getStatusContent(): Promise<string> {
+    const tasks = await this.getTasksSummary();
     return `Tasks: ${tasks.total} | Active: ${tasks.inProgress} | Completed: ${tasks.completed} | Failed: ${tasks.failed} | Press 'q' or 'Ctrl+C' to quit | 'r' to refresh | 'h' for help`;
   }
 
-  private getTasksSummary(): { total: number; inProgress: number; completed: number; failed: number } {
-    // This would be populated from actual data
-    return { total: 0, inProgress: 0, completed: 0, failed: 0 };
+  private async getTasksSummary(): Promise<{ total: number; inProgress: number; completed: number; failed: number }> {
+    try {
+      const stats = await this.openspecManager.getTaskStats();
+      return {
+        total: stats.total,
+        inProgress: stats.inProgress,
+        completed: stats.completed,
+        failed: stats.failed
+      };
+    } catch (error) {
+      this.logError(`Failed to get task stats: ${error}`);
+      return { total: 0, inProgress: 0, completed: 0, failed: 0 };
+    }
   }
 
   private async loadTasks(): Promise<void> {
     try {
       const tasks = await this.openspecManager.getTasksByPriority();
+      
+      // Store current selection
+      const currentSelection = 0; // TODO: Fix blessed ListElement selection tracking
+      const currentItem = this.tasksBox.getItem(currentSelection);
       
       // Clear existing items
       this.tasksBox.clearItems();
@@ -266,9 +280,13 @@ export class ModernConsole {
         this.tasksBox.addItem(item);
       });
 
+      // Restore selection if possible
+      if (currentItem && currentSelection >= 0) {
+        this.tasksBox.select(currentSelection);
+      }
+
       // Update summary
-      // const stats = await this.openspecManager.getTaskStats();
-      this.statusBar.setContent(this.getStatusContent());
+      this.statusBar.setContent(await this.getStatusContent());
       
       this.screen.render();
     } catch (error) {
@@ -419,10 +437,12 @@ ${task.completedAt ? `{cyan-fg}Completed:{/cyan-fg} ${new Date(task.completedAt)
   }
 
   private async refresh(): Promise<void> {
-    this.logInfo('Refreshing data...');
-    await this.loadTasks();
-    await this.updateSystemInfo();
-    this.logInfo('Data refreshed');
+    try {
+      await this.loadTasks();
+      await this.updateSystemInfo();
+    } catch (error) {
+      this.logError(`Refresh failed: ${error}`);
+    }
   }
 
   public async start(): Promise<void> {

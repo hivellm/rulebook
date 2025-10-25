@@ -22,7 +22,7 @@ CLI tool to standardize AI-generated projects with templates, rules enforcement,
 - ⚙️ **Configuration Management**: `.rulebook` config file with feature toggles
 - 📊 **Persistent Logging**: Comprehensive logging system with rotation
 - 🌳 **Dependency Graphs**: Visual task dependency trees and validation
-- 🔗 **CLI Bridge**: Seamless integration with cursor-cli, gemini-cli, claude-cli
+- 🔗 **CLI Bridge**: Seamless integration with cursor-agent, cursor-cli, gemini-cli, claude-cli
 - 📈 **Telemetry**: Performance metrics and execution analytics
 
 ## Installation
@@ -236,8 +236,8 @@ rulebook watcher
 Automated workflow management for AI CLI tools:
 
 ```bash
-# Start agent with cursor-cli
-rulebook agent --tool cursor-cli --iterations 5
+# Start agent with cursor-agent
+rulebook agent --tool cursor-agent --iterations 5
 
 # Dry-run mode (simulate without changes)
 rulebook agent --dry-run

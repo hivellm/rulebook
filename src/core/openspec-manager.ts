@@ -1,29 +1,26 @@
-import { readFile, writeFile, existsSync, mkdirSync } from 'fs';
+import { readFile, existsSync, mkdirSync, readdirSync } from 'fs';
 import { promisify } from 'util';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import type { OpenSpecData, OpenSpecTask } from '../types.js';
 
 const readFileAsync = promisify(readFile);
-const writeFileAsync = promisify(writeFile);
 
 const OPENSPEC_DIR = 'openspec';
-const TASKS_FILE = 'tasks.json';
-const CURRENT_FILE = 'current.json';
-const HISTORY_FILE = 'history.json';
+const CHANGES_DIR = 'changes';
+const SPECS_DIR = 'specs';
+const TASKS_FILE = 'tasks.md';
 
 export class OpenSpecManager {
   private openspecPath: string;
-  private tasksPath: string;
-  private currentPath: string;
-  private historyPath: string;
+  private changesPath: string;
+  private specsPath: string;
   private data: OpenSpecData | null = null;
 
   constructor(projectRoot: string) {
     this.openspecPath = join(projectRoot, OPENSPEC_DIR);
-    this.tasksPath = join(this.openspecPath, TASKS_FILE);
-    this.currentPath = join(this.openspecPath, CURRENT_FILE);
-    this.historyPath = join(this.openspecPath, HISTORY_FILE);
+    this.changesPath = join(this.openspecPath, CHANGES_DIR);
+    this.specsPath = join(this.openspecPath, SPECS_DIR);
   }
 
   /**
@@ -33,14 +30,16 @@ export class OpenSpecManager {
     if (!existsSync(this.openspecPath)) {
       mkdirSync(this.openspecPath, { recursive: true });
     }
-
-    if (!existsSync(this.tasksPath)) {
-      await this.createInitialTasks();
+    if (!existsSync(this.changesPath)) {
+      mkdirSync(this.changesPath, { recursive: true });
+    }
+    if (!existsSync(this.specsPath)) {
+      mkdirSync(this.specsPath, { recursive: true });
     }
   }
 
   /**
-   * Load OpenSpec data
+   * Load OpenSpec data from changes directory
    */
   async loadOpenSpec(): Promise<OpenSpecData> {
     if (this.data) {
@@ -50,23 +49,17 @@ export class OpenSpecManager {
     await this.initialize();
 
     try {
-      const tasksData = await readFileAsync(this.tasksPath, 'utf-8');
-      const tasks = JSON.parse(tasksData) as OpenSpecTask[];
+      // Load tasks from all changes
+      const tasks = await this.loadTasksFromChanges();
 
+      // Load current task from metadata
       let currentTask: string | undefined;
-      if (existsSync(this.currentPath)) {
-        const currentData = await readFileAsync(this.currentPath, 'utf-8');
-        currentTask = JSON.parse(currentData).taskId;
-      }
 
-      let history: OpenSpecTask[] = [];
-      if (existsSync(this.historyPath)) {
-        const historyData = await readFileAsync(this.historyPath, 'utf-8');
-        history = JSON.parse(historyData) as OpenSpecTask[];
-      }
+      // Load history from completed tasks
+      const history: OpenSpecTask[] = tasks.filter(t => t.status === 'completed');
 
       this.data = {
-        tasks,
+        tasks: tasks.filter(t => t.status !== 'completed'),
         currentTask,
         history,
         metadata: {
@@ -74,7 +67,7 @@ export class OpenSpecManager {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           totalTasks: tasks.length,
-          completedTasks: tasks.filter(t => t.status === 'completed').length
+          completedTasks: history.length
         }
       };
 
@@ -85,7 +78,7 @@ export class OpenSpecManager {
   }
 
   /**
-   * Save OpenSpec data
+   * Save OpenSpec data (tasks are managed in changes, so this is mostly for metadata)
    */
   async saveOpenSpec(): Promise<void> {
     if (!this.data) {
@@ -97,23 +90,109 @@ export class OpenSpecManager {
 
       // Update metadata
       this.data.metadata.updatedAt = new Date().toISOString();
-      this.data.metadata.totalTasks = this.data.tasks.length;
-      this.data.metadata.completedTasks = this.data.tasks.filter(t => t.status === 'completed').length;
+      this.data.metadata.totalTasks = this.data.tasks.length + this.data.history.length;
+      this.data.metadata.completedTasks = this.data.history.length;
 
-      // Save tasks
-      await writeFileAsync(this.tasksPath, JSON.stringify(this.data.tasks, null, 2));
-
-      // Save current task
-      if (this.data.currentTask) {
-        await writeFileAsync(this.currentPath, JSON.stringify({ taskId: this.data.currentTask }));
-      }
-
-      // Save history
-      await writeFileAsync(this.historyPath, JSON.stringify(this.data.history, null, 2));
+      // Tasks are managed in individual change files, not in a central file
     } catch (error) {
       throw new Error(`Failed to save OpenSpec data: ${error}`);
     }
   }
+
+  /**
+   * Load tasks from all changes directories
+   */
+  private async loadTasksFromChanges(): Promise<OpenSpecTask[]> {
+    const allTasks: OpenSpecTask[] = [];
+
+    if (!existsSync(this.changesPath)) {
+      return allTasks;
+    }
+
+    try {
+      const changeDirs = readdirSync(this.changesPath, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => dirent.name);
+
+      for (const changeDir of changeDirs) {
+        const tasksPath = join(this.changesPath, changeDir, TASKS_FILE);
+        if (existsSync(tasksPath)) {
+          const tasksContent = await readFileAsync(tasksPath, 'utf-8');
+          const tasks = this.parseTasksFromMarkdown(tasksContent);
+          allTasks.push(...tasks);
+        }
+      }
+    } catch (error) {
+      console.warn(`Warning: Could not load tasks from changes: ${error}`);
+    }
+
+    return allTasks;
+  }
+
+  /**
+   * Parse tasks from markdown content
+   */
+  private parseTasksFromMarkdown(content: string): OpenSpecTask[] {
+    const tasks: OpenSpecTask[] = [];
+    const lines = content.split('\n');
+    
+    // TODO: Implement task parsing logic
+    // let currentTask: Partial<OpenSpecTask> | null = null;
+    // let inTaskSection = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Check for task list items
+      if (line.startsWith('- [') && line.includes(']')) {
+        const statusMatch = line.match(/^- \[([x ])\] (.+)$/);
+        if (statusMatch) {
+          const isCompleted = statusMatch[1] === 'x';
+          const taskTitle = statusMatch[2];
+          
+          // Extract task ID from title if present, otherwise generate one
+          const idMatch = taskTitle.match(/^(.+) \(id: (.+)\)$/);
+          const title = idMatch ? idMatch[1] : taskTitle;
+          const id = idMatch ? idMatch[2] : randomUUID();
+          
+          // Extract priority from title if present
+          const priorityMatch = title.match(/^(\d+)\.\d+ (.+)$/);
+          const priority = priorityMatch ? parseInt(priorityMatch[1]) : 1;
+          const cleanTitle = priorityMatch ? priorityMatch[2] : title;
+          
+          // Extract dependencies from subsequent lines
+          const dependencies: string[] = [];
+          let j = i + 1;
+          while (j < lines.length && lines[j].startsWith('  -')) {
+            const depMatch = lines[j].match(/^- (.+) \(id: (.+)\)$/);
+            if (depMatch) {
+              dependencies.push(depMatch[2]);
+            }
+            j++;
+          }
+          
+          const task: OpenSpecTask = {
+            id,
+            title: cleanTitle,
+            description: cleanTitle,
+            priority,
+            status: isCompleted ? 'completed' : 'pending',
+            dependencies,
+            estimatedTime: 1800, // Default 30 minutes
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            attempts: 0,
+            tags: []
+          };
+          
+          tasks.push(task);
+        }
+      }
+    }
+
+    return tasks;
+  }
+
 
   /**
    * Get tasks ordered by priority
@@ -290,10 +369,10 @@ export class OpenSpecManager {
     const data = await this.loadOpenSpec();
     
     const stats = {
-      total: data.tasks.length,
+      total: data.tasks.length + data.history.length,
       pending: 0,
       inProgress: 0,
-      completed: 0,
+      completed: data.history.length,
       failed: 0,
       skipped: 0
     };
@@ -309,54 +388,6 @@ export class OpenSpecManager {
     return stats;
   }
 
-  /**
-   * Create initial tasks for new projects
-   */
-  private async createInitialTasks(): Promise<void> {
-    const initialTasks: OpenSpecTask[] = [
-      {
-        id: randomUUID(),
-        title: 'Initialize Rulebook Configuration',
-        description: 'Set up .rulebook configuration file with project settings',
-        priority: 1,
-        status: 'pending',
-        dependencies: [],
-        estimatedTime: 300, // 5 minutes
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        attempts: 0,
-        tags: ['config', 'setup']
-      },
-      {
-        id: randomUUID(),
-        title: 'Implement Core Modules',
-        description: 'Create config-manager, openspec-manager, and other core modules',
-        priority: 2,
-        status: 'pending',
-        dependencies: [],
-        estimatedTime: 1800, // 30 minutes
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        attempts: 0,
-        tags: ['core', 'implementation']
-      },
-      {
-        id: randomUUID(),
-        title: 'Add Comprehensive Tests',
-        description: 'Write tests for all new modules with 95%+ coverage',
-        priority: 3,
-        status: 'pending',
-        dependencies: [],
-        estimatedTime: 1200, // 20 minutes
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        attempts: 0,
-        tags: ['testing', 'quality']
-      }
-    ];
-
-    await writeFileAsync(this.tasksPath, JSON.stringify(initialTasks, null, 2));
-  }
 
   /**
    * Generate ASCII dependency tree
@@ -384,7 +415,7 @@ export class OpenSpecManager {
       processing.add(taskId);
       visited.add(taskId);
       
-      const task = data.tasks.find(t => t.id === taskId);
+      const task = [...data.tasks, ...data.history].find(t => t.id === taskId);
       
       if (!task) {
         processing.delete(taskId);
@@ -406,7 +437,8 @@ export class OpenSpecManager {
     };
 
     // Start with tasks that have no dependencies
-    const rootTasks = data.tasks.filter(task => task.dependencies.length === 0);
+    const allTasks = [...data.tasks, ...data.history];
+    const rootTasks = allTasks.filter(task => task.dependencies.length === 0);
     for (const task of rootTasks) {
       buildTree(task.id);
     }
@@ -438,7 +470,8 @@ export class OpenSpecManager {
       visited.add(taskId);
       processing.add(taskId);
 
-      const task = data.tasks.find(t => t.id === taskId);
+      const allTasks = [...data.tasks, ...data.history];
+      const task = allTasks.find(t => t.id === taskId);
       if (task) {
         for (const depId of task.dependencies) {
           dfs(depId, [...path, taskId]);
@@ -449,7 +482,8 @@ export class OpenSpecManager {
     };
 
     // Check all tasks
-    for (const task of data.tasks) {
+    const allTasks = [...data.tasks, ...data.history];
+    for (const task of allTasks) {
       if (!visited.has(task.id)) {
         dfs(task.id, []);
       }

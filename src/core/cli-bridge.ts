@@ -32,6 +32,7 @@ export class CLIBridge {
    */
   async detectCLITools(): Promise<CLITool[]> {
     const tools: CLITool[] = [
+      { name: 'cursor-agent', command: 'cursor-agent', available: false },
       { name: 'cursor-cli', command: 'cursor-cli', available: false },
       { name: 'gemini-cli', command: 'gemini-cli', available: false },
       { name: 'claude-cli', command: 'claude-cli', available: false }
@@ -103,20 +104,20 @@ export class CLIBridge {
       this.logger.cliResponse(toolName, result.stdout, duration);
       
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       const duration = Date.now() - startTime;
       
       const response: CLIResponse = {
         success: false,
         output: '',
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         duration,
-        exitCode: error.exitCode || 1
+        exitCode: (error as { exitCode?: number }).exitCode || 1
       };
 
       this.logger.error(`CLI command failed: ${command}`, { 
         tool: toolName, 
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         duration 
       });
 
@@ -171,7 +172,15 @@ export class CLIBridge {
     toolName: string,
     task: { id: string; title: string; description: string }
   ): Promise<CLIResponse> {
-    const command = `Implement task "${task.title}" from OpenSpec. Description: ${task.description}`;
+    let command: string;
+    
+    if (toolName === 'cursor-agent') {
+      // cursor-agent uses different command structure
+      command = `agent "Implement task: ${task.title}. Description: ${task.description}"`;
+    } else {
+      command = `Implement task "${task.title}" from OpenSpec. Description: ${task.description}`;
+    }
+    
     return await this.sendCommandToCLI(toolName, command);
   }
 
@@ -179,7 +188,15 @@ export class CLIBridge {
    * Send continue implementation command
    */
   async sendContinueCommand(toolName: string, iterations: number = 10): Promise<CLIResponse> {
-    const command = `Continue implementation ${iterations}x`;
+    let command: string;
+    
+    if (toolName === 'cursor-agent') {
+      // cursor-agent uses different command structure
+      command = `agent "Continue implementation ${iterations} times"`;
+    } else {
+      command = `Continue implementation ${iterations}x`;
+    }
+    
     return await this.sendCommandToCLI(toolName, command);
   }
 
@@ -187,7 +204,14 @@ export class CLIBridge {
    * Send test command
    */
   async sendTestCommand(toolName: string): Promise<CLIResponse> {
-    const command = 'Run tests and check coverage';
+    let command: string;
+    
+    if (toolName === 'cursor-agent') {
+      command = `agent "Run tests and check coverage"`;
+    } else {
+      command = 'Run tests and check coverage';
+    }
+    
     return await this.sendCommandToCLI(toolName, command);
   }
 
@@ -195,7 +219,14 @@ export class CLIBridge {
    * Send lint command
    */
   async sendLintCommand(toolName: string): Promise<CLIResponse> {
-    const command = 'Run lint checks and fix any issues';
+    let command: string;
+    
+    if (toolName === 'cursor-agent') {
+      command = `agent "Run lint checks and fix any issues"`;
+    } else {
+      command = 'Run lint checks and fix any issues';
+    }
+    
     return await this.sendCommandToCLI(toolName, command);
   }
 
@@ -203,7 +234,14 @@ export class CLIBridge {
    * Send format command
    */
   async sendFormatCommand(toolName: string): Promise<CLIResponse> {
-    const command = 'Format code according to project standards';
+    let command: string;
+    
+    if (toolName === 'cursor-agent') {
+      command = `agent "Format code according to project standards"`;
+    } else {
+      command = 'Format code according to project standards';
+    }
+    
     return await this.sendCommandToCLI(toolName, command);
   }
 
@@ -211,7 +249,14 @@ export class CLIBridge {
    * Send commit command
    */
   async sendCommitCommand(toolName: string, message: string): Promise<CLIResponse> {
-    const command = `Commit changes with message: ${message}`;
+    let command: string;
+    
+    if (toolName === 'cursor-agent') {
+      command = `agent "Commit changes with message: ${message}"`;
+    } else {
+      command = `Commit changes with message: ${message}`;
+    }
+    
     return await this.sendCommandToCLI(toolName, command);
   }
 
@@ -277,7 +322,7 @@ export class CLIBridge {
     switch (step) {
       case 'implement':
         if (context?.task) {
-          response = await this.sendTaskCommand(toolName, context.task as any);
+          response = await this.sendTaskCommand(toolName, context.task as { id: string; title: string; description: string });
         } else {
           response = await this.sendCommandToCLI(toolName, 'Implement current task');
         }
@@ -295,10 +340,11 @@ export class CLIBridge {
         response = await this.sendFormatCommand(toolName);
         break;
         
-      case 'commit':
+      case 'commit': {
         const message = context?.message || 'Auto-commit from rulebook agent';
         response = await this.sendCommitCommand(toolName, message as string);
         break;
+      }
         
       default:
         throw new Error(`Unknown workflow step: ${step}`);
