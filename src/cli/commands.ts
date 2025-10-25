@@ -620,27 +620,16 @@ export async function fixCommand(): Promise<void> {
   }
 }
 
-export async function watcherCommand(options: { modern?: boolean } = {}): Promise<void> {
+export async function watcherCommand(): Promise<void> {
   try {
     const cwd = process.cwd();
+    const { startWatcher } = await import('../core/watcher.js');
     
-    if (options.modern) {
-      const { startModernWatcher } = await import('../core/watcher.js');
-      
-      console.log(chalk.bold.blue('\n🚀 Starting Modern Console Watcher\n'));
-      console.log(chalk.gray('Full-screen interface with system monitoring'));
-      console.log(chalk.gray('Press Ctrl+C or F10 to exit\n'));
-      
-      await startModernWatcher(cwd);
-    } else {
-      const { startWatcher } = await import('../core/watcher.js');
-      
-      console.log(chalk.bold.blue('\n👁️  Starting Rulebook Watcher\n'));
-      console.log(chalk.gray('Real-time monitoring of OpenSpec tasks and agent progress'));
-      console.log(chalk.gray('Press Ctrl+C or F10 to exit\n'));
-      
-      await startWatcher(cwd);
-    }
+    console.log(chalk.bold.blue('\n🚀 Starting Modern Console Watcher\n'));
+    console.log(chalk.gray('Full-screen interface with system monitoring'));
+    console.log(chalk.gray('Press Ctrl+C or F10 to exit\n'));
+    
+    await startWatcher(cwd);
   } catch (error) {
     console.error(chalk.red('\n❌ Watcher error:'), error);
     process.exit(1);

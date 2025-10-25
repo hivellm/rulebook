@@ -216,20 +216,18 @@ npx @hivellm/rulebook fix
 
 #### Real-time Watcher
 
-Monitor task progress with beautiful interfaces:
+Monitor task progress with modern full-screen interface:
 
 ```bash
-# Classic ANSI interface
+# Start modern watcher (htop-style)
 rulebook watcher
 
-# Modern full-screen interface (htop-style)
-rulebook watcher --modern
-
 # Features:
+# - Full-screen interface with multiple panels
 # - Real-time task progress
-# - Activity log
-# - System status
 # - Interactive navigation
+# - System monitoring
+# - Activity logs
 # - Ctrl+C/F10 to exit
 ```
 

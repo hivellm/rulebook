@@ -1,14 +1,31 @@
 [
   {
+    "id": "openspec-setup-complete",
+    "title": "OpenSpec Workflow Setup Complete",
+    "description": "Created openspec/AGENTS.md and openspec/project.md files with proper workflow instructions",
+    "priority": 1,
+    "status": "completed",
+    "dependencies": [],
+    "estimatedTime": 600,
+    "createdAt": "2025-10-25T08:32:48.014Z",
+    "updatedAt": "2025-10-25T16:45:00.000Z",
+    "attempts": 1,
+    "tags": [
+      "openspec",
+      "setup",
+      "documentation"
+    ]
+  },
+  {
     "id": "8f5c64e4-216e-4b79-88f9-af41188d8ee9",
     "title": "Initialize Rulebook Configuration",
     "description": "Set up .rulebook configuration file with project settings",
-    "priority": 1,
+    "priority": 2,
     "status": "pending",
-    "dependencies": [],
+    "dependencies": ["openspec-setup-complete"],
     "estimatedTime": 300,
     "createdAt": "2025-10-25T08:32:48.014Z",
-    "updatedAt": "2025-10-25T08:32:48.014Z",
+    "updatedAt": "2025-10-25T16:45:00.000Z",
     "attempts": 0,
     "tags": [
       "config",
@@ -19,12 +36,12 @@
     "id": "ab9846af-8815-4606-bba8-dc47bbc81abf",
     "title": "Implement Core Modules",
     "description": "Create config-manager, openspec-manager, and other core modules",
-    "priority": 2,
+    "priority": 3,
     "status": "pending",
-    "dependencies": [],
+    "dependencies": ["8f5c64e4-216e-4b79-88f9-af41188d8ee9"],
     "estimatedTime": 1800,
     "createdAt": "2025-10-25T08:32:48.014Z",
-    "updatedAt": "2025-10-25T08:32:48.014Z",
+    "updatedAt": "2025-10-25T16:45:00.000Z",
     "attempts": 0,
     "tags": [
       "core",
@@ -35,16 +52,33 @@
     "id": "c7cb83b5-e55f-4ca4-8165-165e4a90ccf9",
     "title": "Add Comprehensive Tests",
     "description": "Write tests for all new modules with 95%+ coverage",
-    "priority": 3,
+    "priority": 4,
     "status": "pending",
-    "dependencies": [],
+    "dependencies": ["ab9846af-8815-4606-bba8-dc47bbc81abf"],
     "estimatedTime": 1200,
     "createdAt": "2025-10-25T08:32:48.014Z",
-    "updatedAt": "2025-10-25T08:32:48.014Z",
+    "updatedAt": "2025-10-25T16:45:00.000Z",
     "attempts": 0,
     "tags": [
       "testing",
       "quality"
+    ]
+  },
+  {
+    "id": "openspec-workflow-integration",
+    "title": "Integrate OpenSpec Workflow",
+    "description": "Ensure all development follows OpenSpec workflow standards",
+    "priority": 5,
+    "status": "pending",
+    "dependencies": ["openspec-setup-complete"],
+    "estimatedTime": 900,
+    "createdAt": "2025-10-25T16:45:00.000Z",
+    "updatedAt": "2025-10-25T16:45:00.000Z",
+    "attempts": 0,
+    "tags": [
+      "openspec",
+      "workflow",
+      "integration"
     ]
   }
 ]
