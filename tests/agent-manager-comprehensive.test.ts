@@ -69,6 +69,7 @@ describe('Agent Manager Comprehensive Tests', () => {
       setCurrentTask: vi.fn().mockResolvedValue(undefined),
       updateTaskStatus: vi.fn().mockResolvedValue(undefined),
       markTaskComplete: vi.fn().mockResolvedValue(undefined),
+      syncTaskStatus: vi.fn().mockResolvedValue(undefined),
     };
 
     // Mock CLI bridge
@@ -536,6 +537,102 @@ describe('Agent Manager Comprehensive Tests', () => {
     });
   });
 
+  describe('Task Status Sync on Agent Start', () => {
+    it('should call syncTaskStatus when agent starts', async () => {
+      await agentManager.initialize();
+      
+      // Mock getNextTask to return null to prevent workflow execution
+      mockOpenSpecManager.getNextTask.mockResolvedValueOnce(null);
+      
+      await agentManager.startAgent({ maxIterations: 1 });
+      
+      expect(mockOpenSpecManager.syncTaskStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call syncTaskStatus before workflow execution', async () => {
+      await agentManager.initialize();
+      
+      // Mock getNextTask to return a task
+      mockOpenSpecManager.getNextTask.mockResolvedValueOnce({
+        id: 'task-1',
+        title: 'Test Task',
+        description: 'Test Description',
+        priority: 'high',
+        status: 'pending',
+        dependencies: [],
+      });
+      
+      // Track call order
+      const callOrder: string[] = [];
+      mockOpenSpecManager.syncTaskStatus.mockImplementation(() => {
+        callOrder.push('syncTaskStatus');
+        return Promise.resolve();
+      });
+      mockOpenSpecManager.getNextTask.mockImplementation(() => {
+        callOrder.push('getNextTask');
+        return Promise.resolve({
+          id: 'task-1',
+          title: 'Test Task',
+          description: 'Test Description',
+          priority: 'high',
+          status: 'pending',
+          dependencies: [],
+        });
+      });
+      
+      await agentManager.startAgent({ maxIterations: 1 });
+      
+      expect(callOrder[0]).toBe('syncTaskStatus');
+      expect(callOrder[1]).toBe('getNextTask');
+    });
+
+    it('should handle syncTaskStatus errors gracefully', async () => {
+      await agentManager.initialize();
+      
+      // Mock syncTaskStatus to throw an error
+      const syncError = new Error('Sync failed');
+      mockOpenSpecManager.syncTaskStatus.mockRejectedValueOnce(syncError);
+      
+      // Mock getNextTask to return null to prevent workflow execution
+      mockOpenSpecManager.getNextTask.mockResolvedValueOnce(null);
+      
+      await expect(agentManager.startAgent({ maxIterations: 1 })).rejects.toThrow('Sync failed');
+    });
+
+    it('should log sync status messages', async () => {
+      await agentManager.initialize();
+      
+      // Mock getNextTask to return null to prevent workflow execution
+      mockOpenSpecManager.getNextTask.mockResolvedValueOnce(null);
+      
+      const onLogSpy = vi.fn();
+      await agentManager.startAgent({ 
+        maxIterations: 1,
+        onLog: onLogSpy
+      });
+      
+      expect(onLogSpy).toHaveBeenCalledWith('info', '📋 Syncing task status...');
+      expect(onLogSpy).toHaveBeenCalledWith('success', '✅ Task status synced');
+    });
+
+    it('should log sync status to console when no onLog callback', async () => {
+      await agentManager.initialize();
+      
+      // Mock getNextTask to return null to prevent workflow execution
+      mockOpenSpecManager.getNextTask.mockResolvedValueOnce(null);
+      
+      // Mock console.log to track calls
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      
+      await agentManager.startAgent({ maxIterations: 1 });
+      
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('📋 Syncing task status...'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('✅ Task status synced'));
+      
+      consoleSpy.mockRestore();
+    });
+  });
+
   describe('Integration Tests', () => {
     it('should complete full agent workflow', async () => {
       // Mock successful workflow
@@ -553,6 +650,7 @@ describe('Agent Manager Comprehensive Tests', () => {
       await agentManager.initialize();
       await agentManager.startAgent({ maxIterations: 1 });
 
+      expect(mockOpenSpecManager.syncTaskStatus).toHaveBeenCalled();
       expect(mockOpenSpecManager.getNextTask).toHaveBeenCalled();
       expect(mockCLIBridge.sendTaskCommand).toHaveBeenCalled();
       expect(mockCLIBridge.sendContinueCommand).toHaveBeenCalled();

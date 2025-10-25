@@ -122,7 +122,7 @@ export class ModernConsole {
       top: 18,
       left: 0,
       width: '100%',
-      bottom: 1,
+      height: '100%-19',  // Fixed height: from line 18 to status bar
       label: ' {bold}📝 ACTIVITY LOGS{/bold} ',
       tags: true,
       scrollable: true,
