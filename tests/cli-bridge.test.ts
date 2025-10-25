@@ -99,10 +99,10 @@ describe('CLIBridge', () => {
 
     it('should reject deprecated tools', async () => {
       const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
-      
+
       for (const tool of deprecatedTools) {
         const response = await cliBridge.sendCommandToCLI(tool, 'test command');
-        
+
         expect(response).toMatchObject({
           success: false,
           output: '',
@@ -112,7 +112,6 @@ describe('CLIBridge', () => {
         });
       }
     });
-
   });
 
   describe('sendCommandToCLI', () => {
@@ -127,7 +126,6 @@ describe('CLIBridge', () => {
         exitCode: expect.any(Number),
       });
     });
-
 
     it('should support all standardized CLI tools', async () => {
       const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
@@ -191,7 +189,6 @@ describe('CLIBridge', () => {
         });
       }
     });
-
   });
 
   describe('killAllProcesses', () => {
@@ -242,7 +239,6 @@ describe('CLIBridge', () => {
       }
     });
 
-
     it('should throw error for unknown step', async () => {
       await expect(
         cliBridge.executeWorkflowStep('nonexistent-tool', 'unknown' as any)
@@ -280,6 +276,5 @@ describe('CLIBridge', () => {
       expect(typeof shouldContinue).toBe('boolean');
       expect(shouldContinue).toBe(true); // Should default to continue
     });
-
   });
 });

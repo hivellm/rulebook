@@ -208,14 +208,9 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
 
   // Add undetected modules
   const detectedModules = new Set(modules.map((m) => m.module));
-  const allModules: Array<'vectorizer' | 'synap' | 'openspec' | 'context7' | 'github' | 'playwright'> = [
-    'vectorizer',
-    'synap',
-    'openspec',
-    'context7',
-    'github',
-    'playwright',
-  ];
+  const allModules: Array<
+    'vectorizer' | 'synap' | 'openspec' | 'context7' | 'github' | 'playwright'
+  > = ['vectorizer', 'synap', 'openspec', 'context7', 'github', 'playwright'];
 
   for (const module of allModules) {
     if (!detectedModules.has(module)) {

@@ -198,7 +198,7 @@ describe('Agent Manager Comprehensive Tests', () => {
     it('should execute task workflow successfully', async () => {
       // Set the current tool
       (agentManager as any).currentTool = 'cursor-agent';
-      
+
       const task = {
         id: 'test-task-1',
         title: 'Test Task',
@@ -222,7 +222,7 @@ describe('Agent Manager Comprehensive Tests', () => {
     it('should handle dry run mode', async () => {
       // Set the current tool
       (agentManager as any).currentTool = 'cursor-agent';
-      
+
       const task = {
         id: 'test-task-1',
         title: 'Test Task',
@@ -239,7 +239,7 @@ describe('Agent Manager Comprehensive Tests', () => {
     it('should handle task execution failure', async () => {
       // Set the current tool
       (agentManager as any).currentTool = 'cursor-agent';
-      
+
       mockCLIBridge.sendTaskCommand.mockResolvedValueOnce({
         success: false,
         output: '',
@@ -263,7 +263,7 @@ describe('Agent Manager Comprehensive Tests', () => {
     it('should handle test failure', async () => {
       // Set the current tool
       (agentManager as any).currentTool = 'cursor-agent';
-      
+
       mockCLIBridge.sendTestCommand.mockResolvedValueOnce({
         success: false,
         output: 'Tests failed',
@@ -285,7 +285,7 @@ describe('Agent Manager Comprehensive Tests', () => {
     it('should handle coverage failure', async () => {
       // Set the current tool
       (agentManager as any).currentTool = 'cursor-agent';
-      
+
       // Mock coverage check to fail
       const originalCheckCoverage = (agentManager as any).checkCoverage;
       (agentManager as any).checkCoverage = vi.fn().mockResolvedValue(false);
@@ -408,8 +408,6 @@ describe('Agent Manager Comprehensive Tests', () => {
     });
   });
 
-
-
   describe('Error Handling and Recovery', () => {
     beforeEach(async () => {
       await agentManager.initialize();
@@ -423,7 +421,9 @@ describe('Agent Manager Comprehensive Tests', () => {
       mockCLIBridge.sendCommandToCLI.mockRejectedValueOnce(timeoutError);
 
       // The method should reject with the timeout error
-      await expect(mockCLIBridge.sendCommandToCLI('cursor-agent', 'test command')).rejects.toThrow('Command timeout');
+      await expect(mockCLIBridge.sendCommandToCLI('cursor-agent', 'test command')).rejects.toThrow(
+        'Command timeout'
+      );
     });
 
     it('should handle CLI tool unavailability', async () => {
@@ -446,10 +446,10 @@ describe('Agent Manager Comprehensive Tests', () => {
       const options = { watchMode: true };
 
       await agentManager.initialize();
-      
+
       // Mock getNextTask to return null to prevent workflow execution
       mockOpenSpecManager.getNextTask.mockResolvedValueOnce(null);
-      
+
       await (agentManager as any).startAgent(options);
 
       // Since watchMode is just a placeholder, just verify it completes without error

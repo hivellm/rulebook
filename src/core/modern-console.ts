@@ -78,13 +78,10 @@ export class ModernConsole {
     // Calculate responsive dimensions based on terminal size
     // Get blessed screen dimensions (will be set after screen creation)
     const blessedHeight = typeof this.screen.height === 'number' ? this.screen.height : 0;
-    
+
     // Use blessed dimensions if valid, otherwise fallback to process.stdout or defaults
     // Always use at least 24 lines for minimum usability, but don't throw error
-    const finalHeight = Math.max(
-      blessedHeight > 0 ? blessedHeight : (process.stdout.rows || 24),
-      24
-    );
+    const finalHeight = Math.max(blessedHeight > 0 ? blessedHeight : process.stdout.rows || 24, 24);
 
     // Calculate layout dimensions - Simplified layout (fixed progress, remaining for logs)
     const headerHeight = 3;
@@ -431,10 +428,10 @@ export class ModernConsole {
     const barWidth = 40;
     const filledWidth = Math.round((percentage / 100) * barWidth);
     const emptyWidth = barWidth - filledWidth;
-    
+
     const filledBar = '█'.repeat(filledWidth);
     const emptyBar = '░'.repeat(emptyWidth);
-    
+
     // Update style based on progress
     let color = 'green';
     if (percentage < 50) {
@@ -442,7 +439,7 @@ export class ModernConsole {
     } else if (percentage < 75) {
       color = 'yellow';
     }
-    
+
     this.progressBar.style.fg = color;
     this.progressBar.setContent(`{${color}-fg}${filledBar}${emptyBar}{/}`);
 
@@ -567,8 +564,6 @@ export class ModernConsole {
       this.loadingInterval = undefined;
     }
   }
-
-
 
   /**
    * Throttled render method for performance optimization

@@ -143,12 +143,12 @@ describe('Modern Watcher with Real Tasks', () => {
 
       // Check that we have tasks loaded
       expect(tasks.length).toBeGreaterThan(0);
-      
+
       // Check for any watcher-related tasks
-      const watcherTask = tasks.find((t) =>
-        t.title.toLowerCase().includes('watcher') || t.title.toLowerCase().includes('agent')
+      const watcherTask = tasks.find(
+        (t) => t.title.toLowerCase().includes('watcher') || t.title.toLowerCase().includes('agent')
       );
-      
+
       // If watcher task exists, verify its properties
       if (watcherTask) {
         expect(['pending', 'in-progress']).toContain(watcherTask.status);
@@ -156,7 +156,7 @@ describe('Modern Watcher with Real Tasks', () => {
       } else {
         console.log('No watcher task found, but have', tasks.length, 'tasks available');
       }
-      
+
       // Verify all tasks have required properties
       tasks.forEach((task) => {
         expect(task.id).toBeDefined();
