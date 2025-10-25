@@ -14,6 +14,17 @@ CLI tool to standardize AI-generated projects with templates, rules enforcement,
 - 🔄 **CI/CD Monitoring**: GitHub MCP integration for automated workflow validation
 - 🎨 **Git Workflow**: Quality gates, conventional commits, and version management
 
+### 🆕 Advanced Features (v0.10.0)
+
+- 📋 **OpenSpec Integration**: Task management system with dependency tracking
+- 👁️ **Real-time Watcher**: Live monitoring of task progress with beautiful ANSI UI
+- 🤖 **Autonomous Agent**: Automated workflow management for AI CLI tools
+- ⚙️ **Configuration Management**: `.rulebook` config file with feature toggles
+- 📊 **Persistent Logging**: Comprehensive logging system with rotation
+- 🌳 **Dependency Graphs**: Visual task dependency trees and validation
+- 🔗 **CLI Bridge**: Seamless integration with cursor-cli, gemini-cli, claude-cli
+- 📈 **Telemetry**: Performance metrics and execution analytics
+
 ## Installation
 
 ```bash
@@ -200,6 +211,79 @@ npx @hivellm/rulebook fix
 - Fixes lint errors automatically (npm run lint --fix)
 
 **Integrates with health command**: Improves project health score automatically
+
+### 🆕 Advanced Commands (v0.10.0)
+
+#### Real-time Watcher
+
+Monitor task progress with beautiful ANSI UI:
+
+```bash
+# Start watcher
+rulebook watcher
+
+# Features:
+# - Real-time task progress
+# - Activity log
+# - System status
+# - Ctrl+C/F10 to exit
+```
+
+#### Autonomous Agent
+
+Automated workflow management for AI CLI tools:
+
+```bash
+# Start agent with cursor-cli
+rulebook agent --tool cursor-cli --iterations 5
+
+# Dry-run mode (simulate without changes)
+rulebook agent --dry-run
+
+# With watcher integration
+rulebook agent --watch
+
+# Features:
+# - Automatic CLI tool detection
+# - Task execution workflow
+# - Quality checks (lint, test, coverage)
+# - Git commits and status updates
+```
+
+#### Configuration Management
+
+Manage `.rulebook` configuration:
+
+```bash
+# Show current configuration
+rulebook config --show
+
+# Set configuration values
+rulebook config --set coverageThreshold=90
+rulebook config --set maxParallelTasks=3
+
+# Enable/disable features
+rulebook config --feature watcher --enable
+rulebook config --feature notifications --disable
+```
+
+#### OpenSpec Task Management
+
+Manage tasks and dependencies:
+
+```bash
+# List all tasks
+rulebook tasks
+
+# Show dependency tree
+rulebook tasks --tree
+
+# Show current task
+rulebook tasks --current
+
+# Update task status
+rulebook tasks --status task-123
+```
 
 ### Documentation Structure Generation
 

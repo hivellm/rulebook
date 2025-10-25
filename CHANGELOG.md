@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2025-01-23
+
+### Added
+
+**OpenSpec Integration:**
+- Task management system with dependency tracking
+- `openspec/` directory structure for task storage
+- Task lifecycle management (pending → in-progress → completed)
+- Dependency validation and circular dependency detection
+- ASCII dependency tree visualization
+- Parallel task execution support
+
+**Real-time Watcher:**
+- Beautiful ANSI-based UI for live monitoring
+- Real-time task progress display with progress bars
+- Activity log with timestamps and status indicators
+- System status monitoring (CPU, memory, coverage)
+- Graceful shutdown with Ctrl+C/F10
+- Auto-refresh every 2 seconds
+
+**Autonomous Agent:**
+- Automated workflow management for AI CLI tools
+- Support for cursor-cli, gemini-cli, claude-cli
+- Intelligent CLI tool detection and selection
+- Complete workflow automation (implement → test → lint → commit)
+- Dry-run mode for safe testing
+- Smart continue detection to avoid unnecessary commands
+- Integration with watcher for real-time monitoring
+
+**Configuration Management:**
+- `.rulebook` configuration file system
+- Feature toggles for all advanced functionality
+- Project-specific settings with global defaults
+- Configuration migration for version upgrades
+- CLI tools auto-detection and management
+- Timeout and performance settings
+
+**Persistent Logging:**
+- Comprehensive logging system with rotation
+- Structured JSON logs with context and metadata
+- Task-specific logging with duration tracking
+- CLI command and response logging
+- Log analysis and summary generation
+- Automatic cleanup of old logs (30-day retention)
+
+**CLI Bridge:**
+- Seamless integration with AI CLI tools
+- Command execution with timeout handling
+- Response parsing and error handling
+- Health monitoring for CLI tools
+- Capability detection and reporting
+- Smart continue detection based on output patterns
+
+**Enhanced Templates:**
+- Documentation rules (English-only requirement)
+- OpenSpec integration guidelines
+- Task dependency management rules
+- Quality gate requirements
+
+### Changed
+
+- Updated version to 0.10.0
+- Enhanced CLI command structure with new advanced commands
+- Improved error handling and logging throughout
+- Better TypeScript type definitions for new features
+
+### Technical Improvements
+
+- Added comprehensive test coverage for new modules
+- Improved error handling and graceful degradation
+- Enhanced TypeScript type safety
+- Better separation of concerns with modular architecture
+- Performance optimizations for large projects
+
 ## [0.9.1] - 2025-10-24
 
 ### Added

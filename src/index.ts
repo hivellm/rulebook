@@ -12,6 +12,10 @@ import {
   changelogCommand,
   healthCommand,
   fixCommand,
+  watcherCommand,
+  agentCommand,
+  configCommand,
+  tasksCommand,
 } from './cli/commands.js';
 
 const program = new Command();
@@ -19,7 +23,7 @@ const program = new Command();
 program
   .name('rulebook')
   .description('CLI tool to standardize AI-generated projects with templates and rules')
-  .version('0.9.0');
+  .version('0.10.0');
 
 program
   .command('init')
@@ -75,5 +79,52 @@ program
 program.command('health').description('Check project health score').action(healthCommand);
 
 program.command('fix').description('Auto-fix common project issues').action(fixCommand);
+
+// New advanced commands
+program
+  .command('watcher')
+  .description('Start real-time watcher for OpenSpec tasks and agent progress')
+  .action(watcherCommand);
+
+program
+  .command('agent')
+  .description('Start autonomous agent for managing AI CLI workflows')
+  .option('--dry-run', 'Simulate execution without making changes')
+  .option('--tool <name>', 'Specify CLI tool to use (cursor-cli, gemini-cli, claude-cli)')
+  .option('--iterations <number>', 'Maximum number of iterations', '10')
+  .option('--watch', 'Enable watcher mode for real-time monitoring')
+  .action((options) => agentCommand({
+    dryRun: options.dryRun,
+    tool: options.tool,
+    iterations: parseInt(options.iterations),
+    watch: options.watch
+  }));
+
+program
+  .command('config')
+  .description('Manage rulebook configuration')
+  .option('--show', 'Show current configuration')
+  .option('--set <key=value>', 'Set configuration value')
+  .option('--feature <name>', 'Feature name for enable/disable')
+  .option('--enable', 'Enable feature')
+  .option('--disable', 'Disable feature')
+  .action((options) => configCommand({
+    show: options.show,
+    set: options.set,
+    feature: options.feature,
+    enable: options.enable
+  }));
+
+program
+  .command('tasks')
+  .description('Manage OpenSpec tasks')
+  .option('--tree', 'Show task dependency tree')
+  .option('--current', 'Show current active task')
+  .option('--status <taskId>', 'Update task status')
+  .action((options) => tasksCommand({
+    tree: options.tree,
+    current: options.current,
+    status: options.status
+  }));
 
 program.parse(process.argv);

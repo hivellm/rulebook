@@ -69,3 +69,100 @@ export interface TemplateData {
   strictDocs: boolean;
   timestamp: string;
 }
+
+export interface RulebookConfig {
+  version: string;
+  installedAt: string;
+  updatedAt: string;
+  projectId: string;
+  features: {
+    openspec: boolean;
+    watcher: boolean;
+    agent: boolean;
+    logging: boolean;
+    telemetry: boolean;
+    notifications: boolean;
+    dryRun: boolean;
+    gitHooks: boolean;
+    repl: boolean;
+    templates: boolean;
+    context: boolean;
+    health: boolean;
+    plugins: boolean;
+    parallel: boolean;
+    smartContinue: boolean;
+  };
+  coverageThreshold: number;
+  language: 'en' | 'pt-BR';
+  outputLanguage: 'en' | 'pt-BR';
+  cliTools: string[];
+  maxParallelTasks: number;
+  timeouts: {
+    taskExecution: number;
+    cliResponse: number;
+    testRun: number;
+  };
+}
+
+export interface OpenSpecTask {
+  id: string;
+  title: string;
+  description: string;
+  priority: number;
+  status: 'pending' | 'in-progress' | 'completed' | 'failed' | 'skipped';
+  dependencies: string[];
+  estimatedTime: number;
+  actualTime?: number;
+  attempts: number;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  assignedTo?: string;
+  tags: string[];
+}
+
+export interface OpenSpecData {
+  tasks: OpenSpecTask[];
+  currentTask?: string;
+  history: OpenSpecTask[];
+  metadata: {
+    version: string;
+    createdAt: string;
+    updatedAt: string;
+    totalTasks: number;
+    completedTasks: number;
+  };
+}
+
+export interface LogEntry {
+  timestamp: string;
+  level: 'debug' | 'info' | 'warn' | 'error';
+  message: string;
+  context?: Record<string, unknown>;
+  taskId?: string;
+  duration?: number;
+}
+
+export interface TelemetryData {
+  taskMetrics: {
+    [taskId: string]: {
+      executionTime: number[];
+      attempts: number[];
+      successRate: number;
+      coverageTrend: number[];
+    };
+  };
+  systemMetrics: {
+    cpuUsage: number[];
+    memoryUsage: number[];
+    diskUsage: number[];
+  };
+  cliMetrics: {
+    [cliTool: string]: {
+      responseTime: number[];
+      timeoutCount: number;
+      successRate: number;
+    };
+  };
+  lastUpdated: string;
+}
