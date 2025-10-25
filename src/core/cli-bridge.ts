@@ -96,7 +96,8 @@ export class CLIBridge {
   ): Promise<CLIResponse> {
     const startTime = Date.now();
     // cursor-agent needs more time to connect to remote server and process
-    const defaultTimeout = toolName === 'cursor-agent' ? 120000 : 30000;
+    // Set to 30 minutes for long-running tasks
+    const defaultTimeout = toolName === 'cursor-agent' ? 1800000 : 30000; // 30 minutes for cursor-agent
     const timeout = options.timeout || this.config.timeouts?.cliResponse || defaultTimeout;
 
     this.logger.cliCommand(command, toolName);
@@ -148,6 +149,31 @@ export class CLIBridge {
         let stderr = '';
         const parser = new CursorAgentStreamParser();
 
+        // Promise to resolve when parser completes
+        let resolveCompletion: (() => void) | undefined;
+        const completionPromise = new Promise<void>((resolve) => {
+          resolveCompletion = resolve;
+        });
+
+        // Set completion callback
+        parser.onComplete(() => {
+          console.log('\n🔍 [DEBUG] onComplete callback triggered!');
+          console.log('✅ cursor-agent completed, terminating process...');
+          if (resolveCompletion) {
+            console.log('🔍 [DEBUG] Calling resolveCompletion...');
+            resolveCompletion();
+          } else {
+            console.log('🔍 [DEBUG] ERROR: resolveCompletion is undefined!');
+          }
+          // Give a small delay for any remaining output, then kill
+          setTimeout(() => {
+            console.log('🔍 [DEBUG] Killing process...');
+            if (!proc.killed) {
+              proc.kill('SIGTERM');
+            }
+          }, 500);
+        });
+
         if (proc.stdout) {
           proc.stdout.setEncoding('utf8');
           
@@ -169,10 +195,18 @@ export class CLIBridge {
             
             for (const line of lines) {
               if (line.trim()) {
+                console.log('🔍 [DEBUG] Raw line:', line.substring(0, 100));
                 // Parse and process each JSON event
                 const event = parseStreamLine(line);
                 if (event) {
                   parser.processEvent(event);
+                  
+                  // Check if parser completed
+                  if (parser.isCompleted()) {
+                    console.log('🔍 [DEBUG] Parser reports completed!');
+                  }
+                } else {
+                  console.log('🔍 [DEBUG] Failed to parse line');
                 }
               }
             }
@@ -195,13 +229,40 @@ export class CLIBridge {
         const processId = `${toolName}-${Date.now()}`;
         this.activeProcesses.set(processId, proc);
 
-        // Wait for process to complete with timeout
+        // Wait for process to complete with timeout or completion
         const result = await new Promise<{ exitCode: number; stdout: string; stderr: string }>(
           (resolve, reject) => {
             const timeoutId = setTimeout(() => {
               proc.kill('SIGTERM');
               reject(new Error(`Command timed out after ${timeout} milliseconds`));
             }, timeout);
+
+            // Resolve when parser detects completion
+            completionPromise.then(() => {
+              console.log('🔍 [DEBUG] completionPromise resolved!');
+              clearInterval(progressInterval);
+              clearTimeout(timeoutId);
+              // Process might still be alive, wait a bit for graceful exit
+              const checkExit = setInterval(() => {
+                console.log('🔍 [DEBUG] Checking if process exited... killed:', proc.killed, 'exitCode:', proc.exitCode);
+                if (proc.killed || proc.exitCode !== null) {
+                  clearInterval(checkExit);
+                  console.log('🔍 [DEBUG] Process exited, resolving with exitCode:', proc.exitCode);
+                  resolve({ exitCode: proc.exitCode ?? 0, stdout, stderr });
+                }
+              }, 100);
+              
+              // Force resolve after 2 seconds if still hanging
+              setTimeout(() => {
+                console.log('🔍 [DEBUG] Force resolve after 2s');
+                clearInterval(checkExit);
+                if (!proc.killed) {
+                  console.log('🔍 [DEBUG] Killing with SIGKILL');
+                  proc.kill('SIGKILL');
+                }
+                resolve({ exitCode: 0, stdout, stderr });
+              }, 2000);
+            });
 
             proc.on('exit', (code: number | null, _signal: NodeJS.Signals | null) => {
               clearInterval(progressInterval);
@@ -326,8 +387,8 @@ export class CLIBridge {
       command = `Implement task "${task.title}" from OpenSpec. Description: ${task.description}`;
     }
 
-    // cursor-agent needs extra time for complex tasks
-    const timeout = toolName === 'cursor-agent' ? 180000 : undefined;
+    // cursor-agent needs extra time for complex tasks (30 minutes)
+    const timeout = toolName === 'cursor-agent' ? 1800000 : undefined;
 
     return await this.sendCommandToCLI(toolName, command, { timeout });
   }
@@ -348,8 +409,8 @@ export class CLIBridge {
       command = `Continue implementation ${iterations}x`;
     }
 
-    // cursor-agent needs extra time
-    const timeout = toolName === 'cursor-agent' ? 180000 : undefined;
+    // cursor-agent needs extra time (30 minutes)
+    const timeout = toolName === 'cursor-agent' ? 1800000 : undefined;
 
     return await this.sendCommandToCLI(toolName, command, { timeout });
   }

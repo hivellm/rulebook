@@ -150,11 +150,29 @@ export class CursorAgentStreamParser {
   private sessionId = '';
   private startTime = Date.now();
   private toolCount = 0;
+  private completed = false;
+  private completionCallback?: () => void;
+
+  /**
+   * Set callback to be called when result event is received
+   */
+  onComplete(callback: () => void): void {
+    this.completionCallback = callback;
+  }
+
+  /**
+   * Check if parsing is completed
+   */
+  isCompleted(): boolean {
+    return this.completed;
+  }
 
   /**
    * Process a single event from the stream
    */
   processEvent(event: CursorAgentEvent): void {
+    console.log('🔍 [DEBUG] Event type:', event.type, 'subtype:', (event as any).subtype || 'none');
+    
     switch (event.type) {
       case 'system':
         this.handleSystemEvent(event);
@@ -169,8 +187,12 @@ export class CursorAgentStreamParser {
         this.handleToolCallEvent(event);
         break;
       case 'result':
+        console.log('🔍 [DEBUG] Result event received! Calling handleResultEvent...');
         this.handleResultEvent(event);
+        console.log('🔍 [DEBUG] Completed flag:', this.completed);
         break;
+      default:
+        console.log('🔍 [DEBUG] Unknown event type:', (event as any).type);
     }
   }
 
@@ -334,6 +356,12 @@ export class CursorAgentStreamParser {
 
     if (event.subtype === 'error' || event.is_error) {
       console.log(`❌ Error: ${event.result}`);
+    }
+
+    // Mark as completed and trigger callback
+    this.completed = true;
+    if (this.completionCallback) {
+      this.completionCallback();
     }
   }
 }

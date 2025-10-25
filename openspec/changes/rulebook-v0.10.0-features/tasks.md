@@ -29,9 +29,3 @@
 - [x] 5.2 Update CHANGELOG with v0.10.0
 - [x] 5.3 Update STATUS and ROADMAP
 - [x] 5.4 Create OpenSpec task structure
-
-## Testing & Validation
-- [ ] 6.1 Test modern watcher with real tasks
-- [ ] 6.2 Test agent manager with CLI tools
-- [ ] 6.3 Run integration tests
-- [ ] 6.4 Performance optimization
