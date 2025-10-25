@@ -967,7 +967,8 @@ export class CLIBridge {
 
 CRITICAL: ALL tests must pass (100%) and coverage must meet threshold (95%+) before proceeding.`;
     } else if (toolName === 'claude-code') {
-      command = 'Run all tests and ensure 100% passing. If tests fail, fix the issues and rerun. Check coverage meets 95%+ threshold. Maximum 5 attempts.';
+      command =
+        'Run all tests and ensure 100% passing. If tests fail, fix the issues and rerun. Check coverage meets 95%+ threshold. Maximum 5 attempts.';
     } else if (toolName === 'gemini-cli') {
       command = 'Please run tests, fix failures until all pass, and ensure coverage is 95%+.';
     } else {
@@ -998,9 +999,11 @@ CRITICAL: ALL tests must pass (100%) and coverage must meet threshold (95%+) bef
 
 CRITICAL: Do NOT proceed until linting passes with 0 warnings.`;
     } else if (toolName === 'claude-code') {
-      command = 'Run linting checks and fix all issues. Keep fixing until linting passes with 0 warnings. Maximum 3 attempts.';
+      command =
+        'Run linting checks and fix all issues. Keep fixing until linting passes with 0 warnings. Maximum 3 attempts.';
     } else if (toolName === 'gemini-cli') {
-      command = 'Please run lint checks, fix any issues found, and repeat until passing with 0 warnings.';
+      command =
+        'Please run lint checks, fix any issues found, and repeat until passing with 0 warnings.';
     } else {
       command = 'Run lint checks and fix any issues until passing with 0 warnings';
     }
