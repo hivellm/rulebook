@@ -128,14 +128,21 @@ export class ModernConsole {
       scrollable: true,
       alwaysScroll: true,
       scrollbar: {
-        ch: ' ',
+        ch: '█',
         track: {
-          bg: 'cyan',
+          bg: 'black',
+          ch: '░',
         },
         style: {
-          inverse: true,
+          inverse: false,
+          fg: 'blue',
+          bg: 'black',
+          bold: true,
         },
       },
+      keys: true,
+      vi: true,
+      mouse: true,
       style: {
         fg: 'white',
       },
