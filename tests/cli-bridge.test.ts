@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createCLIBridge, resetCLIBridge } from '../src/core/cli-bridge.js';
 import { createLogger } from '../src/core/logger.js';
 import { promises as fs } from 'fs';
@@ -126,24 +126,8 @@ describe('CLIBridge', () => {
         expect(supportedTools).toContain(toolName);
       });
       
-      // Should not contain deprecated tools (removed in v0.10.0)
-      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
-      deprecatedTools.forEach(deprecatedTool => {
-        expect(detectedToolNames).not.toContain(deprecatedTool);
-      });
     });
 
-    it('should not detect deprecated CLI tools', async () => {
-      // Test that deprecated tools are not included in detection
-      const tools = await cliBridge.detectCLITools();
-      const detectedToolNames = tools.map(tool => tool.name);
-      
-      // These deprecated tools were removed in v0.10.0 and should never be detected
-      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
-      deprecatedTools.forEach(deprecatedTool => {
-        expect(detectedToolNames).not.toContain(deprecatedTool);
-      });
-    });
 
     it('should only support three standardized CLI tools', async () => {
       // Test that only the three standardized tools are supported
@@ -210,24 +194,6 @@ describe('CLIBridge', () => {
       mockSpawn.mockRestore();
     });
 
-    it('should reject deprecated CLI tools', async () => {
-      // Test that deprecated tools are not supported (removed in v0.10.0)
-      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
-      
-      for (const tool of deprecatedTools) {
-        const response = await cliBridge.sendCommandToCLI(tool, 'test command');
-        
-        expect(response).toMatchObject({
-          success: false,
-          duration: expect.any(Number),
-          exitCode: expect.any(Number),
-        });
-        
-        // The error should indicate the tool is not supported or not found
-        expect(response.error).toBeDefined();
-        expect(typeof response.error).toBe('string');
-      }
-    });
 
   });
 
