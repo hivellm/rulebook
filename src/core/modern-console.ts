@@ -5,32 +5,40 @@ import type { OpenSpecTask } from '../types.js';
 export interface ModernConsoleOptions {
   projectRoot: string;
   refreshInterval?: number;
-  showSystemInfo?: boolean;
-  showLogs?: boolean;
-  maxLogLines?: number;
 }
 
+interface ActivityLogEntry {
+  timestamp: Date;
+  type: 'info' | 'success' | 'warning' | 'error' | 'tool';
+  message: string;
+}
+
+/**
+ * Simplified Progress-Focused Modern Console
+ * New UI: Active Tasks + Progress Bar + Activity Logs
+ */
 export class ModernConsole {
   private screen: blessed.Widgets.Screen;
   private openspecManager: ReturnType<typeof createOpenSpecManager>;
   private options: ModernConsoleOptions;
   private isRunning = false;
   private refreshTimer?: NodeJS.Timeout;
+  private animationFrame = 0;
 
   // UI Components
   private headerBox!: blessed.Widgets.BoxElement;
-  private tasksBox!: blessed.Widgets.ListElement;
-  private detailsBox!: blessed.Widgets.BoxElement;
+  private activeTasksBox!: blessed.Widgets.BoxElement;
+  private progressBox!: blessed.Widgets.BoxElement;
   private logsBox!: blessed.Widgets.BoxElement;
-  private systemBox!: blessed.Widgets.BoxElement;
   private statusBar!: blessed.Widgets.BoxElement;
+
+  // Data
+  private tasks: OpenSpecTask[] = [];
+  private activityLogs: ActivityLogEntry[] = [];
 
   constructor(options: ModernConsoleOptions) {
     this.options = {
-      refreshInterval: 2000,
-      showSystemInfo: true,
-      showLogs: true,
-      maxLogLines: 50,
+      refreshInterval: 100, // 100ms for smooth animations
       ...options,
     };
 
@@ -38,7 +46,7 @@ export class ModernConsole {
 
     this.screen = blessed.screen({
       smartCSR: true,
-      title: 'Rulebook Watcher - Modern Console',
+      title: 'Rulebook Watcher',
       fullUnicode: true,
       dockBorders: true,
       autoPadding: true,
@@ -50,13 +58,13 @@ export class ModernConsole {
   }
 
   private setupUI(): void {
-    // Header
+    // Header (3 lines)
     this.headerBox = blessed.box({
       top: 0,
       left: 0,
       width: '100%',
       height: 3,
-      content: this.getHeaderContent(),
+      content: '{center}{bold}{blue-fg}🤖 RULEBOOK WATCHER{/blue-fg}{/bold}                          {gray-fg}[F10 Exit]{/gray-fg}{/center}',
       tags: true,
       style: {
         bg: 'blue',
@@ -64,35 +72,56 @@ export class ModernConsole {
         bold: true,
       },
       border: {
-        type: 'line',
+        type: 'line' as const,
         fg: 4, // blue
       },
     });
 
-    // Tasks List (left side)
-    this.tasksBox = blessed.list({
+    // Active Tasks (~8 lines)
+    this.activeTasksBox = blessed.box({
       top: 3,
       left: 0,
-      width: '50%',
-      height: '60%',
-      label: ' {bold}OpenSpec Tasks{/bold} ',
+      width: '100%',
+      height: 10,
+      label: ' {bold}📋 ACTIVE TASKS{/bold} ',
       tags: true,
-      keys: true,
-      vi: true,
-      mouse: true,
+      scrollable: false,
       style: {
-        selected: {
-          bg: 'green',
-          fg: 'black',
-        },
-        item: {
-          fg: 'white',
-        },
+        fg: 'white',
       },
       border: {
-        type: 'line',
+        type: 'line' as const,
         fg: 6, // cyan
       },
+    });
+
+    // Progress Bar (3 lines fixed)
+    this.progressBox = blessed.box({
+      top: 13,
+      left: 0,
+      width: '100%',
+      height: 5,
+      label: ' {bold}📊 PROGRESS{/bold} ',
+      tags: true,
+      style: {
+        fg: 'white',
+      },
+      border: {
+        type: 'line' as const,
+        fg: 2, // green
+      },
+    });
+
+    // Activity Logs (remaining space)
+    this.logsBox = blessed.box({
+      top: 18,
+      left: 0,
+      width: '100%',
+      bottom: 1,
+      label: ' {bold}📝 ACTIVITY LOGS{/bold} ',
+      tags: true,
+      scrollable: true,
+      alwaysScroll: true,
       scrollbar: {
         ch: ' ',
         track: {
@@ -102,388 +131,262 @@ export class ModernConsole {
           inverse: true,
         },
       },
-    });
-
-    // Task Details (right side)
-    this.detailsBox = blessed.box({
-      top: 3,
-      right: 0,
-      width: '50%',
-      height: '60%',
-      label: ' {bold}Task Details{/bold} ',
-      tags: true,
-      scrollable: true,
-      alwaysScroll: true,
       style: {
-        bg: 'black',
         fg: 'white',
       },
       border: {
-        type: 'line',
-        fg: 6, // cyan
-      },
-      scrollbar: {
-        ch: ' ',
-        track: {
-          bg: 'cyan',
-        },
-        style: {
-          inverse: true,
-        },
+        type: 'line' as const,
+        fg: 3, // yellow
       },
     });
 
-    // System Info (bottom left)
-    this.systemBox = blessed.box({
-      top: '63%',
-      left: 0,
-      width: '50%',
-      height: '37%',
-      label: ' {bold}System Info{/bold} ',
-      tags: true,
-      style: {
-        bg: 'black',
-        fg: 'white',
-      },
-      border: {
-        type: 'line',
-        fg: 5, // magenta
-      },
-    });
-
-    // Logs (bottom right)
-    this.logsBox = blessed.log({
-      top: '63%',
-      right: 0,
-      width: '50%',
-      height: '37%',
-      label: ' {bold}Activity Logs{/bold} ',
-      tags: true,
-      scrollable: true,
-      alwaysScroll: true,
-      style: {
-        bg: 'black',
-        fg: 'white',
-      },
-      border: {
-        type: 'line',
-        fg: 5, // magenta
-      },
-      scrollbar: {
-        ch: ' ',
-        track: {
-          bg: 'magenta',
-        },
-        style: {
-          inverse: true,
-        },
-      },
-    });
-
-    // Status Bar
+    // Status Bar (1 line)
     this.statusBar = blessed.box({
       bottom: 0,
       left: 0,
       width: '100%',
       height: 1,
-      content: 'Loading...',
+      content: ' Press F10 or Ctrl+C to exit',
       tags: true,
       style: {
-        bg: 'green',
-        fg: 'black',
-        bold: true,
+        bg: 'blue',
+        fg: 'white',
       },
     });
 
-    // Add all components to screen
+    // Add to screen
     this.screen.append(this.headerBox);
-    this.screen.append(this.tasksBox);
-    this.screen.append(this.detailsBox);
-    this.screen.append(this.systemBox);
+    this.screen.append(this.activeTasksBox);
+    this.screen.append(this.progressBox);
     this.screen.append(this.logsBox);
     this.screen.append(this.statusBar);
 
-    // Focus on tasks list
-    this.tasksBox.focus();
+    this.screen.render();
   }
 
   private setupEventHandlers(): void {
-    // Global key handlers
-    this.screen.key(['q', 'C-c'], () => {
+    // Exit on F10 or Ctrl+C
+    this.screen.key(['f10', 'C-c'], () => {
       this.stop();
     });
 
-    this.screen.key(['F10'], () => {
-      this.stop();
-    });
-
-    this.screen.key(['r'], () => {
-      this.refresh();
-    });
-
-    this.screen.key(['h'], () => {
-      this.showHelp();
-    });
-
-    // Task selection handler
-    this.tasksBox.on('select', (item) => {
-      this.showTaskDetails(item.content);
-    });
-
-    // Mouse support
-    this.tasksBox.on('click', () => {
-      this.tasksBox.focus();
-    });
+    // Focus logs box for scrolling
+    this.logsBox.focus();
   }
 
-  private getHeaderContent(): string {
-    const now = new Date().toLocaleString();
-    return `{center}{bold}Rulebook Watcher v0.10.0{/bold} - {bold}Modern Console{/bold} - {bold}${now}{/bold}{/center}`;
+  /**
+   * Get loading spinner frame
+   */
+  private getLoadingFrame(): string {
+    const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    return frames[this.animationFrame % frames.length];
   }
 
-  private async getStatusContent(): Promise<string> {
-    const tasks = await this.getTasksSummary();
-    return `Tasks: ${tasks.total} | Active: ${tasks.inProgress} | Completed: ${tasks.completed} | Failed: ${tasks.failed} | Press 'q' or 'Ctrl+C' to quit | 'r' to refresh | 'h' for help`;
+  /**
+   * Format duration in HH:MM:SS
+   */
+  private formatDuration(ms: number): string {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    const h = String(hours).padStart(2, '0');
+    const m = String(minutes % 60).padStart(2, '0');
+    const s = String(seconds % 60).padStart(2, '0');
+
+    return `${h}:${m}:${s}`;
   }
 
-  private async getTasksSummary(): Promise<{
-    total: number;
-    inProgress: number;
-    completed: number;
-    failed: number;
-  }> {
-    try {
-      const stats = await this.openspecManager.getTaskStats();
-      return {
-        total: stats.total,
-        inProgress: stats.inProgress,
-        completed: stats.completed,
-        failed: stats.failed,
-      };
-    } catch (error) {
-      this.logError(`Failed to get task stats: ${error}`);
-      return { total: 0, inProgress: 0, completed: 0, failed: 0 };
+  /**
+   * Render active tasks (max 5, auto-remove completed)
+   */
+  private renderActiveTasks(): void {
+    const activeTasks = this.tasks.filter(t => t.status !== 'completed').slice(0, 5);
+
+    if (activeTasks.length === 0) {
+      this.activeTasksBox.setContent('\n  {gray-fg}No active tasks{/gray-fg}');
+      return;
     }
+
+    const lines: string[] = ['\n'];
+    
+    for (const task of activeTasks) {
+      const icon = task.status === 'in-progress' 
+        ? `{cyan-fg}${this.getLoadingFrame()}{/cyan-fg}` 
+        : '{gray-fg}⏸ {/gray-fg}';
+
+      const status = task.status === 'in-progress' ? 'In Progress' : 'Pending';
+      const duration = task.status === 'in-progress' && task.metadata?.startedAt
+        ? ` | Duration: ${this.formatDuration(Date.now() - new Date(task.metadata.startedAt).getTime())}`
+        : '';
+
+      lines.push(`  ${icon} {bold}${task.title}{/bold}`);
+      lines.push(`     Status: ${status}${duration}\n`);
+    }
+
+    this.activeTasksBox.setContent(lines.join('\n'));
   }
 
-  private async loadTasks(): Promise<void> {
-    try {
-      const tasks = await this.openspecManager.getTasksByPriority();
+  /**
+   * Render progress bar
+   */
+  private renderProgressBar(): void {
+    const allTasks = [...this.tasks.filter(t => t.status === 'completed'), ...this.tasks.filter(t => t.status !== 'completed')];
+    const completed = this.tasks.filter(t => t.status === 'completed').length;
+    const total = allTasks.length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-      // Store current selection
-      const currentSelection = 0; // TODO: Fix blessed ListElement selection tracking
-      const currentItem = this.tasksBox.getItem(currentSelection);
+    // Calculate bar width (screen width - borders - padding)
+    const screenWidth = this.screen.width;
+    const barWidth = typeof screenWidth === 'number' ? Math.max(40, screenWidth - 20) : 40;
+    const filledWidth = Math.round((percentage / 100) * barWidth);
+    const emptyWidth = barWidth - filledWidth;
 
-      // Clear existing items
-      this.tasksBox.clearItems();
+    const filled = '█'.repeat(filledWidth);
+    const empty = '░'.repeat(emptyWidth);
 
-      // Add tasks to list
-      tasks.forEach((task) => {
-        const statusIcon = this.getStatusIcon(task.status);
-        const priority = 'P'.repeat(task.priority);
-        const item = `${statusIcon} ${priority} ${task.title}`;
-        this.tasksBox.addItem(item);
+    // Color based on progress
+    let color = 'green';
+    if (percentage < 50) color = 'red';
+    else if (percentage < 75) color = 'yellow';
+
+    const bar = `\n  {${color}-fg}${filled}{/}${empty} {bold}{white-fg}${percentage}%{/} {gray-fg}(${completed}/${total}){/}\n`;
+
+    this.progressBox.setContent(bar);
+  }
+
+  /**
+   * Render activity logs (last 10 entries)
+   */
+  private renderActivityLogs(): void {
+    if (this.activityLogs.length === 0) {
+      this.logsBox.setContent('\n  {gray-fg}No activity yet{/gray-fg}');
+      return;
+    }
+
+    const LOG_ICONS = {
+      success: '{green-fg}✅{/}',
+      info: '{blue-fg}ℹ️ {/}',
+      warning: '{yellow-fg}⚠️ {/}',
+      error: '{red-fg}❌{/}',
+      tool: '{cyan-fg}🔧{/}',
+    };
+
+    const lines = this.activityLogs
+      .slice(-20) // Last 20 entries
+      .map(entry => {
+        const time = entry.timestamp.toLocaleTimeString('en-US', { hour12: false });
+        const icon = LOG_ICONS[entry.type];
+        return `{gray-fg}[${time}]{/} ${icon} ${entry.message}`;
       });
 
-      // Restore selection if possible
-      if (currentItem && currentSelection >= 0) {
-        this.tasksBox.select(currentSelection);
-      }
+    this.logsBox.setContent('\n' + lines.join('\n') + '\n');
+    
+    // Auto-scroll to bottom
+    this.logsBox.setScrollPerc(100);
+  }
 
-      // Update summary
-      this.statusBar.setContent(await this.getStatusContent());
+  /**
+   * Log activity
+   */
+  public logActivity(type: ActivityLogEntry['type'], message: string): void {
+    this.activityLogs.push({
+      timestamp: new Date(),
+      type,
+      message,
+    });
 
-      this.screen.render();
-    } catch (error) {
-      this.logError(`Failed to load tasks: ${error}`);
+    // Keep only last 100 entries in memory
+    if (this.activityLogs.length > 100) {
+      this.activityLogs = this.activityLogs.slice(-100);
+    }
+
+    this.render();
+  }
+
+  /**
+   * Mark task as completed and remove from list
+   */
+  public markTaskCompleted(taskId: string): void {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (task) {
+      task.status = 'completed';
+      this.logActivity('success', `Task completed: ${task.title}`);
+      
+      // Remove from active tasks
+      this.tasks = this.tasks.filter(t => t.id !== taskId);
+      
+      this.render();
     }
   }
 
-  private getStatusIcon(status: string): string {
-    switch (status) {
-      case 'completed':
-        return '{green-fg}✓{/green-fg}';
-      case 'in-progress':
-        return '{blue-fg}⚙{/blue-fg}';
-      case 'failed':
-        return '{red-fg}✗{/red-fg}';
-      case 'skipped':
-        return '{yellow-fg}⊘{/yellow-fg}';
-      default:
-        return '{white-fg}○{/white-fg}';
+  /**
+   * Mark task as in progress
+   */
+  public markTaskInProgress(taskId: string): void {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (task) {
+      task.status = 'in-progress';
+      if (!task.metadata) task.metadata = {};
+      task.metadata.startedAt = new Date().toISOString();
+      
+      this.logActivity('info', `Task started: ${task.title}`);
+      this.render();
     }
   }
 
-  private async showTaskDetails(taskItem: string): Promise<void> {
-    try {
-      // Extract task title from item
-      const taskTitle = taskItem.replace(/^[^\s]+\s+[^\s]+\s+/, '');
-      const tasks = await this.openspecManager.getTasksByPriority();
-      const task = tasks.find((t) => t.title === taskTitle);
-
-      if (task) {
-        const details = this.formatTaskDetails(task);
-        this.detailsBox.setContent(details);
-        this.screen.render();
-      }
-    } catch (error) {
-      this.logError(`Failed to show task details: ${error}`);
-    }
-  }
-
-  private formatTaskDetails(task: OpenSpecTask): string {
-    const duration = task.actualTime ? `${task.actualTime}s` : 'N/A';
-    const createdAt = new Date(task.createdAt).toLocaleString();
-    const updatedAt = new Date(task.updatedAt).toLocaleString();
-
-    return `{bold}${task.title}{/bold}
-
-{cyan-fg}Description:{/cyan-fg}
-${task.description}
-
-{cyan-fg}Status:{/cyan-fg} ${this.getStatusIcon(task.status)} ${task.status}
-{cyan-fg}Priority:{/cyan-fg} ${task.priority}
-{cyan-fg}Attempts:{/cyan-fg} ${task.attempts}
-{cyan-fg}Estimated Time:{/cyan-fg} ${task.estimatedTime}s
-{cyan-fg}Actual Time:{/cyan-fg} ${duration}
-
-{cyan-fg}Dependencies:{/cyan-fg}
-${task.dependencies.length > 0 ? task.dependencies.join(', ') : 'None'}
-
-{cyan-fg}Tags:{/cyan-fg}
-${task.tags.length > 0 ? task.tags.join(', ') : 'None'}
-
-{cyan-fg}Created:{/cyan-fg} ${createdAt}
-{cyan-fg}Updated:{/cyan-fg} ${updatedAt}
-
-${task.completedAt ? `{cyan-fg}Completed:{/cyan-fg} ${new Date(task.completedAt).toLocaleString()}` : ''}`;
-  }
-
-  private async updateSystemInfo(): Promise<void> {
-    if (!this.options.showSystemInfo) return;
-
-    try {
-      const os = await import('os');
-      // const memUsage = process.memoryUsage();
-      // const cpuUsage = process.cpuUsage();
-
-      const totalMem = Math.round(os.totalmem() / 1024 / 1024 / 1024);
-      const freeMem = Math.round(os.freemem() / 1024 / 1024 / 1024);
-      const usedMem = totalMem - freeMem;
-      const memPercent = Math.round((usedMem / totalMem) * 100);
-
-      const content = `{bold}System Information{/bold}
-
-{cyan-fg}Memory:{/cyan-fg}
-  Total: ${totalMem}GB
-  Used: ${usedMem}GB (${memPercent}%)
-  Free: ${freeMem}GB
-
-{cyan-fg}Process:{/cyan-fg}
-  PID: ${process.pid}
-  Uptime: ${Math.round(process.uptime())}s
-  Node.js: ${process.version}
-
-{cyan-fg}CPU:{/cyan-fg}
-  Cores: ${os.cpus().length}
-  Arch: ${os.arch()}
-  Platform: ${os.platform()}
-
-{cyan-fg}Load Average:{/cyan-fg}
-  ${os
-    .loadavg()
-    .map((load) => load.toFixed(2))
-    .join(', ')}`;
-
-      this.systemBox.setContent(content);
-      this.screen.render();
-    } catch (error) {
-      this.logError(`Failed to update system info: ${error}`);
-    }
-  }
-
-  private logInfo(message: string): void {
-    if (this.options.showLogs) {
-      const timestamp = new Date().toLocaleTimeString();
-      this.logsBox.setContent(
-        this.logsBox.content + `\n{green-fg}[INFO]{/green-fg} ${timestamp}: ${message}`
-      );
-    }
-  }
-
-  private logError(message: string): void {
-    if (this.options.showLogs) {
-      const timestamp = new Date().toLocaleTimeString();
-      this.logsBox.setContent(
-        this.logsBox.content + `\n{red-fg}[ERROR]{/red-fg} ${timestamp}: ${message}`
-      );
-    }
-  }
-
-  // private logWarn(message: string): void {
-  //   if (this.options.showLogs) {
-  //     const timestamp = new Date().toLocaleTimeString();
-  //     this.logsBox.log(`{yellow-fg}[WARN]{/yellow-fg} ${timestamp}: ${message}`);
-  //   }
-  // }
-
-  private showHelp(): void {
-    const helpContent = `{bold}Rulebook Watcher - Help{/bold}
-
-{cyan-fg}Navigation:{/cyan-fg}
-  ↑/↓     - Navigate tasks
-  Enter   - Show task details
-  Tab     - Switch between panels
-
-{cyan-fg}Commands:{/cyan-fg}
-  q/Ctrl+C - Quit watcher
-  F10     - Quit watcher
-  r       - Refresh data
-  h       - Show this help
-
-{cyan-fg}Panels:{/cyan-fg}
-  Tasks List    - Shows all OpenSpec tasks
-  Task Details  - Detailed task information
-  System Info   - System resource usage
-  Activity Logs - Real-time activity log
-
-{cyan-fg}Auto-refresh:{/cyan-fg} Every ${this.options.refreshInterval}ms`;
-
-    this.detailsBox.setContent(helpContent);
+  /**
+   * Render all components
+   */
+  private render(): void {
+    this.renderActiveTasks();
+    this.renderProgressBar();
+    this.renderActivityLogs();
     this.screen.render();
   }
 
-  private async refresh(): Promise<void> {
-    try {
-      await this.loadTasks();
-      await this.updateSystemInfo();
-    } catch (error) {
-      this.logError(`Refresh failed: ${error}`);
+  /**
+   * Start watching
+   */
+  async start(): Promise<void> {
+    if (this.isRunning) {
+      return;
     }
-  }
-
-  public async start(): Promise<void> {
-    if (this.isRunning) return;
 
     this.isRunning = true;
-    this.logInfo('Starting Rulebook Watcher...');
 
-    // Initial load
-    await this.refresh();
+    try {
+      await this.openspecManager.initialize();
+      const data = await this.openspecManager.loadOpenSpec();
+      this.tasks = data.tasks;
 
-    // Setup auto-refresh
-    this.refreshTimer = setInterval(async () => {
-      if (this.isRunning) {
-        await this.refresh();
-      }
-    }, this.options.refreshInterval);
+      this.logActivity('info', 'Watcher started');
+      this.render();
 
-    this.logInfo('Watcher started successfully');
-    this.screen.render();
+      // Animation timer (for loading spinner)
+      this.refreshTimer = setInterval(() => {
+        this.animationFrame++;
+        
+        // Only render if there are in-progress tasks (to show spinner)
+        const hasInProgress = this.tasks.some(t => t.status === 'in-progress');
+        if (hasInProgress) {
+          this.render();
+        }
+      }, this.options.refreshInterval);
+
+    } catch (error) {
+      this.logActivity('error', `Failed to start: ${error}`);
+      throw error;
+    }
   }
 
-  public stop(): void {
-    if (!this.isRunning) return;
+  /**
+   * Stop watching
+   */
+  stop(): void {
+    if (!this.isRunning) {
+      return;
+    }
 
     this.isRunning = false;
 
@@ -492,24 +395,15 @@ ${task.completedAt ? `{cyan-fg}Completed:{/cyan-fg} ${new Date(task.completedAt)
       this.refreshTimer = undefined;
     }
 
-    this.logInfo('Stopping watcher...');
     this.screen.destroy();
     process.exit(0);
   }
 }
 
+/**
+ * Factory function
+ */
 export function createModernConsole(options: ModernConsoleOptions): ModernConsole {
   return new ModernConsole(options);
 }
 
-export async function startModernWatcher(projectRoot: string): Promise<void> {
-  const console = createModernConsole({
-    projectRoot,
-    refreshInterval: 2000,
-    showSystemInfo: true,
-    showLogs: true,
-    maxLogLines: 50,
-  });
-
-  await console.start();
-}

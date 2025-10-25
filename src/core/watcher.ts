@@ -6,10 +6,7 @@ import { createModernConsole } from './modern-console.js';
 export async function startWatcher(projectRoot: string): Promise<void> {
   const modernConsole = createModernConsole({
     projectRoot,
-    refreshInterval: 2000,
-    showSystemInfo: true,
-    showLogs: true,
-    maxLogLines: 50,
+    refreshInterval: 100,
   });
 
   await modernConsole.start();

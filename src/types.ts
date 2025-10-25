@@ -119,6 +119,10 @@ export interface OpenSpecTask {
   completedAt?: string;
   assignedTo?: string;
   tags: string[];
+  metadata?: {
+    startedAt?: string;
+    [key: string]: any;
+  };
 }
 
 export interface OpenSpecData {
