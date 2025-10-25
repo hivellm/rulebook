@@ -1,6 +1,6 @@
 /**
  * cursor-agent Stream Parser
- * 
+ *
  * Parses stream-json output from cursor-agent CLI
  * Format: Each line is a complete JSON object
  */
@@ -132,7 +132,7 @@ export function parseStreamLine(line: string): CursorAgentEvent | null {
   try {
     const trimmed = line.trim();
     if (!trimmed) return null;
-    
+
     const event = JSON.parse(trimmed) as CursorAgentEvent;
     return event;
   } catch (error) {
@@ -172,7 +172,7 @@ export class CursorAgentStreamParser {
    */
   processEvent(event: CursorAgentEvent): void {
     console.log('🔍 [DEBUG] Event type:', event.type, 'subtype:', (event as any).subtype || 'none');
-    
+
     switch (event.type) {
       case 'system':
         this.handleSystemEvent(event);
@@ -237,7 +237,7 @@ export class CursorAgentStreamParser {
 
   private handleAssistantEvent(event: AssistantMessageEvent): void {
     this.sessionId = event.session_id;
-    
+
     // Extract text content from assistant message
     const text = event.message.content
       .filter((c) => c.type === 'text')
@@ -247,15 +247,13 @@ export class CursorAgentStreamParser {
     // Accumulate text (stream-partial-output sends incremental deltas)
     if (text && !this.accumulatedText.includes(text)) {
       this.accumulatedText = text;
-      
+
       // Show progress
       process.stdout.write(`\r📝 Generating: ${this.accumulatedText.length} chars`);
     }
   }
 
-  private handleToolCallEvent(
-    event: ToolCallStartedEvent | ToolCallCompletedEvent
-  ): void {
+  private handleToolCallEvent(event: ToolCallStartedEvent | ToolCallCompletedEvent): void {
     this.sessionId = event.session_id;
 
     if (event.subtype === 'started') {
@@ -288,11 +286,10 @@ export class CursorAgentStreamParser {
       const completedEvent = event as ToolCallCompletedEvent;
 
       if (completedEvent.tool_call.writeToolCall?.result.success) {
-        const { linesCreated, fileSize } =
-          completedEvent.tool_call.writeToolCall.result.success;
+        const { linesCreated, fileSize } = completedEvent.tool_call.writeToolCall.result.success;
         const result = `Created ${linesCreated} lines (${fileSize} bytes)`;
         console.log(`   ✅ ${result}`);
-        
+
         // Update the last tool call with result
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = result;
@@ -300,7 +297,7 @@ export class CursorAgentStreamParser {
       } else if (completedEvent.tool_call.writeToolCall?.result.error) {
         const error = completedEvent.tool_call.writeToolCall.result.error;
         console.log(`   ❌ Error: ${error}`);
-        
+
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = `Error: ${error}`;
         }
@@ -310,14 +307,14 @@ export class CursorAgentStreamParser {
         const { totalLines } = completedEvent.tool_call.readToolCall.result.success;
         const result = `Read ${totalLines} lines`;
         console.log(`   ✅ ${result}`);
-        
+
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = result;
         }
       } else if (completedEvent.tool_call.readToolCall?.result.error) {
         const error = completedEvent.tool_call.readToolCall.result.error;
         console.log(`   ❌ Error: ${error}`);
-        
+
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = `Error: ${error}`;
         }
@@ -330,14 +327,14 @@ export class CursorAgentStreamParser {
         if (stdout) {
           console.log(`   Output: ${stdout.substring(0, 100)}${stdout.length > 100 ? '...' : ''}`);
         }
-        
+
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = result;
         }
       } else if (completedEvent.tool_call.bashToolCall?.result.error) {
         const error = completedEvent.tool_call.bashToolCall.result.error;
         console.log(`   ❌ Error: ${error}`);
-        
+
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = `Error: ${error}`;
         }
@@ -374,4 +371,3 @@ export function parseCursorAgentOutput(output: string): ParsedResult {
   parser.processLines(output);
   return parser.getResult();
 }
-

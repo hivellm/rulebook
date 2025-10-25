@@ -2,6 +2,8 @@ import { spawn, type ChildProcess } from 'child_process';
 import { createLogger } from './logger.js';
 import type { RulebookConfig } from '../types.js';
 import { CursorAgentStreamParser, parseStreamLine } from '../agents/cursor-agent.js';
+import { ClaudeCodeStreamParser, parseClaudeCodeLine } from '../agents/claude-code.js';
+import { GeminiStreamParser, parseGeminiLine } from '../agents/gemini-cli.js';
 
 export interface CLITool {
   name: string;
@@ -36,9 +38,6 @@ export class CLIBridge {
       { name: 'cursor-agent', command: 'cursor-agent', available: false },
       { name: 'claude-code', command: 'claude', available: false },
       { name: 'gemini-cli', command: 'gemini', available: false },
-      { name: 'cursor-cli', command: 'cursor-cli', available: false },
-      { name: 'gemini-cli-legacy', command: 'gemini-cli', available: false },
-      { name: 'claude-cli', command: 'claude-cli', available: false },
     ];
 
     for (const tool of tools) {
@@ -110,7 +109,7 @@ export class CLIBridge {
         // --approve-mcps: Allow all MCP servers without asking
         // --output-format stream-json: Stream output in JSON format
         // --stream-partial-output: Stream partial output as individual text deltas
-        
+
         const args = [
           '-p',
           '--force',
@@ -123,8 +122,8 @@ export class CLIBridge {
 
         const proc = spawn(toolName, args, {
           cwd: options.workingDirectory,
-          env: { 
-            ...process.env, 
+          env: {
+            ...process.env,
             ...options.env,
             // Disable Node.js buffering for immediate output
             NODE_NO_READLINE: '1',
@@ -135,7 +134,7 @@ export class CLIBridge {
 
         console.log('🔗 Connecting to cursor-agent...');
         console.log('   (This may take 30-60 seconds to connect to remote server)');
-        
+
         // Progress indicator
         let dots = 0;
         const progressInterval = setInterval(() => {
@@ -176,7 +175,7 @@ export class CLIBridge {
 
         if (proc.stdout) {
           proc.stdout.setEncoding('utf8');
-          
+
           let buffer = '';
           proc.stdout.on('data', (data: string) => {
             if (!hasOutput) {
@@ -185,14 +184,14 @@ export class CLIBridge {
               console.log(''); // Empty line for better formatting
               hasOutput = true;
             }
-            
+
             stdout += data;
             buffer += data;
-            
+
             // Process complete lines
             const lines = buffer.split('\n');
             buffer = lines.pop() || ''; // Keep incomplete line in buffer
-            
+
             for (const line of lines) {
               if (line.trim()) {
                 console.log('🔍 [DEBUG] Raw line:', line.substring(0, 100));
@@ -200,7 +199,7 @@ export class CLIBridge {
                 const event = parseStreamLine(line);
                 if (event) {
                   parser.processEvent(event);
-                  
+
                   // Check if parser completed
                   if (parser.isCompleted()) {
                     console.log('🔍 [DEBUG] Parser reports completed!');
@@ -244,20 +243,367 @@ export class CLIBridge {
               clearTimeout(timeoutId);
               // Process might still be alive, wait a bit for graceful exit
               const checkExit = setInterval(() => {
-                console.log('🔍 [DEBUG] Checking if process exited... killed:', proc.killed, 'exitCode:', proc.exitCode);
+                console.log(
+                  '🔍 [DEBUG] Checking if process exited... killed:',
+                  proc.killed,
+                  'exitCode:',
+                  proc.exitCode
+                );
                 if (proc.killed || proc.exitCode !== null) {
                   clearInterval(checkExit);
                   console.log('🔍 [DEBUG] Process exited, resolving with exitCode:', proc.exitCode);
                   resolve({ exitCode: proc.exitCode ?? 0, stdout, stderr });
                 }
               }, 100);
-              
+
               // Force resolve after 2 seconds if still hanging
               setTimeout(() => {
                 console.log('🔍 [DEBUG] Force resolve after 2s');
                 clearInterval(checkExit);
                 if (!proc.killed) {
                   console.log('🔍 [DEBUG] Killing with SIGKILL');
+                  proc.kill('SIGKILL');
+                }
+                resolve({ exitCode: 0, stdout, stderr });
+              }, 2000);
+            });
+
+            proc.on('exit', (code: number | null, _signal: NodeJS.Signals | null) => {
+              clearInterval(progressInterval);
+              clearTimeout(timeoutId);
+              resolve({ exitCode: code ?? 0, stdout, stderr });
+            });
+
+            proc.on('error', (error: Error) => {
+              clearInterval(progressInterval);
+              clearTimeout(timeoutId);
+              reject(error);
+            });
+          }
+        );
+
+        const duration = Date.now() - startTime;
+
+        // Remove from active processes
+        this.activeProcesses.delete(processId);
+
+        // Get parsed result from stream parser
+        const parsedResult = parser.getResult();
+
+        const response: CLIResponse = {
+          success: result.exitCode === 0,
+          output: parsedResult.text || result.stdout, // Use parsed text if available
+          error: result.stderr,
+          duration,
+          exitCode: result.exitCode,
+        };
+
+        // Log summary
+        console.log('\n📊 Summary:');
+        console.log(`   Text generated: ${parsedResult.text.length} chars`);
+        console.log(`   Tool calls: ${parsedResult.toolCalls.length}`);
+        console.log(`   Duration: ${Math.round(duration / 1000)}s`);
+
+        this.logger.cliResponse(toolName, parsedResult.text || result.stdout, duration);
+
+        return response;
+      } else if (toolName === 'claude-code') {
+        // claude-code expects: claude --headless "PROMPT"
+        const args = ['--headless', command];
+
+        const proc = spawn('claude', args, {
+          cwd: options.workingDirectory,
+          env: {
+            ...process.env,
+            ...options.env,
+          },
+          stdio: ['ignore', 'pipe', 'pipe'],
+          shell: false,
+        });
+
+        console.log('🔗 Connecting to claude-code...');
+
+        // Progress indicator
+        let dots = 0;
+        const progressInterval = setInterval(() => {
+          dots = (dots + 1) % 4;
+          process.stdout.write('\r⏳ Waiting' + '.'.repeat(dots) + ' '.repeat(3 - dots));
+        }, 500);
+
+        // Stream output in real-time with parser
+        let hasOutput = false;
+        let stdout = '';
+        let stderr = '';
+        const parser = new ClaudeCodeStreamParser();
+
+        // Promise to resolve when parser completes
+        let resolveCompletion: (() => void) | undefined;
+        const completionPromise = new Promise<void>((resolve) => {
+          resolveCompletion = resolve;
+        });
+
+        // Set completion callback
+        parser.onComplete(() => {
+          console.log('\n✅ claude-code completed, terminating process...');
+          if (resolveCompletion) {
+            resolveCompletion();
+          }
+          // Give a small delay for any remaining output, then kill
+          setTimeout(() => {
+            if (!proc.killed) {
+              proc.kill('SIGTERM');
+            }
+          }, 500);
+        });
+
+        if (proc.stdout) {
+          proc.stdout.setEncoding('utf8');
+
+          let buffer = '';
+          proc.stdout.on('data', (data: string) => {
+            if (!hasOutput) {
+              clearInterval(progressInterval);
+              console.log('\n✅ Received first response from claude-code!');
+              console.log(''); // Empty line for better formatting
+              hasOutput = true;
+            }
+
+            stdout += data;
+            buffer += data;
+
+            // Process complete lines
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+            for (const line of lines) {
+              if (line.trim()) {
+                // Parse and process each line
+                const event = parseClaudeCodeLine(line);
+                if (event) {
+                  parser.processEvent(event);
+
+                  // Check if parser completed
+                  if (parser.isCompleted()) {
+                    console.log('✅ Parser reports completed!');
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        if (proc.stderr) {
+          proc.stderr.setEncoding('utf8');
+          proc.stderr.on('data', (data: string) => {
+            if (!hasOutput) {
+              clearInterval(progressInterval);
+              hasOutput = true;
+            }
+            stderr += data;
+            process.stderr.write('⚠️ ' + data);
+          });
+        }
+
+        // Store active process
+        const processId = `${toolName}-${Date.now()}`;
+        this.activeProcesses.set(processId, proc);
+
+        // Wait for process to complete with timeout or completion
+        const result = await new Promise<{ exitCode: number; stdout: string; stderr: string }>(
+          (resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+              proc.kill('SIGTERM');
+              reject(new Error(`Command timed out after ${timeout} milliseconds`));
+            }, timeout);
+
+            // Resolve when parser detects completion
+            completionPromise.then(() => {
+              console.log('✅ completionPromise resolved!');
+              clearInterval(progressInterval);
+              clearTimeout(timeoutId);
+              // Process might still be alive, wait a bit for graceful exit
+              const checkExit = setInterval(() => {
+                if (proc.killed || proc.exitCode !== null) {
+                  clearInterval(checkExit);
+                  resolve({ exitCode: proc.exitCode ?? 0, stdout, stderr });
+                }
+              }, 100);
+
+              // Force resolve after 2 seconds if still hanging
+              setTimeout(() => {
+                clearInterval(checkExit);
+                if (!proc.killed) {
+                  proc.kill('SIGKILL');
+                }
+                resolve({ exitCode: 0, stdout, stderr });
+              }, 2000);
+            });
+
+            proc.on('exit', (code: number | null, _signal: NodeJS.Signals | null) => {
+              clearInterval(progressInterval);
+              clearTimeout(timeoutId);
+              resolve({ exitCode: code ?? 0, stdout, stderr });
+            });
+
+            proc.on('error', (error: Error) => {
+              clearInterval(progressInterval);
+              clearTimeout(timeoutId);
+              reject(error);
+            });
+          }
+        );
+
+        const duration = Date.now() - startTime;
+
+        // Remove from active processes
+        this.activeProcesses.delete(processId);
+
+        // Get parsed result from stream parser
+        const parsedResult = parser.getResult();
+
+        const response: CLIResponse = {
+          success: result.exitCode === 0,
+          output: parsedResult.text || result.stdout, // Use parsed text if available
+          error: result.stderr,
+          duration,
+          exitCode: result.exitCode,
+        };
+
+        // Log summary
+        console.log('\n📊 Summary:');
+        console.log(`   Text generated: ${parsedResult.text.length} chars`);
+        console.log(`   Tool calls: ${parsedResult.toolCalls.length}`);
+        console.log(`   Duration: ${Math.round(duration / 1000)}s`);
+
+        this.logger.cliResponse(toolName, parsedResult.text || result.stdout, duration);
+
+        return response;
+      } else if (toolName === 'gemini-cli') {
+        // gemini-cli expects: gemini "PROMPT"
+        const args = [command];
+
+        const proc = spawn('gemini', args, {
+          cwd: options.workingDirectory,
+          env: {
+            ...process.env,
+            ...options.env,
+          },
+          stdio: ['ignore', 'pipe', 'pipe'],
+          shell: false,
+        });
+
+        console.log('🔗 Connecting to gemini-cli...');
+
+        // Progress indicator
+        let dots = 0;
+        const progressInterval = setInterval(() => {
+          dots = (dots + 1) % 4;
+          process.stdout.write('\r⏳ Waiting' + '.'.repeat(dots) + ' '.repeat(3 - dots));
+        }, 500);
+
+        // Stream output in real-time with parser
+        let hasOutput = false;
+        let stdout = '';
+        let stderr = '';
+        const parser = new GeminiStreamParser();
+
+        // Promise to resolve when parser completes
+        let resolveCompletion: (() => void) | undefined;
+        const completionPromise = new Promise<void>((resolve) => {
+          resolveCompletion = resolve;
+        });
+
+        // Set completion callback
+        parser.onComplete(() => {
+          console.log('\n✅ gemini-cli completed, terminating process...');
+          if (resolveCompletion) {
+            resolveCompletion();
+          }
+          // Give a small delay for any remaining output, then kill
+          setTimeout(() => {
+            if (!proc.killed) {
+              proc.kill('SIGTERM');
+            }
+          }, 500);
+        });
+
+        if (proc.stdout) {
+          proc.stdout.setEncoding('utf8');
+
+          let buffer = '';
+          proc.stdout.on('data', (data: string) => {
+            if (!hasOutput) {
+              clearInterval(progressInterval);
+              console.log('\n✅ Received first response from gemini-cli!');
+              console.log(''); // Empty line for better formatting
+              hasOutput = true;
+            }
+
+            stdout += data;
+            buffer += data;
+
+            // Process complete lines
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+            for (const line of lines) {
+              if (line.trim()) {
+                // Parse and process each line
+                const event = parseGeminiLine(line);
+                if (event) {
+                  parser.processEvent(event);
+
+                  // Check if parser completed
+                  if (parser.isCompleted()) {
+                    console.log('✅ Parser reports completed!');
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        if (proc.stderr) {
+          proc.stderr.setEncoding('utf8');
+          proc.stderr.on('data', (data: string) => {
+            if (!hasOutput) {
+              clearInterval(progressInterval);
+              hasOutput = true;
+            }
+            stderr += data;
+            process.stderr.write('⚠️ ' + data);
+          });
+        }
+
+        // Store active process
+        const processId = `${toolName}-${Date.now()}`;
+        this.activeProcesses.set(processId, proc);
+
+        // Wait for process to complete with timeout or completion
+        const result = await new Promise<{ exitCode: number; stdout: string; stderr: string }>(
+          (resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+              proc.kill('SIGTERM');
+              reject(new Error(`Command timed out after ${timeout} milliseconds`));
+            }, timeout);
+
+            // Resolve when parser detects completion
+            completionPromise.then(() => {
+              console.log('✅ completionPromise resolved!');
+              clearInterval(progressInterval);
+              clearTimeout(timeoutId);
+              // Process might still be alive, wait a bit for graceful exit
+              const checkExit = setInterval(() => {
+                if (proc.killed || proc.exitCode !== null) {
+                  clearInterval(checkExit);
+                  resolve({ exitCode: proc.exitCode ?? 0, stdout, stderr });
+                }
+              }, 100);
+
+              // Force resolve after 2 seconds if still hanging
+              setTimeout(() => {
+                clearInterval(checkExit);
+                if (!proc.killed) {
                   proc.kill('SIGKILL');
                 }
                 resolve({ exitCode: 0, stdout, stderr });

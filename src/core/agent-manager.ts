@@ -65,6 +65,11 @@ export class AgentManager {
       this.currentTool = selectedTool;
       this.isRunning = true;
 
+      // Sync task status first
+      console.log(chalk.gray('📋 Syncing task status...'));
+      await this.openspecManager.syncTaskStatus();
+      console.log(chalk.green('✅ Task status synced\n'));
+
       // Start watcher if requested
       if (options.watchMode) {
         this.startWatcherInBackground();

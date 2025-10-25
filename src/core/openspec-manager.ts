@@ -100,6 +100,26 @@ export class OpenSpecManager {
   }
 
   /**
+   * Sync task status on agent start
+   * Loads all tasks and ensures the data is fresh
+   */
+  async syncTaskStatus(): Promise<void> {
+    // Clear cached data to force reload
+    this.data = null;
+    
+    // Reload all tasks
+    const data = await this.loadOpenSpec();
+    
+    // Log task summary
+    const totalTasks = data.tasks.length + data.history.length;
+    const pendingTasks = data.tasks.filter((t: OpenSpecTask) => t.status === 'pending').length;
+    const inProgressTasks = data.tasks.filter((t: OpenSpecTask) => t.status === 'in-progress').length;
+    const completedTasks = data.history.length;
+    
+    console.log(`   Tasks: ${totalTasks} total | ${pendingTasks} pending | ${inProgressTasks} in progress | ${completedTasks} completed`);
+  }
+
+  /**
    * Load tasks from all changes directories
    */
   private async loadTasksFromChanges(): Promise<OpenSpecTask[]> {

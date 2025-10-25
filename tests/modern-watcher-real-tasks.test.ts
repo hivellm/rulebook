@@ -112,7 +112,7 @@ describe('Modern Watcher with Real Tasks', () => {
   describe('Real Task Loading', () => {
     it('should load real OpenSpec tasks from the project', async () => {
       const tasks = await openspecManager.getTasksByPriority();
-      
+
       expect(tasks).toBeDefined();
       expect(Array.isArray(tasks)).toBe(true);
       expect(tasks.length).toBeGreaterThan(0);
@@ -137,21 +137,23 @@ describe('Modern Watcher with Real Tasks', () => {
 
     it('should have specific expected tasks from the project', async () => {
       const tasks = await openspecManager.getTasksByPriority();
-      
+
       // Check for specific tasks that should exist
-      const taskTitles = tasks.map(t => t.title);
-      
+      const taskTitles = tasks.map((t) => t.title);
+
       // Look for the specific task we're testing
-      const watcherTask = tasks.find(t => t.title.includes('Test modern watcher with real tasks'));
+      const watcherTask = tasks.find((t) =>
+        t.title.includes('Test modern watcher with real tasks')
+      );
       expect(watcherTask).toBeDefined();
       expect(watcherTask?.status).toBe('pending');
-      
+
       console.log('Found watcher test task:', watcherTask?.title);
     });
 
     it('should properly parse task priorities and dependencies', async () => {
       const tasks = await openspecManager.getTasksByPriority();
-      
+
       // Check priority ordering
       for (let i = 1; i < tasks.length; i++) {
         expect(tasks[i].priority).toBeGreaterThanOrEqual(tasks[i - 1].priority);
@@ -160,7 +162,7 @@ describe('Modern Watcher with Real Tasks', () => {
       // Check that dependencies are valid task IDs
       tasks.forEach((task) => {
         task.dependencies.forEach((depId) => {
-          const depTask = tasks.find(t => t.id === depId);
+          const depTask = tasks.find((t) => t.id === depId);
           expect(depTask).toBeDefined();
         });
       });
@@ -170,7 +172,7 @@ describe('Modern Watcher with Real Tasks', () => {
   describe('Task Statistics', () => {
     it('should provide accurate task statistics', async () => {
       const stats = await openspecManager.getTaskStats();
-      
+
       expect(stats).toBeDefined();
       expect(typeof stats.total).toBe('number');
       expect(typeof stats.completed).toBe('number');
@@ -180,7 +182,9 @@ describe('Modern Watcher with Real Tasks', () => {
       expect(typeof stats.skipped).toBe('number');
 
       expect(stats.total).toBeGreaterThan(0);
-      expect(stats.completed + stats.pending + stats.failed + stats.inProgress + stats.skipped).toBe(stats.total);
+      expect(
+        stats.completed + stats.pending + stats.failed + stats.inProgress + stats.skipped
+      ).toBe(stats.total);
 
       console.log('Task Statistics:', stats);
     });
@@ -188,10 +192,10 @@ describe('Modern Watcher with Real Tasks', () => {
     it('should have pending tasks available for testing', async () => {
       const stats = await openspecManager.getTaskStats();
       const tasks = await openspecManager.getTasksByPriority();
-      
+
       expect(stats.pending).toBeGreaterThan(0);
       expect(tasks.length).toBe(stats.pending);
-      
+
       console.log(`Found ${stats.pending} pending tasks for watcher testing`);
     });
   });
@@ -199,15 +203,15 @@ describe('Modern Watcher with Real Tasks', () => {
   describe('Task Dependencies', () => {
     it('should validate task dependency relationships', async () => {
       const tasks = await openspecManager.getTasksByPriority();
-      
+
       // Test dependency validation
       for (const task of tasks) {
         const canStart = await openspecManager.canStartTask(task.id);
         const blockingTasks = await openspecManager.getBlockingTasks(task.id);
-        
+
         expect(typeof canStart).toBe('boolean');
         expect(Array.isArray(blockingTasks)).toBe(true);
-        
+
         if (canStart) {
           expect(blockingTasks.length).toBe(0);
         } else {
@@ -218,11 +222,11 @@ describe('Modern Watcher with Real Tasks', () => {
 
     it('should detect circular dependencies', async () => {
       const validation = await openspecManager.validateDependencyGraph();
-      
+
       expect(validation).toBeDefined();
       expect(typeof validation.valid).toBe('boolean');
       expect(Array.isArray(validation.cycles)).toBe(true);
-      
+
       if (!validation.valid) {
         console.log('Found circular dependencies:', validation.cycles);
       }
@@ -230,11 +234,11 @@ describe('Modern Watcher with Real Tasks', () => {
 
     it('should generate dependency tree', async () => {
       const tree = await openspecManager.generateDependencyTree();
-      
+
       expect(typeof tree).toBe('string');
       expect(tree.length).toBeGreaterThan(0);
       expect(tree).toContain('Task Dependency Tree');
-      
+
       console.log('Dependency Tree:', tree);
     });
   });
@@ -243,32 +247,32 @@ describe('Modern Watcher with Real Tasks', () => {
     it('should provide correct execution order respecting dependencies', async () => {
       const executionOrder = await openspecManager.getExecutionOrder();
       const parallelLevels = await openspecManager.getParallelExecutableTasks();
-      
+
       expect(Array.isArray(executionOrder)).toBe(true);
       expect(Array.isArray(parallelLevels)).toBe(true);
       expect(parallelLevels.length).toBeGreaterThan(0);
-      
+
       // Verify that all tasks are included
       const allTasks = await openspecManager.getTasksByPriority();
-      const executionIds = executionOrder.map(t => t.id);
-      const allTaskIds = allTasks.map(t => t.id);
-      
+      const executionIds = executionOrder.map((t) => t.id);
+      const allTaskIds = allTasks.map((t) => t.id);
+
       expect(executionIds.length).toBe(allTaskIds.length);
-      allTaskIds.forEach(id => {
+      allTaskIds.forEach((id) => {
         expect(executionIds).toContain(id);
       });
     });
 
     it('should identify next available task', async () => {
       const nextTask = await openspecManager.getNextTask();
-      
+
       if (nextTask) {
         expect(nextTask.id).toBeDefined();
         expect(nextTask.status).toBe('pending');
-        
+
         const canStart = await openspecManager.canStartTask(nextTask.id);
         expect(canStart).toBe(true);
-        
+
         console.log('Next available task:', nextTask.title);
       }
     });
@@ -283,17 +287,17 @@ describe('Modern Watcher with Real Tasks', () => {
     it('should handle task status updates', async () => {
       const tasks = await openspecManager.getTasksByPriority();
       const firstTask = tasks[0];
-      
+
       if (firstTask) {
         // Test status update
         await openspecManager.updateTaskStatus(firstTask.id, 'in-progress');
-        
+
         const updatedTask = await openspecManager.getTask(firstTask.id);
         expect(updatedTask?.status).toBe('in-progress');
-        
+
         // Reset status
         await openspecManager.updateTaskStatus(firstTask.id, 'pending');
-        
+
         const resetTask = await openspecManager.getTask(firstTask.id);
         expect(resetTask?.status).toBe('pending');
       }
@@ -302,24 +306,24 @@ describe('Modern Watcher with Real Tasks', () => {
     it('should handle task completion workflow', async () => {
       const tasks = await openspecManager.getTasksByPriority();
       const firstTask = tasks[0];
-      
+
       if (firstTask) {
         // Mark as in-progress
         await openspecManager.updateTaskStatus(firstTask.id, 'in-progress');
-        
+
         // Increment attempts
         await openspecManager.incrementTaskAttempts(firstTask.id);
-        
+
         const inProgressTask = await openspecManager.getTask(firstTask.id);
         expect(inProgressTask?.status).toBe('in-progress');
         expect(inProgressTask?.attempts).toBe(1);
-        
+
         // Mark as completed
         await openspecManager.markTaskComplete(firstTask.id);
-        
+
         const completedTask = await openspecManager.getTask(firstTask.id);
         expect(completedTask).toBeNull(); // Should be moved to history
-        
+
         // Check history
         const stats = await openspecManager.getTaskStats();
         expect(stats.completed).toBeGreaterThan(0);
@@ -330,16 +334,14 @@ describe('Modern Watcher with Real Tasks', () => {
   describe('Error Handling', () => {
     it('should handle invalid task operations gracefully', async () => {
       const invalidTaskId = 'non-existent-task-id';
-      
+
       // Test getting non-existent task
       const task = await openspecManager.getTask(invalidTaskId);
       expect(task).toBeNull();
-      
+
       // Test updating non-existent task
-      await expect(
-        openspecManager.updateTaskStatus(invalidTaskId, 'completed')
-      ).rejects.toThrow();
-      
+      await expect(openspecManager.updateTaskStatus(invalidTaskId, 'completed')).rejects.toThrow();
+
       // Test getting dependencies for non-existent task
       const deps = await openspecManager.getTaskDependencies(invalidTaskId);
       expect(deps).toEqual([]);
@@ -349,10 +351,10 @@ describe('Modern Watcher with Real Tasks', () => {
       // Create a temporary OpenSpec manager with empty directory
       const emptyManager = createOpenSpecManager(tempDir);
       await emptyManager.initialize();
-      
+
       const tasks = await emptyManager.getTasksByPriority();
       expect(tasks).toEqual([]);
-      
+
       const stats = await emptyManager.getTaskStats();
       expect(stats.total).toBe(0);
       expect(stats.pending).toBe(0);
@@ -363,19 +365,19 @@ describe('Modern Watcher with Real Tasks', () => {
   describe('Performance and Reliability', () => {
     it('should load tasks efficiently', async () => {
       const startTime = Date.now();
-      
+
       const tasks = await openspecManager.getTasksByPriority();
       const stats = await openspecManager.getTaskStats();
       const executionOrder = await openspecManager.getExecutionOrder();
-      
+
       const endTime = Date.now();
       const loadTime = endTime - startTime;
-      
+
       expect(loadTime).toBeLessThan(1000); // Should load in under 1 second
       expect(tasks.length).toBeGreaterThan(0);
       expect(stats.total).toBeGreaterThan(0);
       expect(executionOrder.length).toBeGreaterThan(0);
-      
+
       console.log(`Loaded ${tasks.length} tasks in ${loadTime}ms`);
     });
 
@@ -387,9 +389,9 @@ describe('Modern Watcher with Real Tasks', () => {
         openspecManager.generateDependencyTree(),
         openspecManager.validateDependencyGraph(),
       ];
-      
+
       const results = await Promise.all(promises);
-      
+
       expect(results).toHaveLength(5);
       results.forEach((result, index) => {
         expect(result).toBeDefined();
@@ -407,56 +409,57 @@ describe('Modern Watcher with Real Tasks', () => {
       // Get all pending tasks
       const initialTasks = await openspecManager.getTasksByPriority();
       const initialStats = await openspecManager.getTaskStats();
-      
+
       expect(initialTasks.length).toBeGreaterThan(0);
-      
+
       // Find a task that can be started
       const nextTask = await openspecManager.getNextTask();
       if (nextTask) {
         // Start the task
         await openspecManager.updateTaskStatus(nextTask.id, 'in-progress');
-        
+
         // Verify status change
         const inProgressTask = await openspecManager.getTask(nextTask.id);
         expect(inProgressTask?.status).toBe('in-progress');
-        
+
         // Simulate work (increment attempts)
         await openspecManager.incrementTaskAttempts(nextTask.id);
-        
+
         // Complete the task
         await openspecManager.markTaskComplete(nextTask.id);
-        
+
         // Verify completion
         const finalStats = await openspecManager.getTaskStats();
         expect(finalStats.completed).toBe(initialStats.completed + 1);
         expect(finalStats.pending).toBe(initialStats.pending - 1);
-        
+
         console.log(`Successfully completed task: ${nextTask.title}`);
       }
     });
 
     it('should handle task filtering and searching', async () => {
       const allTasks = await openspecManager.getTasksByPriority();
-      
+
       // Filter by status
-      const pendingTasks = allTasks.filter(t => t.status === 'pending');
-      const inProgressTasks = allTasks.filter(t => t.status === 'in-progress');
-      
+      const pendingTasks = allTasks.filter((t) => t.status === 'pending');
+      const inProgressTasks = allTasks.filter((t) => t.status === 'in-progress');
+
       expect(pendingTasks.length).toBeGreaterThan(0);
       expect(inProgressTasks.length).toBeGreaterThanOrEqual(0);
-      
+
       // Filter by priority
-      const highPriorityTasks = allTasks.filter(t => t.priority >= 3);
-      const lowPriorityTasks = allTasks.filter(t => t.priority <= 1);
-      
-      expect(highPriorityTasks.length + lowPriorityTasks.length).toBeLessThanOrEqual(allTasks.length);
-      
-      // Search by title
-      const watcherTasks = allTasks.filter(t => 
-        t.title.toLowerCase().includes('watcher') || 
-        t.title.toLowerCase().includes('test')
+      const highPriorityTasks = allTasks.filter((t) => t.priority >= 3);
+      const lowPriorityTasks = allTasks.filter((t) => t.priority <= 1);
+
+      expect(highPriorityTasks.length + lowPriorityTasks.length).toBeLessThanOrEqual(
+        allTasks.length
       );
-      
+
+      // Search by title
+      const watcherTasks = allTasks.filter(
+        (t) => t.title.toLowerCase().includes('watcher') || t.title.toLowerCase().includes('test')
+      );
+
       expect(watcherTasks.length).toBeGreaterThan(0);
       console.log(`Found ${watcherTasks.length} watcher/test related tasks`);
     });
