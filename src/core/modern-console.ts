@@ -537,8 +537,18 @@ export class ModernConsole {
     const memUsage = process.memoryUsage();
     const memUsageMB = Math.round(memUsage.heapUsed / 1024 / 1024);
 
-    if (memUsageMB > 10) {
-      this.logActivity('warning', `High memory usage: ${memUsageMB}MB`);
+    if (memUsageMB > 1024) {
+      // Directly push to logs array to avoid infinite recursion via logActivity
+      this.activityLogs.push({
+        timestamp: new Date(),
+        type: 'warning',
+        message: `High memory usage: ${memUsageMB}MB`,
+      });
+      // Keep only last 100 entries
+      if (this.activityLogs.length > 100) {
+        this.activityLogs = this.activityLogs.slice(-100);
+      }
+      this.render();
     }
   }
 
