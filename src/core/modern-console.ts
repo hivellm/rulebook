@@ -177,8 +177,8 @@ export class ModernConsole {
 
   private setupEventHandlers(): void {
     // Exit on F10 or Ctrl+C
-    this.screen.key(['f10', 'C-c'], () => {
-      this.stop();
+    this.screen.key(['f10', 'C-c'], async () => {
+      await this.stop();
     });
 
     // Start agent on 'A' key
@@ -469,9 +469,22 @@ export class ModernConsole {
   /**
    * Stop watching
    */
-  stop(): void {
+  async stop(): Promise<void> {
     if (!this.isRunning) {
       return;
+    }
+
+    this.logActivity('info', 'Stopping watcher...');
+
+    // Stop agent first if running
+    if (this.isAgentRunning && this.agentManager) {
+      this.logActivity('info', 'Stopping agent...');
+      try {
+        await this.agentManager.stop();
+        this.logActivity('success', 'Agent stopped');
+      } catch (error) {
+        this.logActivity('error', `Failed to stop agent: ${error}`);
+      }
     }
 
     this.isRunning = false;
