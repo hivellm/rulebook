@@ -116,6 +116,7 @@ export class OpenSpecManager {
     const inProgressTasks = data.tasks.filter((t: OpenSpecTask) => t.status === 'in-progress').length;
     const completedTasks = data.history.length;
     
+    // Log summary (always log to console, even in watcher mode, as this is a direct OpenSpec operation)
     console.log(`   Tasks: ${totalTasks} total | ${pendingTasks} pending | ${inProgressTasks} in progress | ${completedTasks} completed`);
   }
 

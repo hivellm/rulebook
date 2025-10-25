@@ -136,7 +136,7 @@ export function parseStreamLine(line: string): CursorAgentEvent | null {
     const event = JSON.parse(trimmed) as CursorAgentEvent;
     return event;
   } catch (error) {
-    console.error('Failed to parse JSON line:', line);
+    // Failed to parse JSON line - ignore silently
     return null;
   }
 }

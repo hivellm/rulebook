@@ -148,11 +148,13 @@ export class CLIBridge {
           console.log('   (This may take 30-60 seconds to connect to remote server)');
         }
 
-        // Progress indicator
+        // Progress indicator (silent in watcher mode)
         let dots = 0;
         const progressInterval = setInterval(() => {
           dots = (dots + 1) % 4;
-          process.stdout.write('\r⏳ Waiting' + '.'.repeat(dots) + ' '.repeat(3 - dots));
+          if (!this.onLog) {
+            process.stdout.write('\r⏳ Waiting' + '.'.repeat(dots) + ' '.repeat(3 - dots));
+          }
         }, 500);
 
         // Stream output in real-time with parser
@@ -224,7 +226,10 @@ export class CLIBridge {
               hasOutput = true;
             }
             stderr += data;
-            process.stderr.write('⚠️ ' + data);
+            // Only write to stderr in CLI mode, not watcher mode
+            if (!this.onLog) {
+              process.stderr.write('⚠️ ' + data);
+            }
           });
         }
 
@@ -319,13 +324,19 @@ export class CLIBridge {
           shell: false,
         });
 
-        console.log('🔗 Connecting to claude-code...');
+        if (this.onLog) {
+          this.onLog('info', '🔗 Connecting to claude-code...');
+        } else {
+          console.log('🔗 Connecting to claude-code...');
+        }
 
-        // Progress indicator
+        // Progress indicator (silent in watcher mode)
         let dots = 0;
         const progressInterval = setInterval(() => {
           dots = (dots + 1) % 4;
-          process.stdout.write('\r⏳ Waiting' + '.'.repeat(dots) + ' '.repeat(3 - dots));
+          if (!this.onLog) {
+            process.stdout.write('\r⏳ Waiting' + '.'.repeat(dots) + ' '.repeat(3 - dots));
+          }
         }, 500);
 
         // Stream output in real-time with parser
@@ -398,7 +409,10 @@ export class CLIBridge {
               hasOutput = true;
             }
             stderr += data;
-            process.stderr.write('⚠️ ' + data);
+            // Only write to stderr in CLI mode, not watcher mode
+            if (!this.onLog) {
+              process.stderr.write('⚠️ ' + data);
+            }
           });
         }
 
@@ -490,13 +504,19 @@ export class CLIBridge {
           shell: false,
         });
 
-        console.log('🔗 Connecting to gemini-cli...');
+        if (this.onLog) {
+          this.onLog('info', '🔗 Connecting to gemini-cli...');
+        } else {
+          console.log('🔗 Connecting to gemini-cli...');
+        }
 
-        // Progress indicator
+        // Progress indicator (silent in watcher mode)
         let dots = 0;
         const progressInterval = setInterval(() => {
           dots = (dots + 1) % 4;
-          process.stdout.write('\r⏳ Waiting' + '.'.repeat(dots) + ' '.repeat(3 - dots));
+          if (!this.onLog) {
+            process.stdout.write('\r⏳ Waiting' + '.'.repeat(dots) + ' '.repeat(3 - dots));
+          }
         }, 500);
 
         // Stream output in real-time with parser
@@ -569,7 +589,10 @@ export class CLIBridge {
               hasOutput = true;
             }
             stderr += data;
-            process.stderr.write('⚠️ ' + data);
+            // Only write to stderr in CLI mode, not watcher mode
+            if (!this.onLog) {
+              process.stderr.write('⚠️ ' + data);
+            }
         });
       }
 
