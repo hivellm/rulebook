@@ -42,6 +42,7 @@ export class AgentManager {
       // Pass onLog callback to CLI bridge if available
       if (this.onLog) {
         this.cliBridge.setLogCallback(this.onLog);
+        this.openspecManager.setLogCallback(this.onLog);
       }
 
       await this.openspecManager.initialize();

@@ -16,11 +16,19 @@ export class OpenSpecManager {
   private changesPath: string;
   private specsPath: string;
   private data: OpenSpecData | null = null;
+  private onLog?: (type: 'info' | 'success' | 'warning' | 'error', message: string) => void;
 
   constructor(projectRoot: string) {
     this.openspecPath = join(projectRoot, OPENSPEC_DIR);
     this.changesPath = join(this.openspecPath, CHANGES_DIR);
     this.specsPath = join(this.openspecPath, SPECS_DIR);
+  }
+
+  /**
+   * Set callback for logging (used by watcher UI)
+   */
+  setLogCallback(callback: (type: 'info' | 'success' | 'warning' | 'error', message: string) => void): void {
+    this.onLog = callback;
   }
 
   /**
@@ -116,8 +124,14 @@ export class OpenSpecManager {
     const inProgressTasks = data.tasks.filter((t: OpenSpecTask) => t.status === 'in-progress').length;
     const completedTasks = data.history.length;
     
-    // Log summary (always log to console, even in watcher mode, as this is a direct OpenSpec operation)
-    console.log(`   Tasks: ${totalTasks} total | ${pendingTasks} pending | ${inProgressTasks} in progress | ${completedTasks} completed`);
+    const msg = `   Tasks: ${totalTasks} total | ${pendingTasks} pending | ${inProgressTasks} in progress | ${completedTasks} completed`;
+    
+    // Use callback if available (watcher mode), otherwise console.log (CLI mode)
+    if (this.onLog) {
+      this.onLog('info', msg);
+    } else {
+      console.log(msg);
+    }
   }
 
   /**
@@ -144,7 +158,12 @@ export class OpenSpecManager {
         }
       }
     } catch (error) {
-      console.warn(`Warning: Could not load tasks from changes: ${error}`);
+      const msg = `Warning: Could not load tasks from changes: ${error}`;
+      if (this.onLog) {
+        this.onLog('warning', msg);
+      } else {
+        console.warn(msg);
+      }
     }
 
     return allTasks;
@@ -157,10 +176,6 @@ export class OpenSpecManager {
     const tasks: OpenSpecTask[] = [];
     const lines = content.split('\n');
 
-    // TODO: Implement task parsing logic
-    // let currentTask: Partial<OpenSpecTask> | null = null;
-    // let inTaskSection = false;
-
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
 
@@ -171,15 +186,49 @@ export class OpenSpecManager {
           const isCompleted = statusMatch[1] === 'x';
           const taskTitle = statusMatch[2];
 
-          // Extract task ID from title if present, otherwise generate one
-          const idMatch = taskTitle.match(/^(.+) \(id: (.+)\)$/);
-          const title = idMatch ? idMatch[1] : taskTitle;
-          const id = idMatch ? idMatch[2] : randomUUID();
+          // Extract task ID from title - handle both formats:
+          // 1. **TASK-ID**: Description (current format)
+          // 2. Description (id: TASK-ID) (legacy format)
+          let id: string;
+          let title: string;
+          
+          const boldIdMatch = taskTitle.match(/^\*\*(.+?)\*\*: (.+)$/);
+          if (boldIdMatch) {
+            id = boldIdMatch[1];
+            title = boldIdMatch[2];
+          } else {
+            const idMatch = taskTitle.match(/^(.+) \(id: (.+)\)$/);
+            if (idMatch) {
+              title = idMatch[1];
+              id = idMatch[2];
+            } else {
+              id = randomUUID();
+              title = taskTitle;
+            }
+          }
 
-          // Extract priority from title if present
-          const priorityMatch = title.match(/^(\d+)\.\d+ (.+)$/);
-          const priority = priorityMatch ? parseInt(priorityMatch[1]) : 1;
-          const cleanTitle = priorityMatch ? priorityMatch[2] : title;
+          // Extract priority from task ID if it follows pattern like INIT-001, REFACTOR-002, etc.
+          let priority = 1;
+          const priorityMatch = id.match(/^([A-Z]+)-(\d+)$/);
+          if (priorityMatch) {
+            const phase = priorityMatch[1];
+            const phaseNumber = parseInt(priorityMatch[2]);
+            
+            // Map phase names to priority numbers
+            const phasePriority: { [key: string]: number } = {
+              'INIT': 0,
+              'TEST': 1,
+              'REFACTOR': 2,
+              'IMPLEMENT': 3,
+              'INTEGRATE': 4,
+              'STYLE': 5,
+              'OPTIMIZE': 6,
+              'DOCS': 7,
+              'QA': 8
+            };
+            
+            priority = (phasePriority[phase] || 9) * 1000 + phaseNumber;
+          }
 
           // Extract dependencies from subsequent lines
           const dependencies: string[] = [];
@@ -194,8 +243,8 @@ export class OpenSpecManager {
 
           const task: OpenSpecTask = {
             id,
-            title: cleanTitle,
-            description: cleanTitle,
+            title,
+            description: title,
             priority,
             status: isCompleted ? 'completed' : 'pending',
             dependencies,
