@@ -58,9 +58,10 @@ export class AgentManager {
    */
   async startAgent(options: AgentOptions = {}): Promise<void> {
     try {
-      await this.initialize();
-
+      // Set onLog callback BEFORE initialize
       this.onLog = options.onLog;
+      
+      await this.initialize();
 
       if (!this.onLog) {
         console.log(chalk.bold.blue('\n🤖 Rulebook Autonomous Agent\n'));
