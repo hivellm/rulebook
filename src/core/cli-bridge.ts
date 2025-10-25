@@ -326,26 +326,45 @@ export class CLIBridge {
               await this.debugLog(`Process PID: ${proc.pid}, killed: ${proc.killed}, exitCode: ${proc.exitCode}`);
               clearInterval(progressInterval);
               clearTimeout(timeoutId);
-              // Process might still be alive, wait a bit for graceful exit
+              
+              // FORCE KILL IMMEDIATELY after completion
+              if (!proc.killed && proc.exitCode === null) {
+                await this.debugLog(`Forcing process kill immediately after completion`);
+                try {
+                  proc.kill('SIGTERM');
+                  // Give 100ms for graceful shutdown, then SIGKILL
+                  setTimeout(() => {
+                    if (!proc.killed && proc.exitCode === null) {
+                      proc.kill('SIGKILL');
+                    }
+                  }, 100);
+                } catch (error) {
+                  await this.debugLog(`Error killing process: ${error}`);
+                }
+              }
+              
+              // Wait max 500ms for process to exit
               const checkExit = setInterval(async () => {
                 if (proc.killed || proc.exitCode !== null) {
-                  await this.debugLog(`Process exited gracefully with code: ${proc.exitCode}`);
+                  await this.debugLog(`Process exited with code: ${proc.exitCode}`);
                   clearInterval(checkExit);
                   resolve({ exitCode: proc.exitCode ?? 0, stdout, stderr });
                 }
-              }, 100);
+              }, 50);
 
-              // Force resolve after 2 seconds if still hanging
+              // Force resolve after 500ms
               setTimeout(async () => {
                 clearInterval(checkExit);
                 if (!proc.killed) {
-                  await this.debugLog(`Process still alive after 2s, forcing kill with SIGKILL`);
-                  proc.kill('SIGKILL');
-                } else {
-                  await this.debugLog(`Process already killed, resolving`);
+                  await this.debugLog(`Process STILL alive after 500ms, forcing SIGKILL`);
+                  try {
+                    proc.kill('SIGKILL');
+                  } catch (error) {
+                    await this.debugLog(`Error force killing: ${error}`);
+                  }
                 }
                 resolve({ exitCode: 0, stdout, stderr });
-              }, 2000);
+              }, 500);
             });
 
             proc.on('exit', async (code: number | null, signal: NodeJS.Signals | null) => {
@@ -956,22 +975,6 @@ export class CLIBridge {
   }
 
   /**
-   * Kill all active processes
-   */
-  async killAllProcesses(): Promise<void> {
-    for (const [processId, process] of this.activeProcesses) {
-      try {
-        process.kill('SIGTERM');
-        this.logger.info(`Killed process: ${processId}`);
-      } catch (error) {
-        this.logger.error(`Failed to kill process: ${processId}`, { error: String(error) });
-      }
-    }
-
-    this.activeProcesses.clear();
-  }
-
-  /**
    * Check if CLI tool is responsive
    */
   async checkCLIHealth(toolName: string): Promise<boolean> {
@@ -1056,6 +1059,52 @@ export class CLIBridge {
     });
 
     return response;
+  }
+
+  /**
+   * Kill all active processes (cleanup)
+   */
+  async killAllProcesses(): Promise<void> {
+    if (this.activeProcesses.size === 0) {
+      return;
+    }
+
+    await this.debugLog(`\n=== KILLING ALL ACTIVE PROCESSES ===`);
+    await this.debugLog(`Active processes: ${this.activeProcesses.size}`);
+
+    const killPromises: Promise<void>[] = [];
+    
+    for (const [processId, proc] of this.activeProcesses.entries()) {
+      killPromises.push(
+        (async () => {
+          try {
+            if (!proc.killed && proc.exitCode === null) {
+              await this.debugLog(`Killing process ${processId} (PID: ${proc.pid})`);
+              proc.kill('SIGKILL');
+              
+              // Wait for exit
+              await new Promise<void>((resolve) => {
+                const timeout = setTimeout(() => {
+                  resolve();
+                }, 500);
+                
+                proc.once('exit', () => {
+                  clearTimeout(timeout);
+                  resolve();
+                });
+              });
+            }
+            this.activeProcesses.delete(processId);
+          } catch (error) {
+            await this.debugLog(`Error killing process ${processId}: ${error}`);
+          }
+        })()
+      );
+    }
+
+    await Promise.all(killPromises);
+    await this.debugLog(`All processes killed. Remaining: ${this.activeProcesses.size}`);
+    await this.debugLog(`===================================\n`);
   }
 
   /**
