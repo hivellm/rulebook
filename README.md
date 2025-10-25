@@ -1,15 +1,15 @@
 # @hivellm/rulebook
 
-CLI tool to standardize AI-generated projects with templates, rules enforcement, workflow generation, CI/CD monitoring, and complete publication support for 10 programming languages.
+CLI tool to standardize AI-generated projects with templates, rules enforcement, workflow generation, CI/CD monitoring, and complete publication support for 11 programming languages.
 
 ## Features
 
-- 🔍 **Auto-Detection**: Automatically detects project language (10 languages) and MCP modules
-- 📝 **Template System**: 62 pre-built templates for languages, modules, IDEs, workflows, and Git
+- 🔍 **Auto-Detection**: Automatically detects project language (11 languages) and MCP modules
+- 📝 **Template System**: 65 pre-built templates for languages, modules, IDEs, workflows, and Git
 - 🔄 **Smart Merging**: Intelligently merges with existing AGENTS.md files without losing content
 - 🎯 **Customizable**: Configure coverage thresholds, documentation strictness, Git workflow, and more
 - 🚫 **Rules Ignore**: Selectively disable rules using `.rulesignore` file
-- 🤖 **AI-Optimized**: Works with 15+ AI coding assistants and 8 IDEs
+- 🤖 **AI-Optimized**: Works with 23 AI coding assistants and 8 IDEs
 - 📦 **Publication Ready**: Complete CI/CD pipelines for all package registries
 - 🔄 **CI/CD Monitoring**: GitHub MCP integration for automated workflow validation
 - 🎨 **Git Workflow**: Quality gates, conventional commits, and version management
@@ -468,7 +468,7 @@ typescript/*
 *-threshold
 ```
 
-## Generated Workflows (32 total)
+## Generated Workflows (35 total)
 
 When workflow generation is enabled, rulebook creates GitHub Actions workflows:
 
