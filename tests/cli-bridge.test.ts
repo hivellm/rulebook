@@ -3,6 +3,7 @@ import { createCLIBridge } from '../src/core/cli-bridge.js';
 import { createLogger } from '../src/core/logger.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import type { RulebookConfig } from '../src/types.js';
 
 describe('CLIBridge', () => {
@@ -12,8 +13,8 @@ describe('CLIBridge', () => {
   let cliBridge: ReturnType<typeof createCLIBridge>;
 
   beforeEach(async () => {
-    // Create temporary directory for tests
-    tempDir = join(process.cwd(), 'test-cli-bridge-' + Date.now());
+    // Create temporary directory in system temp
+    tempDir = join(tmpdir(), 'rulebook-test-cli-bridge-' + Date.now());
     await fs.mkdir(tempDir, { recursive: true });
     
     logger = createLogger(tempDir);

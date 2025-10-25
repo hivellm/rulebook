@@ -2,14 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createLogger, initializeLogger, getLogger } from '../src/core/logger.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('Logger', () => {
   let tempDir: string;
   let logger: ReturnType<typeof createLogger>;
 
   beforeEach(async () => {
-    // Create temporary directory for tests
-    tempDir = join(process.cwd(), 'test-logger-' + Date.now());
+    // Create temporary directory in system temp
+    tempDir = join(tmpdir(), 'rulebook-test-logger-' + Date.now());
     await fs.mkdir(tempDir, { recursive: true });
     logger = createLogger(tempDir);
   });
@@ -140,7 +141,7 @@ describe('Global Logger', () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = join(process.cwd(), 'test-global-logger-' + Date.now());
+    tempDir = join(tmpdir(), 'rulebook-test-global-logger-' + Date.now());
     await fs.mkdir(tempDir, { recursive: true });
   });
 

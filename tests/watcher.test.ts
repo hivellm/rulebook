@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createWatcherUI } from '../src/core/watcher.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 // Mock console methods to avoid output during tests
 const originalConsole = { ...console };
@@ -20,8 +21,8 @@ describe('WatcherUI', () => {
   let watcher: ReturnType<typeof createWatcherUI>;
 
   beforeEach(async () => {
-    // Create temporary directory for tests
-    tempDir = join(process.cwd(), 'test-watcher-' + Date.now());
+    // Create temporary directory in system temp
+    tempDir = join(tmpdir(), 'rulebook-test-watcher-' + Date.now());
     await fs.mkdir(tempDir, { recursive: true });
     
     watcher = createWatcherUI(tempDir);
@@ -73,7 +74,7 @@ describe('startWatcher', () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = join(process.cwd(), 'test-start-watcher-' + Date.now());
+    tempDir = join(tmpdir(), 'rulebook-test-start-watcher-' + Date.now());
     await fs.mkdir(tempDir, { recursive: true });
   });
 

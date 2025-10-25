@@ -2,14 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createConfigManager, getDefaultConfig } from '../src/core/config-manager.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('ConfigManager', () => {
   let tempDir: string;
   let configManager: ReturnType<typeof createConfigManager>;
 
   beforeEach(async () => {
-    // Create temporary directory for tests
-    tempDir = join(process.cwd(), 'test-config-' + Date.now());
+    // Create temporary directory in system temp
+    tempDir = join(tmpdir(), 'rulebook-test-config-' + Date.now());
     await fs.mkdir(tempDir, { recursive: true });
     configManager = createConfigManager(tempDir);
   });

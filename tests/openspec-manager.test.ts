@@ -2,14 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createOpenSpecManager } from '../src/core/openspec-manager.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('OpenSpecManager', () => {
   let tempDir: string;
   let openspecManager: ReturnType<typeof createOpenSpecManager>;
 
   beforeEach(async () => {
-    // Create temporary directory for tests
-    tempDir = join(process.cwd(), 'test-openspec-' + Date.now());
+    // Create temporary directory in system temp
+    tempDir = join(tmpdir(), 'rulebook-test-openspec-' + Date.now());
     await fs.mkdir(tempDir, { recursive: true });
     openspecManager = createOpenSpecManager(tempDir);
   });
