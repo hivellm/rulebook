@@ -1,5 +1,11 @@
 # Tasks: Simplified Progress-Focused Watcher UI
 
+## Phase 0: Agent Initialization
+- [ ] **INIT-001**: Add initial task to agent workflow: Update task status on start
+- [ ] **INIT-002**: Implement `syncTaskStatus()` method in OpenSpecManager
+- [ ] **INIT-003**: Call syncTaskStatus() when agent starts
+- [ ] **TEST-000**: Test task status sync on agent start
+
 ## Phase 1: Remove Unnecessary Components
 - [ ] **REFACTOR-001**: Remove `renderTaskDetails()` method from modern-console.ts
 - [ ] **REFACTOR-002**: Remove `renderSystemInfo()` method from modern-console.ts
