@@ -180,6 +180,15 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
               source: mcpPath,
             });
           }
+
+          // Check for Playwright MCP Server
+          if (config.mcpServers?.playwright || config.servers?.playwright) {
+            modules.push({
+              module: 'playwright',
+              detected: true,
+              source: mcpPath,
+            });
+          }
         }
       } catch {
         // Ignore JSON parse errors
@@ -199,11 +208,13 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
 
   // Add undetected modules
   const detectedModules = new Set(modules.map((m) => m.module));
-  const allModules: Array<'vectorizer' | 'synap' | 'openspec' | 'context7'> = [
+  const allModules: Array<'vectorizer' | 'synap' | 'openspec' | 'context7' | 'github' | 'playwright'> = [
     'vectorizer',
     'synap',
     'openspec',
     'context7',
+    'github',
+    'playwright',
   ];
 
   for (const module of allModules) {

@@ -23,7 +23,7 @@ export interface LanguageDetection {
 }
 
 export interface ModuleDetection {
-  module: 'vectorizer' | 'synap' | 'openspec' | 'context7' | 'github';
+  module: 'vectorizer' | 'synap' | 'openspec' | 'context7' | 'github' | 'playwright';
   detected: boolean;
   source?: string;
 }

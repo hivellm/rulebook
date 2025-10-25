@@ -380,13 +380,14 @@ npx @hivellm/rulebook@latest generate-docs --yes
 - ✅ **Kotlin**: Kotlin 2.0+, K2 compiler, Detekt, ktlint → Maven Central
 - ✅ **C/C++**: C++20/23, CMake, clang-format, clang-tidy, Google Test → Conan/vcpkg
 
-## Supported MCP Modules (5)
+## Supported MCP Modules (6)
 
 - ✅ **Vectorizer**: Semantic search and codebase exploration
 - ✅ **Synap**: Key-value store for task and data persistence
 - ✅ **OpenSpec**: Change proposal and specification workflow
 - ✅ **Context7**: Library documentation for dependency management
 - ✅ **GitHub MCP**: Automated workflow validation and CI/CD monitoring
+- ✅ **Playwright**: Automated browser testing and web automation
 
 ## Supported IDEs & AI Tools (23 total)
 
