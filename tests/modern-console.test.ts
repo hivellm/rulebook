@@ -90,11 +90,11 @@ describe('ModernConsole', () => {
   });
 
   describe('stop', () => {
-    it('should stop modern console', () => {
+    it('should stop modern console', async () => {
       // Mock the stop method
-      const stopSpy = vi.spyOn(modernConsole, 'stop').mockImplementation(() => {});
+      const stopSpy = vi.spyOn(modernConsole, 'stop').mockImplementation(async () => {});
 
-      modernConsole.stop();
+      await modernConsole.stop();
 
       expect(stopSpy).toHaveBeenCalled();
     });
@@ -214,23 +214,7 @@ describe('ModernConsole', () => {
       expect(logSpy).toHaveBeenCalledWith('info', 'Test message');
     });
 
-    it('should support task status management', () => {
-      // Test task completion marking
-      const markCompletedSpy = vi.spyOn(modernConsole, 'markTaskCompleted');
-
-      modernConsole.markTaskCompleted('test-task-id');
-
-      expect(markCompletedSpy).toHaveBeenCalledWith('test-task-id');
-    });
-
-    it('should support task progress marking', () => {
-      // Test task in-progress marking
-      const markInProgressSpy = vi.spyOn(modernConsole, 'markTaskInProgress');
-
-      modernConsole.markTaskInProgress('test-task-id');
-
-      expect(markInProgressSpy).toHaveBeenCalledWith('test-task-id');
-    });
+    // Removed: markTaskCompleted and markTaskInProgress were replaced by onTaskStatusChange callback
 
     it('should have simplified UI structure', () => {
       // Test that the modern console has the correct simplified UI structure
@@ -275,10 +259,8 @@ describe('ModernConsole', () => {
       // - Progress bar visualization
       // - Clean, focused interface
 
-      // These are tested through the public methods
+      // Methods were refactored to use onTaskStatusChange callback
       expect(typeof modernConsole.logActivity).toBe('function');
-      expect(typeof modernConsole.markTaskCompleted).toBe('function');
-      expect(typeof modernConsole.markTaskInProgress).toBe('function');
     });
   });
 });

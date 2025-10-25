@@ -98,8 +98,8 @@ export class CLIBridge {
 
     const tools: CLITool[] = [
       { name: 'cursor-agent', command: 'cursor-agent', available: false },
-      { name: 'claude-code', command: 'claude', available: false },
-      { name: 'gemini-cli', command: 'gemini', available: false },
+      // { name: 'claude-code', command: 'claude', available: false }, // Temporarily disabled for v0.10.0
+      // { name: 'gemini-cli', command: 'gemini', available: false }, // Temporarily disabled for v0.10.0
     ];
 
     for (const tool of tools) {
@@ -156,7 +156,7 @@ export class CLIBridge {
     } = {}
   ): Promise<CLIResponse> {
     const startTime = Date.now();
-    
+
     // Check for deprecated tools
     const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
     if (deprecatedTools.includes(toolName)) {
@@ -171,7 +171,7 @@ export class CLIBridge {
     }
 
     // Check for supported tools
-    const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
+    const supportedTools = ['cursor-agent']; // Temporarily only cursor-agent for v0.10.0
     if (!supportedTools.includes(toolName)) {
       const duration = Date.now() - startTime;
       return {

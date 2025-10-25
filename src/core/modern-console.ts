@@ -26,11 +26,11 @@ export class ModernConsole {
 
   // UI Components
   private headerBox!: blessed.Widgets.BoxElement;
-  private progressBar!: any; // ProgressBar widget from blessed
+  private progressBar!: blessed.Widgets.TextElement; // Custom progress bar using text element
   private progressBox!: blessed.Widgets.BoxElement;
-  private tasksBox!: blessed.Widgets.BoxElement;
   private logsBox!: blessed.Widgets.BoxElement;
   private statusBar!: blessed.Widgets.BoxElement;
+  private progressLabel!: blessed.Widgets.TextElement;
 
   // Data
   private tasks: OpenSpecTask[] = [];
@@ -44,8 +44,11 @@ export class ModernConsole {
   private renderThrottleMs = 100; // Throttle renders to max 10 FPS
   private pendingRender = false;
   private lastProgressInfo = { completed: 0, total: 0, percentage: 0 };
-  private lastActivityLogCount = 0;
-  private lastTaskCount = 0;
+
+  // Loading indicator
+  private loadingFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  private currentLoadingFrame = 0;
+  private loadingInterval?: NodeJS.Timeout;
 
   constructor(options: ModernConsoleOptions) {
     this.agentManager = options.agentManager;
@@ -73,26 +76,23 @@ export class ModernConsole {
 
   private setupUI(): void {
     // Calculate responsive dimensions based on terminal size
-    const screenHeight = typeof this.screen.height === 'number' ? this.screen.height : 24;
-    const screenWidth = typeof this.screen.width === 'number' ? this.screen.width : 80;
+    // Get blessed screen dimensions (will be set after screen creation)
+    const blessedHeight = typeof this.screen.height === 'number' ? this.screen.height : 0;
     
-    // Ensure minimum terminal size
-    const minHeight = 24;
-    const minWidth = 80;
-    
-    if (screenHeight < minHeight || screenWidth < minWidth) {
-      throw new Error(`Terminal too small. Minimum size: ${minWidth}x${minHeight}, current: ${screenWidth}x${screenHeight}`);
-    }
+    // Use blessed dimensions if valid, otherwise fallback to process.stdout or defaults
+    // Always use at least 24 lines for minimum usability, but don't throw error
+    const finalHeight = Math.max(
+      blessedHeight > 0 ? blessedHeight : (process.stdout.rows || 24),
+      24
+    );
 
-    // Calculate layout dimensions - Responsive layout (25% tasks, 10% progress, 65% logs)
+    // Calculate layout dimensions - Simplified layout (fixed progress, remaining for logs)
     const headerHeight = 3;
     const statusHeight = 1;
-    const availableHeight = screenHeight - headerHeight - statusHeight;
-    
-    // Calculate proportional heights
-    const progressHeight = Math.max(3, Math.round(availableHeight * 0.1)); // 10% for progress
-    const tasksHeight = Math.max(5, Math.round(availableHeight * 0.25)); // 25% for tasks
-    const logsHeight = availableHeight - progressHeight - tasksHeight; // 65% for logs
+    const availableHeight = finalHeight - headerHeight - statusHeight;
+
+    // Fixed progress height, remaining for logs
+    const progressHeight = 3; // Fixed compact height for progress
 
     // Header (3 lines)
     this.headerBox = blessed.box({
@@ -169,57 +169,16 @@ export class ModernConsole {
       content: '',
       tags: true,
     });
-    
-    // Store reference for updates
-    (this as any).progressLabel = progressLabel;
 
-    // Active Tasks Panel (25% of available space)
-    this.tasksBox = blessed.box({
+    // Store reference for updates
+    this.progressLabel = progressLabel;
+
+    // Activity Logs (remaining space after progress)
+    this.logsBox = blessed.box({
       top: headerHeight + progressHeight,
       left: 0,
       width: '100%',
-      height: tasksHeight,
-      label: ' {bold}📋 ACTIVE TASKS{/bold} ',
-      tags: true,
-      scrollable: true,
-      alwaysScroll: true,
-      scrollbar: {
-        ch: '█',
-        track: {
-          bg: 'black',
-          ch: '░',
-        },
-        style: {
-          inverse: false,
-          fg: 'cyan',
-          bg: 'black',
-          bold: true,
-        },
-      },
-      keys: true,
-      vi: true,
-      mouse: true,
-      style: {
-        fg: 'white',
-        bg: 'black',
-        border: {
-          fg: 'cyan',
-        },
-      },
-      padding: {
-        left: 1,
-        right: 1,
-        top: 1,
-        bottom: 1,
-      },
-    });
-
-    // Activity Logs (65% of available space)
-    this.logsBox = blessed.box({
-      top: headerHeight + progressHeight + tasksHeight,
-      left: 0,
-      width: '100%',
-      height: logsHeight,
+      height: availableHeight - progressHeight,
       label: ' {bold}📝 ACTIVITY LOGS{/bold} ',
       tags: true,
       scrollable: true,
@@ -279,7 +238,6 @@ export class ModernConsole {
     // Add to screen
     this.screen.append(this.headerBox);
     this.screen.append(this.progressBox);
-    this.screen.append(this.tasksBox);
     this.screen.append(this.logsBox);
     this.screen.append(this.statusBar);
 
@@ -287,8 +245,12 @@ export class ModernConsole {
   }
 
   private setupEventHandlers(): void {
+    // Start loading animation
+    this.startLoadingAnimation();
+
     // Exit on F10 or Ctrl+C
     this.screen.key(['f10', 'C-c'], async () => {
+      this.stopLoadingAnimation();
       await this.stop();
     });
 
@@ -328,7 +290,10 @@ export class ModernConsole {
 
               // Debug log
               this.logActivity('info', `🔄 Status change: ${taskId.slice(0, 8)}... -> ${status}`);
-              this.logActivity('info', `[DEBUG] Before update: ${this.tasks.length} tasks, ${this.history.length} completed`);
+              this.logActivity(
+                'info',
+                `[DEBUG] Before update: ${this.tasks.length} tasks, ${this.history.length} completed`
+              );
 
               if (task) {
                 // Update task status
@@ -347,7 +312,10 @@ export class ModernConsole {
                   // Remove completed task from active list
                   this.tasks = this.tasks.filter((t) => t.id !== taskId);
                   this.logActivity('success', `✅ Task completed: ${task.title}`);
-                  this.logActivity('info', `[DEBUG] After update: ${this.tasks.length} tasks, ${this.history.length} completed`);
+                  this.logActivity(
+                    'info',
+                    `[DEBUG] After update: ${this.tasks.length} tasks, ${this.history.length} completed`
+                  );
                 } else if (status === 'failed') {
                   this.logActivity('error', `❌ Task failed: ${task.title}`);
                 }
@@ -404,14 +372,14 @@ export class ModernConsole {
       const data = await this.openspecManager.loadOpenSpec();
       this.tasks = data.tasks;
       this.history = data.history;
-      
+
       // Debug: Log refresh results
       const progress = this.getProgressInfo();
       this.logActivity(
         'info',
         `[DEBUG] Refreshed: ${this.tasks.length} active, ${this.history.length} completed, ${progress.percentage}%`
       );
-      
+
       this.render();
     } catch (error) {
       this.logActivity('error', `Failed to refresh tasks: ${error}`);
@@ -441,14 +409,12 @@ export class ModernConsole {
     return { completed, total, percentage, color };
   }
 
-
-
   /**
    * Render progress bar (optimized to only update when progress changes)
    */
   private renderProgressBar(): void {
     const progressInfo = this.getProgressInfo();
-    
+
     // Only update if progress has actually changed
     if (
       progressInfo.completed === this.lastProgressInfo.completed &&
@@ -461,93 +427,38 @@ export class ModernConsole {
     this.lastProgressInfo = { ...progressInfo };
     const { completed, total, percentage } = progressInfo;
 
-    // Create custom progress bar using text
+    // Render progress bar manually using text widget
     const barWidth = 40;
     const filledWidth = Math.round((percentage / 100) * barWidth);
     const emptyWidth = barWidth - filledWidth;
     
     const filledBar = '█'.repeat(filledWidth);
     const emptyBar = '░'.repeat(emptyWidth);
-    const progressBarContent = filledBar + emptyBar;
-
-    // Update progress bar content
-    this.progressBar.setContent(progressBarContent);
-
+    
     // Update style based on progress
+    let color = 'green';
     if (percentage < 50) {
-      this.progressBar.style.fg = 'red';
+      color = 'red';
     } else if (percentage < 75) {
-      this.progressBar.style.fg = 'yellow';
-    } else {
-      this.progressBar.style.fg = 'green';
+      color = 'yellow';
     }
+    
+    this.progressBar.style.fg = color;
+    this.progressBar.setContent(`{${color}-fg}${filledBar}${emptyBar}{/}`);
 
     // Update progress details label - ensure valid values
     const safePercentage = Math.max(0, Math.min(100, percentage));
     const details = `{bold}{white-fg}${safePercentage}%{/} - {gray-fg}${completed}/{/}{white-fg}${total}{/} completed - {yellow-fg}${Math.max(0, total - completed)}{/} remaining`;
-    const progressLabel = (this as any).progressLabel;
-    if (progressLabel) {
-      progressLabel.setContent(details);
+    if (this.progressLabel) {
+      this.progressLabel.setContent(details);
     }
   }
 
-
-
   /**
-   * Render active tasks (optimized to only update when task count changes)
-   */
-  private renderActiveTasks(): void {
-    // Only update if task count has changed
-    if (this.tasks.length === this.lastTaskCount) {
-      return;
-    }
-
-    this.lastTaskCount = this.tasks.length;
-
-    if (this.tasks.length === 0) {
-      this.tasksBox.setContent('\n  {gray-fg}No active tasks{/gray-fg}');
-      return;
-    }
-
-    // Calculate how many tasks fit in the box (height - 2 for padding)
-    const boxHeight = this.tasksBox.height;
-    const maxTasks = typeof boxHeight === 'number' ? Math.max(5, boxHeight - 2) : 10;
-
-    // Get terminal width to truncate long task titles
-    const termWidth = typeof this.screen.width === 'number' ? this.screen.width : 80;
-    const maxTitleWidth = termWidth - 20; // Reserve space for status and ID
-
-    const lines = this.tasks
-      .slice(0, maxTasks) // Show only what fits
-      .map((task) => {
-        const statusIcon = task.status === 'in-progress' ? '{yellow-fg}▶{/}' : '{blue-fg}○{/}';
-        const taskId = task.id.slice(0, 8);
-        
-        // Truncate title if too long
-        let title = task.title;
-        if (title.length > maxTitleWidth) {
-          title = title.substring(0, maxTitleWidth - 3) + '...';
-        }
-
-        return `{cyan-fg}${statusIcon}{/} {white-fg}${taskId}{/} - {gray-fg}${title}{/}`;
-      });
-
-    this.tasksBox.setContent(lines.join('\n'));
-
-    // Auto-scroll to top
-    this.tasksBox.setScrollPerc(0);
-  }
-
-  /**
-   * Render activity logs (optimized to only update when new logs are added)
+   * Render activity logs (always render to animate spinner)
    */
   private renderActivityLogs(): void {
-    // Only update if log count has changed
-    if (this.activityLogs.length === this.lastActivityLogCount) {
-      return;
-    }
-
-    this.lastActivityLogCount = this.activityLogs.length;
+    // Always render - needed for loading spinner animation
 
     if (this.activityLogs.length === 0) {
       this.logsBox.setContent('\n  {gray-fg}No activity yet{/gray-fg}');
@@ -570,20 +481,28 @@ export class ModernConsole {
     const termWidth = typeof this.screen.width === 'number' ? this.screen.width : 80;
     const maxMessageWidth = termWidth - 15; // Reserve space for timestamp and icon
 
-    const lines = this.activityLogs
-      .slice(-maxLogs) // Show only what fits
-      .map((entry) => {
-        const time = entry.timestamp.toLocaleTimeString('en-US', { hour12: false });
-        const icon = LOG_ICONS[entry.type];
+    // Add loading indicator to the last log if agent is running
+    const visibleLogs = this.activityLogs.slice(-maxLogs);
+    const lines = visibleLogs.map((entry, index) => {
+      const time = entry.timestamp.toLocaleTimeString('en-US', { hour12: false });
+      let icon = LOG_ICONS[entry.type];
 
-        // Truncate message if too long
-        let message = entry.message;
-        if (message.length > maxMessageWidth) {
-          message = message.substring(0, maxMessageWidth - 3) + '...';
-        }
+      // Truncate message if too long
+      let message = entry.message;
+      if (message.length > maxMessageWidth) {
+        message = message.substring(0, maxMessageWidth - 3) + '...';
+      }
 
-        return `{gray-fg}[${time}]{/} ${icon} ${message}`;
-      });
+      // Add loading spinner to the last log entry if agent is running and it's a tool operation
+      const isLastLog = index === visibleLogs.length - 1;
+      if (isLastLog && this.isAgentRunning && entry.type === 'tool') {
+        // Show animated spinner
+        const loadingSpinner = this.loadingFrames[this.currentLoadingFrame];
+        icon = `{yellow-fg}${loadingSpinner}{/}`;
+      }
+
+      return `{gray-fg}[${time}]{/} ${icon} ${message}`;
+    });
 
     this.logsBox.setContent(lines.join('\n'));
 
@@ -620,57 +539,54 @@ export class ModernConsole {
   private checkMemoryUsage(): void {
     const memUsage = process.memoryUsage();
     const memUsageMB = Math.round(memUsage.heapUsed / 1024 / 1024);
-    
+
     if (memUsageMB > 10) {
       this.logActivity('warning', `High memory usage: ${memUsageMB}MB`);
     }
   }
 
   /**
-   * Mark task as completed and remove from list
+   * Start loading animation
    */
-  public markTaskCompleted(taskId: string): void {
-    const task = this.tasks.find((t) => t.id === taskId);
-    if (task) {
-      task.status = 'completed';
-      this.logActivity('success', `Task completed: ${task.title}`);
-
-      // Remove from active tasks
-      this.tasks = this.tasks.filter((t) => t.id !== taskId);
-
-      this.render();
-    }
+  private startLoadingAnimation(): void {
+    this.loadingInterval = setInterval(() => {
+      this.currentLoadingFrame = (this.currentLoadingFrame + 1) % this.loadingFrames.length;
+      // Force re-render to animate the spinner
+      if (this.isAgentRunning) {
+        this.forceRender();
+      }
+    }, 100); // Update every 100ms for smooth animation
   }
 
   /**
-   * Mark task as in progress
+   * Stop loading animation
    */
-  public markTaskInProgress(taskId: string): void {
-    const task = this.tasks.find((t) => t.id === taskId);
-    if (task) {
-      task.status = 'in-progress';
-      if (!task.metadata) task.metadata = {};
-      task.metadata.startedAt = new Date().toISOString();
-
-      this.logActivity('info', `Task started: ${task.title}`);
-      this.render();
+  private stopLoadingAnimation(): void {
+    if (this.loadingInterval) {
+      clearInterval(this.loadingInterval);
+      this.loadingInterval = undefined;
     }
   }
+
+
 
   /**
    * Throttled render method for performance optimization
    */
   private render(): void {
     const now = Date.now();
-    
+
     // Throttle renders to avoid excessive screen updates
     if (now - this.lastRenderTime < this.renderThrottleMs) {
       if (!this.pendingRender) {
         this.pendingRender = true;
-        setTimeout(() => {
-          this.pendingRender = false;
-          this.forceRender();
-        }, this.renderThrottleMs - (now - this.lastRenderTime));
+        setTimeout(
+          () => {
+            this.pendingRender = false;
+            this.forceRender();
+          },
+          this.renderThrottleMs - (now - this.lastRenderTime)
+        );
       }
       return;
     }
@@ -683,10 +599,9 @@ export class ModernConsole {
    */
   private forceRender(): void {
     this.lastRenderTime = Date.now();
-    
+
     // Only update components that have changed
     this.renderProgressBar();
-    this.renderActiveTasks();
     this.renderActivityLogs();
 
     this.screen.render();

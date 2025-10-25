@@ -17,26 +17,26 @@ CLI tool to standardize AI-generated projects with templates, rules enforcement,
 ### 🆕 Advanced Features (v0.10.0)
 
 - 📋 **OpenSpec Integration**: Task management system with dependency tracking
-- 👁️ **Real-time Watcher**: Live monitoring of task progress with beautiful ANSI UI
-- 🤖 **Autonomous Agent**: Automated workflow management for AI CLI tools
+- 👁️ **Real-time Watcher [BETA]**: Live monitoring of task progress with beautiful ANSI UI
+- 🤖 **Autonomous Agent [BETA]**: Automated workflow management for AI CLI tools
 - ⚙️ **Configuration Management**: `.rulebook` config file with feature toggles
 - 📊 **Persistent Logging**: Comprehensive logging system with rotation
 - 🌳 **Dependency Graphs**: Visual task dependency trees and validation
-- 🔗 **CLI Bridge**: Seamless integration with cursor-agent, claude-code, gemini-cli, cursor-cli, claude-cli
+- 🔗 **CLI Bridge**: Seamless integration with cursor-agent
 - 📈 **Telemetry**: Performance metrics and execution analytics
 
 ## Installation
 
 ```bash
 # NPX (recommended - no installation needed)
-npx @hivellm/rulebook init
+npx @hivellm/rulebook@latest init
 
 # Or install globally
-npm install -g @hivellm/rulebook
+npm install -g @hivellm/rulebook@latest
 rulebook init
 
 # Or install locally
-npm install --save-dev @hivellm/rulebook
+npm install --save-dev @hivellm/rulebook@latest
 npx rulebook init
 ```
 
@@ -60,7 +60,7 @@ The CLI will:
 ### Interactive Mode
 
 ```bash
-npx @hivellm/rulebook init
+npx @hivellm/rulebook@latest init
 ```
 
 Answer the prompts to customize your configuration:
@@ -76,7 +76,7 @@ Answer the prompts to customize your configuration:
 Use detected defaults without prompts:
 
 ```bash
-npx @hivellm/rulebook init --yes
+npx @hivellm/rulebook@latest init --yes
 ```
 
 ### Validation
@@ -84,7 +84,7 @@ npx @hivellm/rulebook init --yes
 Validate your project structure against rulebook standards:
 
 ```bash
-npx @hivellm/rulebook validate
+npx @hivellm/rulebook@latest validate
 ```
 
 **Checks**:
@@ -99,7 +99,7 @@ npx @hivellm/rulebook validate
 Check for outdated and vulnerable dependencies:
 
 ```bash
-npx @hivellm/rulebook check-deps
+npx @hivellm/rulebook@latest check-deps
 ```
 
 **Supports**:
@@ -114,10 +114,10 @@ npx @hivellm/rulebook check-deps
 Verify test coverage meets threshold:
 
 ```bash
-npx @hivellm/rulebook check-coverage
+npx @hivellm/rulebook@latest check-coverage
 
 # Custom threshold
-npx @hivellm/rulebook check-coverage --threshold 90
+npx @hivellm/rulebook@latest check-coverage --threshold 90
 ```
 
 **Supports**: All languages (Rust, TypeScript, Python, Go, Java, etc.)
@@ -128,13 +128,13 @@ Bump project version automatically:
 
 ```bash
 # Bump patch version (1.0.0 → 1.0.1)
-npx @hivellm/rulebook version patch
+npx @hivellm/rulebook@latest version patch
 
 # Bump minor version (1.0.0 → 1.1.0)
-npx @hivellm/rulebook version minor
+npx @hivellm/rulebook@latest version minor
 
 # Bump major version (1.0.0 → 2.0.0)
-npx @hivellm/rulebook version major
+npx @hivellm/rulebook@latest version major
 ```
 
 **Updates**: package.json, Cargo.toml, pyproject.toml, mix.exs, build.gradle.kts, .csproj
@@ -145,10 +145,10 @@ Generate CHANGELOG.md from git commits:
 
 ```bash
 # Auto-detect version
-npx @hivellm/rulebook changelog
+npx @hivellm/rulebook@latest changelog
 
 # Specify version
-npx @hivellm/rulebook changelog --version 1.2.0
+npx @hivellm/rulebook@latest changelog --version 1.2.0
 ```
 
 **Features**:
@@ -162,7 +162,7 @@ npx @hivellm/rulebook changelog --version 1.2.0
 Analyze project health across multiple dimensions:
 
 ```bash
-npx @hivellm/rulebook health
+npx @hivellm/rulebook@latest health
 ```
 
 **Analyzes**:
@@ -189,7 +189,7 @@ echo "<!-- CUSTOM:START -->" > .rulebook/templates/language/CUSTOM.md
 echo "<!-- CUSTOM:END -->" >> .rulebook/templates/language/CUSTOM.md
 
 # Custom templates are automatically detected
-npx @hivellm/rulebook init
+npx @hivellm/rulebook@latest init
 ```
 
 **Supports**: Custom templates for all categories
@@ -199,7 +199,7 @@ npx @hivellm/rulebook init
 Automatically fix common project issues:
 
 ```bash
-npx @hivellm/rulebook fix
+npx @hivellm/rulebook@latest fix
 ```
 
 **Fixes**:
@@ -214,12 +214,12 @@ npx @hivellm/rulebook fix
 
 ### 🆕 Advanced Commands (v0.10.0)
 
-#### Real-time Watcher
+#### Real-time Watcher [BETA]
 
 Monitor task progress with simplified progress-focused interface:
 
 ```bash
-# Start modern watcher (simplified UI)
+# Start modern watcher (simplified UI) [BETA]
 rulebook watcher
 
 # Features:
@@ -252,20 +252,13 @@ rulebook watcher
 └─────────────────────────────────────────────────────┘
 ```
 
-#### Autonomous Agent
+#### Autonomous Agent [BETA]
 
 Automated workflow management for AI CLI tools:
 
 ```bash
-# Start agent with cursor-agent (recommended)
+# Start agent with cursor-agent (recommended) [BETA]
 rulebook agent --tool cursor-agent --iterations 5
-
-# Start agent with claude-code
-rulebook agent --tool claude-code --iterations 5
-# See templates/cli/CLAUDE_CODE.md for complete CLI documentation
-
-# Start agent with gemini-cli
-rulebook agent --tool gemini-cli --iterations 5
 
 # Dry-run mode (simulate without changes)
 rulebook agent --dry-run
@@ -316,36 +309,7 @@ cursor-agent --version
 📊 Final stats: 2 tools, 189 chars generated
 ```
 
-**🔧 claude-code & gemini-cli** (Fully Implemented)
-
-Both `claude-code` and `gemini-cli` now provide complete integration with:
-
-- **Stream Parsing**: Real-time processing of AI responses and tool calls
-- **Progress Indicators**: Visual feedback during task execution
-- **Tool Call Detection**: Automatic recognition of file operations and commands
-- **Completion Detection**: Smart detection of task completion
-- **Error Handling**: Graceful handling of failures and timeouts
-
-**Installation:**
-```bash
-# Install claude-code globally
-npm install -g claude-code
-
-# Install gemini-cli globally  
-npm install -g gemini-cli
-
-# Test installations
-claude --version
-gemini --version
-```
-
-**Features:**
-- Automatic CLI tool detection
-- Task execution workflow
-- Quality checks (lint, test, coverage)
-- Git commits and status updates
-- Real-time progress monitoring
-- Comprehensive error handling
+**Note**: `claude-code` and `gemini-cli` integrations are implemented but temporarily disabled in v0.10.0. They will be re-enabled in a future release.
 
 #### Configuration Management
 
@@ -387,10 +351,10 @@ rulebook tasks --status task-123
 Generate complete documentation structure and standard open source files:
 
 ```bash
-npx @hivellm/rulebook generate-docs
+npx @hivellm/rulebook@latest generate-docs
 
 # Auto mode
-npx @hivellm/rulebook generate-docs --yes
+npx @hivellm/rulebook@latest generate-docs --yes
 ```
 
 **Generates**:

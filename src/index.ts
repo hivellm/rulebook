@@ -80,15 +80,15 @@ program.command('health').description('Check project health score').action(healt
 
 program.command('fix').description('Auto-fix common project issues').action(fixCommand);
 
-// New advanced commands
+// New advanced commands (BETA)
 program
   .command('watcher')
-  .description('Start modern full-screen console watcher for OpenSpec tasks and agent progress')
+  .description('Start modern full-screen console watcher for OpenSpec tasks and agent progress [BETA]')
   .action(watcherCommand);
 
 program
   .command('agent')
-  .description('Start autonomous agent for managing AI CLI workflows')
+  .description('Start autonomous agent for managing AI CLI workflows [BETA]')
   .option('--dry-run', 'Simulate execution without making changes')
   .option('--tool <name>', 'Specify CLI tool to use (cursor-agent, claude-code, gemini-cli)')
   .option('--iterations <number>', 'Maximum number of iterations', '10')

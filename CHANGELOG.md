@@ -79,7 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ASCII dependency tree visualization
 - Parallel task execution support
 
-**Real-time Watcher:**
+**Real-time Watcher [BETA]:**
 - **UPDATED**: Now uses only modern full-screen console interface (htop-style)
 - Real-time task progress display with progress bars
 - Activity log with timestamps and status indicators
@@ -88,7 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Graceful shutdown with Ctrl+C/F10
 - Auto-refresh every 2 seconds
 
-**Autonomous Agent:**
+**Autonomous Agent [BETA]:**
 - Automated workflow management for AI CLI tools
 - Support for cursor-cli, gemini-cli, claude-cli
 - Intelligent CLI tool detection and selection
