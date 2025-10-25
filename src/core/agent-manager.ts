@@ -39,6 +39,11 @@ export class AgentManager {
       this.config = await this.configManager.loadConfig();
       this.cliBridge = createCLIBridge(this.logger, this.config);
 
+      // Pass onLog callback to CLI bridge if available
+      if (this.onLog) {
+        this.cliBridge.setLogCallback(this.onLog);
+      }
+
       await this.openspecManager.initialize();
 
       this.logger.info('Agent Manager initialized');
