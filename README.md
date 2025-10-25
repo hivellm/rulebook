@@ -241,6 +241,7 @@ rulebook agent --tool cursor-agent --iterations 5
 
 # Start agent with claude-code
 rulebook agent --tool claude-code --iterations 5
+# See templates/cli/CLAUDE_CODE.md for complete CLI documentation
 
 # Start agent with gemini-cli
 rulebook agent --tool gemini-cli --iterations 5

@@ -104,15 +104,14 @@ All planned features for v0.10.0 have been successfully implemented. The project
 
 #### IDE Templates
 - [x] CURSOR.md - Cursor IDE rules and patterns
-- [x] WINDSURF.md - Windsurf IDE rules and patterns
-- [x] VSCODE.md - VS Code AI extensions rules
-- [x] COPILOT.md - GitHub Copilot instructions
-
-#### CLI Agent Templates
+- [x] WINDSURF.md - Windsurf IDE rules a#### CLI Agent Templates
 - [x] AIDER.md - Aider CLI pair programming
 - [x] CONTINUE.md - Continue CLI/extension
 - [x] CLAUDE.md - Claude Code/API (Anthropic)
+- [x] CLAUDE_CODE.md - Claude Code CLI flags and output format documentation
 - [x] GEMINI.md - Google Gemini CLI (2M context)
+- [x] CURSOR_CLI.md - Cursor CLI automation
+- [x] CODEIUM.md - Codeium CLI/extensionoogle Gemini CLI (2M context)
 - [x] CURSOR_CLI.md - Cursor CLI automation
 - [x] CODEIUM.md - Codeium CLI/extension
 
