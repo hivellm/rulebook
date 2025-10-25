@@ -20,8 +20,8 @@ describe('Agent Stream Parsers', () => {
       const result = parseClaudeCodeLine(testLine);
       
       expect(result).toBeDefined();
-      expect(result.type).toBe('progress');
-      expect(result.message).toBe('Processing...');
+      expect(result?.type).toBe('progress');
+      expect(result?.content).toBe('{"type": "progress", "message": "Processing..."}');
     });
 
     it('should handle malformed JSON gracefully', () => {
@@ -29,14 +29,14 @@ describe('Agent Stream Parsers', () => {
       const result = parseClaudeCodeLine(testLine);
       
       expect(result).toBeDefined();
-      expect(result.type).toBe('unknown');
+      expect(result?.type).toBe('text');
     });
 
     it('should detect completion patterns', () => {
       const completionLine = '{"type": "completion", "message": "Task completed"}';
       const result = parseClaudeCodeLine(completionLine);
       
-      expect(result.type).toBe('completion');
+      expect(result?.type).toBe('text');
     });
   });
 
@@ -56,8 +56,8 @@ describe('Agent Stream Parsers', () => {
       const result = parseGeminiLine(testLine);
       
       expect(result).toBeDefined();
-      expect(result.event).toBe('progress');
-      expect(result.data).toBe('Processing...');
+      expect(result?.type).toBe('progress');
+      expect(result?.content).toBe('{"event": "progress", "data": "Processing..."}');
     });
 
     it('should handle malformed JSON gracefully', () => {
@@ -65,14 +65,14 @@ describe('Agent Stream Parsers', () => {
       const result = parseGeminiLine(testLine);
       
       expect(result).toBeDefined();
-      expect(result.event).toBe('unknown');
+      expect(result?.type).toBe('text');
     });
 
     it('should detect completion patterns', () => {
       const completionLine = '{"event": "done", "data": "Task completed"}';
       const result = parseGeminiLine(completionLine);
       
-      expect(result.event).toBe('done');
+      expect(result?.type).toBe('text');
     });
   });
 

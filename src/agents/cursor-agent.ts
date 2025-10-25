@@ -273,9 +273,9 @@ export class CursorAgentStreamParser {
         const path = startedEvent.tool_call.writeToolCall.args.path;
         const fileName = path.split('/').pop() || path;
         const details = `Write to ${path}`;
-        // Send to watcher if callback is set (shortened version)
+        // Send to watcher if callback is set (shortened version with loading)
         if (this.eventCallback) {
-          this.eventCallback('tool', `Write ${fileName}`);
+          this.eventCallback('tool', `[...] Writing ${fileName}...`);
         }
         this.toolCalls.push({
           type: 'write',
@@ -285,9 +285,9 @@ export class CursorAgentStreamParser {
         const path = startedEvent.tool_call.readToolCall.args.path;
         const fileName = path.split('/').pop() || path;
         const details = `Read from ${path}`;
-        // Send to watcher if callback is set (shortened version)
+        // Send to watcher if callback is set (shortened version with loading)
         if (this.eventCallback) {
-          this.eventCallback('tool', `Read ${fileName}`);
+          this.eventCallback('tool', `[...] Reading ${fileName}...`);
         }
         this.toolCalls.push({
           type: 'read',
@@ -298,9 +298,9 @@ export class CursorAgentStreamParser {
         // Shorten command if too long
         const shortCmd = cmd.length > 50 ? cmd.substring(0, 47) + '...' : cmd;
         const details = `Execute: ${cmd}`;
-        // Send to watcher if callback is set (shortened version)
+        // Send to watcher if callback is set (shortened version with loading)
         if (this.eventCallback) {
-          this.eventCallback('tool', `Run: ${shortCmd}`);
+          this.eventCallback('tool', `[...] Running: ${shortCmd}...`);
         }
         this.toolCalls.push({
           type: 'bash',
@@ -316,7 +316,7 @@ export class CursorAgentStreamParser {
         
         // Log success
         if (this.eventCallback) {
-          this.eventCallback('tool', `Wrote ${linesCreated} lines`);
+          this.eventCallback('tool', `[OK] Wrote ${linesCreated} lines`);
         }
 
         // Update the last tool call with result
@@ -328,7 +328,7 @@ export class CursorAgentStreamParser {
         
         // Log error
         if (this.eventCallback) {
-          this.eventCallback('tool', `Write failed: ${error}`);
+          this.eventCallback('tool', `[ERR] Write failed: ${error}`);
         }
 
         if (this.toolCalls.length > 0) {
@@ -342,7 +342,7 @@ export class CursorAgentStreamParser {
         
         // Log success (more compact)
         if (this.eventCallback) {
-          this.eventCallback('tool', `Read ${totalLines} lines`);
+          this.eventCallback('tool', `[OK] Read ${totalLines} lines`);
         }
 
         if (this.toolCalls.length > 0) {
@@ -353,7 +353,7 @@ export class CursorAgentStreamParser {
         
         // Log error
         if (this.eventCallback) {
-          this.eventCallback('tool', `Read failed: ${error}`);
+          this.eventCallback('tool', `[ERR] Read failed: ${error}`);
         }
 
         if (this.toolCalls.length > 0) {
@@ -363,14 +363,14 @@ export class CursorAgentStreamParser {
 
       if (completedEvent.tool_call.bashToolCall?.result.success) {
         const { exitCode } = completedEvent.tool_call.bashToolCall.result.success;
-        const result = `Exit code ${exitCode}`;
+        const result = exitCode === 0 ? 'Success' : `Exit code: ${exitCode}`;
         
-        // Log command result
+        // Log result
         if (this.eventCallback) {
           if (exitCode === 0) {
-            this.eventCallback('tool', `Command completed`);
+            this.eventCallback('tool', `[OK] Command completed`);
           } else {
-            this.eventCallback('tool', `Exit code ${exitCode}`);
+            this.eventCallback('tool', `[WARN] Exit code ${exitCode}`);
           }
         }
 
@@ -380,13 +380,13 @@ export class CursorAgentStreamParser {
       } else if (completedEvent.tool_call.bashToolCall?.result.error) {
         const error = completedEvent.tool_call.bashToolCall.result.error;
         
-        // Log error
+        // Log failure
         if (this.eventCallback) {
-          this.eventCallback('tool', `Command failed: ${error}`);
+          this.eventCallback('tool', `[ERR] Command failed: ${error}`);
         }
 
         if (this.toolCalls.length > 0) {
-          this.toolCalls[this.toolCalls.length - 1].result = `Error: ${error}`;
+          this.toolCalls[this.toolCalls.length - 1].result = `Failed: ${error}`;
         }
       }
     }
