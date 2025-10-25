@@ -1,8 +1,31 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createOpenSpecManager } from '../dist/core/openspec-manager.js';
 import { createLogger } from '../dist/core/logger.js';
 import { createCLIBridge, resetCLIBridge } from '../dist/core/cli-bridge.js';
 import { createConfigManager } from '../dist/core/config-manager.js';
+
+// Mock child_process.spawn globally to prevent real process spawning
+vi.mock('child_process', () => ({
+  spawn: vi.fn(() => ({
+    stdout: {
+      setEncoding: vi.fn(),
+      on: vi.fn(),
+    },
+    stderr: {
+      setEncoding: vi.fn(),
+      on: vi.fn(),
+    },
+    on: vi.fn((event, callback) => {
+      if (event === 'exit') {
+        setTimeout(() => callback(1), 10); // Exit with code 1 (not found)
+      }
+    }),
+    kill: vi.fn(),
+    pid: Math.floor(Math.random() * 10000),
+    killed: false,
+    exitCode: null,
+  })),
+}));
 
 describe('Performance Optimization', () => {
   let openspecManager: ReturnType<typeof createOpenSpecManager>;
@@ -21,6 +44,13 @@ describe('Performance Optimization', () => {
     cliBridge = createCLIBridge(logger, config);
     openspecManager = createOpenSpecManager(projectRoot);
     await openspecManager.initialize();
+  });
+
+  afterEach(async () => {
+    // Kill any spawned processes to prevent orphans
+    if (cliBridge) {
+      await cliBridge.killAllProcesses();
+    }
   });
 
   it('should load tasks efficiently', async () => {
@@ -91,7 +121,8 @@ describe('Performance Optimization', () => {
   it('should optimize CLI command execution', async () => {
     const startTime = Date.now();
 
-    // Test a simple CLI command with timeout
+    // Test a simple CLI command with timeout (using global mock)
+    // Only test supported CLI tools (v0.10.0+)
     const response = await cliBridge.sendCommandToCLI('cursor-agent', 'Test performance', {
       timeout: 10000, // 10 second timeout
     });
@@ -100,7 +131,7 @@ describe('Performance Optimization', () => {
 
     expect(response).toBeDefined();
     expect(typeof response.success).toBe('boolean');
-    expect(executionTime).toBeLessThan(15000); // Should complete within timeout + buffer
+    expect(executionTime).toBeLessThan(1000); // Should be fast with mock
 
     console.log(`CLI execution performance: ${executionTime}ms, success: ${response.success}`);
   });

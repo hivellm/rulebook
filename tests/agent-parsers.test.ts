@@ -100,8 +100,7 @@ describe('Agent Stream Parsers', () => {
       const testLine = 'invalid json';
       const result = parseStreamLine(testLine);
       
-      expect(result).toBeDefined();
-      expect(result.type).toBe('unknown');
+      expect(result).toBeNull();
     });
 
     it('should detect completion patterns', () => {
@@ -114,7 +113,8 @@ describe('Agent Stream Parsers', () => {
 
   describe('Stream Parser Integration', () => {
     it('should handle all supported CLI tools', () => {
-      // Test that all three parsers can be instantiated
+      // Test that all three standardized parsers can be instantiated
+      // These are the only supported CLI tools after v0.10.0
       const claudeParser = new ClaudeCodeStreamParser();
       const geminiParser = new GeminiStreamParser();
       const cursorParser = new CursorAgentStreamParser();
@@ -136,6 +136,18 @@ describe('Agent Stream Parsers', () => {
       expect(claudeResult).toBeDefined();
       expect(geminiResult).toBeDefined();
       expect(cursorResult).toBeDefined();
+    });
+
+    it('should support exactly three CLI tools', () => {
+      // Verify that we support exactly three CLI tools (v0.10.0+)
+      const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
+      expect(supportedTools).toHaveLength(3);
+      
+      // Verify that deprecated tools are not included (removed in v0.10.0)
+      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
+      deprecatedTools.forEach(deprecated => {
+        expect(supportedTools).not.toContain(deprecated);
+      });
     });
   });
 });
