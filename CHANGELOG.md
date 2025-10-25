@@ -21,9 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Real-time Watcher:**
 - Beautiful ANSI-based UI for live monitoring
+- **NEW**: Modern full-screen console interface (htop-style)
 - Real-time task progress display with progress bars
 - Activity log with timestamps and status indicators
 - System status monitoring (CPU, memory, coverage)
+- Interactive navigation with arrow keys and mouse support
 - Graceful shutdown with Ctrl+C/F10
 - Auto-refresh every 2 seconds
 
