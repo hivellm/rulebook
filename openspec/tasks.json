@@ -1,0 +1,50 @@
+[
+  {
+    "id": "8f5c64e4-216e-4b79-88f9-af41188d8ee9",
+    "title": "Initialize Rulebook Configuration",
+    "description": "Set up .rulebook configuration file with project settings",
+    "priority": 1,
+    "status": "pending",
+    "dependencies": [],
+    "estimatedTime": 300,
+    "createdAt": "2025-10-25T08:32:48.014Z",
+    "updatedAt": "2025-10-25T08:32:48.014Z",
+    "attempts": 0,
+    "tags": [
+      "config",
+      "setup"
+    ]
+  },
+  {
+    "id": "ab9846af-8815-4606-bba8-dc47bbc81abf",
+    "title": "Implement Core Modules",
+    "description": "Create config-manager, openspec-manager, and other core modules",
+    "priority": 2,
+    "status": "pending",
+    "dependencies": [],
+    "estimatedTime": 1800,
+    "createdAt": "2025-10-25T08:32:48.014Z",
+    "updatedAt": "2025-10-25T08:32:48.014Z",
+    "attempts": 0,
+    "tags": [
+      "core",
+      "implementation"
+    ]
+  },
+  {
+    "id": "c7cb83b5-e55f-4ca4-8165-165e4a90ccf9",
+    "title": "Add Comprehensive Tests",
+    "description": "Write tests for all new modules with 95%+ coverage",
+    "priority": 3,
+    "status": "pending",
+    "dependencies": [],
+    "estimatedTime": 1200,
+    "createdAt": "2025-10-25T08:32:48.014Z",
+    "updatedAt": "2025-10-25T08:32:48.014Z",
+    "attempts": 0,
+    "tags": [
+      "testing",
+      "quality"
+    ]
+  }
+]

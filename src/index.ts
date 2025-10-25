@@ -84,7 +84,10 @@ program.command('fix').description('Auto-fix common project issues').action(fixC
 program
   .command('watcher')
   .description('Start real-time watcher for OpenSpec tasks and agent progress')
-  .action(watcherCommand);
+  .option('-m, --modern', 'Use modern full-screen console interface')
+  .action(async (options) => {
+    await watcherCommand(options);
+  });
 
 program
   .command('agent')

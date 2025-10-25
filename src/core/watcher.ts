@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { createOpenSpecManager } from './openspec-manager.js';
 import { createLogger } from './logger.js';
 import { createConfigManager } from './config-manager.js';
+import { createModernConsole } from './modern-console.js';
 import type { OpenSpecTask } from '../types.js';
 
 export class WatcherUI {
@@ -351,6 +352,21 @@ export class WatcherUI {
 export async function startWatcher(projectRoot: string): Promise<void> {
   const watcher = new WatcherUI(projectRoot);
   await watcher.start();
+}
+
+/**
+ * Create and start modern console watcher
+ */
+export async function startModernWatcher(projectRoot: string): Promise<void> {
+  const modernConsole = createModernConsole({
+    projectRoot,
+    refreshInterval: 2000,
+    showSystemInfo: true,
+    showLogs: true,
+    maxLogLines: 50
+  });
+  
+  await modernConsole.start();
 }
 
 /**
