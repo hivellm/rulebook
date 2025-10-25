@@ -195,6 +195,9 @@ describe('Agent Manager Comprehensive Tests', () => {
     });
 
     it('should execute task workflow successfully', async () => {
+      // Set the current tool
+      (agentManager as any).currentTool = 'cursor-agent';
+      
       const task = {
         id: 'test-task-1',
         title: 'Test Task',
@@ -216,6 +219,9 @@ describe('Agent Manager Comprehensive Tests', () => {
     });
 
     it('should handle dry run mode', async () => {
+      // Set the current tool
+      (agentManager as any).currentTool = 'cursor-agent';
+      
       const task = {
         id: 'test-task-1',
         title: 'Test Task',
@@ -230,6 +236,9 @@ describe('Agent Manager Comprehensive Tests', () => {
     });
 
     it('should handle task execution failure', async () => {
+      // Set the current tool
+      (agentManager as any).currentTool = 'cursor-agent';
+      
       mockCLIBridge.sendTaskCommand.mockResolvedValueOnce({
         success: false,
         output: '',
@@ -251,6 +260,9 @@ describe('Agent Manager Comprehensive Tests', () => {
     });
 
     it('should handle test failure', async () => {
+      // Set the current tool
+      (agentManager as any).currentTool = 'cursor-agent';
+      
       mockCLIBridge.sendTestCommand.mockResolvedValueOnce({
         success: false,
         output: 'Tests failed',
@@ -270,6 +282,9 @@ describe('Agent Manager Comprehensive Tests', () => {
     });
 
     it('should handle coverage failure', async () => {
+      // Set the current tool
+      (agentManager as any).currentTool = 'cursor-agent';
+      
       // Mock coverage check to fail
       const originalCheckCoverage = (agentManager as any).checkCoverage;
       (agentManager as any).checkCoverage = vi.fn().mockResolvedValue(false);
@@ -292,6 +307,7 @@ describe('Agent Manager Comprehensive Tests', () => {
   describe('Quality Checks', () => {
     beforeEach(async () => {
       await agentManager.initialize();
+      (agentManager as any).currentTool = 'cursor-agent';
     });
 
     it('should run quality checks successfully', async () => {
@@ -333,6 +349,7 @@ describe('Agent Manager Comprehensive Tests', () => {
   describe('Test Execution', () => {
     beforeEach(async () => {
       await agentManager.initialize();
+      (agentManager as any).currentTool = 'cursor-agent';
     });
 
     it('should run tests successfully', async () => {
@@ -393,6 +410,7 @@ describe('Agent Manager Comprehensive Tests', () => {
   describe('Agent Workflow Loop', () => {
     beforeEach(async () => {
       await agentManager.initialize();
+      (agentManager as any).currentTool = 'cursor-agent';
     });
 
     it('should run workflow loop with max iterations', async () => {
@@ -470,6 +488,7 @@ describe('Agent Manager Comprehensive Tests', () => {
   describe('Error Handling and Recovery', () => {
     beforeEach(async () => {
       await agentManager.initialize();
+      (agentManager as any).currentTool = 'cursor-agent';
     });
 
     it('should handle CLI command timeouts', async () => {
@@ -525,6 +544,7 @@ describe('Agent Manager Comprehensive Tests', () => {
       const options = { dryRun: true };
 
       await agentManager.initialize();
+      (agentManager as any).currentTool = 'cursor-agent';
 
       const task = {
         id: 'test-task-1',
