@@ -171,8 +171,8 @@ export class CursorAgentStreamParser {
    * Process a single event from the stream
    */
   processEvent(event: CursorAgentEvent): void {
-    console.log('🔍 [DEBUG] Event type:', event.type, 'subtype:', (event as any).subtype || 'none');
-
+    // Don't log debug info - it interferes with blessed UI
+    
     switch (event.type) {
       case 'system':
         this.handleSystemEvent(event);
@@ -187,12 +187,10 @@ export class CursorAgentStreamParser {
         this.handleToolCallEvent(event);
         break;
       case 'result':
-        console.log('🔍 [DEBUG] Result event received! Calling handleResultEvent...');
         this.handleResultEvent(event);
-        console.log('🔍 [DEBUG] Completed flag:', this.completed);
         break;
       default:
-        console.log('🔍 [DEBUG] Unknown event type:', (event as any).type);
+        // Unknown event type - ignore
     }
   }
 
@@ -225,8 +223,7 @@ export class CursorAgentStreamParser {
   private handleSystemEvent(event: SystemInitEvent): void {
     if (event.subtype === 'init') {
       this.sessionId = event.session_id;
-      console.log(`🤖 Using model: ${event.model}`);
-      console.log(`📁 Working directory: ${event.cwd}`);
+      // System info logged silently
     }
   }
 
@@ -237,7 +234,7 @@ export class CursorAgentStreamParser {
 
   private handleAssistantEvent(event: AssistantMessageEvent): void {
     this.sessionId = event.session_id;
-
+    
     // Extract text content from assistant message
     const text = event.message.content
       .filter((c) => c.type === 'text')
@@ -247,9 +244,7 @@ export class CursorAgentStreamParser {
     // Accumulate text (stream-partial-output sends incremental deltas)
     if (text && !this.accumulatedText.includes(text)) {
       this.accumulatedText = text;
-
-      // Show progress
-      process.stdout.write(`\r📝 Generating: ${this.accumulatedText.length} chars`);
+      // Don't log progress - it floods the output
     }
   }
 
@@ -262,21 +257,21 @@ export class CursorAgentStreamParser {
 
       if (startedEvent.tool_call.writeToolCall) {
         const path = startedEvent.tool_call.writeToolCall.args.path;
-        console.log(`\n🔧 Tool #${this.toolCount}: Creating ${path}`);
+        // Tool call logged silently
         this.toolCalls.push({
           type: 'write',
           details: `Write to ${path}`,
         });
       } else if (startedEvent.tool_call.readToolCall) {
         const path = startedEvent.tool_call.readToolCall.args.path;
-        console.log(`\n📖 Tool #${this.toolCount}: Reading ${path}`);
+        // Tool call logged silently
         this.toolCalls.push({
           type: 'read',
           details: `Read from ${path}`,
         });
       } else if (startedEvent.tool_call.bashToolCall) {
         const cmd = startedEvent.tool_call.bashToolCall.args.command;
-        console.log(`\n⚡ Tool #${this.toolCount}: Running bash: ${cmd}`);
+        // Tool call logged silently
         this.toolCalls.push({
           type: 'bash',
           details: `Execute: ${cmd}`,
@@ -342,19 +337,9 @@ export class CursorAgentStreamParser {
     }
   }
 
-  private handleResultEvent(event: ResultEvent): void {
-    const duration = event.duration_ms;
-    const totalTime = Math.round((Date.now() - this.startTime) / 1000);
-
-    console.log(`\n\n🎯 Completed in ${duration}ms (${totalTime}s total)`);
-    console.log(
-      `📊 Final stats: ${this.toolCalls.length} tools, ${this.accumulatedText.length} chars generated`
-    );
-
-    if (event.subtype === 'error' || event.is_error) {
-      console.log(`❌ Error: ${event.result}`);
-    }
-
+  private handleResultEvent(_event: ResultEvent): void {
+    // Completion logged silently
+    
     // Mark as completed and trigger callback
     this.completed = true;
     if (this.completionCallback) {

@@ -194,18 +194,10 @@ export class CLIBridge {
 
             for (const line of lines) {
               if (line.trim()) {
-                console.log('🔍 [DEBUG] Raw line:', line.substring(0, 100));
                 // Parse and process each JSON event
                 const event = parseStreamLine(line);
                 if (event) {
                   parser.processEvent(event);
-
-                  // Check if parser completed
-                  if (parser.isCompleted()) {
-                    console.log('🔍 [DEBUG] Parser reports completed!');
-                  }
-                } else {
-                  console.log('🔍 [DEBUG] Failed to parse line');
                 }
               }
             }

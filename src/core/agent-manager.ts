@@ -11,6 +11,7 @@ export interface AgentOptions {
   tool?: string;
   maxIterations?: number;
   watchMode?: boolean;
+  onLog?: (type: 'info' | 'success' | 'warning' | 'error' | 'tool', message: string) => void;
 }
 
 export class AgentManager {
@@ -21,6 +22,7 @@ export class AgentManager {
   private config: RulebookConfig;
   private isRunning = false;
   private currentTool?: string;
+  private onLog?: AgentOptions['onLog'];
 
   constructor(projectRoot: string) {
     this.openspecManager = createOpenSpecManager(projectRoot);
@@ -53,12 +55,23 @@ export class AgentManager {
     try {
       await this.initialize();
 
-      console.log(chalk.bold.blue('\n🤖 Rulebook Autonomous Agent\n'));
+      this.onLog = options.onLog;
+
+      if (!this.onLog) {
+        console.log(chalk.bold.blue('\n🤖 Rulebook Autonomous Agent\n'));
+      } else {
+        this.onLog('info', '🤖 Rulebook Autonomous Agent');
+      }
 
       // Detect and select CLI tool
       const selectedTool = await this.selectCLITool(options.tool);
       if (!selectedTool) {
-        console.log(chalk.red('No CLI tool selected. Exiting.'));
+        const msg = 'No CLI tool selected. Exiting.';
+        if (this.onLog) {
+          this.onLog('error', msg);
+        } else {
+          console.log(chalk.red(msg));
+        }
         return;
       }
 
@@ -66,9 +79,19 @@ export class AgentManager {
       this.isRunning = true;
 
       // Sync task status first
-      console.log(chalk.gray('📋 Syncing task status...'));
+      if (this.onLog) {
+        this.onLog('info', '📋 Syncing task status...');
+      } else {
+        console.log(chalk.gray('📋 Syncing task status...'));
+      }
+      
       await this.openspecManager.syncTaskStatus();
-      console.log(chalk.green('✅ Task status synced\n'));
+      
+      if (this.onLog) {
+        this.onLog('success', '✅ Task status synced');
+      } else {
+        console.log(chalk.green('✅ Task status synced\n'));
+      }
 
       // Start watcher if requested
       if (options.watchMode) {
@@ -92,17 +115,23 @@ export class AgentManager {
     const availableTools = await this.cliBridge.detectCLITools();
 
     if (availableTools.length === 0) {
-      console.log(
-        chalk.red(
-          'No CLI tools detected. Please install cursor-agent, claude-code, gemini-cli, cursor-cli, or claude-cli.'
-        )
-      );
+      const msg = 'No CLI tools detected. Please install cursor-agent, claude-code, gemini-cli, cursor-cli, or claude-cli.';
+      if (this.onLog) {
+        this.onLog('error', msg);
+      } else {
+        console.log(chalk.red(msg));
+      }
       return null;
     }
 
     // If preferred tool is specified and available, use it
     if (preferredTool && availableTools.some((tool) => tool.name === preferredTool)) {
-      console.log(chalk.green(`Using preferred tool: ${preferredTool}`));
+      const msg = `Using preferred tool: ${preferredTool}`;
+      if (this.onLog) {
+        this.onLog('info', msg);
+      } else {
+        console.log(chalk.green(msg));
+      }
       return preferredTool;
     }
 
@@ -148,7 +177,12 @@ export class AgentManager {
         const nextTask = await this.openspecManager.getNextTask();
         if (!nextTask) {
           this.logger.info('No more tasks available');
-          console.log(chalk.green('\n✅ All tasks completed!'));
+          const msg = '✅ All tasks completed!';
+          if (this.onLog) {
+            this.onLog('success', msg);
+          } else {
+            console.log(chalk.green(`\n${msg}`));
+          }
           break;
         }
 

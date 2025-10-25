@@ -186,7 +186,10 @@ export class ModernConsole {
           await this.agentManager.startAgent({
             tool: 'cursor-agent',
             maxIterations: 10,
-            watchMode: false, // Already in watch mode
+            watchMode: false,
+            onLog: (type, message) => {
+              this.logActivity(type, message);
+            },
           });
           
           this.logActivity('success', 'Agent completed successfully');
@@ -195,6 +198,7 @@ export class ModernConsole {
         } finally {
           this.isAgentRunning = false;
           this.updateStatusBar();
+          await this.refreshTasks();
         }
       } else if (this.isAgentRunning) {
         this.logActivity('warning', 'Agent is already running');
