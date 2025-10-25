@@ -108,7 +108,12 @@ export class AgentManager {
       await this.runAgentWorkflow(options);
     } catch (error) {
       this.logger.error('Agent failed', { error: String(error) });
-      console.error(chalk.red('\n❌ Agent failed:'), error);
+      const msg = `❌ Agent failed: ${error}`;
+      if (this.onLog) {
+        this.onLog('error', msg);
+      } else {
+        console.error(chalk.red('\n' + msg));
+      }
     } finally {
       await this.cleanup();
     }
@@ -143,7 +148,12 @@ export class AgentManager {
 
     // If only one tool available, use it
     if (availableTools.length === 1) {
-      console.log(chalk.green(`Using available tool: ${availableTools[0].name}`));
+      const msg = `Using available tool: ${availableTools[0].name}`;
+      if (this.onLog) {
+        this.onLog('info', msg);
+      } else {
+        console.log(chalk.green(msg));
+      }
       return availableTools[0].name;
     }
 
@@ -207,7 +217,12 @@ export class AgentManager {
         await this.delay(2000);
       } catch (error) {
         this.logger.error(`Workflow iteration ${iteration} failed`, { error: String(error) });
-        console.error(chalk.red(`\n❌ Iteration ${iteration} failed:`), error);
+        const msg = `❌ Iteration ${iteration} failed: ${error}`;
+        if (this.onLog) {
+          this.onLog('error', msg);
+        } else {
+          console.error(chalk.red('\n' + msg));
+        }
 
         // Continue with next iteration unless it's a critical error
         if (iteration >= maxIterations) {
@@ -217,7 +232,12 @@ export class AgentManager {
     }
 
     if (iteration >= maxIterations) {
-      console.log(chalk.yellow(`\n⚠️ Reached maximum iterations (${maxIterations})`));
+      const msg = `⚠️ Reached maximum iterations (${maxIterations})`;
+      if (this.onLog) {
+        this.onLog('warning', msg);
+      } else {
+        console.log(chalk.yellow('\n' + msg));
+      }
     }
   }
 
@@ -228,7 +248,12 @@ export class AgentManager {
     const startTime = Date.now();
 
     this.logger.taskStart(task.id, task.title);
-    console.log(chalk.blue(`\n📋 Executing task: ${task.title}`));
+    const msg = `📋 Executing task: ${task.title}`;
+    if (this.onLog) {
+      this.onLog('info', msg);
+    } else {
+      console.log(chalk.blue('\n' + msg));
+    }
 
     try {
       // Set task as in-progress
@@ -236,28 +261,50 @@ export class AgentManager {
       await this.openspecManager.updateTaskStatus(task.id, 'in-progress');
 
       if (options.dryRun) {
-        console.log(chalk.yellow('🔍 DRY RUN MODE - No actual execution'));
-        console.log(chalk.gray(`Would execute: ${task.title}`));
+        if (this.onLog) {
+          this.onLog('warning', '🔍 DRY RUN MODE - No actual execution');
+          this.onLog('info', `Would execute: ${task.title}`);
+        } else {
+          console.log(chalk.yellow('🔍 DRY RUN MODE - No actual execution'));
+          console.log(chalk.gray(`Would execute: ${task.title}`));
+        }
         return true;
       }
 
       // Step 1: Send task to CLI
-      console.log(chalk.gray('📤 Sending task to CLI...'));
+      if (this.onLog) {
+        this.onLog('info', '📤 Sending task to CLI...');
+      } else {
+        console.log(chalk.gray('📤 Sending task to CLI...'));
+      }
       const taskResponse = await this.cliBridge.sendTaskCommand(this.currentTool!, task);
 
-      console.log(chalk.blue('\n📥 Agent Response:'));
-      console.log(chalk.gray('─'.repeat(80)));
-      console.log(taskResponse.output || '(no output)');
-      console.log(chalk.gray('─'.repeat(80)));
-      console.log(
-        chalk.gray(
-          `Exit Code: ${taskResponse.exitCode} | Duration: ${Math.round(taskResponse.duration / 1000)}s`
-        )
-      );
+      if (this.onLog) {
+        this.onLog('info', '📥 Agent Response:');
+        this.onLog('info', '─'.repeat(80));
+        this.onLog('info', taskResponse.output || '(no output)');
+        this.onLog('info', '─'.repeat(80));
+        this.onLog('info', `Exit Code: ${taskResponse.exitCode} | Duration: ${Math.round(taskResponse.duration / 1000)}s`);
+        
+        if (taskResponse.error) {
+          this.onLog('warning', '⚠️ Error Output:');
+          this.onLog('error', taskResponse.error);
+        }
+      } else {
+        console.log(chalk.blue('\n📥 Agent Response:'));
+        console.log(chalk.gray('─'.repeat(80)));
+        console.log(taskResponse.output || '(no output)');
+        console.log(chalk.gray('─'.repeat(80)));
+        console.log(
+          chalk.gray(
+            `Exit Code: ${taskResponse.exitCode} | Duration: ${Math.round(taskResponse.duration / 1000)}s`
+          )
+        );
 
-      if (taskResponse.error) {
-        console.log(chalk.red('\n⚠️ Error Output:'));
-        console.log(chalk.red(taskResponse.error));
+        if (taskResponse.error) {
+          console.log(chalk.red('\n⚠️ Error Output:'));
+          console.log(chalk.red(taskResponse.error));
+        }
       }
 
       if (!taskResponse.success) {
@@ -265,34 +312,63 @@ export class AgentManager {
       }
 
       // Step 2: Continue implementation loop
-      console.log(chalk.gray('\n🔄 Continuing implementation...'));
+      if (this.onLog) {
+        this.onLog('info', '🔄 Continuing implementation...');
+      } else {
+        console.log(chalk.gray('\n🔄 Continuing implementation...'));
+      }
       const continueResponse = await this.cliBridge.sendContinueCommand(this.currentTool!, 10);
 
-      console.log(chalk.blue('\n📥 Continue Response:'));
-      console.log(chalk.gray('─'.repeat(80)));
-      console.log(continueResponse.output || '(no output)');
-      console.log(chalk.gray('─'.repeat(80)));
-      console.log(
-        chalk.gray(
-          `Exit Code: ${continueResponse.exitCode} | Duration: ${Math.round(continueResponse.duration / 1000)}s`
-        )
-      );
+      if (this.onLog) {
+        this.onLog('info', '📥 Continue Response:');
+        this.onLog('info', '─'.repeat(80));
+        this.onLog('info', continueResponse.output || '(no output)');
+        this.onLog('info', '─'.repeat(80));
+        this.onLog('info', `Exit Code: ${continueResponse.exitCode} | Duration: ${Math.round(continueResponse.duration / 1000)}s`);
+        
+        if (continueResponse.error) {
+          this.onLog('warning', '⚠️ Error Output:');
+          this.onLog('error', continueResponse.error);
+        }
+        
+        if (!continueResponse.success) {
+          this.onLog('warning', '⚠️ Continue command failed, but continuing workflow');
+        }
+      } else {
+        console.log(chalk.blue('\n📥 Continue Response:'));
+        console.log(chalk.gray('─'.repeat(80)));
+        console.log(continueResponse.output || '(no output)');
+        console.log(chalk.gray('─'.repeat(80)));
+        console.log(
+          chalk.gray(
+            `Exit Code: ${continueResponse.exitCode} | Duration: ${Math.round(continueResponse.duration / 1000)}s`
+          )
+        );
 
-      if (continueResponse.error) {
-        console.log(chalk.red('\n⚠️ Error Output:'));
-        console.log(chalk.red(continueResponse.error));
-      }
+        if (continueResponse.error) {
+          console.log(chalk.red('\n⚠️ Error Output:'));
+          console.log(chalk.red(continueResponse.error));
+        }
 
-      if (!continueResponse.success) {
-        console.log(chalk.yellow('⚠️ Continue command failed, but continuing workflow'));
+        if (!continueResponse.success) {
+          console.log(chalk.yellow('⚠️ Continue command failed, but continuing workflow'));
+        }
       }
 
       // Step 3: Run quality checks
-      console.log(chalk.gray('🔍 Running quality checks...'));
+      if (this.onLog) {
+        this.onLog('info', '🔍 Running quality checks...');
+      } else {
+        console.log(chalk.gray('🔍 Running quality checks...'));
+      }
       await this.runQualityChecks();
 
       // Step 4: Run tests
-      console.log(chalk.gray('🧪 Running tests...'));
+      if (this.onLog) {
+        this.onLog('info', '🧪 Running tests...');
+      } else {
+        console.log(chalk.gray('🧪 Running tests...'));
+      }
       const testSuccess = await this.runTests();
 
       if (!testSuccess) {
@@ -300,7 +376,11 @@ export class AgentManager {
       }
 
       // Step 5: Check coverage
-      console.log(chalk.gray('📊 Checking coverage...'));
+      if (this.onLog) {
+        this.onLog('info', '📊 Checking coverage...');
+      } else {
+        console.log(chalk.gray('📊 Checking coverage...'));
+      }
       const coverageSuccess = await this.checkCoverage();
 
       if (!coverageSuccess) {
@@ -308,23 +388,41 @@ export class AgentManager {
       }
 
       // Step 6: Test workflows
-      console.log(chalk.gray('⚙️ Testing workflows...'));
+      if (this.onLog) {
+        this.onLog('info', '⚙️ Testing workflows...');
+      } else {
+        console.log(chalk.gray('⚙️ Testing workflows...'));
+      }
       await this.testWorkflows();
 
       // Step 7: Commit changes
-      console.log(chalk.gray('💾 Committing changes...'));
+      if (this.onLog) {
+        this.onLog('info', '💾 Committing changes...');
+      } else {
+        console.log(chalk.gray('💾 Committing changes...'));
+      }
       await this.commitChanges(task);
 
       const duration = Date.now() - startTime;
       this.logger.taskComplete(task.id, task.title, duration);
 
-      console.log(chalk.green(`✅ Task completed successfully in ${Math.round(duration / 1000)}s`));
+      const successMsg = `✅ Task completed successfully in ${Math.round(duration / 1000)}s`;
+      if (this.onLog) {
+        this.onLog('success', successMsg);
+      } else {
+        console.log(chalk.green(successMsg));
+      }
       return true;
     } catch (error) {
       const duration = Date.now() - startTime;
       this.logger.taskFailed(task.id, task.title, String(error), duration);
 
-      console.error(chalk.red(`❌ Task failed: ${error}`));
+      const errorMsg = `❌ Task failed: ${error}`;
+      if (this.onLog) {
+        this.onLog('error', errorMsg);
+      } else {
+        console.error(chalk.red(errorMsg));
+      }
       return false;
     }
   }
@@ -342,7 +440,12 @@ export class AgentManager {
     );
 
     if (!lintResponse.success) {
-      console.log(chalk.yellow('⚠️ Lint issues found, but continuing'));
+      const msg = '⚠️ Lint issues found, but continuing';
+      if (this.onLog) {
+        this.onLog('warning', msg);
+      } else {
+        console.log(chalk.yellow(msg));
+      }
     }
 
     // Run format
@@ -354,7 +457,12 @@ export class AgentManager {
     );
 
     if (!formatResponse.success) {
-      console.log(chalk.yellow('⚠️ Format issues found, but continuing'));
+      const msg = '⚠️ Format issues found, but continuing';
+      if (this.onLog) {
+        this.onLog('warning', msg);
+      } else {
+        console.log(chalk.yellow(msg));
+      }
     }
   }
 
