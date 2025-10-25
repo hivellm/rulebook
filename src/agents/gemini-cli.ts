@@ -75,7 +75,7 @@ export function parseGeminiLine(line: string): GeminiEvent | null {
       timestamp: Date.now(),
     };
   } catch (error) {
-    console.error('Failed to parse gemini-cli line:', line);
+    // Failed to parse line - ignore silently
     return null;
   }
 }
@@ -155,18 +155,15 @@ export class GeminiStreamParser {
     };
   }
 
-  private handleProgressEvent(event: GeminiEvent): void {
-    // Show progress indicator
-    process.stdout.write(`\r⏳ ${event.content}`);
+  private handleProgressEvent(_event: GeminiEvent): void {
+    // Progress logged silently
   }
 
   private handleTextEvent(event: GeminiEvent): void {
     // Accumulate text content
     if (event.content && !this.accumulatedText.includes(event.content)) {
       this.accumulatedText += event.content + '\n';
-
-      // Show progress
-      process.stdout.write(`\r📝 Generating: ${this.accumulatedText.length} chars`);
+      // Progress logged silently
     }
   }
 
@@ -183,15 +180,15 @@ export class GeminiStreamParser {
       toolType = 'write';
     }
 
-    console.log(`\n🔧 Tool #${this.toolCount}: ${details}`);
+    // Tool call logged silently
     this.toolCalls.push({
       type: toolType,
       details,
     });
   }
 
-  private handleCompletionEvent(event: GeminiEvent): void {
-    console.log(`\n✅ ${event.content}`);
+  private handleCompletionEvent(_event: GeminiEvent): void {
+    // Completion logged silently
 
     // Mark as completed and trigger callback
     this.completed = true;
@@ -201,7 +198,7 @@ export class GeminiStreamParser {
   }
 
   private handleErrorEvent(event: GeminiEvent): void {
-    console.log(`\n❌ ${event.content}`);
+    // Error logged silently
 
     // Update last tool call with error if available
     if (this.toolCalls.length > 0) {

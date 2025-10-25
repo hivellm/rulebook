@@ -75,7 +75,7 @@ export function parseClaudeCodeLine(line: string): ClaudeCodeEvent | null {
       timestamp: Date.now(),
     };
   } catch (error) {
-    console.error('Failed to parse claude-code line:', line);
+    // Failed to parse line - ignore silently
     return null;
   }
 }
@@ -155,18 +155,15 @@ export class ClaudeCodeStreamParser {
     };
   }
 
-  private handleProgressEvent(event: ClaudeCodeEvent): void {
-    // Show progress indicator
-    process.stdout.write(`\r⏳ ${event.content}`);
+  private handleProgressEvent(_event: ClaudeCodeEvent): void {
+    // Progress logged silently
   }
 
   private handleTextEvent(event: ClaudeCodeEvent): void {
     // Accumulate text content
     if (event.content && !this.accumulatedText.includes(event.content)) {
       this.accumulatedText += event.content + '\n';
-
-      // Show progress
-      process.stdout.write(`\r📝 Generating: ${this.accumulatedText.length} chars`);
+      // Progress logged silently
     }
   }
 
@@ -183,15 +180,15 @@ export class ClaudeCodeStreamParser {
       toolType = 'write';
     }
 
-    console.log(`\n🔧 Tool #${this.toolCount}: ${details}`);
+    // Tool call logged silently
     this.toolCalls.push({
       type: toolType,
       details,
     });
   }
 
-  private handleCompletionEvent(event: ClaudeCodeEvent): void {
-    console.log(`\n✅ ${event.content}`);
+  private handleCompletionEvent(_event: ClaudeCodeEvent): void {
+    // Completion logged silently
 
     // Mark as completed and trigger callback
     this.completed = true;
@@ -201,7 +198,7 @@ export class ClaudeCodeStreamParser {
   }
 
   private handleErrorEvent(event: ClaudeCodeEvent): void {
-    console.log(`\n❌ ${event.content}`);
+    // Error logged silently
 
     // Update last tool call with error if available
     if (this.toolCalls.length > 0) {
