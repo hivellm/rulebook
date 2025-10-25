@@ -26,8 +26,6 @@ export class AgentManager {
   private initializePromise?: Promise<void>; // Track initialization promise to prevent race conditions
 
   constructor(projectRoot: string) {
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] AgentManager constructor called for project: ${projectRoot}`);
     this.openspecManager = createOpenSpecManager(projectRoot);
     this.logger = initializeLogger(projectRoot);
     this.configManager = createConfigManager(projectRoot);
@@ -40,8 +38,6 @@ export class AgentManager {
   async initialize(): Promise<void> {
     // If already initializing or initialized, return the same promise
     if (this.initializePromise) {
-      console.log('[AgentManager] Already initialized, reusing');
-      
       // Update callbacks even if already initialized (they might have changed)
       if (this.cliBridge && this.onLog) {
         this.cliBridge.setLogCallback(this.onLog);
@@ -54,7 +50,6 @@ export class AgentManager {
     // Create and store the initialization promise
     this.initializePromise = (async () => {
       try {
-        console.log('[AgentManager] Initializing for the first time');
         this.config = await this.configManager.loadConfig();
         this.cliBridge = createCLIBridge(this.logger, this.config);
 

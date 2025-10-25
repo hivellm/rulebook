@@ -31,11 +31,6 @@ export class CLIBridge {
   private debugLogFile?: string;
 
   constructor(logger: ReturnType<typeof createLogger>, config: RulebookConfig) {
-    const timestamp = new Date().toISOString();
-    const stack = new Error().stack?.split('\n').slice(2, 5).join(' -> ') || 'unknown';
-    console.log(`[${timestamp}] CLIBridge constructor called`);
-    console.log(`  Call stack: ${stack}`);
-    
     this.logger = logger;
     this.config = config;
     // Create logs directory if it doesn't exist
@@ -53,7 +48,6 @@ export class CLIBridge {
     this.debugLog(`Working directory: ${process.cwd()}`);
     this.debugLog(`Node version: ${process.version}`);
     this.debugLog(`Platform: ${process.platform}`);
-    this.debugLog(`Call stack: ${stack}`);
   }
 
   /**
@@ -1109,10 +1103,7 @@ export function createCLIBridge(
   config: RulebookConfig
 ): CLIBridge {
   if (!cliBridgeInstance) {
-    console.log('[CLIBridge] Creating singleton instance');
     cliBridgeInstance = new CLIBridge(logger, config);
-  } else {
-    console.log('[CLIBridge] Reusing existing singleton instance');
   }
   return cliBridgeInstance;
 }
