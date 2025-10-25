@@ -23,7 +23,7 @@ export class AgentManager {
   private isRunning = false;
   private currentTool?: string;
   private onLog?: AgentOptions['onLog'];
-  private initialized = false; // Track initialization state
+  private initializePromise?: Promise<void>; // Track initialization promise to prevent race conditions
 
   constructor(projectRoot: string) {
     this.openspecManager = createOpenSpecManager(projectRoot);
@@ -33,32 +33,38 @@ export class AgentManager {
   }
 
   /**
-   * Initialize agent manager (only once)
+   * Initialize agent manager (only once, thread-safe)
    */
   async initialize(): Promise<void> {
-    // Skip if already initialized
-    if (this.initialized) {
-      return;
+    // If already initializing or initialized, return the same promise
+    if (this.initializePromise) {
+      return this.initializePromise;
     }
 
-    try {
-      this.config = await this.configManager.loadConfig();
-      this.cliBridge = createCLIBridge(this.logger, this.config);
+    // Create and store the initialization promise
+    this.initializePromise = (async () => {
+      try {
+        this.config = await this.configManager.loadConfig();
+        this.cliBridge = createCLIBridge(this.logger, this.config);
 
-      // Pass onLog callback to CLI bridge if available
-      if (this.onLog) {
-        this.cliBridge.setLogCallback(this.onLog);
-        this.openspecManager.setLogCallback(this.onLog);
+        // Pass onLog callback to CLI bridge if available
+        if (this.onLog) {
+          this.cliBridge.setLogCallback(this.onLog);
+          this.openspecManager.setLogCallback(this.onLog);
+        }
+
+        await this.openspecManager.initialize();
+
+        this.logger.info('Agent Manager initialized');
+      } catch (error) {
+        this.logger.error('Failed to initialize Agent Manager', { error: String(error) });
+        // Clear the promise so it can be retried
+        this.initializePromise = undefined;
+        throw error;
       }
+    })();
 
-      await this.openspecManager.initialize();
-
-      this.logger.info('Agent Manager initialized');
-      this.initialized = true;
-    } catch (error) {
-      this.logger.error('Failed to initialize Agent Manager', { error: String(error) });
-      throw error;
-    }
+    return this.initializePromise;
   }
 
   /**
