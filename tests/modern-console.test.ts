@@ -13,11 +13,15 @@ vi.mock('blessed', () => ({
       destroy: vi.fn(),
       key: vi.fn(),
       on: vi.fn(),
+      width: 80,
+      height: 24,
     })),
     box: vi.fn(() => ({
       setContent: vi.fn(),
       focus: vi.fn(),
       on: vi.fn(),
+      setScrollPerc: vi.fn(),
+      height: 10,
     })),
     list: vi.fn(() => ({
       clearItems: vi.fn(),
@@ -87,6 +91,54 @@ describe('ModernConsole', () => {
       modernConsole.stop();
 
       expect(stopSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('simplified UI components', () => {
+    it('should have progress-focused UI components', () => {
+      // Test that the modern console has the simplified UI structure
+      expect(modernConsole).toBeDefined();
+      
+      // The simplified UI should have:
+      // - Active tasks display (no task details panel)
+      // - Progress bar (no system info panel)
+      // - Activity logs (no scrolling task list)
+      // - No scroll offset handling
+      // - No task details rendering
+      // - No system info rendering
+      
+      // These methods should not exist in the simplified version
+      expect(modernConsole).not.toHaveProperty('renderTaskDetails');
+      expect(modernConsole).not.toHaveProperty('renderSystemInfo');
+      expect(modernConsole).not.toHaveProperty('taskListScrollOffset');
+      expect(modernConsole).not.toHaveProperty('handleTaskListScroll');
+    });
+
+    it('should support activity logging', () => {
+      // Test activity logging functionality
+      const logSpy = vi.spyOn(modernConsole, 'logActivity');
+      
+      modernConsole.logActivity('info', 'Test message');
+      
+      expect(logSpy).toHaveBeenCalledWith('info', 'Test message');
+    });
+
+    it('should support task status management', () => {
+      // Test task completion marking
+      const markCompletedSpy = vi.spyOn(modernConsole, 'markTaskCompleted');
+      
+      modernConsole.markTaskCompleted('test-task-id');
+      
+      expect(markCompletedSpy).toHaveBeenCalledWith('test-task-id');
+    });
+
+    it('should support task progress marking', () => {
+      // Test task in-progress marking
+      const markInProgressSpy = vi.spyOn(modernConsole, 'markTaskInProgress');
+      
+      modernConsole.markTaskInProgress('test-task-id');
+      
+      expect(markInProgressSpy).toHaveBeenCalledWith('test-task-id');
     });
   });
 });

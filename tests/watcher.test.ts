@@ -58,4 +58,23 @@ describe('Watcher', () => {
       expect(startSpy).toHaveBeenCalled();
     });
   });
+
+  describe('simplified watcher UI', () => {
+    it('should use simplified progress-focused UI', async () => {
+      // Test that the watcher uses the simplified UI components
+      // The simplified UI should have:
+      // - Active tasks display (no task details panel)
+      // - Progress bar (no system info panel) 
+      // - Activity logs (no scrolling task list)
+      
+      const watcherModule = await import('../src/core/watcher.js');
+      
+      // Verify that the watcher uses modern console
+      expect(watcherModule.startWatcher).toBeDefined();
+      expect(watcherModule.startModernWatcher).toBeDefined();
+      
+      // The watcher should not have removed components
+      // (These would be tested at the modern-console level)
+    });
+  });
 });

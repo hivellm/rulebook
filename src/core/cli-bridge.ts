@@ -4,8 +4,9 @@ import type { RulebookConfig } from '../types.js';
 import { CursorAgentStreamParser, parseStreamLine } from '../agents/cursor-agent.js';
 import { ClaudeCodeStreamParser, parseClaudeCodeLine } from '../agents/claude-code.js';
 import { GeminiStreamParser, parseGeminiLine } from '../agents/gemini-cli.js';
-import { appendFile } from 'fs/promises';
+import { appendFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { existsSync } from 'fs';
 
 export interface CLITool {
   name: string;
@@ -32,11 +33,21 @@ export class CLIBridge {
   constructor(logger: ReturnType<typeof createLogger>, config: RulebookConfig) {
     this.logger = logger;
     this.config = config;
-    // Create debug log file with timestamp
+    // Create logs directory if it doesn't exist
+    const logsDir = join(process.cwd(), 'logs');
+    if (!existsSync(logsDir)) {
+      mkdir(logsDir, { recursive: true }).catch(() => {
+        // Ignore mkdir errors
+      });
+    }
+    // Create debug log file with timestamp in logs directory
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-    this.debugLogFile = join(process.cwd(), `debug-agent-${timestamp}.log`);
-    this.debugLog(`Debug logging started at ${new Date().toISOString()}`);
+    this.debugLogFile = join(logsDir, `debug-agent-${timestamp}.log`);
+    this.debugLog(`=== DEBUG LOG START ===`);
+    this.debugLog(`Session started at: ${new Date().toISOString()}`);
     this.debugLog(`Working directory: ${process.cwd()}`);
+    this.debugLog(`Node version: ${process.version}`);
+    this.debugLog(`Platform: ${process.platform}`);
   }
 
   /**
@@ -151,8 +162,11 @@ export class CLIBridge {
           command,
         ];
 
-        await this.debugLog(`Starting cursor-agent with command: ${command}`);
-        await this.debugLog(`Args: ${JSON.stringify(args)}`);
+        await this.debugLog(`\n=== CURSOR-AGENT COMMAND START ===`);
+        await this.debugLog(`Command: ${command}`);
+        await this.debugLog(`Full command line: cursor-agent ${args.join(' ')}`);
+        await this.debugLog(`Timestamp: ${new Date().toISOString()}`);
+        await this.debugLog(`===================================\n`);
 
         const proc = spawn(toolName, args, {
           cwd: options.workingDirectory,
@@ -294,33 +308,40 @@ export class CLIBridge {
             // Resolve when parser detects completion
             completionPromise.then(async () => {
               await this.debugLog('Parser completion event received');
+              await this.debugLog(`Process PID: ${proc.pid}, killed: ${proc.killed}, exitCode: ${proc.exitCode}`);
               clearInterval(progressInterval);
               clearTimeout(timeoutId);
               // Process might still be alive, wait a bit for graceful exit
-              const checkExit = setInterval(() => {
+              const checkExit = setInterval(async () => {
                 if (proc.killed || proc.exitCode !== null) {
+                  await this.debugLog(`Process exited gracefully with code: ${proc.exitCode}`);
                   clearInterval(checkExit);
                   resolve({ exitCode: proc.exitCode ?? 0, stdout, stderr });
                 }
               }, 100);
 
               // Force resolve after 2 seconds if still hanging
-              setTimeout(() => {
+              setTimeout(async () => {
                 clearInterval(checkExit);
                 if (!proc.killed) {
+                  await this.debugLog(`Process still alive after 2s, forcing kill with SIGKILL`);
                   proc.kill('SIGKILL');
+                } else {
+                  await this.debugLog(`Process already killed, resolving`);
                 }
                 resolve({ exitCode: 0, stdout, stderr });
               }, 2000);
             });
 
-            proc.on('exit', (code: number | null, _signal: NodeJS.Signals | null) => {
+            proc.on('exit', async (code: number | null, signal: NodeJS.Signals | null) => {
+              await this.debugLog(`Process 'exit' event: code=${code}, signal=${signal}`);
               clearInterval(progressInterval);
               clearTimeout(timeoutId);
               resolve({ exitCode: code ?? 0, stdout, stderr });
             });
 
-            proc.on('error', (error: Error) => {
+            proc.on('error', async (error: Error) => {
+              await this.debugLog(`Process 'error' event: ${error.message}`);
               clearInterval(progressInterval);
               clearTimeout(timeoutId);
               reject(error);
@@ -329,6 +350,16 @@ export class CLIBridge {
         );
 
         const duration = Date.now() - startTime;
+
+        // Debug logging for cursor-agent completion
+        await this.debugLog(`\n=== CURSOR-AGENT COMMAND END ===`);
+        await this.debugLog(`Duration: ${duration}ms`);
+        await this.debugLog(`Exit code: ${result.exitCode}`);
+        await this.debugLog(`Total stdout length: ${stdout.length} chars`);
+        await this.debugLog(`Total stderr length: ${stderr.length} chars`);
+        await this.debugLog(`Parser completed: ${parser.isCompleted()}`);
+        await this.debugLog(`Active processes remaining: ${this.activeProcesses.size}`);
+        await this.debugLog(`=================================\n`);
 
         // Remove from active processes
         this.activeProcesses.delete(processId);
@@ -348,8 +379,9 @@ export class CLIBridge {
         if (this.onLog) {
           this.onLog(
             'info',
-            `📊 Summary: ${parsedResult.text.length} chars, ${parsedResult.toolCalls.length} tools, ${Math.round(duration / 1000)}s`
+            `Summary: ${parsedResult.text.length} chars, ${parsedResult.toolCalls.length} tools, ${Math.round(duration / 1000)}s`
           );
+          this.onLog('info', `Debug log: ${this.debugLogFile}`);
         } else {
           console.log('\n📊 Summary:');
           console.log(`   Text generated: ${parsedResult.text.length} chars`);

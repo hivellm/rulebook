@@ -64,6 +64,55 @@ describe('CLIBridge', () => {
       // In test environment, no CLI tools should be available
       expect(tools.length).toBe(0);
     });
+
+    it('should only detect supported CLI tools', async () => {
+      // Mock the spawn function to simulate tool detection
+      const originalSpawn = require('child_process').spawn;
+      const mockSpawn = vi.fn().mockImplementation((command, args) => {
+        const mockProcess = {
+          stdout: {
+            setEncoding: vi.fn(),
+            on: vi.fn((event, callback) => {
+              if (event === 'data' && command === 'cursor-agent') {
+                setTimeout(() => callback('1.0.0'), 10);
+              }
+            }),
+          },
+          stderr: {
+            setEncoding: vi.fn(),
+            on: vi.fn(),
+          },
+          on: vi.fn((event, callback) => {
+            if (event === 'exit') {
+              setTimeout(() => callback(0), 20);
+            }
+          }),
+          kill: vi.fn(),
+        };
+        return mockProcess;
+      });
+
+      vi.doMock('child_process', () => ({
+        spawn: mockSpawn,
+      }));
+
+      const tools = await cliBridge.detectCLITools();
+      
+      // Should only contain supported tools
+      const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
+      const detectedToolNames = tools.map(tool => tool.name);
+      
+      // All detected tools should be in the supported list
+      detectedToolNames.forEach(toolName => {
+        expect(supportedTools).toContain(toolName);
+      });
+      
+      // Should not contain deprecated tools
+      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
+      deprecatedTools.forEach(deprecatedTool => {
+        expect(detectedToolNames).not.toContain(deprecatedTool);
+      });
+    });
   });
 
   describe('sendCommandToCLI', () => {
@@ -77,6 +126,48 @@ describe('CLIBridge', () => {
         duration: expect.any(Number),
         exitCode: expect.any(Number),
       });
+    });
+
+    it('should support cursor-agent tool', async () => {
+      const response = await cliBridge.sendCommandToCLI('cursor-agent', 'test command');
+
+      expect(response).toMatchObject({
+        success: false, // Will fail in test environment
+        duration: expect.any(Number),
+        exitCode: expect.any(Number),
+      });
+    });
+
+    it('should support claude-code tool', async () => {
+      const response = await cliBridge.sendCommandToCLI('claude-code', 'test command');
+
+      expect(response).toMatchObject({
+        success: false, // Will fail in test environment
+        duration: expect.any(Number),
+        exitCode: expect.any(Number),
+      });
+    });
+
+    it('should support gemini-cli tool', async () => {
+      const response = await cliBridge.sendCommandToCLI('gemini-cli', 'test command');
+
+      expect(response).toMatchObject({
+        success: false, // Will fail in test environment
+        duration: expect.any(Number),
+        exitCode: expect.any(Number),
+      });
+    });
+
+    it('should reject deprecated tools', async () => {
+      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
+      
+      for (const tool of deprecatedTools) {
+        const response = await cliBridge.sendCommandToCLI(tool, 'test command');
+        
+        // Should fail with "not yet implemented" error
+        expect(response.success).toBe(false);
+        expect(response.error).toContain('not yet implemented');
+      }
     });
   });
 

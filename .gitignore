@@ -32,6 +32,9 @@ coverage/
 logs/
 *.log
 
+# Debug logs
+debug-*.log
+
 # Temporary files
 tmp/
 temp/
