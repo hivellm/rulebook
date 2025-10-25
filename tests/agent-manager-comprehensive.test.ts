@@ -157,7 +157,7 @@ describe('Agent Manager Comprehensive Tests', () => {
 
       await expect(agentManager.initialize()).rejects.toThrow('Initialization failed');
       expect(mockLogger.error).toHaveBeenCalledWith('Failed to initialize Agent Manager', {
-        error: 'Initialization failed',
+        error: 'Error: Initialization failed',
       });
     });
   });
