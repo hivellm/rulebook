@@ -71,17 +71,30 @@ export class CLIBridge {
     } = {}
   ): Promise<CLIResponse> {
     const startTime = Date.now();
-    const timeout = options.timeout || this.config.timeouts.cliResponse;
+    const timeout = options.timeout || this.config.timeouts?.cliResponse || 30000;
     
     this.logger.cliCommand(command, toolName);
     
     try {
-      const process = execa(toolName, [command], {
-        timeout,
-        cwd: options.workingDirectory,
-        env: options.env,
-        stdio: 'pipe'
-      });
+      let process: ExecaChildProcess;
+      
+      if (toolName === 'cursor-agent') {
+        // cursor-agent expects: cursor-agent agent "<PROMPT>" -p --model "auto"
+        process = execa(toolName, ['agent', command, '-p', '--model', 'auto'], {
+          timeout,
+          cwd: options.workingDirectory,
+          env: options.env,
+          stdio: 'pipe'
+        });
+      } else {
+        // Other CLI tools
+        process = execa(toolName, [command], {
+          timeout,
+          cwd: options.workingDirectory,
+          env: options.env,
+          stdio: 'pipe'
+        });
+      }
 
       // Store active process
       const processId = `${toolName}-${Date.now()}`;
@@ -176,7 +189,7 @@ export class CLIBridge {
     
     if (toolName === 'cursor-agent') {
       // cursor-agent uses different command structure
-      command = `agent "Implement task: ${task.title}. Description: ${task.description}"`;
+      command = `Implement task: ${task.title}. Description: ${task.description}`;
     } else {
       command = `Implement task "${task.title}" from OpenSpec. Description: ${task.description}`;
     }
@@ -191,8 +204,7 @@ export class CLIBridge {
     let command: string;
     
     if (toolName === 'cursor-agent') {
-      // cursor-agent uses different command structure
-      command = `agent "Continue implementation ${iterations} times"`;
+      command = `Continue implementation ${iterations} times`;
     } else {
       command = `Continue implementation ${iterations}x`;
     }
@@ -207,7 +219,7 @@ export class CLIBridge {
     let command: string;
     
     if (toolName === 'cursor-agent') {
-      command = `agent "Run tests and check coverage"`;
+      command = 'Run tests and check coverage';
     } else {
       command = 'Run tests and check coverage';
     }
@@ -222,7 +234,7 @@ export class CLIBridge {
     let command: string;
     
     if (toolName === 'cursor-agent') {
-      command = `agent "Run lint checks and fix any issues"`;
+      command = 'Run lint checks and fix any issues';
     } else {
       command = 'Run lint checks and fix any issues';
     }
@@ -237,7 +249,7 @@ export class CLIBridge {
     let command: string;
     
     if (toolName === 'cursor-agent') {
-      command = `agent "Format code according to project standards"`;
+      command = 'Format code according to project standards';
     } else {
       command = 'Format code according to project standards';
     }
@@ -252,7 +264,7 @@ export class CLIBridge {
     let command: string;
     
     if (toolName === 'cursor-agent') {
-      command = `agent "Commit changes with message: ${message}"`;
+      command = `Commit changes with message: ${message}`;
     } else {
       command = `Commit changes with message: ${message}`;
     }
