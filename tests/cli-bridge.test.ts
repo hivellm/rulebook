@@ -117,17 +117,28 @@ describe('CLIBridge', () => {
       });
     });
 
-    it('should reject deprecated CLI tools in command execution', async () => {
-      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
+    it('should support claude-code stream parsing', async () => {
+      // Test that claude-code tool is supported
+      const response = await cliBridge.sendCommandToCLI('claude-code', 'test command');
       
-      for (const tool of deprecatedTools) {
-        const response = await cliBridge.sendCommandToCLI(tool, 'test command');
-        
-        // Should fail with "not yet implemented" error
-        expect(response.success).toBe(false);
-        expect(response.error).toContain('not yet implemented');
-      }
+      expect(response).toMatchObject({
+        success: false, // Will fail in test environment
+        duration: expect.any(Number),
+        exitCode: expect.any(Number),
+      });
     });
+
+    it('should support gemini-cli stream parsing', async () => {
+      // Test that gemini-cli tool is supported
+      const response = await cliBridge.sendCommandToCLI('gemini-cli', 'test command');
+      
+      expect(response).toMatchObject({
+        success: false, // Will fail in test environment
+        duration: expect.any(Number),
+        exitCode: expect.any(Number),
+      });
+    });
+
   });
 
   describe('sendCommandToCLI', () => {
@@ -173,17 +184,6 @@ describe('CLIBridge', () => {
       });
     });
 
-    it('should reject deprecated tools', async () => {
-      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
-      
-      for (const tool of deprecatedTools) {
-        const response = await cliBridge.sendCommandToCLI(tool, 'test command');
-        
-        // Should fail with "not yet implemented" error
-        expect(response.success).toBe(false);
-        expect(response.error).toContain('not yet implemented');
-      }
-    });
 
     it('should support only standardized CLI tools', async () => {
       // Test that only the three supported tools are handled

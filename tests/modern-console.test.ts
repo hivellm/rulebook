@@ -129,6 +129,17 @@ describe('ModernConsole', () => {
       expect(modernConsole).not.toHaveProperty('renderSystemInfo');
     });
 
+    it('should have progress bar functionality', () => {
+      // Test that progress bar methods exist
+      expect(modernConsole).toHaveProperty('getProgressInfo');
+      expect(modernConsole).toHaveProperty('renderProgressBar');
+    });
+
+    it('should have loading indicator functionality', () => {
+      // Test that loading indicator methods exist
+      expect(modernConsole).toHaveProperty('getLoadingFrame');
+    });
+
     it('should support activity logging', () => {
       // Test activity logging functionality
       const logSpy = vi.spyOn(modernConsole, 'logActivity');
@@ -154,6 +165,35 @@ describe('ModernConsole', () => {
       modernConsole.markTaskInProgress('test-task-id');
       
       expect(markInProgressSpy).toHaveBeenCalledWith('test-task-id');
+    });
+
+    it('should support progress bar rendering', () => {
+      // Test progress bar functionality
+      const progressInfo = modernConsole.getProgressInfo();
+      
+      expect(progressInfo).toHaveProperty('completed');
+      expect(progressInfo).toHaveProperty('total');
+      expect(progressInfo).toHaveProperty('percentage');
+      expect(typeof progressInfo.completed).toBe('number');
+      expect(typeof progressInfo.total).toBe('number');
+      expect(typeof progressInfo.percentage).toBe('number');
+    });
+
+    it('should support loading indicator animation', () => {
+      // Test loading indicator functionality
+      const loadingFrame = modernConsole.getLoadingFrame();
+      
+      expect(typeof loadingFrame).toBe('string');
+      expect(loadingFrame.length).toBeGreaterThan(0);
+    });
+
+    it('should support active task rendering', () => {
+      // Test active task rendering
+      const renderActiveTasksSpy = vi.spyOn(modernConsole, 'renderActiveTasks');
+      
+      modernConsole.renderActiveTasks();
+      
+      expect(renderActiveTasksSpy).toHaveBeenCalled();
     });
   });
 });

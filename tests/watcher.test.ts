@@ -88,6 +88,19 @@ describe('Watcher', () => {
       expect(watcherModule).not.toHaveProperty('handleTaskListScroll');
     });
 
+    it('should have progress-focused UI components', async () => {
+      // Test that the watcher has the new simplified UI components
+      const watcherModule = await import('../src/core/watcher.js');
+      
+      // Core watcher functions should exist
+      expect(watcherModule.startWatcher).toBeDefined();
+      expect(watcherModule.startModernWatcher).toBeDefined();
+      
+      // The watcher should use the modern console with simplified UI
+      expect(typeof watcherModule.startWatcher).toBe('function');
+      expect(typeof watcherModule.startModernWatcher).toBe('function');
+    });
+
     it('should focus on progress and activity monitoring', async () => {
       // Test that the watcher focuses on the core functionality
       const watcherModule = await import('../src/core/watcher.js');

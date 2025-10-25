@@ -29,10 +29,23 @@ export class CLIBridge {
   private activeProcesses: Map<string, ChildProcess> = new Map();
   private onLog?: (level: 'info' | 'success' | 'warning' | 'error', message: string) => void;
   private debugLogFile?: string;
+  private debugLogInitialized = false;
 
   constructor(logger: ReturnType<typeof createLogger>, config: RulebookConfig) {
     this.logger = logger;
     this.config = config;
+  }
+
+  /**
+   * Initialize debug logging (called once after singleton creation)
+   */
+  private initializeDebugLog(): void {
+    if (this.debugLogInitialized) {
+      return;
+    }
+    
+    this.debugLogInitialized = true;
+    
     // Create logs directory if it doesn't exist
     const logsDir = join(process.cwd(), 'logs');
     if (!existsSync(logsDir)) {
@@ -76,6 +89,8 @@ export class CLIBridge {
    * Detect available CLI tools
    */
   async detectCLITools(): Promise<CLITool[]> {
+    this.initializeDebugLog(); // Initialize debug log on first real use
+    
     const tools: CLITool[] = [
       { name: 'cursor-agent', command: 'cursor-agent', available: false },
       { name: 'claude-code', command: 'claude', available: false },
