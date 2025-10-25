@@ -283,7 +283,7 @@ export class CursorAgentStreamParser {
       if (completedEvent.tool_call.writeToolCall?.result.success) {
         const { linesCreated, fileSize } = completedEvent.tool_call.writeToolCall.result.success;
         const result = `Created ${linesCreated} lines (${fileSize} bytes)`;
-        console.log(`   ✅ ${result}`);
+        // Result logged silently
 
         // Update the last tool call with result
         if (this.toolCalls.length > 0) {
@@ -291,7 +291,7 @@ export class CursorAgentStreamParser {
         }
       } else if (completedEvent.tool_call.writeToolCall?.result.error) {
         const error = completedEvent.tool_call.writeToolCall.result.error;
-        console.log(`   ❌ Error: ${error}`);
+        // Error logged silently
 
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = `Error: ${error}`;
@@ -301,14 +301,14 @@ export class CursorAgentStreamParser {
       if (completedEvent.tool_call.readToolCall?.result.success) {
         const { totalLines } = completedEvent.tool_call.readToolCall.result.success;
         const result = `Read ${totalLines} lines`;
-        console.log(`   ✅ ${result}`);
+        // Result logged silently
 
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = result;
         }
       } else if (completedEvent.tool_call.readToolCall?.result.error) {
         const error = completedEvent.tool_call.readToolCall.result.error;
-        console.log(`   ❌ Error: ${error}`);
+        // Error logged silently
 
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = `Error: ${error}`;
@@ -316,19 +316,16 @@ export class CursorAgentStreamParser {
       }
 
       if (completedEvent.tool_call.bashToolCall?.result.success) {
-        const { exitCode, stdout } = completedEvent.tool_call.bashToolCall.result.success;
+        const { exitCode } = completedEvent.tool_call.bashToolCall.result.success;
         const result = `Exit code ${exitCode}`;
-        console.log(`   ✅ ${result}`);
-        if (stdout) {
-          console.log(`   Output: ${stdout.substring(0, 100)}${stdout.length > 100 ? '...' : ''}`);
-        }
+        // Result logged silently
 
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = result;
         }
       } else if (completedEvent.tool_call.bashToolCall?.result.error) {
         const error = completedEvent.tool_call.bashToolCall.result.error;
-        console.log(`   ❌ Error: ${error}`);
+        // Error logged silently
 
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = `Error: ${error}`;
