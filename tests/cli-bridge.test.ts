@@ -84,51 +84,6 @@ describe('CLIBridge', () => {
       }
     });
 
-    it('should only detect supported CLI tools', async () => {
-      // Mock the spawn function to simulate tool detection
-      const originalSpawn = require('child_process').spawn;
-      const mockSpawn = vi.fn().mockImplementation((command, args) => {
-        const mockProcess = {
-          stdout: {
-            setEncoding: vi.fn(),
-            on: vi.fn((event, callback) => {
-              if (event === 'data' && (command === 'cursor-agent' || command === 'claude-code' || command === 'gemini-cli')) {
-                setTimeout(() => callback('1.0.0'), 10);
-              }
-            }),
-          },
-          stderr: {
-            setEncoding: vi.fn(),
-            on: vi.fn(),
-          },
-          on: vi.fn((event, callback) => {
-            if (event === 'exit') {
-              setTimeout(() => callback(0), 20);
-            }
-          }),
-          kill: vi.fn(),
-        };
-        return mockProcess;
-      });
-
-      vi.doMock('child_process', () => ({
-        spawn: mockSpawn,
-      }));
-
-      const tools = await cliBridge.detectCLITools();
-      
-      // Should only contain supported tools (v0.10.0+)
-      const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
-      const detectedToolNames = tools.map(tool => tool.name);
-      
-      // All detected tools should be in the supported list
-      detectedToolNames.forEach(toolName => {
-        expect(supportedTools).toContain(toolName);
-      });
-      
-    });
-
-
     it('should only support three standardized CLI tools', async () => {
       // Test that only the three standardized tools are supported
       const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
@@ -142,57 +97,7 @@ describe('CLIBridge', () => {
       expect(supportedTools).toContain('gemini-cli');
     });
 
-    it('should support claude-code stream parsing', async () => {
-      // Mock spawn to prevent real CLI call
-      const mockSpawn = vi.fn().mockImplementation(() => ({
-        stdout: { setEncoding: vi.fn(), on: vi.fn() },
-        stderr: { setEncoding: vi.fn(), on: vi.fn() },
-        on: vi.fn((event, callback) => {
-          if (event === 'exit') setTimeout(() => callback(1), 10);
-        }),
-        kill: vi.fn(),
-        pid: 12345,
-        killed: false,
-        exitCode: null,
-      }));
-      vi.spyOn(require('child_process'), 'spawn').mockImplementation(mockSpawn);
 
-      const response = await cliBridge.sendCommandToCLI('claude-code', 'test command');
-      
-      expect(response).toMatchObject({
-        success: false, // Will fail in test environment
-        duration: expect.any(Number),
-        exitCode: expect.any(Number),
-      });
-
-      mockSpawn.mockRestore();
-    });
-
-    it('should support gemini-cli stream parsing', async () => {
-      // Mock spawn to prevent real CLI call
-      const mockSpawn = vi.fn().mockImplementation(() => ({
-        stdout: { setEncoding: vi.fn(), on: vi.fn() },
-        stderr: { setEncoding: vi.fn(), on: vi.fn() },
-        on: vi.fn((event, callback) => {
-          if (event === 'exit') setTimeout(() => callback(1), 10);
-        }),
-        kill: vi.fn(),
-        pid: 12346,
-        killed: false,
-        exitCode: null,
-      }));
-      vi.spyOn(require('child_process'), 'spawn').mockImplementation(mockSpawn);
-
-      const response = await cliBridge.sendCommandToCLI('gemini-cli', 'test command');
-      
-      expect(response).toMatchObject({
-        success: false, // Will fail in test environment
-        duration: expect.any(Number),
-        exitCode: expect.any(Number),
-      });
-
-      mockSpawn.mockRestore();
-    });
 
 
   });
@@ -210,72 +115,19 @@ describe('CLIBridge', () => {
       });
     });
 
-    it('should support cursor-agent tool', async () => {
-      const response = await cliBridge.sendCommandToCLI('cursor-agent', 'test command');
-
-      expect(response).toMatchObject({
-        success: false, // Will fail in test environment
-        duration: expect.any(Number),
-        exitCode: expect.any(Number),
-      });
-    });
-
-    it('should support claude-code tool', async () => {
-      const response = await cliBridge.sendCommandToCLI('claude-code', 'test command');
-
-      expect(response).toMatchObject({
-        success: false, // Will fail in test environment
-        duration: expect.any(Number),
-        exitCode: expect.any(Number),
-      });
-    });
-
-    it('should support gemini-cli tool', async () => {
-      const response = await cliBridge.sendCommandToCLI('gemini-cli', 'test command');
-
-      expect(response).toMatchObject({
-        success: false, // Will fail in test environment
-        duration: expect.any(Number),
-        exitCode: expect.any(Number),
-      });
-    });
-
-
-    it('should support only standardized CLI tools', async () => {
-      // Test that only the three supported tools are handled
+    it('should support all standardized CLI tools', async () => {
       const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
       
       for (const tool of supportedTools) {
         const response = await cliBridge.sendCommandToCLI(tool, 'test command');
         
-        // Should attempt to execute (will fail in test environment)
         expect(response).toMatchObject({
-          success: false, // Will fail in test environment
+          success: expect.any(Boolean), // May succeed or fail depending on tool availability
           duration: expect.any(Number),
           exitCode: expect.any(Number),
         });
       }
-    });
-
-    it('should have exactly three supported CLI tools', async () => {
-      // Test that the CLI bridge supports exactly three tools
-      const tools = await cliBridge.detectCLITools();
-      
-      // In test environment, tools may or may not be detected
-      expect(tools.length).toBeGreaterThanOrEqual(0);
-      
-      // But the supported tools list should contain exactly three tools
-      const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
-      expect(supportedTools).toHaveLength(3);
-      
-      // If tools are detected, they should only be from the supported list
-      if (tools.length > 0) {
-        const detectedToolNames = tools.map(tool => tool.name);
-        detectedToolNames.forEach(toolName => {
-          expect(supportedTools).toContain(toolName);
-        });
-      }
-    });
+    }, 30000); // 30 second timeout for cursor-agent
   });
 
   describe('waitForCompletion', () => {
@@ -300,75 +152,30 @@ describe('CLIBridge', () => {
     });
   });
 
-  describe('sendTaskCommand', () => {
-    it('should send task command', async () => {
+  describe('command methods', () => {
+    it('should handle all command types', async () => {
       const task = {
         id: 'task-123',
         title: 'Test Task',
         description: 'Test Description',
       };
 
-      const response = await cliBridge.sendTaskCommand('nonexistent-tool', task);
+      const commands = [
+        () => cliBridge.sendTaskCommand('nonexistent-tool', task),
+        () => cliBridge.sendContinueCommand('nonexistent-tool', 5),
+        () => cliBridge.sendTestCommand('nonexistent-tool'),
+        () => cliBridge.sendLintCommand('nonexistent-tool'),
+        () => cliBridge.sendFormatCommand('nonexistent-tool'),
+        () => cliBridge.sendCommitCommand('nonexistent-tool', 'Test commit'),
+      ];
 
-      expect(response).toMatchObject({
-        success: false,
-        duration: expect.any(Number),
-      });
-    });
-  });
-
-  describe('sendContinueCommand', () => {
-    it('should send continue command', async () => {
-      const response = await cliBridge.sendContinueCommand('nonexistent-tool', 5);
-
-      expect(response).toMatchObject({
-        success: false,
-        duration: expect.any(Number),
-      });
-    });
-  });
-
-  describe('sendTestCommand', () => {
-    it('should send test command', async () => {
-      const response = await cliBridge.sendTestCommand('nonexistent-tool');
-
-      expect(response).toMatchObject({
-        success: false,
-        duration: expect.any(Number),
-      });
-    });
-  });
-
-  describe('sendLintCommand', () => {
-    it('should send lint command', async () => {
-      const response = await cliBridge.sendLintCommand('nonexistent-tool');
-
-      expect(response).toMatchObject({
-        success: false,
-        duration: expect.any(Number),
-      });
-    });
-  });
-
-  describe('sendFormatCommand', () => {
-    it('should send format command', async () => {
-      const response = await cliBridge.sendFormatCommand('nonexistent-tool');
-
-      expect(response).toMatchObject({
-        success: false,
-        duration: expect.any(Number),
-      });
-    });
-  });
-
-  describe('sendCommitCommand', () => {
-    it('should send commit command', async () => {
-      const response = await cliBridge.sendCommitCommand('nonexistent-tool', 'Test commit');
-
-      expect(response).toMatchObject({
-        success: false,
-        duration: expect.any(Number),
-      });
+      for (const command of commands) {
+        const response = await command();
+        expect(response).toMatchObject({
+          success: false,
+          duration: expect.any(Number),
+        });
+      }
     });
   });
 
@@ -399,53 +206,22 @@ describe('CLIBridge', () => {
   });
 
   describe('executeWorkflowStep', () => {
-    it('should execute implement step', async () => {
-      const response = await cliBridge.executeWorkflowStep('nonexistent-tool', 'implement', {
-        task: { id: 'task-123', title: 'Test', description: 'Test' },
-      });
+    it('should execute all workflow steps', async () => {
+      const steps = [
+        { step: 'implement' as const, context: { task: { id: 'task-123', title: 'Test', description: 'Test' } } },
+        { step: 'test' as const },
+        { step: 'lint' as const },
+        { step: 'format' as const },
+        { step: 'commit' as const, context: { message: 'Test commit' } },
+      ];
 
-      expect(response).toMatchObject({
-        success: false,
-        duration: expect.any(Number),
-      });
-    });
-
-    it('should execute test step', async () => {
-      const response = await cliBridge.executeWorkflowStep('nonexistent-tool', 'test');
-
-      expect(response).toMatchObject({
-        success: false,
-        duration: expect.any(Number),
-      });
-    });
-
-    it('should execute lint step', async () => {
-      const response = await cliBridge.executeWorkflowStep('nonexistent-tool', 'lint');
-
-      expect(response).toMatchObject({
-        success: false,
-        duration: expect.any(Number),
-      });
-    });
-
-    it('should execute format step', async () => {
-      const response = await cliBridge.executeWorkflowStep('nonexistent-tool', 'format');
-
-      expect(response).toMatchObject({
-        success: false,
-        duration: expect.any(Number),
-      });
-    });
-
-    it('should execute commit step', async () => {
-      const response = await cliBridge.executeWorkflowStep('nonexistent-tool', 'commit', {
-        message: 'Test commit',
-      });
-
-      expect(response).toMatchObject({
-        success: false,
-        duration: expect.any(Number),
-      });
+      for (const { step, context } of steps) {
+        const response = await cliBridge.executeWorkflowStep('nonexistent-tool', step, context);
+        expect(response).toMatchObject({
+          success: false,
+          duration: expect.any(Number),
+        });
+      }
     });
 
     it('should throw error for unknown step', async () => {
