@@ -193,9 +193,10 @@ Example Prettier config:
 - **Location**: `/tests` directory or co-located `*.test.ts` files
 - **Coverage**: Must meet project threshold (default 95%)
 - **Watch Mode**: Use `vitest` or `vitest --watch` for development
-- **CI Mode**: **CRITICAL** - Always use `vitest --run` to prevent hanging in CI/automated environments
-  - Default `npm test` command MUST include `--run` flag
+- **CI Mode**: **CRITICAL** - Default `npm test` command MUST include `--run` flag
   - This prevents Vitest from entering watch mode, which never terminates
+  - In `package.json`: `"test": "vitest --run"`
+  - In CI workflows: use `npm test` (do NOT add `--run` argument)
   - For manual development, use `npm run test:watch`
 
 Example test structure:
