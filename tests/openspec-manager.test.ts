@@ -29,19 +29,25 @@ describe('OpenSpecManager', () => {
       await openspecManager.initialize();
 
       const openspecPath = join(tempDir, 'openspec');
-      const tasksPath = join(openspecPath, 'tasks.json');
+      const changesPath = join(openspecPath, 'changes');
+      const specsPath = join(openspecPath, 'specs');
 
       const openspecExists = await fs
         .access(openspecPath)
         .then(() => true)
         .catch(() => false);
-      const tasksExists = await fs
-        .access(tasksPath)
+      const changesExists = await fs
+        .access(changesPath)
+        .then(() => true)
+        .catch(() => false);
+      const specsExists = await fs
+        .access(specsPath)
         .then(() => true)
         .catch(() => false);
 
       expect(openspecExists).toBe(true);
-      expect(tasksExists).toBe(true);
+      expect(changesExists).toBe(true);
+      expect(specsExists).toBe(true);
     });
 
     it('should create initial tasks', async () => {
@@ -49,8 +55,10 @@ describe('OpenSpecManager', () => {
 
       const data = await openspecManager.loadOpenSpec();
 
-      expect(data.tasks.length).toBeGreaterThan(0);
-      expect(data.metadata.totalTasks).toBe(data.tasks.length);
+      // When there are no task files, tasks array should be initialized (can be empty)
+      expect(Array.isArray(data.tasks)).toBe(true);
+      expect(Array.isArray(data.history)).toBe(true);
+      expect(data.metadata.totalTasks).toBe(data.tasks.length + data.history.length);
     });
   });
 
@@ -117,25 +125,37 @@ describe('OpenSpecManager', () => {
     it('should update task status', async () => {
       await openspecManager.initialize();
 
-      const tasks = await openspecManager.getTasksByPriority();
-      const firstTask = tasks[0];
+      // First, add a task to update
+      const taskId = await openspecManager.addTask({
+        title: 'Task to Update',
+        description: 'A task to test status updates',
+        priority: 1,
+        status: 'pending',
+        dependencies: [],
+      });
 
-      await openspecManager.updateTaskStatus(firstTask.id, 'in-progress');
+      await openspecManager.updateTaskStatus(taskId, 'in-progress');
 
-      const updatedTask = await openspecManager.getTask(firstTask.id);
+      const updatedTask = await openspecManager.getTask(taskId);
       expect(updatedTask?.status).toBe('in-progress');
     });
 
     it('should move completed tasks to history', async () => {
       await openspecManager.initialize();
 
-      const tasks = await openspecManager.getTasksByPriority();
-      const firstTask = tasks[0];
+      // First, add a task to complete
+      const taskId = await openspecManager.addTask({
+        title: 'Task to Complete',
+        description: 'A task to test completion',
+        priority: 1,
+        status: 'pending',
+        dependencies: [],
+      });
 
-      await openspecManager.updateTaskStatus(firstTask.id, 'completed');
+      await openspecManager.updateTaskStatus(taskId, 'completed');
 
       const data = await openspecManager.loadOpenSpec();
-      const completedTask = data.history.find((t) => t.id === firstTask.id);
+      const completedTask = data.history.find((t) => t.id === taskId);
 
       expect(completedTask).toBeDefined();
       expect(completedTask?.status).toBe('completed');
