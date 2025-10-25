@@ -152,12 +152,20 @@ export class CursorAgentStreamParser {
   private toolCount = 0;
   private completed = false;
   private completionCallback?: () => void;
+  private eventCallback?: (type: 'tool' | 'text' | 'completion', message: string) => void;
 
   /**
    * Set callback to be called when result event is received
    */
   onComplete(callback: () => void): void {
     this.completionCallback = callback;
+  }
+
+  /**
+   * Set callback to be called for each event (for watcher UI)
+   */
+  onEvent(callback: (type: 'tool' | 'text' | 'completion', message: string) => void): void {
+    this.eventCallback = callback;
   }
 
   /**
@@ -257,24 +265,36 @@ export class CursorAgentStreamParser {
 
       if (startedEvent.tool_call.writeToolCall) {
         const path = startedEvent.tool_call.writeToolCall.args.path;
-        // Tool call logged silently
+        const details = `Write to ${path}`;
+        // Send to watcher if callback is set
+        if (this.eventCallback) {
+          this.eventCallback('tool', `🔧 Tool #${this.toolCount}: ${details}`);
+        }
         this.toolCalls.push({
           type: 'write',
-          details: `Write to ${path}`,
+          details,
         });
       } else if (startedEvent.tool_call.readToolCall) {
         const path = startedEvent.tool_call.readToolCall.args.path;
-        // Tool call logged silently
+        const details = `Read from ${path}`;
+        // Send to watcher if callback is set
+        if (this.eventCallback) {
+          this.eventCallback('tool', `📖 Tool #${this.toolCount}: ${details}`);
+        }
         this.toolCalls.push({
           type: 'read',
-          details: `Read from ${path}`,
+          details,
         });
       } else if (startedEvent.tool_call.bashToolCall) {
         const cmd = startedEvent.tool_call.bashToolCall.args.command;
-        // Tool call logged silently
+        const details = `Execute: ${cmd}`;
+        // Send to watcher if callback is set
+        if (this.eventCallback) {
+          this.eventCallback('tool', `⚡ Tool #${this.toolCount}: ${details}`);
+        }
         this.toolCalls.push({
           type: 'bash',
-          details: `Execute: ${cmd}`,
+          details,
         });
       }
     } else if (event.subtype === 'completed') {
@@ -335,7 +355,10 @@ export class CursorAgentStreamParser {
   }
 
   private handleResultEvent(_event: ResultEvent): void {
-    // Completion logged silently
+    // Send completion to watcher if callback is set
+    if (this.eventCallback) {
+      this.eventCallback('completion', `✅ Completed: ${this.toolCalls.length} tools, ${this.accumulatedText.length} chars`);
+    }
     
     // Mark as completed and trigger callback
     this.completed = true;

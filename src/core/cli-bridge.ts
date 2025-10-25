@@ -183,6 +183,15 @@ export class CLIBridge {
           }, 500);
         });
 
+        // Set event callback to forward to onLog
+        if (this.onLog) {
+          parser.onEvent((type, message) => {
+            if (this.onLog) {
+              this.onLog(type === 'tool' || type === 'text' || type === 'completion' ? 'info' : 'info', message);
+            }
+          });
+        }
+
         if (proc.stdout) {
           proc.stdout.setEncoding('utf8');
 
@@ -506,7 +515,7 @@ export class CLIBridge {
 
         if (this.onLog) {
           this.onLog('info', '🔗 Connecting to gemini-cli...');
-        } else {
+      } else {
           console.log('🔗 Connecting to gemini-cli...');
         }
 
