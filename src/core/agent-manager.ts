@@ -23,6 +23,7 @@ export class AgentManager {
   private isRunning = false;
   private currentTool?: string;
   private onLog?: AgentOptions['onLog'];
+  private initialized = false; // Track initialization state
 
   constructor(projectRoot: string) {
     this.openspecManager = createOpenSpecManager(projectRoot);
@@ -32,9 +33,14 @@ export class AgentManager {
   }
 
   /**
-   * Initialize agent manager
+   * Initialize agent manager (only once)
    */
   async initialize(): Promise<void> {
+    // Skip if already initialized
+    if (this.initialized) {
+      return;
+    }
+
     try {
       this.config = await this.configManager.loadConfig();
       this.cliBridge = createCLIBridge(this.logger, this.config);
@@ -48,6 +54,7 @@ export class AgentManager {
       await this.openspecManager.initialize();
 
       this.logger.info('Agent Manager initialized');
+      this.initialized = true;
     } catch (error) {
       this.logger.error('Failed to initialize Agent Manager', { error: String(error) });
       throw error;
