@@ -31,6 +31,11 @@ export class CLIBridge {
   private debugLogFile?: string;
 
   constructor(logger: ReturnType<typeof createLogger>, config: RulebookConfig) {
+    const timestamp = new Date().toISOString();
+    const stack = new Error().stack?.split('\n').slice(2, 5).join(' -> ') || 'unknown';
+    console.log(`[${timestamp}] CLIBridge constructor called`);
+    console.log(`  Call stack: ${stack}`);
+    
     this.logger = logger;
     this.config = config;
     // Create logs directory if it doesn't exist
@@ -41,13 +46,14 @@ export class CLIBridge {
       });
     }
     // Create debug log file with timestamp in logs directory
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-    this.debugLogFile = join(logsDir, `debug-agent-${timestamp}.log`);
+    const logTimestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    this.debugLogFile = join(logsDir, `debug-agent-${logTimestamp}.log`);
     this.debugLog(`=== DEBUG LOG START ===`);
     this.debugLog(`Session started at: ${new Date().toISOString()}`);
     this.debugLog(`Working directory: ${process.cwd()}`);
     this.debugLog(`Node version: ${process.version}`);
     this.debugLog(`Platform: ${process.platform}`);
+    this.debugLog(`Call stack: ${stack}`);
   }
 
   /**
@@ -1091,11 +1097,29 @@ export class CLIBridge {
 }
 
 /**
- * Create CLI Bridge instance
+ * Singleton instance of CLIBridge
+ */
+let cliBridgeInstance: CLIBridge | null = null;
+
+/**
+ * Create CLI bridge instance (singleton)
  */
 export function createCLIBridge(
   logger: ReturnType<typeof createLogger>,
   config: RulebookConfig
 ): CLIBridge {
-  return new CLIBridge(logger, config);
+  if (!cliBridgeInstance) {
+    console.log('[CLIBridge] Creating singleton instance');
+    cliBridgeInstance = new CLIBridge(logger, config);
+  } else {
+    console.log('[CLIBridge] Reusing existing singleton instance');
+  }
+  return cliBridgeInstance;
+}
+
+/**
+ * Reset singleton (for testing only)
+ */
+export function resetCLIBridge(): void {
+  cliBridgeInstance = null;
 }

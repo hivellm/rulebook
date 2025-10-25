@@ -76,5 +76,29 @@ describe('Watcher', () => {
       // The watcher should not have removed components
       // (These would be tested at the modern-console level)
     });
+
+    it('should not have removed UI components', async () => {
+      // Test that the watcher interface doesn't expose removed components
+      const watcherModule = await import('../src/core/watcher.js');
+      
+      // The watcher should not expose removed methods
+      expect(watcherModule).not.toHaveProperty('renderTaskDetails');
+      expect(watcherModule).not.toHaveProperty('renderSystemInfo');
+      expect(watcherModule).not.toHaveProperty('taskListScrollOffset');
+      expect(watcherModule).not.toHaveProperty('handleTaskListScroll');
+    });
+
+    it('should focus on progress and activity monitoring', async () => {
+      // Test that the watcher focuses on the core functionality
+      const watcherModule = await import('../src/core/watcher.js');
+      
+      // Core watcher functions should exist
+      expect(watcherModule.startWatcher).toBeDefined();
+      expect(watcherModule.startModernWatcher).toBeDefined();
+      
+      // These are the main functions that should be available
+      expect(typeof watcherModule.startWatcher).toBe('function');
+      expect(typeof watcherModule.startModernWatcher).toBe('function');
+    });
   });
 });

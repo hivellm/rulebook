@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createOpenSpecManager } from '../dist/core/openspec-manager.js';
 import { createLogger } from '../dist/core/logger.js';
-import { createCLIBridge } from '../dist/core/cli-bridge.js';
+import { createCLIBridge, resetCLIBridge } from '../dist/core/cli-bridge.js';
 import { createConfigManager } from '../dist/core/config-manager.js';
 
 describe('Performance Optimization', () => {
@@ -11,6 +11,9 @@ describe('Performance Optimization', () => {
   let configManager: ReturnType<typeof createConfigManager>;
 
   beforeEach(async () => {
+    // Reset singleton before each test
+    resetCLIBridge();
+    
     const projectRoot = process.cwd() || '/mnt/f/Node/hivellm/rulebook';
     logger = createLogger(projectRoot);
     configManager = createConfigManager(projectRoot);

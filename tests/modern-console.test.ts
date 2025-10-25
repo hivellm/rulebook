@@ -114,6 +114,21 @@ describe('ModernConsole', () => {
       expect(modernConsole).not.toHaveProperty('handleTaskListScroll');
     });
 
+    it('should not have scroll-related functionality', () => {
+      // Test that scroll-related properties and methods are removed
+      expect(modernConsole).not.toHaveProperty('taskListScrollOffset');
+      expect(modernConsole).not.toHaveProperty('handleTaskListScroll');
+      
+      // The modern console should not have scroll key handlers
+      // (This would be tested at the UI level, not the instance level)
+    });
+
+    it('should not have task details or system info panels', () => {
+      // Test that panel rendering methods are removed
+      expect(modernConsole).not.toHaveProperty('renderTaskDetails');
+      expect(modernConsole).not.toHaveProperty('renderSystemInfo');
+    });
+
     it('should support activity logging', () => {
       // Test activity logging functionality
       const logSpy = vi.spyOn(modernConsole, 'logActivity');

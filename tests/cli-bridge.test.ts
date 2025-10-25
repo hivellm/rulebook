@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createCLIBridge } from '../src/core/cli-bridge.js';
+import { createCLIBridge, resetCLIBridge } from '../src/core/cli-bridge.js';
 import { createLogger } from '../src/core/logger.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
@@ -13,6 +13,9 @@ describe('CLIBridge', () => {
   let cliBridge: ReturnType<typeof createCLIBridge>;
 
   beforeEach(async () => {
+    // Reset singleton before each test
+    resetCLIBridge();
+    
     // Create temporary directory in system temp
     tempDir = join(tmpdir(), 'rulebook-test-cli-bridge-' + Date.now());
     await fs.mkdir(tempDir, { recursive: true });
@@ -113,6 +116,18 @@ describe('CLIBridge', () => {
         expect(detectedToolNames).not.toContain(deprecatedTool);
       });
     });
+
+    it('should reject deprecated CLI tools in command execution', async () => {
+      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
+      
+      for (const tool of deprecatedTools) {
+        const response = await cliBridge.sendCommandToCLI(tool, 'test command');
+        
+        // Should fail with "not yet implemented" error
+        expect(response.success).toBe(false);
+        expect(response.error).toContain('not yet implemented');
+      }
+    });
   });
 
   describe('sendCommandToCLI', () => {
@@ -167,6 +182,22 @@ describe('CLIBridge', () => {
         // Should fail with "not yet implemented" error
         expect(response.success).toBe(false);
         expect(response.error).toContain('not yet implemented');
+      }
+    });
+
+    it('should support only standardized CLI tools', async () => {
+      // Test that only the three supported tools are handled
+      const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
+      
+      for (const tool of supportedTools) {
+        const response = await cliBridge.sendCommandToCLI(tool, 'test command');
+        
+        // Should attempt to execute (will fail in test environment)
+        expect(response).toMatchObject({
+          success: false, // Will fail in test environment
+          duration: expect.any(Number),
+          exitCode: expect.any(Number),
+        });
       }
     });
   });
