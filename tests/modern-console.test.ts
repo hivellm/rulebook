@@ -751,4 +751,70 @@ describe('createModernConsole', () => {
     
     expect(logSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('should handle multiple rapid logActivity calls', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+    
+    const logSpy = vi.spyOn(console, 'logActivity');
+    
+    for (let i = 0; i < 50; i++) {
+      console.logActivity('info', `Message ${i}`);
+    }
+    
+    // Note: spy might capture internal calls too
+    expect(logSpy).toHaveBeenCalled();
+    expect(logSpy.mock.calls.length).toBeGreaterThanOrEqual(50);
+  });
+
+  it('should handle consecutive logActivity calls', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+    
+    const logSpy = vi.spyOn(console, 'logActivity');
+    
+    console.logActivity('info', 'First message');
+    console.logActivity('success', 'Second message');
+    console.logActivity('error', 'Third message');
+    
+    expect(logSpy).toHaveBeenCalled();
+  });
+
+  it('should handle logActivity with very long data objects', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+    
+    const logSpy = vi.spyOn(console, 'logActivity');
+    
+    const largeArray = Array.from({ length: 1000 }, (_, i) => ({
+      id: i,
+      value: `Item ${i}`,
+      nested: { data: `Data ${i}` }
+    }));
+    
+    console.logActivity('info', 'Large data', largeArray);
+    
+    expect(logSpy).toHaveBeenCalled();
+  });
+
+  it('should handle logActivity with mixed content types in sequence', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+    
+    const logSpy = vi.spyOn(console, 'logActivity');
+    
+    console.logActivity('info', 'String message');
+    console.logActivity('info', 'Number', 42);
+    console.logActivity('info', 'Boolean', true);
+    console.logActivity('info', 'Object', { key: 'value' });
+    console.logActivity('info', 'Array', [1, 2, 3]);
+    console.logActivity('info', 'Null', null);
+    console.logActivity('info', 'Undefined', undefined);
+    
+    expect(logSpy).toHaveBeenCalled();
+  });
 });
