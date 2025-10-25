@@ -1,6 +1,7 @@
-import { execa, type ExecaChildProcess } from 'execa';
+import { spawn, type ChildProcess } from 'child_process';
 import { createLogger } from './logger.js';
 import type { RulebookConfig } from '../types.js';
+import { CursorAgentStreamParser, parseStreamLine } from '../agents/cursor-agent.js';
 
 export interface CLITool {
   name: string;
@@ -20,7 +21,7 @@ export interface CLIResponse {
 export class CLIBridge {
   private logger: ReturnType<typeof createLogger>;
   private config: RulebookConfig;
-  private activeProcesses: Map<string, ExecaChildProcess> = new Map();
+  private activeProcesses: Map<string, ChildProcess> = new Map();
 
   constructor(logger: ReturnType<typeof createLogger>, config: RulebookConfig) {
     this.logger = logger;
@@ -42,14 +43,35 @@ export class CLIBridge {
 
     for (const tool of tools) {
       try {
-        const result = await execa(tool.command, ['--version'], {
-          timeout: 5000,
-          reject: false,
+        const proc = spawn(tool.command, ['--version']);
+
+        let stdout = '';
+        if (proc.stdout) {
+          proc.stdout.setEncoding('utf8');
+          proc.stdout.on('data', (data: string) => {
+            stdout += data;
+          });
+        }
+
+        const exitCode = await new Promise<number>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            proc.kill('SIGTERM');
+            reject(new Error('Timeout'));
+          }, 5000);
+
+          proc.on('exit', (code: number | null) => {
+            clearTimeout(timeout);
+            resolve(code ?? 1);
+          });
+          proc.on('error', (error: Error) => {
+            clearTimeout(timeout);
+            reject(error);
+          });
         });
 
-        if (result.exitCode === 0) {
+        if (exitCode === 0) {
           tool.available = true;
-          tool.version = result.stdout.trim();
+          tool.version = stdout.trim();
           this.logger.info(`Detected CLI tool: ${tool.name}`, { version: tool.version });
         }
       } catch (error) {
@@ -80,125 +102,150 @@ export class CLIBridge {
     this.logger.cliCommand(command, toolName);
 
     try {
-      let process: ExecaChildProcess;
-
       if (toolName === 'cursor-agent') {
-        // cursor-agent expects: cursor-agent -p --force --output-format stream-json --stream-partial-output "PROMPT"
+        // cursor-agent expects: cursor-agent -p --force --approve-mcps --output-format stream-json --stream-partial-output "PROMPT"
         // Using -p (print mode) for non-interactive use with all tools enabled
         // --force: Allow commands unless explicitly denied
+        // --approve-mcps: Allow all MCP servers without asking
         // --output-format stream-json: Stream output in JSON format
         // --stream-partial-output: Stream partial output as individual text deltas
         
-        console.log('🔍 Debug: Starting cursor-agent process...');
-        console.log('🔍 Command:', command);
-        console.log('🔍 Timeout:', timeout, 'ms (', Math.round(timeout / 1000), 'seconds)');
-        console.log('🔍 Working directory:', options.workingDirectory || 'current directory');
-        
-        const proc = execa(toolName, [
+        const args = [
           '-p',
           '--force',
           '--approve-mcps',
           '--output-format',
           'stream-json',
           '--stream-partial-output',
-          command
-        ], {
-          timeout,
-          cwd: options.workingDirectory,
-          env: options.env,
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-        
-        process = proc;
+          command,
+        ];
 
-        console.log('🔍 Process started, PID:', proc.pid);
-        console.log('⏳ Waiting for cursor-agent to connect and respond...');
+        const proc = spawn(toolName, args, {
+          cwd: options.workingDirectory,
+          env: { 
+            ...process.env, 
+            ...options.env,
+            // Disable Node.js buffering for immediate output
+            NODE_NO_READLINE: '1',
+          },
+          stdio: ['ignore', 'pipe', 'pipe'],
+          shell: false,
+        });
+
+        console.log('🔗 Connecting to cursor-agent...');
         console.log('   (This may take 30-60 seconds to connect to remote server)');
-        console.log('   Full command: cursor-agent -p --force --approve-mcps --output-format stream-json --stream-partial-output "' + command + '"');
         
         // Progress indicator
         let dots = 0;
         const progressInterval = setInterval(() => {
           dots = (dots + 1) % 4;
-          (global as any).process.stdout.write('\r⏳ Waiting' + '.'.repeat(dots) + ' '.repeat(3 - dots));
+          process.stdout.write('\r⏳ Waiting' + '.'.repeat(dots) + ' '.repeat(3 - dots));
         }, 500);
 
-        // Stream output in real-time
+        // Stream output in real-time with parser
         let hasOutput = false;
+        let stdout = '';
+        let stderr = '';
+        const parser = new CursorAgentStreamParser();
+
         if (proc.stdout) {
-          proc.stdout.on('data', (data) => {
+          proc.stdout.setEncoding('utf8');
+          
+          let buffer = '';
+          proc.stdout.on('data', (data: string) => {
             if (!hasOutput) {
               clearInterval(progressInterval);
               console.log('\n✅ Received first response from cursor-agent!');
+              console.log(''); // Empty line for better formatting
               hasOutput = true;
             }
-            const output = data.toString();
-            console.log('📥 stdout:', output);
+            
+            stdout += data;
+            buffer += data;
+            
+            // Process complete lines
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep incomplete line in buffer
+            
+            for (const line of lines) {
+              if (line.trim()) {
+                // Parse and process each JSON event
+                const event = parseStreamLine(line);
+                if (event) {
+                  parser.processEvent(event);
+                }
+              }
+            }
           });
         }
 
         if (proc.stderr) {
-          proc.stderr.on('data', (data) => {
+          proc.stderr.setEncoding('utf8');
+          proc.stderr.on('data', (data: string) => {
             if (!hasOutput) {
               clearInterval(progressInterval);
               hasOutput = true;
             }
-            const error = data.toString();
-            console.error('⚠️ stderr:', error);
+            stderr += data;
+            process.stderr.write('⚠️ ' + data);
           });
         }
-        
-        proc.on('exit', (code, signal) => {
-          clearInterval(progressInterval);
-          console.log('\n🔍 Process exited with code:', code, 'signal:', signal);
-        });
-      } else if (toolName === 'claude-code') {
-        // claude-code expects: claude --headless "<PROMPT>"
-        process = execa(toolName, ['--headless', command], {
-          timeout,
-          cwd: options.workingDirectory,
-          env: options.env,
-          stdio: 'pipe',
-        });
-      } else if (toolName === 'gemini-cli') {
-        // gemini-cli expects: gemini "<PROMPT>" (interactive mode)
-        process = execa(toolName, [command], {
-          timeout,
-          cwd: options.workingDirectory,
-          env: options.env,
-          stdio: 'pipe',
-        });
+
+        // Store active process
+        const processId = `${toolName}-${Date.now()}`;
+        this.activeProcesses.set(processId, proc);
+
+        // Wait for process to complete with timeout
+        const result = await new Promise<{ exitCode: number; stdout: string; stderr: string }>(
+          (resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+              proc.kill('SIGTERM');
+              reject(new Error(`Command timed out after ${timeout} milliseconds`));
+            }, timeout);
+
+            proc.on('exit', (code: number | null, _signal: NodeJS.Signals | null) => {
+              clearInterval(progressInterval);
+              clearTimeout(timeoutId);
+              resolve({ exitCode: code ?? 0, stdout, stderr });
+            });
+
+            proc.on('error', (error: Error) => {
+              clearInterval(progressInterval);
+              clearTimeout(timeoutId);
+              reject(error);
+            });
+          }
+        );
+
+        const duration = Date.now() - startTime;
+
+        // Remove from active processes
+        this.activeProcesses.delete(processId);
+
+        // Get parsed result from stream parser
+        const parsedResult = parser.getResult();
+
+        const response: CLIResponse = {
+          success: result.exitCode === 0,
+          output: parsedResult.text || result.stdout, // Use parsed text if available
+          error: result.stderr,
+          duration,
+          exitCode: result.exitCode,
+        };
+
+        // Log summary
+        console.log('\n📊 Summary:');
+        console.log(`   Text generated: ${parsedResult.text.length} chars`);
+        console.log(`   Tool calls: ${parsedResult.toolCalls.length}`);
+        console.log(`   Duration: ${Math.round(duration / 1000)}s`);
+
+        this.logger.cliResponse(toolName, parsedResult.text || result.stdout, duration);
+
+        return response;
       } else {
-        // Other CLI tools (cursor-cli, gemini-cli-legacy, claude-cli)
-        process = execa(toolName, [command], {
-          timeout,
-          cwd: options.workingDirectory,
-          env: options.env,
-          stdio: 'pipe',
-        });
+        // For other tools, keep using execa (need to import it)
+        throw new Error(`Tool ${toolName} not yet implemented with spawn`);
       }
-
-      // Store active process
-      const processId = `${toolName}-${Date.now()}`;
-      this.activeProcesses.set(processId, process);
-
-      const result = await process;
-      const duration = Date.now() - startTime;
-
-      // Remove from active processes
-      this.activeProcesses.delete(processId);
-
-      const response: CLIResponse = {
-        success: result.exitCode === 0,
-        output: result.stdout,
-        error: result.stderr,
-        duration,
-        exitCode: result.exitCode,
-      };
-
-      this.logger.cliResponse(toolName, result.stdout, duration);
-
-      return response;
     } catch (error: unknown) {
       const duration = Date.now() - startTime;
 
