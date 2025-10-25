@@ -64,15 +64,15 @@ describe('Watcher', () => {
       // Test that the watcher uses the simplified UI components (v0.10.0+)
       // The simplified UI should have:
       // - Active tasks display (no task details panel - removed)
-      // - Progress bar (no system info panel - removed) 
+      // - Progress bar (no system info panel - removed)
       // - Activity logs (no scrolling task list - removed)
-      
+
       const watcherModule = await import('../src/core/watcher.js');
-      
+
       // Verify that the watcher uses modern console
       expect(watcherModule.startWatcher).toBeDefined();
       expect(watcherModule.startModernWatcher).toBeDefined();
-      
+
       // The watcher should not have removed components
       // (These would be tested at the modern-console level)
     });
@@ -80,11 +80,11 @@ describe('Watcher', () => {
     it('should have progress-focused UI components', async () => {
       // Test that the watcher has the new simplified UI components
       const watcherModule = await import('../src/core/watcher.js');
-      
+
       // Core watcher functions should exist
       expect(watcherModule.startWatcher).toBeDefined();
       expect(watcherModule.startModernWatcher).toBeDefined();
-      
+
       // The watcher should use the modern console with simplified UI
       expect(typeof watcherModule.startWatcher).toBe('function');
       expect(typeof watcherModule.startModernWatcher).toBe('function');
@@ -93,11 +93,11 @@ describe('Watcher', () => {
     it('should focus on progress and activity monitoring', async () => {
       // Test that the watcher focuses on the core functionality
       const watcherModule = await import('../src/core/watcher.js');
-      
+
       // Core watcher functions should exist
       expect(watcherModule.startWatcher).toBeDefined();
       expect(watcherModule.startModernWatcher).toBeDefined();
-      
+
       // These are the main functions that should be available
       expect(typeof watcherModule.startWatcher).toBe('function');
       expect(typeof watcherModule.startModernWatcher).toBe('function');
@@ -106,16 +106,16 @@ describe('Watcher', () => {
     it('should support simplified UI features', async () => {
       // Test that the watcher supports the new simplified UI features
       const watcherModule = await import('../src/core/watcher.js');
-      
+
       // The watcher should support:
       // - Real-time task progress display
       // - Activity logging with timestamps
       // - Progress bar visualization
       // - Clean, focused interface
-      
+
       expect(watcherModule.startWatcher).toBeDefined();
       expect(watcherModule.startModernWatcher).toBeDefined();
-      
+
       // Verify the functions are callable
       expect(typeof watcherModule.startWatcher).toBe('function');
       expect(typeof watcherModule.startModernWatcher).toBe('function');

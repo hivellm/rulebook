@@ -295,15 +295,36 @@ cursor-agent --version
 📊 Final stats: 2 tools, 189 chars generated
 ```
 
-**🔧 claude-code & gemini-cli** (Coming Soon)
-- Basic integration available
-- Advanced features planned (see `openspec/changes/standardize-cli-agents/`)
+**🔧 claude-code & gemini-cli** (Fully Implemented)
+
+Both `claude-code` and `gemini-cli` now provide complete integration with:
+
+- **Stream Parsing**: Real-time processing of AI responses and tool calls
+- **Progress Indicators**: Visual feedback during task execution
+- **Tool Call Detection**: Automatic recognition of file operations and commands
+- **Completion Detection**: Smart detection of task completion
+- **Error Handling**: Graceful handling of failures and timeouts
+
+**Installation:**
+```bash
+# Install claude-code globally
+npm install -g claude-code
+
+# Install gemini-cli globally  
+npm install -g gemini-cli
+
+# Test installations
+claude --version
+gemini --version
+```
 
 **Features:**
 - Automatic CLI tool detection
 - Task execution workflow
 - Quality checks (lint, test, coverage)
 - Git commits and status updates
+- Real-time progress monitoring
+- Comprehensive error handling
 
 #### Configuration Management
 

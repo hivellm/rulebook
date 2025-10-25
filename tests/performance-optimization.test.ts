@@ -36,7 +36,7 @@ describe('Performance Optimization', () => {
   beforeEach(async () => {
     // Reset singleton before each test
     resetCLIBridge();
-    
+
     const projectRoot = process.cwd() || '/mnt/f/Node/hivellm/rulebook';
     logger = createLogger(projectRoot);
     configManager = createConfigManager(projectRoot);

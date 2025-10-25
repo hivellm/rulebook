@@ -18,7 +18,7 @@ describe('Agent Stream Parsers', () => {
     it('should parse claude-code output lines', () => {
       const testLine = '{"type": "progress", "message": "Processing..."}';
       const result = parseClaudeCodeLine(testLine);
-      
+
       expect(result).toBeDefined();
       expect(result?.type).toBe('progress');
       expect(result?.content).toBe('{"type": "progress", "message": "Processing..."}');
@@ -27,7 +27,7 @@ describe('Agent Stream Parsers', () => {
     it('should handle malformed JSON gracefully', () => {
       const testLine = 'invalid json';
       const result = parseClaudeCodeLine(testLine);
-      
+
       expect(result).toBeDefined();
       expect(result?.type).toBe('text');
     });
@@ -35,7 +35,7 @@ describe('Agent Stream Parsers', () => {
     it('should detect completion patterns', () => {
       const completionLine = '{"type": "completion", "message": "Task completed"}';
       const result = parseClaudeCodeLine(completionLine);
-      
+
       expect(result?.type).toBe('text');
     });
   });
@@ -54,7 +54,7 @@ describe('Agent Stream Parsers', () => {
     it('should parse gemini-cli output lines', () => {
       const testLine = '{"event": "progress", "data": "Processing..."}';
       const result = parseGeminiLine(testLine);
-      
+
       expect(result).toBeDefined();
       expect(result?.type).toBe('progress');
       expect(result?.content).toBe('{"event": "progress", "data": "Processing..."}');
@@ -63,7 +63,7 @@ describe('Agent Stream Parsers', () => {
     it('should handle malformed JSON gracefully', () => {
       const testLine = 'invalid json';
       const result = parseGeminiLine(testLine);
-      
+
       expect(result).toBeDefined();
       expect(result?.type).toBe('text');
     });
@@ -71,7 +71,7 @@ describe('Agent Stream Parsers', () => {
     it('should detect completion patterns', () => {
       const completionLine = '{"event": "done", "data": "Task completed"}';
       const result = parseGeminiLine(completionLine);
-      
+
       expect(result?.type).toBe('text');
     });
   });
@@ -90,7 +90,7 @@ describe('Agent Stream Parsers', () => {
     it('should parse cursor-agent output lines', () => {
       const testLine = '{"type": "progress", "content": "Processing..."}';
       const result = parseStreamLine(testLine);
-      
+
       expect(result).toBeDefined();
       expect(result.type).toBe('progress');
       expect(result.content).toBe('Processing...');
@@ -99,14 +99,14 @@ describe('Agent Stream Parsers', () => {
     it('should handle malformed JSON gracefully', () => {
       const testLine = 'invalid json';
       const result = parseStreamLine(testLine);
-      
+
       expect(result).toBeNull();
     });
 
     it('should detect completion patterns', () => {
       const completionLine = '{"type": "completion", "content": "Task completed"}';
       const result = parseStreamLine(completionLine);
-      
+
       expect(result.type).toBe('completion');
     });
   });
@@ -127,7 +127,7 @@ describe('Agent Stream Parsers', () => {
     it('should have consistent parsing behavior', () => {
       // Test that all parsers handle similar input consistently
       const testData = '{"type": "test", "message": "test message"}';
-      
+
       const claudeResult = parseClaudeCodeLine(testData);
       const geminiResult = parseGeminiLine(testData);
       const cursorResult = parseStreamLine(testData);
@@ -142,10 +142,10 @@ describe('Agent Stream Parsers', () => {
       // Verify that we support exactly three CLI tools (v0.10.0+)
       const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
       expect(supportedTools).toHaveLength(3);
-      
+
       // Verify that deprecated tools are not included (removed in v0.10.0)
       const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
-      deprecatedTools.forEach(deprecated => {
+      deprecatedTools.forEach((deprecated) => {
         expect(supportedTools).not.toContain(deprecated);
       });
     });

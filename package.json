@@ -10,8 +10,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest --coverage --run",
     "test:agent": "node scripts/test-agent-simple.mjs",
     "test:agent:quick": "node scripts/test-agent-simple.mjs",
     "test:agent:full": "node scripts/test-agent-manager.js all",

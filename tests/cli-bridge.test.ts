@@ -15,7 +15,7 @@ describe('CLIBridge', () => {
   beforeEach(async () => {
     // Reset singleton before each test
     resetCLIBridge();
-    
+
     // Create temporary directory in system temp
     tempDir = join(tmpdir(), 'rulebook-test-cli-bridge-' + Date.now());
     await fs.mkdir(tempDir, { recursive: true });
@@ -73,12 +73,12 @@ describe('CLIBridge', () => {
       expect(Array.isArray(tools)).toBe(true);
       // In test environment, CLI tools may or may not be available
       expect(tools.length).toBeGreaterThanOrEqual(0);
-      
+
       // If tools are detected, they should only be supported tools
       if (tools.length > 0) {
         const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
-        const detectedToolNames = tools.map(tool => tool.name);
-        detectedToolNames.forEach(toolName => {
+        const detectedToolNames = tools.map((tool) => tool.name);
+        detectedToolNames.forEach((toolName) => {
           expect(supportedTools).toContain(toolName);
         });
       }
@@ -87,19 +87,15 @@ describe('CLIBridge', () => {
     it('should only support three standardized CLI tools', async () => {
       // Test that only the three standardized tools are supported
       const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
-      
+
       // Verify the exact number of supported tools
       expect(supportedTools).toHaveLength(3);
-      
+
       // Verify each tool is in the supported list
       expect(supportedTools).toContain('cursor-agent');
       expect(supportedTools).toContain('claude-code');
       expect(supportedTools).toContain('gemini-cli');
     });
-
-
-
-
   });
 
   describe('sendCommandToCLI', () => {
@@ -117,10 +113,10 @@ describe('CLIBridge', () => {
 
     it('should support all standardized CLI tools', async () => {
       const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
-      
+
       for (const tool of supportedTools) {
         const response = await cliBridge.sendCommandToCLI(tool, 'test command');
-        
+
         expect(response).toMatchObject({
           success: expect.any(Boolean), // May succeed or fail depending on tool availability
           duration: expect.any(Number),
@@ -208,7 +204,10 @@ describe('CLIBridge', () => {
   describe('executeWorkflowStep', () => {
     it('should execute all workflow steps', async () => {
       const steps = [
-        { step: 'implement' as const, context: { task: { id: 'task-123', title: 'Test', description: 'Test' } } },
+        {
+          step: 'implement' as const,
+          context: { task: { id: 'task-123', title: 'Test', description: 'Test' } },
+        },
         { step: 'test' as const },
         { step: 'lint' as const },
         { step: 'format' as const },

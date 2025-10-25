@@ -1,0 +1,17 @@
+This project uses @hivellm/rulebook standards.
+
+CRITICAL RULES:
+1. Always reference @AGENTS.md before coding
+2. Write tests first (95%+ coverage required)
+3. Run quality checks before committing:
+   - Type check / Compiler check
+   - Linter (no warnings allowed)
+   - All tests (100% pass rate)
+   - Coverage check
+4. Update docs/ when implementing features
+5. Follow strict documentation structure
+
+Language-specific rules are in @AGENTS.md.
+Module-specific patterns are in @AGENTS.md.
+
+When in doubt, ask to review @AGENTS.md first.

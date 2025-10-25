@@ -12,6 +12,8 @@ export interface AgentOptions {
   maxIterations?: number;
   watchMode?: boolean;
   onLog?: (type: 'info' | 'success' | 'warning' | 'error' | 'tool', message: string) => void;
+  onTaskStatusChange?: (taskId: string, status: string) => void;
+  onTasksReloaded?: (tasks: OpenSpecTask[]) => void;
 }
 
 export class AgentManager {
@@ -23,6 +25,8 @@ export class AgentManager {
   private isRunning = false;
   private currentTool?: string;
   private onLog?: AgentOptions['onLog'];
+  private onTaskStatusChange?: AgentOptions['onTaskStatusChange'];
+  private onTasksReloaded?: AgentOptions['onTasksReloaded'];
   private initializePromise?: Promise<void>; // Track initialization promise to prevent race conditions
 
   constructor(projectRoot: string) {
@@ -43,7 +47,7 @@ export class AgentManager {
         this.cliBridge.setLogCallback(this.onLog);
         this.openspecManager.setLogCallback(this.onLog);
       }
-      
+
       return this.initializePromise;
     }
 
@@ -78,8 +82,10 @@ export class AgentManager {
    */
   async startAgent(options: AgentOptions = {}): Promise<void> {
     try {
-      // Set onLog callback BEFORE initialize
+      // Set callbacks BEFORE initialize
       this.onLog = options.onLog;
+      this.onTaskStatusChange = options.onTaskStatusChange;
+      this.onTasksReloaded = options.onTasksReloaded;
 
       await this.initialize();
 
@@ -112,6 +118,12 @@ export class AgentManager {
       }
 
       await this.openspecManager.syncTaskStatus();
+
+      // Notify watcher with reloaded tasks
+      if (this.onTasksReloaded) {
+        const data = await this.openspecManager.loadOpenSpec();
+        this.onTasksReloaded(data.tasks);
+      }
 
       if (this.onLog) {
         this.onLog('success', '✅ Task status synced');
@@ -146,8 +158,7 @@ export class AgentManager {
     const availableTools = await this.cliBridge.detectCLITools();
 
     if (availableTools.length === 0) {
-      const msg =
-        'No CLI tools detected. Please install cursor-agent, claude-code, or gemini-cli.';
+      const msg = 'No CLI tools detected. Please install cursor-agent, claude-code, or gemini-cli.';
       if (this.onLog) {
         this.onLog('error', msg);
       } else {
@@ -223,15 +234,33 @@ export class AgentManager {
           break;
         }
 
+        // Debug: Log task being executed
+        if (this.onLog) {
+          this.onLog(
+            'info',
+            `[DEBUG] Agent picked task: ${nextTask.id} - ${nextTask.title.substring(0, 50)}`
+          );
+        }
+
         // Execute task workflow
         const success = await this.executeTaskWorkflow(nextTask, options);
 
         if (success) {
           await this.openspecManager.markTaskComplete(nextTask.id);
           this.logger.taskComplete(nextTask.id, nextTask.title, 0);
+
+          // Notify watcher about completion
+          if (this.onTaskStatusChange) {
+            this.onTaskStatusChange(nextTask.id, 'completed');
+          }
         } else {
           await this.openspecManager.updateTaskStatus(nextTask.id, 'failed');
           this.logger.taskFailed(nextTask.id, nextTask.title, 'Task execution failed');
+
+          // Notify watcher about failure
+          if (this.onTaskStatusChange) {
+            this.onTaskStatusChange(nextTask.id, 'failed');
+          }
         }
 
         // Small delay between tasks
@@ -280,6 +309,18 @@ export class AgentManager {
       // Set task as in-progress
       await this.openspecManager.setCurrentTask(task.id);
       await this.openspecManager.updateTaskStatus(task.id, 'in-progress');
+
+      // Notify watcher about status change
+      if (this.onTaskStatusChange) {
+        if (this.onLog) {
+          this.onLog('info', `[DEBUG] Calling onTaskStatusChange for ${task.id}`);
+        }
+        this.onTaskStatusChange(task.id, 'in-progress');
+      } else {
+        if (this.onLog) {
+          this.onLog('warning', '[DEBUG] onTaskStatusChange callback is undefined!');
+        }
+      }
 
       if (options.dryRun) {
         if (this.onLog) {

@@ -3,11 +3,35 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm## [Unreleased]
 
-## [Unreleased]
+## [0.10.1] - 2025-01-23
 
-## [0.10.0] - 2025-01-23
+### Added
+
+**CLI Agent Standardization:**
+- Standardized CLI agent implementations for cursor-agent, claude-code, and gemini-cli
+- Comprehensive documentation for all supported CLI agents
+- Unified output parsing and stream processing
+- Consistent error handling and timeout management
+- Real-time progress monitoring for all agents
+
+### Changed
+
+**Breaking Changes:**
+- Removed support for deprecated CLI tools: `cursor-cli`, `claude-cli`, `gemini-cli-legacy`
+- Standardized on three CLI agents: `cursor-agent`, `claude-code`, `gemini-cli`
+- Updated CLI tool detection to only recognize standardized tools
+- Improved error messages and tool selection process
+
+### Fixed
+
+- Fixed CLI agent integration issues
+- Improved stream parsing reliability
+- Enhanced error handling for all CLI tools
+- Better timeout management and retry logic
+
+## [0.10.0] - 2025-01-23025-01-23
 
 ### Added
 

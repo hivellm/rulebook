@@ -43,9 +43,14 @@ export class CLIBridge {
     if (this.debugLogInitialized) {
       return;
     }
-    
+
     this.debugLogInitialized = true;
-    
+
+    // Skip debug logging during tests
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+      return;
+    }
+
     // Create logs directory if it doesn't exist
     const logsDir = join(process.cwd(), 'logs');
     if (!existsSync(logsDir)) {
@@ -90,7 +95,7 @@ export class CLIBridge {
    */
   async detectCLITools(): Promise<CLITool[]> {
     this.initializeDebugLog(); // Initialize debug log on first real use
-    
+
     const tools: CLITool[] = [
       { name: 'cursor-agent', command: 'cursor-agent', available: false },
       { name: 'claude-code', command: 'claude', available: false },
@@ -238,17 +243,26 @@ export class CLIBridge {
           }, 500);
         });
 
-        // Set event callback to forward to onLog
-        if (this.onLog) {
-          parser.onEvent((type, message) => {
-            if (this.onLog) {
-              this.onLog(
-                type === 'tool' || type === 'text' || type === 'completion' ? 'info' : 'info',
-                message
-              );
+        // Set event callback to forward to onLog or console
+        parser.onEvent((type, message) => {
+          if (this.onLog) {
+            // Watcher mode - send to UI
+            const logType = type === 'completion' ? 'success' : 'info';
+            this.onLog(logType, message);
+          } else {
+            // CLI mode - print to console with colors
+            if (type === 'tool') {
+              // Tool calls in cyan
+              console.log(`   \x1b[36m${message}\x1b[0m`);
+            } else if (type === 'text') {
+              // Text generation in gray
+              console.log(`   \x1b[90m${message}\x1b[0m`);
+            } else if (type === 'completion') {
+              // Completion in green
+              console.log(`\n\x1b[32m${message}\x1b[0m`);
             }
-          });
-        }
+          }
+        });
 
         if (proc.stdout) {
           proc.stdout.setEncoding('utf8');
@@ -323,10 +337,12 @@ export class CLIBridge {
             // Resolve when parser detects completion
             completionPromise.then(async () => {
               await this.debugLog('Parser completion event received');
-              await this.debugLog(`Process PID: ${proc.pid}, killed: ${proc.killed}, exitCode: ${proc.exitCode}`);
+              await this.debugLog(
+                `Process PID: ${proc.pid}, killed: ${proc.killed}, exitCode: ${proc.exitCode}`
+              );
               clearInterval(progressInterval);
               clearTimeout(timeoutId);
-              
+
               // FORCE KILL IMMEDIATELY after completion
               if (!proc.killed && proc.exitCode === null) {
                 await this.debugLog(`Forcing process kill immediately after completion`);
@@ -342,7 +358,7 @@ export class CLIBridge {
                   await this.debugLog(`Error killing process: ${error}`);
                 }
               }
-              
+
               // Wait max 500ms for process to exit
               const checkExit = setInterval(async () => {
                 if (proc.killed || proc.exitCode !== null) {
@@ -1073,7 +1089,7 @@ export class CLIBridge {
     await this.debugLog(`Active processes: ${this.activeProcesses.size}`);
 
     const killPromises: Promise<void>[] = [];
-    
+
     for (const [processId, proc] of this.activeProcesses.entries()) {
       killPromises.push(
         (async () => {
@@ -1081,13 +1097,13 @@ export class CLIBridge {
             if (!proc.killed && proc.exitCode === null) {
               await this.debugLog(`Killing process ${processId} (PID: ${proc.pid})`);
               proc.kill('SIGKILL');
-              
+
               // Wait for exit
               await new Promise<void>((resolve) => {
                 const timeout = setTimeout(() => {
                   resolve();
                 }, 500);
-                
+
                 proc.once('exit', () => {
                   clearTimeout(timeout);
                   resolve();

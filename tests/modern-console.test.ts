@@ -98,7 +98,7 @@ describe('ModernConsole', () => {
     it('should have progress-focused UI components', () => {
       // Test that the modern console has the simplified UI structure
       expect(modernConsole).toBeDefined();
-      
+
       // The simplified UI should have:
       // - Header with title and exit instructions
       // - Progress bar showing completion percentage
@@ -107,7 +107,7 @@ describe('ModernConsole', () => {
       // - No task details panel (removed in v0.10.0)
       // - No system info panel (removed in v0.10.0)
       // - No scrolling task list (removed in v0.10.0)
-      
+
       // These methods should not exist in the simplified version
       expect(modernConsole).not.toHaveProperty('renderTaskDetails');
       expect(modernConsole).not.toHaveProperty('renderSystemInfo');
@@ -119,7 +119,7 @@ describe('ModernConsole', () => {
       // Test that all removed panel methods are not available
       const removedMethods = [
         'renderTaskDetails',
-        'renderSystemInfo', 
+        'renderSystemInfo',
         'showTaskDetails',
         'hideTaskDetails',
         'showSystemInfo',
@@ -133,10 +133,10 @@ describe('ModernConsole', () => {
         'getStatusIcon',
         'getTasksSummary',
         'loadTasks',
-        'updateSystemInfo'
+        'updateSystemInfo',
       ];
-      
-      removedMethods.forEach(method => {
+
+      removedMethods.forEach((method) => {
         expect(modernConsole).not.toHaveProperty(method);
       });
     });
@@ -155,10 +155,10 @@ describe('ModernConsole', () => {
         'currentScrollPosition',
         'scrollableTaskList',
         'taskListHeight',
-        'visibleTaskCount'
+        'visibleTaskCount',
       ];
-      
-      removedScrollItems.forEach(item => {
+
+      removedScrollItems.forEach((item) => {
         expect(modernConsole).not.toHaveProperty(item);
       });
     });
@@ -171,10 +171,10 @@ describe('ModernConsole', () => {
         'handlePageUp',
         'handlePageDown',
         'handleHome',
-        'handleEnd'
+        'handleEnd',
       ];
-      
-      removedKeyHandlers.forEach(handler => {
+
+      removedKeyHandlers.forEach((handler) => {
         expect(modernConsole).not.toHaveProperty(handler);
       });
     });
@@ -184,7 +184,7 @@ describe('ModernConsole', () => {
       // The progress bar is rendered internally via renderProgressBar() method
       // We can test that the modern console has the necessary UI components
       expect(modernConsole).toBeDefined();
-      
+
       // The progress bar functionality is implemented internally
       // and doesn't expose public methods for testing
     });
@@ -194,7 +194,7 @@ describe('ModernConsole', () => {
       // The loading indicator is implemented internally in the UI
       // and doesn't expose public methods for testing
       expect(modernConsole).toBeDefined();
-      
+
       // The loading indicator is part of the internal UI rendering
       // and is tested through the overall console functionality
     });
@@ -202,27 +202,27 @@ describe('ModernConsole', () => {
     it('should support activity logging', () => {
       // Test activity logging functionality
       const logSpy = vi.spyOn(modernConsole, 'logActivity');
-      
+
       modernConsole.logActivity('info', 'Test message');
-      
+
       expect(logSpy).toHaveBeenCalledWith('info', 'Test message');
     });
 
     it('should support task status management', () => {
       // Test task completion marking
       const markCompletedSpy = vi.spyOn(modernConsole, 'markTaskCompleted');
-      
+
       modernConsole.markTaskCompleted('test-task-id');
-      
+
       expect(markCompletedSpy).toHaveBeenCalledWith('test-task-id');
     });
 
     it('should support task progress marking', () => {
       // Test task in-progress marking
       const markInProgressSpy = vi.spyOn(modernConsole, 'markTaskInProgress');
-      
+
       modernConsole.markTaskInProgress('test-task-id');
-      
+
       expect(markInProgressSpy).toHaveBeenCalledWith('test-task-id');
     });
 
@@ -230,13 +230,13 @@ describe('ModernConsole', () => {
       // Test that the modern console has the correct simplified UI structure
       // The simplified UI should only have:
       // - Header box
-      // - Progress box  
+      // - Progress box
       // - Logs box
       // - Status bar
       // No task details, system info, or scrolling components (removed in v0.10.0)
-      
+
       expect(modernConsole).toBeDefined();
-      
+
       // Verify that removed components are not present
       expect(modernConsole).not.toHaveProperty('tasksBox');
       expect(modernConsole).not.toHaveProperty('detailsBox');
@@ -247,15 +247,15 @@ describe('ModernConsole', () => {
       // Comprehensive test to ensure all removed UI components are not present
       const removedComponents = [
         'tasksBox',
-        'detailsBox', 
+        'detailsBox',
         'systemBox',
         'taskDetailsPanel',
         'systemInfoPanel',
         'taskListPanel',
-        'scrollableTaskList'
+        'scrollableTaskList',
       ];
-      
-      removedComponents.forEach(component => {
+
+      removedComponents.forEach((component) => {
         expect(modernConsole).not.toHaveProperty(component);
       });
     });
@@ -264,13 +264,13 @@ describe('ModernConsole', () => {
       // Test that the modern console supports real-time progress monitoring
       // This is the core functionality of the simplified UI
       expect(modernConsole).toBeDefined();
-      
+
       // The console should support:
       // - Real-time task progress display
       // - Activity logging with timestamps
       // - Progress bar visualization
       // - Clean, focused interface
-      
+
       // These are tested through the public methods
       expect(typeof modernConsole.logActivity).toBe('function');
       expect(typeof modernConsole.markTaskCompleted).toBe('function');

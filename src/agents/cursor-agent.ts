@@ -54,6 +54,11 @@ export interface ToolCallStartedEvent {
         command: string;
       };
     };
+    editToolCall?: {
+      args: {
+        path: string;
+      };
+    };
   };
   session_id: string;
 }
@@ -90,6 +95,16 @@ export interface ToolCallCompletedEvent {
         error?: string;
       };
     };
+    editToolCall?: {
+      result: {
+        success?: {
+          linesAdded: number;
+          linesRemoved: number;
+          path: string;
+        };
+        error?: string;
+      };
+    };
   };
   session_id: string;
 }
@@ -117,7 +132,7 @@ export interface ParsedResult {
   success: boolean;
   text: string;
   toolCalls: Array<{
-    type: 'read' | 'write' | 'bash';
+    type: 'read' | 'write' | 'bash' | 'edit';
     details: string;
     result?: string;
   }>;
@@ -253,7 +268,7 @@ export class CursorAgentStreamParser {
     if (text && !this.accumulatedText.includes(text)) {
       const previousLength = this.accumulatedText.length;
       this.accumulatedText = text;
-      
+
       // Log progress every 500 chars to show the agent is working
       if (this.eventCallback && Math.floor(text.length / 500) > Math.floor(previousLength / 500)) {
         const chars = Math.round(text.length / 100) / 10;
@@ -271,11 +286,10 @@ export class CursorAgentStreamParser {
 
       if (startedEvent.tool_call.writeToolCall) {
         const path = startedEvent.tool_call.writeToolCall.args.path;
-        const fileName = path.split('/').pop() || path;
         const details = `Write to ${path}`;
-        // Send to watcher if callback is set (shortened version with loading)
+        // Send to watcher/CLI with full path
         if (this.eventCallback) {
-          this.eventCallback('tool', `[...] Writing ${fileName}...`);
+          this.eventCallback('tool', `[...] Writing ${path}...`);
         }
         this.toolCalls.push({
           type: 'write',
@@ -283,11 +297,10 @@ export class CursorAgentStreamParser {
         });
       } else if (startedEvent.tool_call.readToolCall) {
         const path = startedEvent.tool_call.readToolCall.args.path;
-        const fileName = path.split('/').pop() || path;
         const details = `Read from ${path}`;
-        // Send to watcher if callback is set (shortened version with loading)
+        // Send to watcher/CLI with full path
         if (this.eventCallback) {
-          this.eventCallback('tool', `[...] Reading ${fileName}...`);
+          this.eventCallback('tool', `[...] Reading ${path}...`);
         }
         this.toolCalls.push({
           type: 'read',
@@ -295,15 +308,24 @@ export class CursorAgentStreamParser {
         });
       } else if (startedEvent.tool_call.bashToolCall) {
         const cmd = startedEvent.tool_call.bashToolCall.args.command;
-        // Shorten command if too long
-        const shortCmd = cmd.length > 50 ? cmd.substring(0, 47) + '...' : cmd;
         const details = `Execute: ${cmd}`;
-        // Send to watcher if callback is set (shortened version with loading)
+        // Send to watcher/CLI with full command
         if (this.eventCallback) {
-          this.eventCallback('tool', `[...] Running: ${shortCmd}...`);
+          this.eventCallback('tool', `[...] Running: ${cmd}`);
         }
         this.toolCalls.push({
           type: 'bash',
+          details,
+        });
+      } else if (startedEvent.tool_call.editToolCall) {
+        const path = startedEvent.tool_call.editToolCall.args.path;
+        const details = `Edit ${path}`;
+        // Send to watcher/CLI with full path
+        if (this.eventCallback) {
+          this.eventCallback('tool', `[...] Editing ${path}...`);
+        }
+        this.toolCalls.push({
+          type: 'edit',
           details,
         });
       }
@@ -313,7 +335,7 @@ export class CursorAgentStreamParser {
       if (completedEvent.tool_call.writeToolCall?.result.success) {
         const { linesCreated, fileSize } = completedEvent.tool_call.writeToolCall.result.success;
         const result = `Created ${linesCreated} lines (${fileSize} bytes)`;
-        
+
         // Log success
         if (this.eventCallback) {
           this.eventCallback('tool', `[OK] Wrote ${linesCreated} lines`);
@@ -325,7 +347,7 @@ export class CursorAgentStreamParser {
         }
       } else if (completedEvent.tool_call.writeToolCall?.result.error) {
         const error = completedEvent.tool_call.writeToolCall.result.error;
-        
+
         // Log error
         if (this.eventCallback) {
           this.eventCallback('tool', `[ERR] Write failed: ${error}`);
@@ -339,7 +361,7 @@ export class CursorAgentStreamParser {
       if (completedEvent.tool_call.readToolCall?.result.success) {
         const { totalLines } = completedEvent.tool_call.readToolCall.result.success;
         const result = `Read ${totalLines} lines`;
-        
+
         // Log success (more compact)
         if (this.eventCallback) {
           this.eventCallback('tool', `[OK] Read ${totalLines} lines`);
@@ -350,7 +372,7 @@ export class CursorAgentStreamParser {
         }
       } else if (completedEvent.tool_call.readToolCall?.result.error) {
         const error = completedEvent.tool_call.readToolCall.result.error;
-        
+
         // Log error
         if (this.eventCallback) {
           this.eventCallback('tool', `[ERR] Read failed: ${error}`);
@@ -364,7 +386,7 @@ export class CursorAgentStreamParser {
       if (completedEvent.tool_call.bashToolCall?.result.success) {
         const { exitCode } = completedEvent.tool_call.bashToolCall.result.success;
         const result = exitCode === 0 ? 'Success' : `Exit code: ${exitCode}`;
-        
+
         // Log result
         if (this.eventCallback) {
           if (exitCode === 0) {
@@ -379,7 +401,7 @@ export class CursorAgentStreamParser {
         }
       } else if (completedEvent.tool_call.bashToolCall?.result.error) {
         const error = completedEvent.tool_call.bashToolCall.result.error;
-        
+
         // Log failure
         if (this.eventCallback) {
           this.eventCallback('tool', `[ERR] Command failed: ${error}`);
@@ -387,6 +409,31 @@ export class CursorAgentStreamParser {
 
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = `Failed: ${error}`;
+        }
+      }
+
+      if (completedEvent.tool_call.editToolCall?.result.success) {
+        const { linesAdded, linesRemoved } = completedEvent.tool_call.editToolCall.result.success;
+        const result = `+${linesAdded} -${linesRemoved} lines`;
+
+        // Log success
+        if (this.eventCallback) {
+          this.eventCallback('tool', `[OK] Edited: +${linesAdded} -${linesRemoved}`);
+        }
+
+        if (this.toolCalls.length > 0) {
+          this.toolCalls[this.toolCalls.length - 1].result = result;
+        }
+      } else if (completedEvent.tool_call.editToolCall?.result.error) {
+        const error = completedEvent.tool_call.editToolCall.result.error;
+
+        // Log error
+        if (this.eventCallback) {
+          this.eventCallback('tool', `[ERR] Edit failed: ${error}`);
+        }
+
+        if (this.toolCalls.length > 0) {
+          this.toolCalls[this.toolCalls.length - 1].result = `Error: ${error}`;
         }
       }
     }

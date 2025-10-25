@@ -20,7 +20,7 @@
 - [ ] **REFACTOR-003**: Remove `taskListScrollOffset` property
 - [ ] **REFACTOR-004**: Remove `handleTaskListScroll()` method
 - [ ] **REFACTOR-005**: Remove scroll key handlers (Up/Down arrows)
-- [ ] **TEST-001**: Update tests to reflect removed components
+- [x] **TEST-001**: Update tests to reflect removed components
 
 ## Phase 2: Implement Progress Bar
 - [ ] **IMPLEMENT-001**: Create `getProgressInfo()` method
@@ -68,8 +68,13 @@
 - [ ] **INTEGRATE-003**: Log task start/completion
 - [ ] **INTEGRATE-004**: Log errors and warnings
 - [ ] **INTEGRATE-005**: Update watcher on task completion
+- [ ] **INTEGRATE-006**: Automate OpenSpec task status updates after completion
+  - After agent completes a task, automatically update the corresponding markdown task file
+  - Change task checkbox from `- [ ]` to `- [x]` in the tasks.md file
+  - The agent should run a command like `sed -i 's/- \[ \] \*\*TASK-ID\*\*/- [x] **TASK-ID**/' path/to/file.md` after completion
 - [ ] **TEST-012**: Integration test with agent manager
 - [ ] **TEST-013**: Test real-time log updates
+- [ ] **TEST-014**: Test automatic OpenSpec task status updates
 
 ## Phase 7: Layout and Styling
 - [ ] **STYLE-001**: Define layout dimensions (25% tasks, 10% progress, 65% logs)
@@ -77,15 +82,15 @@
 - [ ] **STYLE-003**: Add proper padding and borders
 - [ ] **STYLE-004**: Apply color scheme
 - [ ] **STYLE-005**: Test on different terminal sizes (80x24, 120x40, 200x60)
-- [ ] **TEST-014**: Visual regression tests
+- [ ] **TEST-015**: Visual regression tests
 
 ## Phase 8: Performance Optimization
 - [ ] **OPTIMIZE-001**: Optimize render loop to only update when needed
 - [ ] **OPTIMIZE-002**: Debounce rapid updates
 - [ ] **OPTIMIZE-003**: Profile memory usage (target < 10MB)
 - [ ] **OPTIMIZE-004**: Optimize animation frame rate
-- [ ] **TEST-015**: Performance benchmark tests
-- [ ] **TEST-016**: Memory leak tests
+- [ ] **TEST-016**: Performance benchmark tests
+- [ ] **TEST-017**: Memory leak tests
 
 ## Phase 9: Documentation
 - [ ] **DOCS-001**: Update watcher screenshots in README

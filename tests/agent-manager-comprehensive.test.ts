@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createAgentManager, AgentManager } from '../src/core/agent-manager.js';
 import { createCLIBridge } from '../src/core/cli-bridge.js';
-import { createLogger } from '../src/core/logger.js';
+import { createLogger, initializeLogger } from '../src/core/logger.js';
 import { createConfigManager } from '../src/core/config-manager.js';
 import { createOpenSpecManager } from '../src/core/openspec-manager.js';
 
@@ -124,10 +124,12 @@ describe('Agent Manager Comprehensive Tests', () => {
       checkCLIHealth: vi.fn().mockResolvedValue(true),
       getCLICapabilities: vi.fn().mockResolvedValue(['implement', 'test', 'lint', 'format']),
       killAllProcesses: vi.fn().mockResolvedValue(undefined),
+      setLogCallback: vi.fn().mockReturnValue(undefined),
     };
 
     // Setup mocks
     vi.mocked(createLogger).mockReturnValue(mockLogger);
+    vi.mocked(initializeLogger).mockReturnValue(mockLogger);
     vi.mocked(createConfigManager).mockReturnValue(mockConfigManager);
     vi.mocked(createOpenSpecManager).mockReturnValue(mockOpenSpecManager);
     vi.mocked(createCLIBridge).mockReturnValue(mockCLIBridge);
