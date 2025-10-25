@@ -33,8 +33,10 @@ export class CLIBridge {
   async detectCLITools(): Promise<CLITool[]> {
     const tools: CLITool[] = [
       { name: 'cursor-agent', command: 'cursor-agent', available: false },
+      { name: 'claude-code', command: 'claude', available: false },
+      { name: 'gemini-cli', command: 'gemini', available: false },
       { name: 'cursor-cli', command: 'cursor-cli', available: false },
-      { name: 'gemini-cli', command: 'gemini-cli', available: false },
+      { name: 'gemini-cli-legacy', command: 'gemini-cli', available: false },
       { name: 'claude-cli', command: 'claude-cli', available: false }
     ];
 
@@ -71,7 +73,9 @@ export class CLIBridge {
     } = {}
   ): Promise<CLIResponse> {
     const startTime = Date.now();
-    const timeout = options.timeout || this.config.timeouts?.cliResponse || 30000;
+    // cursor-agent needs more time to connect to remote server and process
+    const defaultTimeout = toolName === 'cursor-agent' ? 120000 : 30000;
+    const timeout = options.timeout || this.config.timeouts?.cliResponse || defaultTimeout;
     
     this.logger.cliCommand(command, toolName);
     
@@ -79,15 +83,34 @@ export class CLIBridge {
       let process: ExecaChildProcess;
       
       if (toolName === 'cursor-agent') {
-        // cursor-agent expects: cursor-agent agent "<PROMPT>" -p --model "auto"
-        process = execa(toolName, ['agent', command, '-p', '--model', 'auto'], {
+        // cursor-agent expects: cursor-agent -p --force --approve-mcps "PROMPT"
+        // Using -p (print mode) for non-interactive use with all tools enabled
+        // --force: Allow commands unless explicitly denied
+        // --approve-mcps: Automatically approve all MCP servers
+        process = execa(toolName, ['-p', '--force', '--approve-mcps', command], {
+          timeout,
+          cwd: options.workingDirectory,
+          env: options.env,
+          stdio: 'pipe'
+        });
+      } else if (toolName === 'claude-code') {
+        // claude-code expects: claude --headless "<PROMPT>"
+        process = execa(toolName, ['--headless', command], {
+          timeout,
+          cwd: options.workingDirectory,
+          env: options.env,
+          stdio: 'pipe'
+        });
+      } else if (toolName === 'gemini-cli') {
+        // gemini-cli expects: gemini "<PROMPT>" (interactive mode)
+        process = execa(toolName, [command], {
           timeout,
           cwd: options.workingDirectory,
           env: options.env,
           stdio: 'pipe'
         });
       } else {
-        // Other CLI tools
+        // Other CLI tools (cursor-cli, gemini-cli-legacy, claude-cli)
         process = execa(toolName, [command], {
           timeout,
           cwd: options.workingDirectory,
@@ -188,8 +211,11 @@ export class CLIBridge {
     let command: string;
     
     if (toolName === 'cursor-agent') {
-      // cursor-agent uses different command structure
       command = `Implement task: ${task.title}. Description: ${task.description}`;
+    } else if (toolName === 'claude-code') {
+      command = `Implement the following task: ${task.title}. Description: ${task.description}`;
+    } else if (toolName === 'gemini-cli') {
+      command = `Please implement this task: ${task.title}. Description: ${task.description}`;
     } else {
       command = `Implement task "${task.title}" from OpenSpec. Description: ${task.description}`;
     }
@@ -205,6 +231,10 @@ export class CLIBridge {
     
     if (toolName === 'cursor-agent') {
       command = `Continue implementation ${iterations} times`;
+    } else if (toolName === 'claude-code') {
+      command = `Continue the implementation ${iterations} more times`;
+    } else if (toolName === 'gemini-cli') {
+      command = `Please continue the implementation ${iterations} times`;
     } else {
       command = `Continue implementation ${iterations}x`;
     }
@@ -220,6 +250,10 @@ export class CLIBridge {
     
     if (toolName === 'cursor-agent') {
       command = 'Run tests and check coverage';
+    } else if (toolName === 'claude-code') {
+      command = 'Run the tests and check test coverage';
+    } else if (toolName === 'gemini-cli') {
+      command = 'Please run the tests and check coverage';
     } else {
       command = 'Run tests and check coverage';
     }
@@ -235,6 +269,10 @@ export class CLIBridge {
     
     if (toolName === 'cursor-agent') {
       command = 'Run lint checks and fix any issues';
+    } else if (toolName === 'claude-code') {
+      command = 'Run linting checks and fix any issues found';
+    } else if (toolName === 'gemini-cli') {
+      command = 'Please run lint checks and fix any issues';
     } else {
       command = 'Run lint checks and fix any issues';
     }
@@ -250,6 +288,10 @@ export class CLIBridge {
     
     if (toolName === 'cursor-agent') {
       command = 'Format code according to project standards';
+    } else if (toolName === 'claude-code') {
+      command = 'Format the code according to project standards';
+    } else if (toolName === 'gemini-cli') {
+      command = 'Please format the code according to project standards';
     } else {
       command = 'Format code according to project standards';
     }
@@ -265,6 +307,10 @@ export class CLIBridge {
     
     if (toolName === 'cursor-agent') {
       command = `Commit changes with message: ${message}`;
+    } else if (toolName === 'claude-code') {
+      command = `Commit the changes with this message: ${message}`;
+    } else if (toolName === 'gemini-cli') {
+      command = `Please commit the changes with message: ${message}`;
     } else {
       command = `Commit changes with message: ${message}`;
     }

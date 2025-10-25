@@ -88,7 +88,7 @@ export class AgentManager {
     const availableTools = await this.cliBridge.detectCLITools();
     
     if (availableTools.length === 0) {
-      console.log(chalk.red('No CLI tools detected. Please install cursor-agent, cursor-cli, gemini-cli, or claude-cli.'));
+      console.log(chalk.red('No CLI tools detected. Please install cursor-agent, claude-code, gemini-cli, cursor-cli, or claude-cli.'));
       return null;
     }
 

@@ -22,7 +22,7 @@ CLI tool to standardize AI-generated projects with templates, rules enforcement,
 - ⚙️ **Configuration Management**: `.rulebook` config file with feature toggles
 - 📊 **Persistent Logging**: Comprehensive logging system with rotation
 - 🌳 **Dependency Graphs**: Visual task dependency trees and validation
-- 🔗 **CLI Bridge**: Seamless integration with cursor-agent, cursor-cli, gemini-cli, claude-cli
+- 🔗 **CLI Bridge**: Seamless integration with cursor-agent, claude-code, gemini-cli, cursor-cli, claude-cli
 - 📈 **Telemetry**: Performance metrics and execution analytics
 
 ## Installation
@@ -236,8 +236,14 @@ rulebook watcher
 Automated workflow management for AI CLI tools:
 
 ```bash
-# Start agent with cursor-agent
+# Start agent with cursor-agent (recommended)
 rulebook agent --tool cursor-agent --iterations 5
+
+# Start agent with claude-code
+rulebook agent --tool claude-code --iterations 5
+
+# Start agent with gemini-cli
+rulebook agent --tool gemini-cli --iterations 5
 
 # Dry-run mode (simulate without changes)
 rulebook agent --dry-run
@@ -251,6 +257,13 @@ rulebook agent --watch
 # - Quality checks (lint, test, coverage)
 # - Git commits and status updates
 ```
+
+**cursor-agent Integration:**
+- Requires `cursor-agent` CLI installed and authenticated (`cursor-agent login`)
+- Uses `--force` flag to auto-approve commands  
+- Uses `--approve-mcps` flag to auto-approve MCP servers
+- Default timeout: 120 seconds (cursor-agent connects to remote server)
+- Supports all tool operations: read, write, bash commands
 
 #### Configuration Management
 
