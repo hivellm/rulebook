@@ -52,14 +52,20 @@ export class Logger {
   /**
    * Log a message
    */
-  log(level: LogEntry['level'], message: string, context?: Record<string, unknown>, taskId?: string, duration?: number): void {
+  log(
+    level: LogEntry['level'],
+    message: string,
+    context?: Record<string, unknown>,
+    taskId?: string,
+    duration?: number
+  ): void {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       message,
       context,
       taskId,
-      duration
+      duration,
     };
 
     this.logBuffer.push(entry);
@@ -130,13 +136,22 @@ export class Logger {
    * Log CLI response
    */
   cliResponse(tool: string, response: string, duration: number, taskId?: string): void {
-    this.debug(`CLI response from ${tool}`, { tool, responseLength: response.length, duration }, taskId);
+    this.debug(
+      `CLI response from ${tool}`,
+      { tool, responseLength: response.length, duration },
+      taskId
+    );
   }
 
   /**
    * Log test execution
    */
-  testExecution(testType: string, result: 'passed' | 'failed', duration: number, taskId?: string): void {
+  testExecution(
+    testType: string,
+    result: 'passed' | 'failed',
+    duration: number,
+    taskId?: string
+  ): void {
     this.info(`Test ${testType}: ${result}`, { testType, result, duration }, taskId);
   }
 
@@ -160,7 +175,7 @@ export class Logger {
       const entries = [...this.logBuffer];
       this.logBuffer = [];
 
-      const logContent = entries.map(entry => JSON.stringify(entry)).join('\n') + '\n';
+      const logContent = entries.map((entry) => JSON.stringify(entry)).join('\n') + '\n';
       await writeFileAsync(this.currentLogFile, logContent, { flag: 'a' });
     } catch (error) {
       console.error('Failed to flush logs:', error);
@@ -175,7 +190,7 @@ export class Logger {
       clearInterval(this.flushInterval);
       this.flushInterval = null;
     }
-    
+
     await this.flush();
   }
 
@@ -191,8 +206,8 @@ export class Logger {
       for (const file of files) {
         if (file.startsWith('agent-') && file.endsWith('.log')) {
           const filePath = join(this.logsPath, file);
-          const stats = await import('fs').then(fs => fs.promises.stat(filePath));
-          
+          const stats = await import('fs').then((fs) => fs.promises.stat(filePath));
+
           if (stats.mtime < cutoffDate) {
             await unlinkAsync(filePath);
             this.info(`Cleaned old log file: ${file}`);
@@ -211,7 +226,7 @@ export class Logger {
     try {
       const files = await readdirAsync(this.logsPath);
       const logFiles = files
-        .filter(file => file.startsWith('agent-') && file.endsWith('.log'))
+        .filter((file) => file.startsWith('agent-') && file.endsWith('.log'))
         .sort()
         .reverse(); // Most recent first
 
@@ -221,9 +236,12 @@ export class Logger {
         if (entries.length >= limit) break;
 
         const filePath = join(this.logsPath, file);
-        const content = await import('fs').then(fs => fs.promises.readFile(filePath, 'utf-8'));
-        
-        const lines = content.trim().split('\n').filter(line => line.trim());
+        const content = await import('fs').then((fs) => fs.promises.readFile(filePath, 'utf-8'));
+
+        const lines = content
+          .trim()
+          .split('\n')
+          .filter((line) => line.trim());
         for (const line of lines) {
           if (entries.length >= limit) break;
           try {
@@ -247,7 +265,7 @@ export class Logger {
    */
   async getTaskLogs(taskId: string): Promise<LogEntry[]> {
     const recentLogs = await this.getRecentLogs(1000);
-    return recentLogs.filter(entry => entry.taskId === taskId);
+    return recentLogs.filter((entry) => entry.taskId === taskId);
   }
 
   /**
@@ -255,7 +273,7 @@ export class Logger {
    */
   async getLogsByLevel(level: LogEntry['level'], limit: number = 100): Promise<LogEntry[]> {
     const recentLogs = await this.getRecentLogs(limit * 2);
-    return recentLogs.filter(entry => entry.level === level).slice(0, limit);
+    return recentLogs.filter((entry) => entry.level === level).slice(0, limit);
   }
 
   /**
@@ -276,18 +294,18 @@ export class Logger {
     newestEntry?: string;
   }> {
     const recentLogs = await this.getRecentLogs(1000);
-    
+
     const summary = {
       totalEntries: recentLogs.length,
       byLevel: {} as Record<string, number>,
       recentErrors: 0,
       oldestEntry: undefined as string | undefined,
-      newestEntry: undefined as string | undefined
+      newestEntry: undefined as string | undefined,
     };
 
     for (const entry of recentLogs) {
       summary.byLevel[entry.level] = (summary.byLevel[entry.level] || 0) + 1;
-      
+
       if (entry.level === 'error') {
         summary.recentErrors++;
       }
@@ -295,7 +313,7 @@ export class Logger {
       if (!summary.oldestEntry || entry.timestamp < summary.oldestEntry) {
         summary.oldestEntry = entry.timestamp;
       }
-      
+
       if (!summary.newestEntry || entry.timestamp > summary.newestEntry) {
         summary.newestEntry = entry.timestamp;
       }
@@ -334,5 +352,3 @@ export function getLogger(): Logger {
   }
   return globalLogger;
 }
-
-

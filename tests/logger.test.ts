@@ -106,7 +106,7 @@ describe('Logger', () => {
     it('should get recent logs', async () => {
       logger.info('Test message');
       await logger.flush();
-      
+
       const logs = await logger.getRecentLogs(10);
       expect(Array.isArray(logs)).toBe(true);
     });
@@ -116,7 +116,7 @@ describe('Logger', () => {
     it('should get task logs', async () => {
       logger.info('Test message', {}, 'task-123');
       await logger.flush();
-      
+
       const logs = await logger.getTaskLogs('task-123');
       expect(Array.isArray(logs)).toBe(true);
     });
@@ -126,12 +126,12 @@ describe('Logger', () => {
     it('should get log summary', async () => {
       logger.info('Test message');
       await logger.flush();
-      
+
       const summary = await logger.getLogSummary();
       expect(summary).toMatchObject({
         totalEntries: expect.any(Number),
         byLevel: expect.any(Object),
-        recentErrors: expect.any(Number)
+        recentErrors: expect.any(Number),
       });
     });
   });
@@ -170,4 +170,3 @@ describe('Global Logger', () => {
     expect(typeof getLogger).toBe('function');
   });
 });
-

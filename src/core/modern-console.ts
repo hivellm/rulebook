@@ -16,7 +16,7 @@ export class ModernConsole {
   private options: ModernConsoleOptions;
   private isRunning = false;
   private refreshTimer?: NodeJS.Timeout;
-  
+
   // UI Components
   private headerBox!: blessed.Widgets.BoxElement;
   private tasksBox!: blessed.Widgets.ListElement;
@@ -31,18 +31,18 @@ export class ModernConsole {
       showSystemInfo: true,
       showLogs: true,
       maxLogLines: 50,
-      ...options
+      ...options,
     };
 
     this.openspecManager = createOpenSpecManager(options.projectRoot);
-    
+
     this.screen = blessed.screen({
       smartCSR: true,
       title: 'Rulebook Watcher - Modern Console',
       fullUnicode: true,
       dockBorders: true,
       autoPadding: true,
-      warnings: false
+      warnings: false,
     });
 
     this.setupUI();
@@ -61,12 +61,12 @@ export class ModernConsole {
       style: {
         bg: 'blue',
         fg: 'white',
-        bold: true
+        bold: true,
       },
       border: {
         type: 'line',
-        fg: 4 // blue
-      }
+        fg: 4, // blue
+      },
     });
 
     // Tasks List (left side)
@@ -83,25 +83,25 @@ export class ModernConsole {
       style: {
         selected: {
           bg: 'green',
-          fg: 'black'
+          fg: 'black',
         },
         item: {
-          fg: 'white'
-        }
+          fg: 'white',
+        },
       },
       border: {
         type: 'line',
-        fg: 6 // cyan
+        fg: 6, // cyan
       },
       scrollbar: {
         ch: ' ',
         track: {
-          bg: 'cyan'
+          bg: 'cyan',
         },
         style: {
-          inverse: true
-        }
-      }
+          inverse: true,
+        },
+      },
     });
 
     // Task Details (right side)
@@ -116,21 +116,21 @@ export class ModernConsole {
       alwaysScroll: true,
       style: {
         bg: 'black',
-        fg: 'white'
+        fg: 'white',
       },
       border: {
         type: 'line',
-        fg: 6 // cyan
+        fg: 6, // cyan
       },
       scrollbar: {
         ch: ' ',
         track: {
-          bg: 'cyan'
+          bg: 'cyan',
         },
         style: {
-          inverse: true
-        }
-      }
+          inverse: true,
+        },
+      },
     });
 
     // System Info (bottom left)
@@ -143,12 +143,12 @@ export class ModernConsole {
       tags: true,
       style: {
         bg: 'black',
-        fg: 'white'
+        fg: 'white',
       },
       border: {
         type: 'line',
-        fg: 5 // magenta
-      }
+        fg: 5, // magenta
+      },
     });
 
     // Logs (bottom right)
@@ -163,21 +163,21 @@ export class ModernConsole {
       alwaysScroll: true,
       style: {
         bg: 'black',
-        fg: 'white'
+        fg: 'white',
       },
       border: {
         type: 'line',
-        fg: 5 // magenta
+        fg: 5, // magenta
       },
       scrollbar: {
         ch: ' ',
         track: {
-          bg: 'magenta'
+          bg: 'magenta',
         },
         style: {
-          inverse: true
-        }
-      }
+          inverse: true,
+        },
+      },
     });
 
     // Status Bar
@@ -191,8 +191,8 @@ export class ModernConsole {
       style: {
         bg: 'green',
         fg: 'black',
-        bold: true
-      }
+        bold: true,
+      },
     });
 
     // Add all components to screen
@@ -246,14 +246,19 @@ export class ModernConsole {
     return `Tasks: ${tasks.total} | Active: ${tasks.inProgress} | Completed: ${tasks.completed} | Failed: ${tasks.failed} | Press 'q' or 'Ctrl+C' to quit | 'r' to refresh | 'h' for help`;
   }
 
-  private async getTasksSummary(): Promise<{ total: number; inProgress: number; completed: number; failed: number }> {
+  private async getTasksSummary(): Promise<{
+    total: number;
+    inProgress: number;
+    completed: number;
+    failed: number;
+  }> {
     try {
       const stats = await this.openspecManager.getTaskStats();
       return {
         total: stats.total,
         inProgress: stats.inProgress,
         completed: stats.completed,
-        failed: stats.failed
+        failed: stats.failed,
       };
     } catch (error) {
       this.logError(`Failed to get task stats: ${error}`);
@@ -264,16 +269,16 @@ export class ModernConsole {
   private async loadTasks(): Promise<void> {
     try {
       const tasks = await this.openspecManager.getTasksByPriority();
-      
+
       // Store current selection
       const currentSelection = 0; // TODO: Fix blessed ListElement selection tracking
       const currentItem = this.tasksBox.getItem(currentSelection);
-      
+
       // Clear existing items
       this.tasksBox.clearItems();
-      
+
       // Add tasks to list
-      tasks.forEach(task => {
+      tasks.forEach((task) => {
         const statusIcon = this.getStatusIcon(task.status);
         const priority = 'P'.repeat(task.priority);
         const item = `${statusIcon} ${priority} ${task.title}`;
@@ -287,7 +292,7 @@ export class ModernConsole {
 
       // Update summary
       this.statusBar.setContent(await this.getStatusContent());
-      
+
       this.screen.render();
     } catch (error) {
       this.logError(`Failed to load tasks: ${error}`);
@@ -296,11 +301,16 @@ export class ModernConsole {
 
   private getStatusIcon(status: string): string {
     switch (status) {
-      case 'completed': return '{green-fg}✓{/green-fg}';
-      case 'in-progress': return '{blue-fg}⚙{/blue-fg}';
-      case 'failed': return '{red-fg}✗{/red-fg}';
-      case 'skipped': return '{yellow-fg}⊘{/yellow-fg}';
-      default: return '{white-fg}○{/white-fg}';
+      case 'completed':
+        return '{green-fg}✓{/green-fg}';
+      case 'in-progress':
+        return '{blue-fg}⚙{/blue-fg}';
+      case 'failed':
+        return '{red-fg}✗{/red-fg}';
+      case 'skipped':
+        return '{yellow-fg}⊘{/yellow-fg}';
+      default:
+        return '{white-fg}○{/white-fg}';
     }
   }
 
@@ -309,8 +319,8 @@ export class ModernConsole {
       // Extract task title from item
       const taskTitle = taskItem.replace(/^[^\s]+\s+[^\s]+\s+/, '');
       const tasks = await this.openspecManager.getTasksByPriority();
-      const task = tasks.find(t => t.title === taskTitle);
-      
+      const task = tasks.find((t) => t.title === taskTitle);
+
       if (task) {
         const details = this.formatTaskDetails(task);
         this.detailsBox.setContent(details);
@@ -325,7 +335,7 @@ export class ModernConsole {
     const duration = task.actualTime ? `${task.actualTime}s` : 'N/A';
     const createdAt = new Date(task.createdAt).toLocaleString();
     const updatedAt = new Date(task.updatedAt).toLocaleString();
-    
+
     return `{bold}${task.title}{/bold}
 
 {cyan-fg}Description:{/cyan-fg}
@@ -356,12 +366,12 @@ ${task.completedAt ? `{cyan-fg}Completed:{/cyan-fg} ${new Date(task.completedAt)
       const os = await import('os');
       // const memUsage = process.memoryUsage();
       // const cpuUsage = process.cpuUsage();
-      
+
       const totalMem = Math.round(os.totalmem() / 1024 / 1024 / 1024);
       const freeMem = Math.round(os.freemem() / 1024 / 1024 / 1024);
       const usedMem = totalMem - freeMem;
       const memPercent = Math.round((usedMem / totalMem) * 100);
-      
+
       const content = `{bold}System Information{/bold}
 
 {cyan-fg}Memory:{/cyan-fg}
@@ -380,7 +390,10 @@ ${task.completedAt ? `{cyan-fg}Completed:{/cyan-fg} ${new Date(task.completedAt)
   Platform: ${os.platform()}
 
 {cyan-fg}Load Average:{/cyan-fg}
-  ${os.loadavg().map(load => load.toFixed(2)).join(', ')}`;
+  ${os
+    .loadavg()
+    .map((load) => load.toFixed(2))
+    .join(', ')}`;
 
       this.systemBox.setContent(content);
       this.screen.render();
@@ -392,14 +405,18 @@ ${task.completedAt ? `{cyan-fg}Completed:{/cyan-fg} ${new Date(task.completedAt)
   private logInfo(message: string): void {
     if (this.options.showLogs) {
       const timestamp = new Date().toLocaleTimeString();
-      this.logsBox.setContent(this.logsBox.content + `\n{green-fg}[INFO]{/green-fg} ${timestamp}: ${message}`);
+      this.logsBox.setContent(
+        this.logsBox.content + `\n{green-fg}[INFO]{/green-fg} ${timestamp}: ${message}`
+      );
     }
   }
 
   private logError(message: string): void {
     if (this.options.showLogs) {
       const timestamp = new Date().toLocaleTimeString();
-      this.logsBox.setContent(this.logsBox.content + `\n{red-fg}[ERROR]{/red-fg} ${timestamp}: ${message}`);
+      this.logsBox.setContent(
+        this.logsBox.content + `\n{red-fg}[ERROR]{/red-fg} ${timestamp}: ${message}`
+      );
     }
   }
 
@@ -447,34 +464,34 @@ ${task.completedAt ? `{cyan-fg}Completed:{/cyan-fg} ${new Date(task.completedAt)
 
   public async start(): Promise<void> {
     if (this.isRunning) return;
-    
+
     this.isRunning = true;
     this.logInfo('Starting Rulebook Watcher...');
-    
+
     // Initial load
     await this.refresh();
-    
+
     // Setup auto-refresh
     this.refreshTimer = setInterval(async () => {
       if (this.isRunning) {
         await this.refresh();
       }
     }, this.options.refreshInterval);
-    
+
     this.logInfo('Watcher started successfully');
     this.screen.render();
   }
 
   public stop(): void {
     if (!this.isRunning) return;
-    
+
     this.isRunning = false;
-    
+
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
       this.refreshTimer = undefined;
     }
-    
+
     this.logInfo('Stopping watcher...');
     this.screen.destroy();
     process.exit(0);
@@ -491,7 +508,7 @@ export async function startModernWatcher(projectRoot: string): Promise<void> {
     refreshInterval: 2000,
     showSystemInfo: true,
     showLogs: true,
-    maxLogLines: 50
+    maxLogLines: 50,
   });
 
   await console.start();

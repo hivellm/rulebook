@@ -7,6 +7,7 @@ import { mergeFullAgents } from '../core/merger.js';
 import { generateWorkflows, generateIDEFiles } from '../core/workflow-generator.js';
 import { writeFile, createBackup } from '../utils/file-system.js';
 import { parseRulesIgnore } from '../utils/rulesignore.js';
+import { RulebookConfig } from '../types.js';
 import path from 'path';
 
 export async function initCommand(options: { yes?: boolean }): Promise<void> {
@@ -624,11 +625,11 @@ export async function watcherCommand(): Promise<void> {
   try {
     const cwd = process.cwd();
     const { startWatcher } = await import('../core/watcher.js');
-    
+
     console.log(chalk.bold.blue('\n🚀 Starting Modern Console Watcher\n'));
     console.log(chalk.gray('Full-screen interface with system monitoring'));
     console.log(chalk.gray('Press Ctrl+C or F10 to exit\n'));
-    
+
     await startWatcher(cwd);
   } catch (error) {
     console.error(chalk.red('\n❌ Watcher error:'), error);
@@ -636,29 +637,29 @@ export async function watcherCommand(): Promise<void> {
   }
 }
 
-export async function agentCommand(options: { 
-  dryRun?: boolean; 
-  tool?: string; 
+export async function agentCommand(options: {
+  dryRun?: boolean;
+  tool?: string;
   iterations?: number;
   watch?: boolean;
 }): Promise<void> {
   try {
     const cwd = process.cwd();
     const { startAgent } = await import('../core/agent-manager.js');
-    
+
     console.log(chalk.bold.blue('\n🤖 Starting Rulebook Agent\n'));
-    
+
     const agentOptions = {
       dryRun: options.dryRun || false,
       tool: options.tool,
       maxIterations: options.iterations || 10,
-      watchMode: options.watch || false
+      watchMode: options.watch || false,
     };
-    
+
     if (agentOptions.dryRun) {
       console.log(chalk.yellow('🔍 DRY RUN MODE - No actual changes will be made\n'));
     }
-    
+
     await startAgent(cwd, agentOptions);
   } catch (error) {
     console.error(chalk.red('\n❌ Agent error:'), error);
@@ -666,48 +667,50 @@ export async function agentCommand(options: {
   }
 }
 
-export async function configCommand(options: { 
-  show?: boolean; 
-  set?: string; 
+export async function configCommand(options: {
+  show?: boolean;
+  set?: string;
   feature?: string;
   enable?: boolean;
 }): Promise<void> {
   try {
     const cwd = process.cwd();
     const { createConfigManager } = await import('../core/config-manager.js');
-    
+
     const configManager = createConfigManager(cwd);
-    
+
     if (options.show) {
       const summary = await configManager.getConfigSummary();
-      
+
       console.log(chalk.bold.blue('\n⚙️  Rulebook Configuration\n'));
       console.log(chalk.white(`Version: ${summary.version}`));
       console.log(chalk.white(`Project ID: ${summary.projectId}`));
       console.log(chalk.white(`Coverage Threshold: ${summary.coverageThreshold}%`));
       console.log(chalk.white(`CLI Tools: ${summary.cliTools.join(', ') || 'None detected'}`));
       console.log(chalk.white(`Enabled Features: ${summary.enabledFeatures.join(', ')}`));
-      
     } else if (options.feature && typeof options.enable === 'boolean') {
-      await configManager.toggleFeature(options.feature as any, options.enable);
-      console.log(chalk.green(`✅ Feature '${options.feature}' ${options.enable ? 'enabled' : 'disabled'}`));
-      
+      await configManager.toggleFeature(
+        options.feature as keyof RulebookConfig['features'],
+        options.enable
+      );
+      console.log(
+        chalk.green(`✅ Feature '${options.feature}' ${options.enable ? 'enabled' : 'disabled'}`)
+      );
     } else if (options.set) {
       const [key, value] = options.set.split('=');
       if (!key || !value) {
         console.error(chalk.red('Invalid set format. Use: --set key=value'));
         process.exit(1);
       }
-      
+
       // Handle different value types
-      let parsedValue: any = value;
+      let parsedValue: string | number | boolean = value;
       if (value === 'true') parsedValue = true;
       else if (value === 'false') parsedValue = false;
       else if (!isNaN(Number(value))) parsedValue = Number(value);
-      
+
       await configManager.updateConfig({ [key]: parsedValue });
       console.log(chalk.green(`✅ Configuration updated: ${key} = ${value}`));
-      
     } else {
       console.log(chalk.bold.blue('\n⚙️  Rulebook Configuration\n'));
       console.log(chalk.gray('Available commands:'));
@@ -716,33 +719,31 @@ export async function configCommand(options: {
       console.log(chalk.gray('  --feature name --enable  Enable a feature'));
       console.log(chalk.gray('  --feature name --disable Disable a feature'));
     }
-    
   } catch (error) {
     console.error(chalk.red('\n❌ Config error:'), error);
     process.exit(1);
   }
 }
 
-export async function tasksCommand(options: { 
-  tree?: boolean; 
+export async function tasksCommand(options: {
+  tree?: boolean;
   current?: boolean;
   status?: string;
 }): Promise<void> {
   try {
     const cwd = process.cwd();
     const { createOpenSpecManager } = await import('../core/openspec-manager.js');
-    
+
     const openspecManager = createOpenSpecManager(cwd);
     await openspecManager.initialize();
-    
+
     if (options.tree) {
       const tree = await openspecManager.generateDependencyTree();
       console.log(chalk.bold.blue('\n🌳 Task Dependency Tree\n'));
       console.log(tree);
-      
     } else if (options.current) {
       const currentTask = await openspecManager.getCurrentTask();
-      
+
       console.log(chalk.bold.blue('\n📋 Current Task\n'));
       if (currentTask) {
         console.log(chalk.white(`Title: ${currentTask.title}`));
@@ -754,35 +755,43 @@ export async function tasksCommand(options: {
       } else {
         console.log(chalk.gray('No current task'));
       }
-      
     } else if (options.status) {
       await openspecManager.updateTaskStatus(options.status, 'completed');
       console.log(chalk.green(`✅ Task ${options.status} marked as completed`));
-      
     } else {
       const tasks = await openspecManager.getTasksByPriority();
       const stats = await openspecManager.getTaskStats();
-      
+
       console.log(chalk.bold.blue('\n📋 OpenSpec Tasks\n'));
-      console.log(chalk.white(`Total: ${stats.total} | Pending: ${stats.pending} | In Progress: ${stats.inProgress} | Completed: ${stats.completed}`));
+      console.log(
+        chalk.white(
+          `Total: ${stats.total} | Pending: ${stats.pending} | In Progress: ${stats.inProgress} | Completed: ${stats.completed}`
+        )
+      );
       console.log('');
-      
+
       if (tasks.length === 0) {
         console.log(chalk.gray('No pending tasks'));
       } else {
         for (const task of tasks) {
-          const statusIcon = task.status === 'completed' ? '✓' : 
-                           task.status === 'in-progress' ? '⚙' : 
-                           task.status === 'failed' ? '✗' : '○';
-          
+          const statusIcon =
+            task.status === 'completed'
+              ? '✓'
+              : task.status === 'in-progress'
+                ? '⚙'
+                : task.status === 'failed'
+                  ? '✗'
+                  : '○';
+
           console.log(chalk.white(`${statusIcon} ${task.title}`));
-          console.log(chalk.gray(`   Priority: ${task.priority} | Dependencies: ${task.dependencies.length}`));
+          console.log(
+            chalk.gray(`   Priority: ${task.priority} | Dependencies: ${task.dependencies.length}`)
+          );
           console.log(chalk.gray(`   ${task.description}`));
           console.log('');
         }
       }
     }
-    
   } catch (error) {
     console.error(chalk.red('\n❌ Tasks error:'), error);
     process.exit(1);

@@ -9,9 +9,9 @@ export async function startWatcher(projectRoot: string): Promise<void> {
     refreshInterval: 2000,
     showSystemInfo: true,
     showLogs: true,
-    maxLogLines: 50
+    maxLogLines: 50,
   });
-  
+
   await modernConsole.start();
 }
 

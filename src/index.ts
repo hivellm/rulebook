@@ -93,12 +93,14 @@ program
   .option('--tool <name>', 'Specify CLI tool to use (cursor-cli, gemini-cli, claude-cli)')
   .option('--iterations <number>', 'Maximum number of iterations', '10')
   .option('--watch', 'Enable watcher mode for real-time monitoring')
-  .action((options) => agentCommand({
-    dryRun: options.dryRun,
-    tool: options.tool,
-    iterations: parseInt(options.iterations),
-    watch: options.watch
-  }));
+  .action((options) =>
+    agentCommand({
+      dryRun: options.dryRun,
+      tool: options.tool,
+      iterations: parseInt(options.iterations),
+      watch: options.watch,
+    })
+  );
 
 program
   .command('config')
@@ -108,12 +110,14 @@ program
   .option('--feature <name>', 'Feature name for enable/disable')
   .option('--enable', 'Enable feature')
   .option('--disable', 'Disable feature')
-  .action((options) => configCommand({
-    show: options.show,
-    set: options.set,
-    feature: options.feature,
-    enable: options.enable
-  }));
+  .action((options) =>
+    configCommand({
+      show: options.show,
+      set: options.set,
+      feature: options.feature,
+      enable: options.enable,
+    })
+  );
 
 program
   .command('tasks')
@@ -121,10 +125,12 @@ program
   .option('--tree', 'Show task dependency tree')
   .option('--current', 'Show current active task')
   .option('--status <taskId>', 'Update task status')
-  .action((options) => tasksCommand({
-    tree: options.tree,
-    current: options.current,
-    status: options.status
-  }));
+  .action((options) =>
+    tasksCommand({
+      tree: options.tree,
+      current: options.current,
+      status: options.status,
+    })
+  );
 
 program.parse(process.argv);

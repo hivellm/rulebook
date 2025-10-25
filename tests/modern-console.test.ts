@@ -12,23 +12,23 @@ vi.mock('blessed', () => ({
       render: vi.fn(),
       destroy: vi.fn(),
       key: vi.fn(),
-      on: vi.fn()
+      on: vi.fn(),
     })),
     box: vi.fn(() => ({
       setContent: vi.fn(),
       focus: vi.fn(),
-      on: vi.fn()
+      on: vi.fn(),
     })),
     list: vi.fn(() => ({
       clearItems: vi.fn(),
       addItem: vi.fn(),
       focus: vi.fn(),
-      on: vi.fn()
+      on: vi.fn(),
     })),
     log: vi.fn(() => ({
-      log: vi.fn()
-    }))
-  }
+      log: vi.fn(),
+    })),
+  },
 }));
 
 describe('ModernConsole', () => {
@@ -39,13 +39,13 @@ describe('ModernConsole', () => {
     // Create temporary directory in system temp
     tempDir = join(tmpdir(), 'rulebook-test-modern-console-' + Date.now());
     await fs.mkdir(tempDir, { recursive: true });
-    
+
     modernConsole = createModernConsole({
       projectRoot: tempDir,
       refreshInterval: 1000,
       showSystemInfo: true,
       showLogs: true,
-      maxLogLines: 50
+      maxLogLines: 50,
     });
   });
 
@@ -65,7 +65,7 @@ describe('ModernConsole', () => {
 
     it('should initialize with default options', () => {
       const console = createModernConsole({
-        projectRoot: tempDir
+        projectRoot: tempDir,
       });
       expect(console).toBeDefined();
     });
@@ -75,9 +75,9 @@ describe('ModernConsole', () => {
     it('should start modern console (mocked)', async () => {
       // Mock the start method to avoid actual UI rendering
       const startSpy = vi.spyOn(modernConsole, 'start').mockResolvedValue();
-      
+
       await modernConsole.start();
-      
+
       expect(startSpy).toHaveBeenCalled();
     });
   });
@@ -86,9 +86,9 @@ describe('ModernConsole', () => {
     it('should stop modern console', () => {
       // Mock the stop method
       const stopSpy = vi.spyOn(modernConsole, 'stop').mockImplementation(() => {});
-      
+
       modernConsole.stop();
-      
+
       expect(stopSpy).toHaveBeenCalled();
     });
   });
@@ -112,7 +112,7 @@ describe('createModernConsole', () => {
 
   it('should create modern console instance', () => {
     const console = createModernConsole({
-      projectRoot: tempDir
+      projectRoot: tempDir,
     });
     expect(console).toBeDefined();
   });

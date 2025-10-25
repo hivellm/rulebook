@@ -37,16 +37,16 @@ export class CLIBridge {
       { name: 'gemini-cli', command: 'gemini', available: false },
       { name: 'cursor-cli', command: 'cursor-cli', available: false },
       { name: 'gemini-cli-legacy', command: 'gemini-cli', available: false },
-      { name: 'claude-cli', command: 'claude-cli', available: false }
+      { name: 'claude-cli', command: 'claude-cli', available: false },
     ];
 
     for (const tool of tools) {
       try {
-        const result = await execa(tool.command, ['--version'], { 
+        const result = await execa(tool.command, ['--version'], {
           timeout: 5000,
-          reject: false 
+          reject: false,
         });
-        
+
         if (result.exitCode === 0) {
           tool.available = true;
           tool.version = result.stdout.trim();
@@ -57,15 +57,15 @@ export class CLIBridge {
       }
     }
 
-    return tools.filter(tool => tool.available);
+    return tools.filter((tool) => tool.available);
   }
 
   /**
    * Send command to CLI tool
    */
   async sendCommandToCLI(
-    toolName: string, 
-    command: string, 
+    toolName: string,
+    command: string,
     options: {
       timeout?: number;
       workingDirectory?: string;
@@ -76,22 +76,81 @@ export class CLIBridge {
     // cursor-agent needs more time to connect to remote server and process
     const defaultTimeout = toolName === 'cursor-agent' ? 120000 : 30000;
     const timeout = options.timeout || this.config.timeouts?.cliResponse || defaultTimeout;
-    
+
     this.logger.cliCommand(command, toolName);
-    
+
     try {
       let process: ExecaChildProcess;
-      
+
       if (toolName === 'cursor-agent') {
-        // cursor-agent expects: cursor-agent -p --force --approve-mcps "PROMPT"
+        // cursor-agent expects: cursor-agent -p --force --output-format stream-json --stream-partial-output "PROMPT"
         // Using -p (print mode) for non-interactive use with all tools enabled
         // --force: Allow commands unless explicitly denied
-        // --approve-mcps: Automatically approve all MCP servers
-        process = execa(toolName, ['-p', '--force', '--approve-mcps', command], {
+        // --output-format stream-json: Stream output in JSON format
+        // --stream-partial-output: Stream partial output as individual text deltas
+        
+        console.log('🔍 Debug: Starting cursor-agent process...');
+        console.log('🔍 Command:', command);
+        console.log('🔍 Timeout:', timeout, 'ms (', Math.round(timeout / 1000), 'seconds)');
+        console.log('🔍 Working directory:', options.workingDirectory || 'current directory');
+        
+        const proc = execa(toolName, [
+          '-p',
+          '--force',
+          '--approve-mcps',
+          '--output-format',
+          'stream-json',
+          '--stream-partial-output',
+          command
+        ], {
           timeout,
           cwd: options.workingDirectory,
           env: options.env,
-          stdio: 'pipe'
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        
+        process = proc;
+
+        console.log('🔍 Process started, PID:', proc.pid);
+        console.log('⏳ Waiting for cursor-agent to connect and respond...');
+        console.log('   (This may take 30-60 seconds to connect to remote server)');
+        console.log('   Full command: cursor-agent -p --force --approve-mcps --output-format stream-json --stream-partial-output "' + command + '"');
+        
+        // Progress indicator
+        let dots = 0;
+        const progressInterval = setInterval(() => {
+          dots = (dots + 1) % 4;
+          (global as any).process.stdout.write('\r⏳ Waiting' + '.'.repeat(dots) + ' '.repeat(3 - dots));
+        }, 500);
+
+        // Stream output in real-time
+        let hasOutput = false;
+        if (proc.stdout) {
+          proc.stdout.on('data', (data) => {
+            if (!hasOutput) {
+              clearInterval(progressInterval);
+              console.log('\n✅ Received first response from cursor-agent!');
+              hasOutput = true;
+            }
+            const output = data.toString();
+            console.log('📥 stdout:', output);
+          });
+        }
+
+        if (proc.stderr) {
+          proc.stderr.on('data', (data) => {
+            if (!hasOutput) {
+              clearInterval(progressInterval);
+              hasOutput = true;
+            }
+            const error = data.toString();
+            console.error('⚠️ stderr:', error);
+          });
+        }
+        
+        proc.on('exit', (code, signal) => {
+          clearInterval(progressInterval);
+          console.log('\n🔍 Process exited with code:', code, 'signal:', signal);
         });
       } else if (toolName === 'claude-code') {
         // claude-code expects: claude --headless "<PROMPT>"
@@ -99,7 +158,7 @@ export class CLIBridge {
           timeout,
           cwd: options.workingDirectory,
           env: options.env,
-          stdio: 'pipe'
+          stdio: 'pipe',
         });
       } else if (toolName === 'gemini-cli') {
         // gemini-cli expects: gemini "<PROMPT>" (interactive mode)
@@ -107,7 +166,7 @@ export class CLIBridge {
           timeout,
           cwd: options.workingDirectory,
           env: options.env,
-          stdio: 'pipe'
+          stdio: 'pipe',
         });
       } else {
         // Other CLI tools (cursor-cli, gemini-cli-legacy, claude-cli)
@@ -115,7 +174,7 @@ export class CLIBridge {
           timeout,
           cwd: options.workingDirectory,
           env: options.env,
-          stdio: 'pipe'
+          stdio: 'pipe',
         });
       }
 
@@ -134,27 +193,27 @@ export class CLIBridge {
         output: result.stdout,
         error: result.stderr,
         duration,
-        exitCode: result.exitCode
+        exitCode: result.exitCode,
       };
 
       this.logger.cliResponse(toolName, result.stdout, duration);
-      
+
       return response;
     } catch (error: unknown) {
       const duration = Date.now() - startTime;
-      
+
       const response: CLIResponse = {
         success: false,
         output: '',
         error: error instanceof Error ? error.message : String(error),
         duration,
-        exitCode: (error as { exitCode?: number }).exitCode || 1
+        exitCode: (error as { exitCode?: number }).exitCode || 1,
       };
 
-      this.logger.error(`CLI command failed: ${command}`, { 
-        tool: toolName, 
+      this.logger.error(`CLI command failed: ${command}`, {
+        tool: toolName,
         error: error instanceof Error ? error.message : String(error),
-        duration 
+        duration,
       });
 
       return response;
@@ -170,12 +229,12 @@ export class CLIBridge {
     timeout?: number
   ): Promise<CLIResponse> {
     const response = await this.sendCommandToCLI(toolName, command, { timeout });
-    
+
     if (!response.success && response.error?.includes('timeout')) {
       this.logger.warn(`CLI timeout detected for ${toolName}`, { command });
       return await this.handleTimeout(toolName, command);
     }
-    
+
     return response;
   }
 
@@ -184,18 +243,18 @@ export class CLIBridge {
    */
   async handleTimeout(toolName: string, originalCommand: string): Promise<CLIResponse> {
     this.logger.info(`Handling timeout for ${toolName}`, { originalCommand });
-    
+
     // Send continue command
     const continueResponse = await this.sendCommandToCLI(toolName, 'continue', {
-      timeout: this.config.timeouts.cliResponse
+      timeout: this.config.timeouts.cliResponse,
     });
 
     if (continueResponse.success) {
       this.logger.info(`Continue command successful for ${toolName}`);
       return continueResponse;
     } else {
-      this.logger.error(`Continue command failed for ${toolName}`, { 
-        error: continueResponse.error 
+      this.logger.error(`Continue command failed for ${toolName}`, {
+        error: continueResponse.error,
       });
       return continueResponse;
     }
@@ -209,7 +268,7 @@ export class CLIBridge {
     task: { id: string; title: string; description: string }
   ): Promise<CLIResponse> {
     let command: string;
-    
+
     if (toolName === 'cursor-agent') {
       command = `Implement task: ${task.title}. Description: ${task.description}`;
     } else if (toolName === 'claude-code') {
@@ -219,8 +278,11 @@ export class CLIBridge {
     } else {
       command = `Implement task "${task.title}" from OpenSpec. Description: ${task.description}`;
     }
-    
-    return await this.sendCommandToCLI(toolName, command);
+
+    // cursor-agent needs extra time for complex tasks
+    const timeout = toolName === 'cursor-agent' ? 180000 : undefined;
+
+    return await this.sendCommandToCLI(toolName, command, { timeout });
   }
 
   /**
@@ -228,7 +290,7 @@ export class CLIBridge {
    */
   async sendContinueCommand(toolName: string, iterations: number = 10): Promise<CLIResponse> {
     let command: string;
-    
+
     if (toolName === 'cursor-agent') {
       command = `Continue implementation ${iterations} times`;
     } else if (toolName === 'claude-code') {
@@ -238,8 +300,11 @@ export class CLIBridge {
     } else {
       command = `Continue implementation ${iterations}x`;
     }
-    
-    return await this.sendCommandToCLI(toolName, command);
+
+    // cursor-agent needs extra time
+    const timeout = toolName === 'cursor-agent' ? 180000 : undefined;
+
+    return await this.sendCommandToCLI(toolName, command, { timeout });
   }
 
   /**
@@ -247,7 +312,7 @@ export class CLIBridge {
    */
   async sendTestCommand(toolName: string): Promise<CLIResponse> {
     let command: string;
-    
+
     if (toolName === 'cursor-agent') {
       command = 'Run tests and check coverage';
     } else if (toolName === 'claude-code') {
@@ -257,7 +322,7 @@ export class CLIBridge {
     } else {
       command = 'Run tests and check coverage';
     }
-    
+
     return await this.sendCommandToCLI(toolName, command);
   }
 
@@ -266,7 +331,7 @@ export class CLIBridge {
    */
   async sendLintCommand(toolName: string): Promise<CLIResponse> {
     let command: string;
-    
+
     if (toolName === 'cursor-agent') {
       command = 'Run lint checks and fix any issues';
     } else if (toolName === 'claude-code') {
@@ -276,7 +341,7 @@ export class CLIBridge {
     } else {
       command = 'Run lint checks and fix any issues';
     }
-    
+
     return await this.sendCommandToCLI(toolName, command);
   }
 
@@ -285,7 +350,7 @@ export class CLIBridge {
    */
   async sendFormatCommand(toolName: string): Promise<CLIResponse> {
     let command: string;
-    
+
     if (toolName === 'cursor-agent') {
       command = 'Format code according to project standards';
     } else if (toolName === 'claude-code') {
@@ -295,7 +360,7 @@ export class CLIBridge {
     } else {
       command = 'Format code according to project standards';
     }
-    
+
     return await this.sendCommandToCLI(toolName, command);
   }
 
@@ -304,7 +369,7 @@ export class CLIBridge {
    */
   async sendCommitCommand(toolName: string, message: string): Promise<CLIResponse> {
     let command: string;
-    
+
     if (toolName === 'cursor-agent') {
       command = `Commit changes with message: ${message}`;
     } else if (toolName === 'claude-code') {
@@ -314,7 +379,7 @@ export class CLIBridge {
     } else {
       command = `Commit changes with message: ${message}`;
     }
-    
+
     return await this.sendCommandToCLI(toolName, command);
   }
 
@@ -330,7 +395,7 @@ export class CLIBridge {
         this.logger.error(`Failed to kill process: ${processId}`, { error: String(error) });
       }
     }
-    
+
     this.activeProcesses.clear();
   }
 
@@ -352,11 +417,11 @@ export class CLIBridge {
   async getCLICapabilities(toolName: string): Promise<string[]> {
     try {
       const response = await this.sendCommandToCLI(toolName, 'capabilities', { timeout: 10000 });
-      
+
       if (response.success) {
-        return response.output.split('\n').filter(line => line.trim());
+        return response.output.split('\n').filter((line) => line.trim());
       }
-      
+
       return [];
     } catch {
       return [];
@@ -372,7 +437,7 @@ export class CLIBridge {
     context?: Record<string, unknown>
   ): Promise<CLIResponse> {
     const startTime = Date.now();
-    
+
     this.logger.info(`Executing workflow step: ${step}`, { tool: toolName, context });
 
     let response: CLIResponse;
@@ -380,39 +445,42 @@ export class CLIBridge {
     switch (step) {
       case 'implement':
         if (context?.task) {
-          response = await this.sendTaskCommand(toolName, context.task as { id: string; title: string; description: string });
+          response = await this.sendTaskCommand(
+            toolName,
+            context.task as { id: string; title: string; description: string }
+          );
         } else {
           response = await this.sendCommandToCLI(toolName, 'Implement current task');
         }
         break;
-        
+
       case 'test':
         response = await this.sendTestCommand(toolName);
         break;
-        
+
       case 'lint':
         response = await this.sendLintCommand(toolName);
         break;
-        
+
       case 'format':
         response = await this.sendFormatCommand(toolName);
         break;
-        
+
       case 'commit': {
         const message = context?.message || 'Auto-commit from rulebook agent';
         response = await this.sendCommitCommand(toolName, message as string);
         break;
       }
-        
+
       default:
         throw new Error(`Unknown workflow step: ${step}`);
     }
 
     const duration = Date.now() - startTime;
-    this.logger.info(`Workflow step completed: ${step}`, { 
-      tool: toolName, 
+    this.logger.info(`Workflow step completed: ${step}`, {
+      tool: toolName,
       success: response.success,
-      duration 
+      duration,
     });
 
     return response;
@@ -431,7 +499,7 @@ export class CLIBridge {
       /working/i,
       /please wait/i,
       /\.\.\./g,
-      /loading/i
+      /loading/i,
     ];
 
     // Patterns that indicate CLI has stopped
@@ -442,18 +510,18 @@ export class CLIBridge {
       /finished/i,
       /awaiting/i,
       /waiting for/i,
-      /next command/i
+      /next command/i,
     ];
 
     // Check for processing patterns
-    const isProcessing = processingPatterns.some(pattern => pattern.test(lastOutput));
+    const isProcessing = processingPatterns.some((pattern) => pattern.test(lastOutput));
     if (isProcessing) {
       this.logger.debug(`CLI appears to be processing: ${toolName}`);
       return false; // Don't send continue
     }
 
     // Check for stopped patterns
-    const isStopped = stoppedPatterns.some(pattern => pattern.test(lastOutput));
+    const isStopped = stoppedPatterns.some((pattern) => pattern.test(lastOutput));
     if (isStopped) {
       this.logger.debug(`CLI appears to be stopped: ${toolName}`);
       return true; // Send continue
@@ -474,5 +542,3 @@ export function createCLIBridge(
 ): CLIBridge {
   return new CLIBridge(logger, config);
 }
-
-

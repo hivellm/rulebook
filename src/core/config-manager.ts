@@ -33,11 +33,11 @@ export class ConfigManager {
     try {
       const data = await readFileAsync(this.configPath, 'utf-8');
       const loadedConfig = JSON.parse(data) as RulebookConfig;
-      
+
       // Migrate config if needed
       const migratedConfig = await this.migrateConfig(loadedConfig);
       this.config = migratedConfig;
-      
+
       return migratedConfig;
     } catch (error) {
       console.warn('Failed to load config, initializing new one:', error);
@@ -52,9 +52,9 @@ export class ConfigManager {
     try {
       const configToSave = {
         ...config,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
-      
+
       await writeFileAsync(this.configPath, JSON.stringify(configToSave, null, 2));
       this.config = configToSave;
     } catch (error) {
@@ -89,7 +89,7 @@ export class ConfigManager {
         health: false,
         plugins: false,
         parallel: false,
-        smartContinue: false
+        smartContinue: false,
       },
       coverageThreshold: 95,
       language: 'en',
@@ -98,9 +98,9 @@ export class ConfigManager {
       maxParallelTasks: 1,
       timeouts: {
         taskExecution: 300000, // 5 minutes
-        cliResponse: 60000,     // 1 minute
-        testRun: 120000         // 2 minutes
-      }
+        cliResponse: 60000, // 1 minute
+        testRun: 120000, // 2 minutes
+      },
     };
 
     await this.saveConfig(defaultConfig);
@@ -129,7 +129,7 @@ export class ConfigManager {
       health: false,
       plugins: false,
       parallel: false,
-      smartContinue: false
+      smartContinue: false,
     };
 
     migrated.features = { ...defaultFeatures, ...migrated.features };
@@ -145,7 +145,7 @@ export class ConfigManager {
       migrated.timeouts = {
         taskExecution: 300000,
         cliResponse: 60000,
-        testRun: 120000
+        testRun: 120000,
       };
     }
 
@@ -161,7 +161,7 @@ export class ConfigManager {
   async updateConfig(updates: Partial<RulebookConfig>): Promise<RulebookConfig> {
     const currentConfig = await this.loadConfig();
     const updatedConfig = { ...currentConfig, ...updates };
-    
+
     await this.saveConfig(updatedConfig);
     return updatedConfig;
   }
@@ -169,16 +169,19 @@ export class ConfigManager {
   /**
    * Enable or disable a feature
    */
-  async toggleFeature(feature: keyof RulebookConfig['features'], enabled: boolean): Promise<RulebookConfig> {
+  async toggleFeature(
+    feature: keyof RulebookConfig['features'],
+    enabled: boolean
+  ): Promise<RulebookConfig> {
     const currentConfig = await this.loadConfig();
     const updatedConfig = {
       ...currentConfig,
       features: {
         ...currentConfig.features,
-        [feature]: enabled
-      }
+        [feature]: enabled,
+      },
     };
-    
+
     await this.saveConfig(updatedConfig);
     return updatedConfig;
   }
@@ -191,7 +194,7 @@ export class ConfigManager {
     const cliTools: string[] = [];
 
     const tools = ['cursor-cli', 'gemini-cli', 'claude-cli'];
-    
+
     for (const tool of tools) {
       try {
         await execa(tool, ['--version'], { timeout: 5000 });
@@ -239,7 +242,7 @@ export class ConfigManager {
     cliTools: string[];
   }> {
     const config = await this.loadConfig();
-    
+
     const enabledFeatures = Object.entries(config.features)
       .filter(([, enabled]) => enabled)
       .map(([feature]) => feature);
@@ -249,7 +252,7 @@ export class ConfigManager {
       projectId: config.projectId,
       enabledFeatures,
       coverageThreshold: config.coverageThreshold,
-      cliTools: config.cliTools
+      cliTools: config.cliTools,
     };
   }
 }
@@ -288,7 +291,7 @@ export function getDefaultConfig(): RulebookConfig {
       health: false,
       plugins: false,
       parallel: false,
-      smartContinue: false
+      smartContinue: false,
     },
     coverageThreshold: 95,
     language: 'en',
@@ -298,7 +301,7 @@ export function getDefaultConfig(): RulebookConfig {
     timeouts: {
       taskExecution: 300000,
       cliResponse: 60000,
-      testRun: 120000
-    }
+      testRun: 120000,
+    },
   };
 }

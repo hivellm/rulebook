@@ -36,10 +36,12 @@ describe('Watcher', () => {
   describe('startWatcher', () => {
     it('should start modern watcher (mocked)', async () => {
       // Mock the startWatcher function to avoid actual UI rendering
-      const startSpy = vi.spyOn(await import('../src/core/watcher.js'), 'startWatcher').mockResolvedValue();
-      
+      const startSpy = vi
+        .spyOn(await import('../src/core/watcher.js'), 'startWatcher')
+        .mockResolvedValue();
+
       await startWatcher(tempDir);
-      
+
       expect(startSpy).toHaveBeenCalled();
     });
   });
@@ -47,10 +49,12 @@ describe('Watcher', () => {
   describe('startModernWatcher', () => {
     it('should start modern watcher (alias)', async () => {
       // Mock the startModernWatcher function
-      const startSpy = vi.spyOn(await import('../src/core/watcher.js'), 'startModernWatcher').mockResolvedValue();
-      
+      const startSpy = vi
+        .spyOn(await import('../src/core/watcher.js'), 'startModernWatcher')
+        .mockResolvedValue();
+
       await startModernWatcher(tempDir);
-      
+
       expect(startSpy).toHaveBeenCalled();
     });
   });

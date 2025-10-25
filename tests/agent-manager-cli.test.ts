@@ -447,8 +447,4 @@ describe('Agent Manager CLI Integration', () => {
       expect(capabilities.length).toBe(0);
     });
   });
-});ies)).toBe(true);
-    
-    console.log(`CLI Capabilities: ${capabilities.length} capabilities found`);
-  });
 });

@@ -36,9 +36,9 @@ export class AgentManager {
     try {
       this.config = await this.configManager.loadConfig();
       this.cliBridge = createCLIBridge(this.logger, this.config);
-      
+
       await this.openspecManager.initialize();
-      
+
       this.logger.info('Agent Manager initialized');
     } catch (error) {
       this.logger.error('Failed to initialize Agent Manager', { error: String(error) });
@@ -52,9 +52,9 @@ export class AgentManager {
   async startAgent(options: AgentOptions = {}): Promise<void> {
     try {
       await this.initialize();
-      
+
       console.log(chalk.bold.blue('\n🤖 Rulebook Autonomous Agent\n'));
-      
+
       // Detect and select CLI tool
       const selectedTool = await this.selectCLITool(options.tool);
       if (!selectedTool) {
@@ -72,7 +72,6 @@ export class AgentManager {
 
       // Run main workflow loop
       await this.runAgentWorkflow(options);
-
     } catch (error) {
       this.logger.error('Agent failed', { error: String(error) });
       console.error(chalk.red('\n❌ Agent failed:'), error);
@@ -86,14 +85,18 @@ export class AgentManager {
    */
   async selectCLITool(preferredTool?: string): Promise<string | null> {
     const availableTools = await this.cliBridge.detectCLITools();
-    
+
     if (availableTools.length === 0) {
-      console.log(chalk.red('No CLI tools detected. Please install cursor-agent, claude-code, gemini-cli, cursor-cli, or claude-cli.'));
+      console.log(
+        chalk.red(
+          'No CLI tools detected. Please install cursor-agent, claude-code, gemini-cli, cursor-cli, or claude-cli.'
+        )
+      );
       return null;
     }
 
     // If preferred tool is specified and available, use it
-    if (preferredTool && availableTools.some(tool => tool.name === preferredTool)) {
+    if (preferredTool && availableTools.some((tool) => tool.name === preferredTool)) {
       console.log(chalk.green(`Using preferred tool: ${preferredTool}`));
       return preferredTool;
     }
@@ -105,9 +108,9 @@ export class AgentManager {
     }
 
     // Multiple tools available, let user choose
-    const choices = availableTools.map(tool => ({
+    const choices = availableTools.map((tool) => ({
       name: `${tool.name} ${tool.version ? `(${tool.version})` : ''}`,
-      value: tool.name
+      value: tool.name,
     }));
 
     const answer = await inquirer.prompt([
@@ -115,8 +118,8 @@ export class AgentManager {
         type: 'list',
         name: 'tool',
         message: 'Select CLI tool to use:',
-        choices
-      }
+        choices,
+      },
     ]);
 
     return answer.tool;
@@ -146,7 +149,7 @@ export class AgentManager {
 
         // Execute task workflow
         const success = await this.executeTaskWorkflow(nextTask, options);
-        
+
         if (success) {
           await this.openspecManager.markTaskComplete(nextTask.id);
           this.logger.taskComplete(nextTask.id, nextTask.title, 0);
@@ -157,11 +160,10 @@ export class AgentManager {
 
         // Small delay between tasks
         await this.delay(2000);
-
       } catch (error) {
         this.logger.error(`Workflow iteration ${iteration} failed`, { error: String(error) });
         console.error(chalk.red(`\n❌ Iteration ${iteration} failed:`), error);
-        
+
         // Continue with next iteration unless it's a critical error
         if (iteration >= maxIterations) {
           break;
@@ -179,7 +181,7 @@ export class AgentManager {
    */
   async executeTaskWorkflow(task: OpenSpecTask, options: AgentOptions): Promise<boolean> {
     const startTime = Date.now();
-    
+
     this.logger.taskStart(task.id, task.title);
     console.log(chalk.blue(`\n📋 Executing task: ${task.title}`));
 
@@ -197,15 +199,45 @@ export class AgentManager {
       // Step 1: Send task to CLI
       console.log(chalk.gray('📤 Sending task to CLI...'));
       const taskResponse = await this.cliBridge.sendTaskCommand(this.currentTool!, task);
-      
+
+      console.log(chalk.blue('\n📥 Agent Response:'));
+      console.log(chalk.gray('─'.repeat(80)));
+      console.log(taskResponse.output || '(no output)');
+      console.log(chalk.gray('─'.repeat(80)));
+      console.log(
+        chalk.gray(
+          `Exit Code: ${taskResponse.exitCode} | Duration: ${Math.round(taskResponse.duration / 1000)}s`
+        )
+      );
+
+      if (taskResponse.error) {
+        console.log(chalk.red('\n⚠️ Error Output:'));
+        console.log(chalk.red(taskResponse.error));
+      }
+
       if (!taskResponse.success) {
         throw new Error(`Task command failed: ${taskResponse.error}`);
       }
 
       // Step 2: Continue implementation loop
-      console.log(chalk.gray('🔄 Continuing implementation...'));
+      console.log(chalk.gray('\n🔄 Continuing implementation...'));
       const continueResponse = await this.cliBridge.sendContinueCommand(this.currentTool!, 10);
-      
+
+      console.log(chalk.blue('\n📥 Continue Response:'));
+      console.log(chalk.gray('─'.repeat(80)));
+      console.log(continueResponse.output || '(no output)');
+      console.log(chalk.gray('─'.repeat(80)));
+      console.log(
+        chalk.gray(
+          `Exit Code: ${continueResponse.exitCode} | Duration: ${Math.round(continueResponse.duration / 1000)}s`
+        )
+      );
+
+      if (continueResponse.error) {
+        console.log(chalk.red('\n⚠️ Error Output:'));
+        console.log(chalk.red(continueResponse.error));
+      }
+
       if (!continueResponse.success) {
         console.log(chalk.yellow('⚠️ Continue command failed, but continuing workflow'));
       }
@@ -217,7 +249,7 @@ export class AgentManager {
       // Step 4: Run tests
       console.log(chalk.gray('🧪 Running tests...'));
       const testSuccess = await this.runTests();
-      
+
       if (!testSuccess) {
         throw new Error('Tests failed');
       }
@@ -225,7 +257,7 @@ export class AgentManager {
       // Step 5: Check coverage
       console.log(chalk.gray('📊 Checking coverage...'));
       const coverageSuccess = await this.checkCoverage();
-      
+
       if (!coverageSuccess) {
         throw new Error('Coverage below threshold');
       }
@@ -240,14 +272,13 @@ export class AgentManager {
 
       const duration = Date.now() - startTime;
       this.logger.taskComplete(task.id, task.title, duration);
-      
+
       console.log(chalk.green(`✅ Task completed successfully in ${Math.round(duration / 1000)}s`));
       return true;
-
     } catch (error) {
       const duration = Date.now() - startTime;
       this.logger.taskFailed(task.id, task.title, String(error), duration);
-      
+
       console.error(chalk.red(`❌ Task failed: ${error}`));
       return false;
     }
@@ -259,7 +290,11 @@ export class AgentManager {
   private async runQualityChecks(): Promise<void> {
     // Run lint
     const lintResponse = await this.cliBridge.sendLintCommand(this.currentTool!);
-    this.logger.testExecution('lint', lintResponse.success ? 'passed' : 'failed', lintResponse.duration);
+    this.logger.testExecution(
+      'lint',
+      lintResponse.success ? 'passed' : 'failed',
+      lintResponse.duration
+    );
 
     if (!lintResponse.success) {
       console.log(chalk.yellow('⚠️ Lint issues found, but continuing'));
@@ -267,7 +302,11 @@ export class AgentManager {
 
     // Run format
     const formatResponse = await this.cliBridge.sendFormatCommand(this.currentTool!);
-    this.logger.testExecution('format', formatResponse.success ? 'passed' : 'failed', formatResponse.duration);
+    this.logger.testExecution(
+      'format',
+      formatResponse.success ? 'passed' : 'failed',
+      formatResponse.duration
+    );
 
     if (!formatResponse.success) {
       console.log(chalk.yellow('⚠️ Format issues found, but continuing'));
@@ -279,8 +318,12 @@ export class AgentManager {
    */
   private async runTests(): Promise<boolean> {
     const testResponse = await this.cliBridge.sendTestCommand(this.currentTool!);
-    this.logger.testExecution('tests', testResponse.success ? 'passed' : 'failed', testResponse.duration);
-    
+    this.logger.testExecution(
+      'tests',
+      testResponse.success ? 'passed' : 'failed',
+      testResponse.duration
+    );
+
     return testResponse.success;
   }
 
@@ -292,9 +335,9 @@ export class AgentManager {
     // For now, assume coverage is OK
     const coverage = 95; // This should come from actual coverage check
     const threshold = this.config.coverageThreshold;
-    
+
     this.logger.coverageCheck(coverage, threshold);
-    
+
     return coverage >= threshold;
   }
 
@@ -313,7 +356,7 @@ export class AgentManager {
   private async commitChanges(task: OpenSpecTask): Promise<void> {
     const message = `feat: ${task.title}\n\n${task.description}`;
     const commitResponse = await this.cliBridge.sendCommitCommand(this.currentTool!, message);
-    
+
     if (!commitResponse.success) {
       throw new Error(`Commit failed: ${commitResponse.error}`);
     }
@@ -333,11 +376,11 @@ export class AgentManager {
    */
   private async cleanup(): Promise<void> {
     this.isRunning = false;
-    
+
     if (this.cliBridge) {
       await this.cliBridge.killAllProcesses();
     }
-    
+
     await this.logger.close();
   }
 
@@ -345,7 +388,7 @@ export class AgentManager {
    * Delay execution
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -371,5 +414,3 @@ export async function startAgent(projectRoot: string, options: AgentOptions = {}
 export function createAgentManager(projectRoot: string): AgentManager {
   return new AgentManager(projectRoot);
 }
-
-

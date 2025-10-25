@@ -56,10 +56,10 @@ export class OpenSpecManager {
       let currentTask: string | undefined;
 
       // Load history from completed tasks
-      const history: OpenSpecTask[] = tasks.filter(t => t.status === 'completed');
+      const history: OpenSpecTask[] = tasks.filter((t) => t.status === 'completed');
 
       this.data = {
-        tasks: tasks.filter(t => t.status !== 'completed'),
+        tasks: tasks.filter((t) => t.status !== 'completed'),
         currentTask,
         history,
         metadata: {
@@ -67,8 +67,8 @@ export class OpenSpecManager {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           totalTasks: tasks.length,
-          completedTasks: history.length
-        }
+          completedTasks: history.length,
+        },
       };
 
       return this.data;
@@ -111,8 +111,8 @@ export class OpenSpecManager {
 
     try {
       const changeDirs = readdirSync(this.changesPath, { withFileTypes: true })
-        .filter(dirent => dirent.isDirectory())
-        .map(dirent => dirent.name);
+        .filter((dirent) => dirent.isDirectory())
+        .map((dirent) => dirent.name);
 
       for (const changeDir of changeDirs) {
         const tasksPath = join(this.changesPath, changeDir, TASKS_FILE);
@@ -135,31 +135,31 @@ export class OpenSpecManager {
   private parseTasksFromMarkdown(content: string): OpenSpecTask[] {
     const tasks: OpenSpecTask[] = [];
     const lines = content.split('\n');
-    
+
     // TODO: Implement task parsing logic
     // let currentTask: Partial<OpenSpecTask> | null = null;
     // let inTaskSection = false;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      
+
       // Check for task list items
       if (line.startsWith('- [') && line.includes(']')) {
         const statusMatch = line.match(/^- \[([x ])\] (.+)$/);
         if (statusMatch) {
           const isCompleted = statusMatch[1] === 'x';
           const taskTitle = statusMatch[2];
-          
+
           // Extract task ID from title if present, otherwise generate one
           const idMatch = taskTitle.match(/^(.+) \(id: (.+)\)$/);
           const title = idMatch ? idMatch[1] : taskTitle;
           const id = idMatch ? idMatch[2] : randomUUID();
-          
+
           // Extract priority from title if present
           const priorityMatch = title.match(/^(\d+)\.\d+ (.+)$/);
           const priority = priorityMatch ? parseInt(priorityMatch[1]) : 1;
           const cleanTitle = priorityMatch ? priorityMatch[2] : title;
-          
+
           // Extract dependencies from subsequent lines
           const dependencies: string[] = [];
           let j = i + 1;
@@ -170,7 +170,7 @@ export class OpenSpecManager {
             }
             j++;
           }
-          
+
           const task: OpenSpecTask = {
             id,
             title: cleanTitle,
@@ -182,9 +182,9 @@ export class OpenSpecManager {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             attempts: 0,
-            tags: []
+            tags: [],
           };
-          
+
           tasks.push(task);
         }
       }
@@ -193,14 +193,13 @@ export class OpenSpecManager {
     return tasks;
   }
 
-
   /**
    * Get tasks ordered by priority
    */
   async getTasksByPriority(): Promise<OpenSpecTask[]> {
     const data = await this.loadOpenSpec();
     return data.tasks
-      .filter(task => task.status === 'pending')
+      .filter((task) => task.status === 'pending')
       .sort((a, b) => a.priority - b.priority);
   }
 
@@ -209,12 +208,12 @@ export class OpenSpecManager {
    */
   async getCurrentTask(): Promise<OpenSpecTask | null> {
     const data = await this.loadOpenSpec();
-    
+
     if (!data.currentTask) {
       return null;
     }
 
-    return data.tasks.find(task => task.id === data.currentTask) || null;
+    return data.tasks.find((task) => task.id === data.currentTask) || null;
   }
 
   /**
@@ -222,8 +221,8 @@ export class OpenSpecManager {
    */
   async setCurrentTask(taskId: string): Promise<void> {
     const data = await this.loadOpenSpec();
-    
-    const task = data.tasks.find(t => t.id === taskId);
+
+    const task = data.tasks.find((t) => t.id === taskId);
     if (!task) {
       throw new Error(`Task ${taskId} not found`);
     }
@@ -238,8 +237,8 @@ export class OpenSpecManager {
    */
   async updateTaskStatus(taskId: string, status: OpenSpecTask['status']): Promise<void> {
     const data = await this.loadOpenSpec();
-    
-    const taskIndex = data.tasks.findIndex(t => t.id === taskId);
+
+    const taskIndex = data.tasks.findIndex((t) => t.id === taskId);
     if (taskIndex === -1) {
       throw new Error(`Task ${taskId} not found`);
     }
@@ -253,7 +252,7 @@ export class OpenSpecManager {
       // Move to history
       data.history.push(task);
       data.tasks.splice(taskIndex, 1);
-      
+
       // Clear current task if it was completed
       if (data.currentTask === taskId) {
         data.currentTask = undefined;
@@ -276,15 +275,17 @@ export class OpenSpecManager {
   /**
    * Add new task
    */
-  async addTask(task: Omit<OpenSpecTask, 'id' | 'createdAt' | 'updatedAt' | 'attempts'>): Promise<string> {
+  async addTask(
+    task: Omit<OpenSpecTask, 'id' | 'createdAt' | 'updatedAt' | 'attempts'>
+  ): Promise<string> {
     const data = await this.loadOpenSpec();
-    
+
     const newTask: OpenSpecTask = {
       ...task,
       id: randomUUID(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      attempts: 0
+      attempts: 0,
     };
 
     data.tasks.push(newTask);
@@ -299,7 +300,7 @@ export class OpenSpecManager {
    */
   async getTask(taskId: string): Promise<OpenSpecTask | null> {
     const data = await this.loadOpenSpec();
-    return data.tasks.find(t => t.id === taskId) || null;
+    return data.tasks.find((t) => t.id === taskId) || null;
   }
 
   /**
@@ -307,13 +308,13 @@ export class OpenSpecManager {
    */
   async getTaskDependencies(taskId: string): Promise<OpenSpecTask[]> {
     const data = await this.loadOpenSpec();
-    const task = data.tasks.find(t => t.id === taskId);
-    
+    const task = data.tasks.find((t) => t.id === taskId);
+
     if (!task) {
       return [];
     }
 
-    return data.tasks.filter(t => task.dependencies.includes(t.id));
+    return data.tasks.filter((t) => task.dependencies.includes(t.id));
   }
 
   /**
@@ -321,7 +322,7 @@ export class OpenSpecManager {
    */
   async areDependenciesSatisfied(taskId: string): Promise<boolean> {
     const dependencies = await this.getTaskDependencies(taskId);
-    return dependencies.every(dep => dep.status === 'completed');
+    return dependencies.every((dep) => dep.status === 'completed');
   }
 
   /**
@@ -329,7 +330,7 @@ export class OpenSpecManager {
    */
   async getNextTask(): Promise<OpenSpecTask | null> {
     const pendingTasks = await this.getTasksByPriority();
-    
+
     for (const task of pendingTasks) {
       if (await this.areDependenciesSatisfied(task.id)) {
         return task;
@@ -344,12 +345,12 @@ export class OpenSpecManager {
    */
   async incrementTaskAttempts(taskId: string): Promise<void> {
     const data = await this.loadOpenSpec();
-    
-    const task = data.tasks.find(t => t.id === taskId);
+
+    const task = data.tasks.find((t) => t.id === taskId);
     if (task) {
       task.attempts++;
       task.updatedAt = new Date().toISOString();
-      
+
       this.data = data;
       await this.saveOpenSpec();
     }
@@ -367,14 +368,14 @@ export class OpenSpecManager {
     skipped: number;
   }> {
     const data = await this.loadOpenSpec();
-    
+
     const stats = {
       total: data.tasks.length + data.history.length,
       pending: 0,
       inProgress: 0,
       completed: data.history.length,
       failed: 0,
-      skipped: 0
+      skipped: 0,
     };
 
     for (const task of data.tasks) {
@@ -388,57 +389,61 @@ export class OpenSpecManager {
     return stats;
   }
 
-
   /**
    * Generate ASCII dependency tree
    */
   async generateDependencyTree(): Promise<string> {
     const data = await this.loadOpenSpec();
     const lines: string[] = [];
-    
+
     lines.push('Task Dependency Tree:');
     lines.push('');
 
     const visited = new Set<string>();
     const processing = new Set<string>();
-    
+
     const buildTree = (taskId: string, depth: number = 0): void => {
       if (processing.has(taskId)) {
         lines.push(`${'  '.repeat(depth)}└─ ${taskId} (circular dependency)`);
         return;
       }
-      
+
       if (visited.has(taskId)) {
         return;
       }
-      
+
       processing.add(taskId);
       visited.add(taskId);
-      
-      const task = [...data.tasks, ...data.history].find(t => t.id === taskId);
-      
+
+      const task = [...data.tasks, ...data.history].find((t) => t.id === taskId);
+
       if (!task) {
         processing.delete(taskId);
         return;
       }
-      
+
       const prefix = depth === 0 ? '├─' : '└─';
-      const status = task.status === 'completed' ? '✓' : 
-                    task.status === 'in-progress' ? '⚙' : 
-                    task.status === 'failed' ? '✗' : '○';
-      
+      const status =
+        task.status === 'completed'
+          ? '✓'
+          : task.status === 'in-progress'
+            ? '⚙'
+            : task.status === 'failed'
+              ? '✗'
+              : '○';
+
       lines.push(`${'  '.repeat(depth)}${prefix} ${status} ${task.title} (${task.status})`);
-      
+
       for (const depId of task.dependencies) {
         buildTree(depId, depth + 1);
       }
-      
+
       processing.delete(taskId);
     };
 
     // Start with tasks that have no dependencies
     const allTasks = [...data.tasks, ...data.history];
-    const rootTasks = allTasks.filter(task => task.dependencies.length === 0);
+    const rootTasks = allTasks.filter((task) => task.dependencies.length === 0);
     for (const task of rootTasks) {
       buildTree(task.id);
     }
@@ -471,7 +476,7 @@ export class OpenSpecManager {
       processing.add(taskId);
 
       const allTasks = [...data.tasks, ...data.history];
-      const task = allTasks.find(t => t.id === taskId);
+      const task = allTasks.find((t) => t.id === taskId);
       if (task) {
         for (const depId of task.dependencies) {
           dfs(depId, [...path, taskId]);
@@ -491,7 +496,7 @@ export class OpenSpecManager {
 
     return {
       valid: cycles.length === 0,
-      cycles
+      cycles,
     };
   }
 
@@ -515,8 +520,8 @@ export class OpenSpecManager {
       for (const task of tasks) {
         if (processed.has(task.id)) continue;
 
-        const dependencies = data.tasks.filter(t => task.dependencies.includes(t.id));
-        const allDependenciesProcessed = dependencies.every(dep => processed.has(dep.id));
+        const dependencies = data.tasks.filter((t) => task.dependencies.includes(t.id));
+        const allDependenciesProcessed = dependencies.every((dep) => processed.has(dep.id));
 
         if (allDependenciesProcessed) {
           currentLevelTasks.push(task);
@@ -526,12 +531,15 @@ export class OpenSpecManager {
 
       if (currentLevelTasks.length > 0) {
         levels[level] = currentLevelTasks;
-        getLevel(data.tasks.filter(t => !processed.has(t.id)), level + 1);
+        getLevel(
+          data.tasks.filter((t) => !processed.has(t.id)),
+          level + 1
+        );
       }
     };
 
-    getLevel(data.tasks.filter(t => t.status === 'pending'));
-    return levels.filter(level => level.length > 0);
+    getLevel(data.tasks.filter((t) => t.status === 'pending'));
+    return levels.filter((level) => level.length > 0);
   }
 
   /**
@@ -553,7 +561,7 @@ export class OpenSpecManager {
    */
   async canStartTask(taskId: string): Promise<boolean> {
     const dependencies = await this.getTaskDependencies(taskId);
-    return dependencies.every(dep => dep.status === 'completed');
+    return dependencies.every((dep) => dep.status === 'completed');
   }
 
   /**
@@ -561,15 +569,13 @@ export class OpenSpecManager {
    */
   async getBlockingTasks(taskId: string): Promise<OpenSpecTask[]> {
     const data = await this.loadOpenSpec();
-    const task = data.tasks.find(t => t.id === taskId);
-    
+    const task = data.tasks.find((t) => t.id === taskId);
+
     if (!task) {
       return [];
     }
 
-    return data.tasks.filter(t => 
-      task.dependencies.includes(t.id) && t.status !== 'completed'
-    );
+    return data.tasks.filter((t) => task.dependencies.includes(t.id) && t.status !== 'completed');
   }
 }
 
