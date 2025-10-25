@@ -4,6 +4,21 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
+// Mock the modern console to avoid actual UI rendering
+vi.mock('../src/core/modern-console.js', () => ({
+  createModernConsole: vi.fn(() => ({
+    start: vi.fn().mockResolvedValue(undefined),
+    stop: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
+// Mock the agent manager to avoid initialization issues
+vi.mock('../src/core/agent-manager.js', () => ({
+  AgentManager: vi.fn().mockImplementation(() => ({
+    initialize: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
 // Mock console methods to avoid output during tests
 beforeEach(() => {
   vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -34,91 +49,160 @@ describe('Watcher', () => {
   });
 
   describe('startWatcher', () => {
-    it('should start modern watcher (mocked)', async () => {
-      // Mock the startWatcher function to avoid actual UI rendering
-      const startSpy = vi
-        .spyOn(await import('../src/core/watcher.js'), 'startWatcher')
-        .mockResolvedValue();
+    it('should create agent manager and modern console', async () => {
+      const { AgentManager } = await import('../src/core/agent-manager.js');
+      const { createModernConsole } = await import('../src/core/modern-console.js');
 
       await startWatcher(tempDir);
 
-      expect(startSpy).toHaveBeenCalled();
+      expect(AgentManager).toHaveBeenCalledWith(tempDir);
+      expect(createModernConsole).toHaveBeenCalledWith({
+        projectRoot: tempDir,
+        refreshInterval: 100,
+        agentManager: expect.any(Object),
+      });
+    });
+
+    it('should start the modern console', async () => {
+      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const mockConsole = {
+        start: vi.fn().mockResolvedValue(undefined),
+        stop: vi.fn().mockResolvedValue(undefined),
+      };
+      createModernConsole.mockReturnValue(mockConsole);
+
+      await startWatcher(tempDir);
+
+      expect(mockConsole.start).toHaveBeenCalled();
+    });
+
+    it('should handle errors during startup', async () => {
+      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const mockConsole = {
+        start: vi.fn().mockRejectedValue(new Error('Startup failed')),
+        stop: vi.fn().mockResolvedValue(undefined),
+      };
+      createModernConsole.mockReturnValue(mockConsole);
+
+      await expect(startWatcher(tempDir)).rejects.toThrow('Startup failed');
+    });
+
+    it('should use correct configuration', async () => {
+      const { createModernConsole } = await import('../src/core/modern-console.js');
+
+      await startWatcher(tempDir);
+
+      expect(createModernConsole).toHaveBeenCalledWith({
+        projectRoot: tempDir,
+        refreshInterval: 100,
+        agentManager: expect.any(Object),
+      });
     });
   });
 
   describe('startModernWatcher', () => {
-    it('should start modern watcher (alias)', async () => {
-      // Mock the startModernWatcher function
-      const startSpy = vi
-        .spyOn(await import('../src/core/watcher.js'), 'startModernWatcher')
-        .mockResolvedValue();
+    it('should be an alias for startWatcher', async () => {
+      const { AgentManager } = await import('../src/core/agent-manager.js');
+      const { createModernConsole } = await import('../src/core/modern-console.js');
 
       await startModernWatcher(tempDir);
 
-      expect(startSpy).toHaveBeenCalled();
+      expect(AgentManager).toHaveBeenCalledWith(tempDir);
+      expect(createModernConsole).toHaveBeenCalledWith({
+        projectRoot: tempDir,
+        refreshInterval: 100,
+        agentManager: expect.any(Object),
+      });
+    });
+
+    it('should have identical behavior to startWatcher', async () => {
+      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const mockConsole = {
+        start: vi.fn().mockResolvedValue(undefined),
+        stop: vi.fn().mockResolvedValue(undefined),
+      };
+      createModernConsole.mockReturnValue(mockConsole);
+
+      await startModernWatcher(tempDir);
+
+      expect(mockConsole.start).toHaveBeenCalled();
+    });
+
+    it('should handle errors identically to startWatcher', async () => {
+      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const mockConsole = {
+        start: vi.fn().mockRejectedValue(new Error('Startup failed')),
+        stop: vi.fn().mockResolvedValue(undefined),
+      };
+      createModernConsole.mockReturnValue(mockConsole);
+
+      await expect(startModernWatcher(tempDir)).rejects.toThrow('Startup failed');
     });
   });
 
-  describe('simplified watcher UI', () => {
-    it('should use simplified progress-focused UI', async () => {
-      // Test that the watcher uses the simplified UI components (v0.10.0+)
-      // The simplified UI should have:
-      // - Active tasks display (no task details panel - removed)
-      // - Progress bar (no system info panel - removed)
-      // - Activity logs (no scrolling task list - removed)
+  describe('integration', () => {
+    it('should create agent manager with correct project root', async () => {
+      const { AgentManager } = await import('../src/core/agent-manager.js');
 
-      const watcherModule = await import('../src/core/watcher.js');
+      await startWatcher(tempDir);
 
-      // Verify that the watcher uses modern console
-      expect(watcherModule.startWatcher).toBeDefined();
-      expect(watcherModule.startModernWatcher).toBeDefined();
-
-      // The watcher should not have removed components
-      // (These would be tested at the modern-console level)
+      expect(AgentManager).toHaveBeenCalledWith(tempDir);
     });
 
-    it('should have progress-focused UI components', async () => {
-      // Test that the watcher has the new simplified UI components
-      const watcherModule = await import('../src/core/watcher.js');
+    it('should pass agent manager to modern console', async () => {
+      const { AgentManager } = await import('../src/core/agent-manager.js');
+      const { createModernConsole } = await import('../src/core/modern-console.js');
 
-      // Core watcher functions should exist
-      expect(watcherModule.startWatcher).toBeDefined();
-      expect(watcherModule.startModernWatcher).toBeDefined();
+      await startWatcher(tempDir);
 
-      // The watcher should use the modern console with simplified UI
-      expect(typeof watcherModule.startWatcher).toBe('function');
-      expect(typeof watcherModule.startModernWatcher).toBe('function');
+      const agentManagerInstance = AgentManager.mock.results[0].value;
+      expect(createModernConsole).toHaveBeenCalledWith({
+        projectRoot: tempDir,
+        refreshInterval: 100,
+        agentManager: agentManagerInstance,
+      });
     });
 
-    it('should focus on progress and activity monitoring', async () => {
-      // Test that the watcher focuses on the core functionality
-      const watcherModule = await import('../src/core/watcher.js');
+    it('should use default refresh interval', async () => {
+      const { createModernConsole } = await import('../src/core/modern-console.js');
 
-      // Core watcher functions should exist
-      expect(watcherModule.startWatcher).toBeDefined();
-      expect(watcherModule.startModernWatcher).toBeDefined();
+      await startWatcher(tempDir);
 
-      // These are the main functions that should be available
-      expect(typeof watcherModule.startWatcher).toBe('function');
-      expect(typeof watcherModule.startModernWatcher).toBe('function');
+      expect(createModernConsole).toHaveBeenCalledWith({
+        projectRoot: tempDir,
+        refreshInterval: 100,
+        agentManager: expect.any(Object),
+      });
+    });
+  });
+
+  describe('error handling', () => {
+    it('should propagate agent manager creation errors', async () => {
+      const { AgentManager } = await import('../src/core/agent-manager.js');
+      AgentManager.mockImplementation(() => {
+        throw new Error('Agent manager creation failed');
+      });
+
+      await expect(startWatcher(tempDir)).rejects.toThrow('Agent manager creation failed');
     });
 
-    it('should support simplified UI features', async () => {
-      // Test that the watcher supports the new simplified UI features
-      const watcherModule = await import('../src/core/watcher.js');
+    it('should propagate modern console creation errors', async () => {
+      const { createModernConsole } = await import('../src/core/modern-console.js');
+      createModernConsole.mockImplementation(() => {
+        throw new Error('Modern console creation failed');
+      });
 
-      // The watcher should support:
-      // - Real-time task progress display
-      // - Activity logging with timestamps
-      // - Progress bar visualization
-      // - Clean, focused interface
+      await expect(startWatcher(tempDir)).rejects.toThrow('Modern console creation failed');
+    });
 
-      expect(watcherModule.startWatcher).toBeDefined();
-      expect(watcherModule.startModernWatcher).toBeDefined();
+    it('should handle both functions with same error handling', async () => {
+      const { AgentManager } = await import('../src/core/agent-manager.js');
+      AgentManager.mockImplementation(() => {
+        throw new Error('Agent manager creation failed');
+      });
 
-      // Verify the functions are callable
-      expect(typeof watcherModule.startWatcher).toBe('function');
-      expect(typeof watcherModule.startModernWatcher).toBe('function');
+      await expect(startWatcher(tempDir)).rejects.toThrow('Agent manager creation failed');
+      await expect(startModernWatcher(tempDir)).rejects.toThrow('Agent manager creation failed');
     });
   });
 });
