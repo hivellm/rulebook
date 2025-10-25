@@ -948,16 +948,33 @@ export class CLIBridge {
     let command: string;
 
     if (toolName === 'cursor-agent') {
-      command = 'Run tests and check coverage';
+      command = `Execute comprehensive test suite with automatic error correction:
+
+1. Run the project's test command (npm test, cargo test, pytest, go test, etc.)
+2. Analyze ALL test failures and errors in detail
+3. If there are ANY test failures:
+   a. Read the failing test files and implementation code
+   b. Identify the root cause of each failure
+   c. Fix the implementation code OR fix the test if it's incorrect
+   d. Run tests again to verify fixes
+   e. Repeat steps a-d until ALL tests pass (100%)
+4. Check test coverage:
+   a. Run coverage command (npm run test:coverage, cargo llvm-cov, pytest --cov, etc.)
+   b. If coverage is below threshold (95%): Add more tests to increase coverage
+   c. Run coverage again until threshold is met
+5. If all tests pass with adequate coverage: Report success with coverage percentage
+6. Maximum 5 correction attempts
+
+CRITICAL: ALL tests must pass (100%) and coverage must meet threshold (95%+) before proceeding.`;
     } else if (toolName === 'claude-code') {
-      command = 'Run the tests and check test coverage';
+      command = 'Run all tests and ensure 100% passing. If tests fail, fix the issues and rerun. Check coverage meets 95%+ threshold. Maximum 5 attempts.';
     } else if (toolName === 'gemini-cli') {
-      command = 'Please run the tests and check coverage';
+      command = 'Please run tests, fix failures until all pass, and ensure coverage is 95%+.';
     } else {
-      command = 'Run tests and check coverage';
+      command = 'Run tests, fix failures, ensure all pass and coverage is 95%+';
     }
 
-    return await this.sendCommandToCLI(toolName, command);
+    return await this.sendCommandToCLI(toolName, command, { timeout: 600000 }); // 10 minutes for multiple test runs
   }
 
   /**
@@ -967,16 +984,28 @@ export class CLIBridge {
     let command: string;
 
     if (toolName === 'cursor-agent') {
-      command = 'Run lint checks and fix any issues';
+      command = `Execute linting quality checks with automatic error correction:
+
+1. Run the project's lint command (npm run lint, cargo clippy, ruff check, etc.)
+2. Analyze ALL lint errors and warnings carefully
+3. If there are ANY lint issues:
+   a. Read the files with lint errors
+   b. Fix ALL issues according to the linter's suggestions
+   c. Run lint again to verify fixes
+   d. Repeat steps a-c until linting passes with ZERO warnings
+4. If linting passes: Report success
+5. Maximum 3 correction attempts
+
+CRITICAL: Do NOT proceed until linting passes with 0 warnings.`;
     } else if (toolName === 'claude-code') {
-      command = 'Run linting checks and fix any issues found';
+      command = 'Run linting checks and fix all issues. Keep fixing until linting passes with 0 warnings. Maximum 3 attempts.';
     } else if (toolName === 'gemini-cli') {
-      command = 'Please run lint checks and fix any issues';
+      command = 'Please run lint checks, fix any issues found, and repeat until passing with 0 warnings.';
     } else {
-      command = 'Run lint checks and fix any issues';
+      command = 'Run lint checks and fix any issues until passing with 0 warnings';
     }
 
-    return await this.sendCommandToCLI(toolName, command);
+    return await this.sendCommandToCLI(toolName, command, { timeout: 300000 }); // 5 minutes for multiple attempts
   }
 
   /**
@@ -986,16 +1015,25 @@ export class CLIBridge {
     let command: string;
 
     if (toolName === 'cursor-agent') {
-      command = 'Format code according to project standards';
+      command = `Apply code formatting according to project standards:
+
+1. Run the project's format command (npm run format, cargo fmt, black ., gofmt -w ., etc.)
+2. If there are any formatting issues:
+   a. Apply automatic formatting fixes
+   b. Verify formatting is correct by running format check again
+3. Ensure all files pass formatting standards
+4. Report success when formatting is complete
+
+This is typically automatic and should complete quickly.`;
     } else if (toolName === 'claude-code') {
-      command = 'Format the code according to project standards';
+      command = 'Format all code according to project standards using the project formatter.';
     } else if (toolName === 'gemini-cli') {
-      command = 'Please format the code according to project standards';
+      command = 'Please format the code according to project standards.';
     } else {
       command = 'Format code according to project standards';
     }
 
-    return await this.sendCommandToCLI(toolName, command);
+    return await this.sendCommandToCLI(toolName, command, { timeout: 120000 }); // 2 minutes
   }
 
   /**
@@ -1005,16 +1043,24 @@ export class CLIBridge {
     let command: string;
 
     if (toolName === 'cursor-agent') {
-      command = `Commit changes with message: ${message}`;
+      command = `Commit all changes to Git with proper commit message:
+
+1. Stage all changes: git add .
+2. Create commit with this EXACT message:
+   "${message}"
+3. Verify commit was created successfully
+4. DO NOT push (user will push manually)
+
+Report the commit hash when complete.`;
     } else if (toolName === 'claude-code') {
-      command = `Commit the changes with this message: ${message}`;
+      command = `Stage all changes (git add .) and commit with message: "${message}". Do not push.`;
     } else if (toolName === 'gemini-cli') {
-      command = `Please commit the changes with message: ${message}`;
+      command = `Please commit changes with message: "${message}". Do not push.`;
     } else {
       command = `Commit changes with message: ${message}`;
     }
 
-    return await this.sendCommandToCLI(toolName, command);
+    return await this.sendCommandToCLI(toolName, command, { timeout: 30000 });
   }
 
   /**

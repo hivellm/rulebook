@@ -29,6 +29,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Maintains documentation currency
 - Enforces project standards consistently
 
+**CLI Agent Quality Instructions Enhancement:**
+- **CRITICAL**: Improved cursor-agent quality check commands with detailed step-by-step instructions
+- Automated error correction loops for lint (max 3 attempts until 0 warnings)
+- Automated test failure correction loops (max 5 attempts until 100% passing)
+- Coverage verification with threshold checking (95%+)
+- Extended timeouts for multi-attempt quality checks (5-10 minutes)
+- Clear, actionable instructions that tell the agent EXACTLY what to do when checks fail
+- Prevents agents from proceeding if quality checks don't pass
+
+**Implementation Details:**
+- `sendLintCommand`: Now includes 6-step detailed workflow with automatic error correction
+- `sendTestCommand`: Now includes 6-step comprehensive workflow with test failure analysis and fixes
+- `sendFormatCommand`: Now includes clear formatting application and verification steps
+- `sendCommitCommand`: Now includes explicit staging and commit verification instructions
+- All commands now have appropriate timeout extensions to allow for multiple correction attempts
+
 ## [0.10.3] - 2025-01-25
 
 ### Fixed
