@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+**Agent Automation Module:**
+- **CRITICAL**: New mandatory automation workflow that forces AI agents to execute quality checks after every implementation
+- Automated post-implementation checklist: type-check → lint → format → test → coverage
+- Automatic OpenSpec task status updates after implementation completion
+- Automatic documentation updates (ROADMAP, CHANGELOG, specs)
+- Git commit automation with conventional commit format enforcement
+- Comprehensive error recovery procedures
+- Task dependency checking before starting work
+- Self-review checklist for code quality
+- Language-specific automation commands for all 11 supported languages
+- Integration with CI/CD monitoring systems
+- Detailed reporting to user after implementation completion
+
+**Benefits:**
+- Ensures AI agents ALWAYS run tests and quality checks
+- Prevents incomplete implementations being committed
+- Keeps OpenSpec tasks synchronized with actual progress
+- Maintains documentation currency
+- Enforces project standards consistently
+
 ## [0.10.3] - 2025-01-25
 
 ### Fixed

@@ -24,6 +24,7 @@ CLI tool to standardize AI-generated projects with templates, rules enforcement,
 - 🌳 **Dependency Graphs**: Visual task dependency trees and validation
 - 🔗 **CLI Bridge**: Seamless integration with cursor-agent
 - 📈 **Telemetry**: Performance metrics and execution analytics
+- 🔄 **Agent Automation [NEW]**: CRITICAL mandatory workflow that forces AI agents to execute quality checks, update OpenSpec, and maintain documentation after EVERY implementation
 
 ## Installation
 

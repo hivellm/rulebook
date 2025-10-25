@@ -212,6 +212,11 @@ export async function generateFullAgents(config: ProjectConfig): Promise<string>
     sections.push('');
   }
 
+  // Add AGENT_AUTOMATION module (ALWAYS included - critical for agent behavior)
+  const agentAutomation = await generateModuleRules('agent_automation');
+  sections.push(agentAutomation);
+  sections.push('');
+
   // Add module-specific rules
   for (const module of config.modules) {
     const moduleRules = await generateModuleRules(module);
