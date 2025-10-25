@@ -299,7 +299,11 @@ export class OpenSpecManager {
     };
 
     for (const task of data.tasks) {
-      stats[task.status]++;
+      if (task.status === 'in-progress') {
+        stats.inProgress++;
+      } else {
+        stats[task.status]++;
+      }
     }
 
     return stats;

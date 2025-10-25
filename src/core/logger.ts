@@ -109,14 +109,14 @@ export class Logger {
    * Log task completion
    */
   taskComplete(taskId: string, taskTitle: string, duration: number): void {
-    this.info(`Task completed: ${taskTitle}`, { taskId, action: 'complete', duration }, taskId, duration);
+    this.info(`Task completed: ${taskTitle}`, { taskId, action: 'complete', duration }, taskId);
   }
 
   /**
    * Log task failure
    */
   taskFailed(taskId: string, taskTitle: string, error: string, duration?: number): void {
-    this.error(`Task failed: ${taskTitle}`, { taskId, action: 'failed', error, duration }, taskId, duration);
+    this.error(`Task failed: ${taskTitle}`, { taskId, action: 'failed', error, duration }, taskId);
   }
 
   /**
@@ -130,14 +130,14 @@ export class Logger {
    * Log CLI response
    */
   cliResponse(tool: string, response: string, duration: number, taskId?: string): void {
-    this.debug(`CLI response from ${tool}`, { tool, responseLength: response.length, duration }, taskId, duration);
+    this.debug(`CLI response from ${tool}`, { tool, responseLength: response.length, duration }, taskId);
   }
 
   /**
    * Log test execution
    */
   testExecution(testType: string, result: 'passed' | 'failed', duration: number, taskId?: string): void {
-    this.info(`Test ${testType}: ${result}`, { testType, result, duration }, taskId, duration);
+    this.info(`Test ${testType}: ${result}`, { testType, result, duration }, taskId);
   }
 
   /**

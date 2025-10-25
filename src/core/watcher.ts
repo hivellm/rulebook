@@ -227,7 +227,6 @@ export class WatcherUI {
     const task = this.currentTask || await this.openspecManager.getCurrentTask();
     
     if (task) {
-      const statusColor = this.getTaskStatusColor(task.status);
       const statusIcon = this.getTaskStatusIcon(task.status);
       
       console.log(chalk.white(`║  Current Task: ${statusIcon} ${task.title}`));
@@ -306,19 +305,6 @@ export class WatcherUI {
     const empty = width - filled;
     
     return chalk.green('█'.repeat(filled)) + chalk.gray('░'.repeat(empty));
-  }
-
-  /**
-   * Get task status color
-   */
-  private getTaskStatusColor(status: string): string {
-    switch (status) {
-      case 'completed': return 'green';
-      case 'in-progress': return 'blue';
-      case 'failed': return 'red';
-      case 'skipped': return 'yellow';
-      default: return 'gray';
-    }
   }
 
   /**

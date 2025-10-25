@@ -1,4 +1,4 @@
-import { readFile, writeFile, existsSync, mkdirSync } from 'fs';
+import { readFile, writeFile, existsSync } from 'fs';
 import { promisify } from 'util';
 import { join } from 'path';
 import { randomUUID } from 'crypto';

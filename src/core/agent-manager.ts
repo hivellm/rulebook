@@ -4,7 +4,6 @@ import { createOpenSpecManager } from './openspec-manager.js';
 import { createLogger, initializeLogger } from './logger.js';
 import { createConfigManager } from './config-manager.js';
 import { createCLIBridge } from './cli-bridge.js';
-import { createWatcherUI } from './watcher.js';
 import type { OpenSpecTask, RulebookConfig } from '../types.js';
 
 export interface AgentOptions {
@@ -18,8 +17,7 @@ export class AgentManager {
   private openspecManager: ReturnType<typeof createOpenSpecManager>;
   private logger: ReturnType<typeof createLogger>;
   private configManager: ReturnType<typeof createConfigManager>;
-  private cliBridge: ReturnType<typeof createCLIBridge>;
-  private watcher?: ReturnType<typeof createWatcherUI>;
+  private cliBridge!: ReturnType<typeof createCLIBridge>;
   private config: RulebookConfig;
   private isRunning = false;
   private currentTool?: string;
