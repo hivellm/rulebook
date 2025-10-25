@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { validateProject, generateReport } from '../src/core/validator';
+import { validateProject, formatValidationReport } from '../src/core/validator';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
@@ -276,7 +276,7 @@ describe('validator', () => {
     });
   });
 
-  describe('generateReport', () => {
+  describe('formatValidationReport', () => {
     it('should generate report with errors', () => {
       const result = {
         valid: false,
@@ -292,7 +292,7 @@ describe('validator', () => {
         warnings: [],
       };
 
-      const report = generateReport(result);
+      const report = formatValidationReport(result);
       expect(report).toContain('# Validation Report');
       expect(report).toContain('**Score**: 70/100');
       expect(report).toContain('❌ FAILED');
@@ -316,7 +316,7 @@ describe('validator', () => {
         ],
       };
 
-      const report = generateReport(result);
+      const report = formatValidationReport(result);
       expect(report).toContain('# Validation Report');
       expect(report).toContain('**Score**: 85/100');
       expect(report).toContain('✅ PASSED');
@@ -344,7 +344,7 @@ describe('validator', () => {
         ],
       };
 
-      const report = generateReport(result);
+      const report = formatValidationReport(result);
       expect(report).toContain('# Validation Report');
       expect(report).toContain('**Score**: 60/100');
       expect(report).toContain('❌ FAILED');
@@ -366,7 +366,7 @@ describe('validator', () => {
         warnings: [],
       };
 
-      const report = generateReport(result);
+      const report = formatValidationReport(result);
       expect(report).toContain('# Validation Report');
       expect(report).toContain('**Score**: 100/100');
       expect(report).toContain('✅ PASSED');
@@ -384,7 +384,7 @@ describe('validator', () => {
         warnings: [],
       };
 
-      const report = generateReport(result);
+      const report = formatValidationReport(result);
       expect(report).toContain('❌ **structure**: Error without file');
       expect(report).not.toContain('File:');
     });
@@ -399,7 +399,7 @@ describe('validator', () => {
         ],
       };
 
-      const report = generateReport(result);
+      const report = formatValidationReport(result);
       expect(report).toContain('⚠️ **docs**: Warning without file');
       expect(report).not.toContain('File:');
     });
@@ -419,7 +419,7 @@ describe('validator', () => {
         ],
       };
 
-      const report = generateReport(result);
+      const report = formatValidationReport(result);
       expect(report).toContain('❌ **error1**: Error 1');
       expect(report).toContain('❌ **error2**: Error 2');
       expect(report).toContain('❌ **error3**: Error 3');
