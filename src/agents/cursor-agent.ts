@@ -257,7 +257,7 @@ export class CursorAgentStreamParser {
       // Log progress every 500 chars to show the agent is working
       if (this.eventCallback && Math.floor(text.length / 500) > Math.floor(previousLength / 500)) {
         const chars = Math.round(text.length / 100) / 10;
-        this.eventCallback('text', `💭 Thinking... (${chars}k chars)`);
+        this.eventCallback('text', `Thinking... (${chars}k chars)`);
       }
     }
   }
@@ -275,7 +275,7 @@ export class CursorAgentStreamParser {
         const details = `Write to ${path}`;
         // Send to watcher if callback is set (shortened version)
         if (this.eventCallback) {
-          this.eventCallback('tool', `✍️  Writing ${fileName}`);
+          this.eventCallback('tool', `Write ${fileName}`);
         }
         this.toolCalls.push({
           type: 'write',
@@ -287,7 +287,7 @@ export class CursorAgentStreamParser {
         const details = `Read from ${path}`;
         // Send to watcher if callback is set (shortened version)
         if (this.eventCallback) {
-          this.eventCallback('tool', `📖 Reading ${fileName}`);
+          this.eventCallback('tool', `Read ${fileName}`);
         }
         this.toolCalls.push({
           type: 'read',
@@ -296,11 +296,11 @@ export class CursorAgentStreamParser {
       } else if (startedEvent.tool_call.bashToolCall) {
         const cmd = startedEvent.tool_call.bashToolCall.args.command;
         // Shorten command if too long
-        const shortCmd = cmd.length > 40 ? cmd.substring(0, 37) + '...' : cmd;
+        const shortCmd = cmd.length > 50 ? cmd.substring(0, 47) + '...' : cmd;
         const details = `Execute: ${cmd}`;
         // Send to watcher if callback is set (shortened version)
         if (this.eventCallback) {
-          this.eventCallback('tool', `⚡ Running: ${shortCmd}`);
+          this.eventCallback('tool', `Run: ${shortCmd}`);
         }
         this.toolCalls.push({
           type: 'bash',
@@ -316,7 +316,7 @@ export class CursorAgentStreamParser {
         
         // Log success
         if (this.eventCallback) {
-          this.eventCallback('tool', `   ✅ Wrote ${linesCreated} lines`);
+          this.eventCallback('tool', `Wrote ${linesCreated} lines`);
         }
 
         // Update the last tool call with result
@@ -328,7 +328,7 @@ export class CursorAgentStreamParser {
         
         // Log error
         if (this.eventCallback) {
-          this.eventCallback('tool', `   ❌ Write failed: ${error}`);
+          this.eventCallback('tool', `Write failed: ${error}`);
         }
 
         if (this.toolCalls.length > 0) {
@@ -342,7 +342,7 @@ export class CursorAgentStreamParser {
         
         // Log success (more compact)
         if (this.eventCallback) {
-          this.eventCallback('tool', `   ✅ Read ${totalLines} lines`);
+          this.eventCallback('tool', `Read ${totalLines} lines`);
         }
 
         if (this.toolCalls.length > 0) {
@@ -353,7 +353,7 @@ export class CursorAgentStreamParser {
         
         // Log error
         if (this.eventCallback) {
-          this.eventCallback('tool', `   ❌ Read failed: ${error}`);
+          this.eventCallback('tool', `Read failed: ${error}`);
         }
 
         if (this.toolCalls.length > 0) {
@@ -368,9 +368,9 @@ export class CursorAgentStreamParser {
         // Log command result
         if (this.eventCallback) {
           if (exitCode === 0) {
-            this.eventCallback('tool', `   ✅ Command completed`);
+            this.eventCallback('tool', `Command completed`);
           } else {
-            this.eventCallback('tool', `   ⚠️  Exit code ${exitCode}`);
+            this.eventCallback('tool', `Exit code ${exitCode}`);
           }
         }
 
@@ -382,7 +382,7 @@ export class CursorAgentStreamParser {
         
         // Log error
         if (this.eventCallback) {
-          this.eventCallback('tool', `   ❌ Command failed: ${error}`);
+          this.eventCallback('tool', `Command failed: ${error}`);
         }
 
         if (this.toolCalls.length > 0) {
@@ -396,7 +396,7 @@ export class CursorAgentStreamParser {
     // Send completion to watcher if callback is set
     if (this.eventCallback) {
       const chars = Math.round(this.accumulatedText.length / 100) / 10; // Convert to KB with 1 decimal
-      this.eventCallback('completion', `✅ Done: ${this.toolCalls.length} tools, ${chars}k chars`);
+      this.eventCallback('completion', `Done: ${this.toolCalls.length} tools, ${chars}k chars`);
     }
 
     // Mark as completed and trigger callback

@@ -128,7 +128,7 @@ export class AgentManager {
 
     if (availableTools.length === 0) {
       const msg =
-        'No CLI tools detected. Please install cursor-agent, claude-code, gemini-cli, cursor-cli, or claude-cli.';
+        'No CLI tools detected. Please install cursor-agent, claude-code, or gemini-cli.';
       if (this.onLog) {
         this.onLog('error', msg);
       } else {

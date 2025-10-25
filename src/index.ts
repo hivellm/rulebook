@@ -90,7 +90,7 @@ program
   .command('agent')
   .description('Start autonomous agent for managing AI CLI workflows')
   .option('--dry-run', 'Simulate execution without making changes')
-  .option('--tool <name>', 'Specify CLI tool to use (cursor-cli, gemini-cli, claude-cli)')
+  .option('--tool <name>', 'Specify CLI tool to use (cursor-agent, claude-code, gemini-cli)')
   .option('--iterations <number>', 'Maximum number of iterations', '10')
   .option('--watch', 'Enable watcher mode for real-time monitoring')
   .action((options) =>

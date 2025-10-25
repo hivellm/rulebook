@@ -344,23 +344,34 @@ export class ModernConsole {
     }
 
     const LOG_ICONS = {
-      success: '{green-fg}✅{/}',
-      info: '{blue-fg}ℹ️ {/}',
-      warning: '{yellow-fg}⚠️ {/}',
-      error: '{red-fg}❌{/}',
-      tool: '{cyan-fg}🔧{/}',
+      success: '{green-fg}✓{/}',
+      info: '{blue-fg}i{/}',
+      warning: '{yellow-fg}!{/}',
+      error: '{red-fg}✗{/}',
+      tool: '{cyan-fg}›{/}',
     };
 
     // Calculate how many logs fit in the box (height - 2 for padding)
     const boxHeight = this.logsBox.height;
     const maxLogs = typeof boxHeight === 'number' ? Math.max(10, boxHeight - 2) : 20;
+    
+    // Get terminal width to truncate long messages
+    const termWidth = typeof this.screen.width === 'number' ? this.screen.width : 80;
+    const maxMessageWidth = termWidth - 15; // Reserve space for timestamp and icon
 
     const lines = this.activityLogs
       .slice(-maxLogs) // Show only what fits
       .map((entry) => {
         const time = entry.timestamp.toLocaleTimeString('en-US', { hour12: false });
         const icon = LOG_ICONS[entry.type];
-        return `{gray-fg}[${time}]{/} ${icon} ${entry.message}`;
+        
+        // Truncate message if too long
+        let message = entry.message;
+        if (message.length > maxMessageWidth) {
+          message = message.substring(0, maxMessageWidth - 3) + '...';
+        }
+        
+        return `{gray-fg}[${time}]{/} ${icon} ${message}`;
       });
 
     this.logsBox.setContent(lines.join('\n'));
