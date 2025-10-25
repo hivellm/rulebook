@@ -6,7 +6,7 @@ import { createConfigManager } from '../src/core/config-manager.js';
 // Mock CLI tools for testing
 const mockCLITools = [
   { name: 'cursor-agent', command: 'cursor-agent', version: '1.0.0', available: true },
-  { name: 'cursor-cli', command: 'cursor-cli', version: '2.0.0', available: true }
+  { name: 'claude-code', command: 'claude', version: '2.0.0', available: true }
 ];
 
 // Mock CLI responses
@@ -17,9 +17,9 @@ const mockCLIResponses = {
     duration: 1000,
     exitCode: 0
   },
-  'cursor-cli': {
+  'claude-code': {
     success: true,
-    output: 'Mock cursor-cli response',
+    output: 'Mock claude-code response',
     duration: 1500,
     exitCode: 0
   }

@@ -67,12 +67,12 @@ describe('Logger', () => {
 
   describe('CLI logging', () => {
     it('should log CLI command', () => {
-      logger.cliCommand('test command', 'cursor-cli', 'task-123');
+      logger.cliCommand('test command', 'cursor-agent', 'task-123');
       expect(true).toBe(true);
     });
 
     it('should log CLI response', () => {
-      logger.cliResponse('cursor-cli', 'test response', 1000, 'task-123');
+      logger.cliResponse('cursor-agent', 'test response', 1000, 'task-123');
       expect(true).toBe(true);
     });
   });

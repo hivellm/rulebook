@@ -251,8 +251,14 @@ export class CursorAgentStreamParser {
 
     // Accumulate text (stream-partial-output sends incremental deltas)
     if (text && !this.accumulatedText.includes(text)) {
+      const previousLength = this.accumulatedText.length;
       this.accumulatedText = text;
-      // Don't log progress - it floods the output
+      
+      // Log progress every 500 chars to show the agent is working
+      if (this.eventCallback && Math.floor(text.length / 500) > Math.floor(previousLength / 500)) {
+        const chars = Math.round(text.length / 100) / 10;
+        this.eventCallback('text', `💭 Thinking... (${chars}k chars)`);
+      }
     }
   }
 
@@ -307,7 +313,11 @@ export class CursorAgentStreamParser {
       if (completedEvent.tool_call.writeToolCall?.result.success) {
         const { linesCreated, fileSize } = completedEvent.tool_call.writeToolCall.result.success;
         const result = `Created ${linesCreated} lines (${fileSize} bytes)`;
-        // Result logged silently
+        
+        // Log success
+        if (this.eventCallback) {
+          this.eventCallback('tool', `   ✅ Wrote ${linesCreated} lines`);
+        }
 
         // Update the last tool call with result
         if (this.toolCalls.length > 0) {
@@ -315,7 +325,11 @@ export class CursorAgentStreamParser {
         }
       } else if (completedEvent.tool_call.writeToolCall?.result.error) {
         const error = completedEvent.tool_call.writeToolCall.result.error;
-        // Error logged silently
+        
+        // Log error
+        if (this.eventCallback) {
+          this.eventCallback('tool', `   ❌ Write failed: ${error}`);
+        }
 
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = `Error: ${error}`;
@@ -325,14 +339,22 @@ export class CursorAgentStreamParser {
       if (completedEvent.tool_call.readToolCall?.result.success) {
         const { totalLines } = completedEvent.tool_call.readToolCall.result.success;
         const result = `Read ${totalLines} lines`;
-        // Result logged silently
+        
+        // Log success (more compact)
+        if (this.eventCallback) {
+          this.eventCallback('tool', `   ✅ Read ${totalLines} lines`);
+        }
 
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = result;
         }
       } else if (completedEvent.tool_call.readToolCall?.result.error) {
         const error = completedEvent.tool_call.readToolCall.result.error;
-        // Error logged silently
+        
+        // Log error
+        if (this.eventCallback) {
+          this.eventCallback('tool', `   ❌ Read failed: ${error}`);
+        }
 
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = `Error: ${error}`;
@@ -342,14 +364,26 @@ export class CursorAgentStreamParser {
       if (completedEvent.tool_call.bashToolCall?.result.success) {
         const { exitCode } = completedEvent.tool_call.bashToolCall.result.success;
         const result = `Exit code ${exitCode}`;
-        // Result logged silently
+        
+        // Log command result
+        if (this.eventCallback) {
+          if (exitCode === 0) {
+            this.eventCallback('tool', `   ✅ Command completed`);
+          } else {
+            this.eventCallback('tool', `   ⚠️  Exit code ${exitCode}`);
+          }
+        }
 
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = result;
         }
       } else if (completedEvent.tool_call.bashToolCall?.result.error) {
         const error = completedEvent.tool_call.bashToolCall.result.error;
-        // Error logged silently
+        
+        // Log error
+        if (this.eventCallback) {
+          this.eventCallback('tool', `   ❌ Command failed: ${error}`);
+        }
 
         if (this.toolCalls.length > 0) {
           this.toolCalls[this.toolCalls.length - 1].result = `Error: ${error}`;

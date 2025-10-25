@@ -43,9 +43,6 @@ describe('ModernConsole', () => {
     modernConsole = createModernConsole({
       projectRoot: tempDir,
       refreshInterval: 1000,
-      showSystemInfo: true,
-      showLogs: true,
-      maxLogLines: 50,
     });
   });
 

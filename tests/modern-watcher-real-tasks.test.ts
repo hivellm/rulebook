@@ -88,9 +88,6 @@ describe('Modern Watcher with Real Tasks', () => {
     modernConsole = createModernConsole({
       projectRoot: process.cwd(),
       refreshInterval: 100, // Fast refresh for testing
-      showSystemInfo: true,
-      showLogs: true,
-      maxLogLines: 10,
     });
 
     // Mock console methods to avoid output during tests
