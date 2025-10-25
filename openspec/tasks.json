@@ -1,31 +1,14 @@
 [
   {
-    "id": "openspec-setup-complete",
-    "title": "OpenSpec Workflow Setup Complete",
-    "description": "Created openspec/AGENTS.md and openspec/project.md files with proper workflow instructions",
-    "priority": 1,
-    "status": "completed",
-    "dependencies": [],
-    "estimatedTime": 600,
-    "createdAt": "2025-10-25T08:32:48.014Z",
-    "updatedAt": "2025-10-25T16:45:00.000Z",
-    "attempts": 1,
-    "tags": [
-      "openspec",
-      "setup",
-      "documentation"
-    ]
-  },
-  {
-    "id": "8f5c64e4-216e-4b79-88f9-af41188d8ee9",
+    "id": "14538920-5be1-4ad6-adcd-ab18a826f3e5",
     "title": "Initialize Rulebook Configuration",
     "description": "Set up .rulebook configuration file with project settings",
-    "priority": 2,
+    "priority": 1,
     "status": "pending",
-    "dependencies": ["openspec-setup-complete"],
+    "dependencies": [],
     "estimatedTime": 300,
-    "createdAt": "2025-10-25T08:32:48.014Z",
-    "updatedAt": "2025-10-25T16:45:00.000Z",
+    "createdAt": "2025-10-25T08:48:20.469Z",
+    "updatedAt": "2025-10-25T08:48:20.469Z",
     "attempts": 0,
     "tags": [
       "config",
@@ -33,15 +16,15 @@
     ]
   },
   {
-    "id": "ab9846af-8815-4606-bba8-dc47bbc81abf",
+    "id": "b4963411-ac04-4c81-a97f-7b3e5b1b81b9",
     "title": "Implement Core Modules",
     "description": "Create config-manager, openspec-manager, and other core modules",
-    "priority": 3,
+    "priority": 2,
     "status": "pending",
-    "dependencies": ["8f5c64e4-216e-4b79-88f9-af41188d8ee9"],
+    "dependencies": [],
     "estimatedTime": 1800,
-    "createdAt": "2025-10-25T08:32:48.014Z",
-    "updatedAt": "2025-10-25T16:45:00.000Z",
+    "createdAt": "2025-10-25T08:48:20.469Z",
+    "updatedAt": "2025-10-25T08:48:20.469Z",
     "attempts": 0,
     "tags": [
       "core",
@@ -49,36 +32,19 @@
     ]
   },
   {
-    "id": "c7cb83b5-e55f-4ca4-8165-165e4a90ccf9",
+    "id": "ef239eb1-88c8-45f5-96fd-618b21b24b5c",
     "title": "Add Comprehensive Tests",
     "description": "Write tests for all new modules with 95%+ coverage",
-    "priority": 4,
+    "priority": 3,
     "status": "pending",
-    "dependencies": ["ab9846af-8815-4606-bba8-dc47bbc81abf"],
+    "dependencies": [],
     "estimatedTime": 1200,
-    "createdAt": "2025-10-25T08:32:48.014Z",
-    "updatedAt": "2025-10-25T16:45:00.000Z",
+    "createdAt": "2025-10-25T08:48:20.469Z",
+    "updatedAt": "2025-10-25T08:48:20.469Z",
     "attempts": 0,
     "tags": [
       "testing",
       "quality"
-    ]
-  },
-  {
-    "id": "openspec-workflow-integration",
-    "title": "Integrate OpenSpec Workflow",
-    "description": "Ensure all development follows OpenSpec workflow standards",
-    "priority": 5,
-    "status": "pending",
-    "dependencies": ["openspec-setup-complete"],
-    "estimatedTime": 900,
-    "createdAt": "2025-10-25T16:45:00.000Z",
-    "updatedAt": "2025-10-25T16:45:00.000Z",
-    "attempts": 0,
-    "tags": [
-      "openspec",
-      "workflow",
-      "integration"
     ]
   }
 ]
