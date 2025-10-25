@@ -75,9 +75,7 @@ describe('Task Status Sync on Agent Start', () => {
           { id: 'task-1', title: 'Task 1', status: 'pending' },
           { id: 'task-2', title: 'Task 2', status: 'in-progress' },
         ],
-        history: [
-          { id: 'task-3', title: 'Task 3', status: 'completed' },
-        ],
+        history: [{ id: 'task-3', title: 'Task 3', status: 'completed' }],
       }),
     };
 
@@ -168,9 +166,7 @@ describe('Task Status Sync on Agent Start', () => {
 
     it('should handle syncTaskStatus errors gracefully', async () => {
       // Mock syncTaskStatus to throw an error
-      mockOpenSpecManager.syncTaskStatus.mockRejectedValueOnce(
-        new Error('Sync failed')
-      );
+      mockOpenSpecManager.syncTaskStatus.mockRejectedValueOnce(new Error('Sync failed'));
 
       const onLogSpy = vi.fn();
 
@@ -293,9 +289,7 @@ describe('Task Status Sync on Agent Start', () => {
         new Error('Failed to load tasks')
       );
 
-      await expect(openspecManager.syncTaskStatus()).rejects.toThrow(
-        'Failed to load tasks'
-      );
+      await expect(openspecManager.syncTaskStatus()).rejects.toThrow('Failed to load tasks');
     });
   });
 
@@ -304,7 +298,8 @@ describe('Task Status Sync on Agent Start', () => {
       const onLogSpy = vi.fn();
 
       // Mock the main workflow to verify sync happens first
-      const runAgentWorkflowSpy = vi.spyOn(agentManager as any, 'runAgentWorkflow')
+      const runAgentWorkflowSpy = vi
+        .spyOn(agentManager as any, 'runAgentWorkflow')
         .mockResolvedValue(undefined);
 
       await agentManager.startAgent({
@@ -320,7 +315,7 @@ describe('Task Status Sync on Agent Start', () => {
       // Verify the sequence: sync happens before main workflow
       const syncCallOrder = mockOpenSpecManager.syncTaskStatus.mock.invocationCallOrder[0];
       const workflowCallOrder = runAgentWorkflowSpy.mock.invocationCallOrder[0];
-      
+
       expect(syncCallOrder).toBeLessThan(workflowCallOrder);
     });
 
@@ -331,7 +326,8 @@ describe('Task Status Sync on Agent Start', () => {
       mockOpenSpecManager.syncTaskStatus.mockResolvedValue(undefined);
 
       // Mock the main workflow
-      const runAgentWorkflowSpy = vi.spyOn(agentManager as any, 'runAgentWorkflow')
+      const runAgentWorkflowSpy = vi
+        .spyOn(agentManager as any, 'runAgentWorkflow')
         .mockResolvedValue(undefined);
 
       await agentManager.startAgent({

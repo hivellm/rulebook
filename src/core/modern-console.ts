@@ -69,7 +69,8 @@ export class ModernConsole {
       left: 0,
       width: '100%',
       height: 3,
-      content: '{center}{bold}{blue-fg}🤖 RULEBOOK WATCHER{/blue-fg}{/bold}                          {gray-fg}[F10 Exit]{/gray-fg}{/center}',
+      content:
+        '{center}{bold}{blue-fg}🤖 RULEBOOK WATCHER{/blue-fg}{/bold}                          {gray-fg}[F10 Exit]{/gray-fg}{/center}',
       tags: true,
       style: {
         bg: 'blue',
@@ -122,7 +123,7 @@ export class ModernConsole {
       top: 18,
       left: 0,
       width: '100%',
-      height: '100%-19',  // Fixed height: from line 18 to status bar
+      height: '100%-19', // Fixed height: from line 18 to status bar
       label: ' {bold}📝 ACTIVITY LOGS{/bold} ',
       tags: true,
       scrollable: true,
@@ -145,11 +146,9 @@ export class ModernConsole {
       mouse: true,
       style: {
         fg: 'white',
+        bg: 'black',
       },
-      border: {
-        type: 'line' as const,
-        fg: 3, // yellow
-      },
+      // Remove border to prevent layout issues
     });
 
     // Status Bar (1 line)
@@ -188,7 +187,7 @@ export class ModernConsole {
         this.logActivity('info', 'Starting autonomous agent...');
         this.isAgentRunning = true;
         this.updateStatusBar();
-        
+
         try {
           await this.agentManager.startAgent({
             tool: 'cursor-agent',
@@ -198,7 +197,7 @@ export class ModernConsole {
               this.logActivity(type, message);
             },
           });
-          
+
           this.logActivity('success', 'Agent completed successfully');
         } catch (error) {
           this.logActivity('error', `Agent failed: ${error}`);
@@ -229,7 +228,9 @@ export class ModernConsole {
    */
   private updateStatusBar(): void {
     const agentStatus = this.isAgentRunning ? '{green-fg}Agent Running{/green-fg}' : '';
-    this.statusBar.setContent(` Press F10 or Ctrl+C to exit | Press A to start agent | Press R to refresh ${agentStatus}`);
+    this.statusBar.setContent(
+      ` Press F10 or Ctrl+C to exit | Press A to start agent | Press R to refresh ${agentStatus}`
+    );
     this.screen.render();
   }
 
@@ -274,7 +275,7 @@ export class ModernConsole {
    * Render active tasks (max 5, auto-remove completed)
    */
   private renderActiveTasks(): void {
-    const activeTasks = this.tasks.filter(t => t.status !== 'completed').slice(0, 5);
+    const activeTasks = this.tasks.filter((t) => t.status !== 'completed').slice(0, 5);
 
     if (activeTasks.length === 0) {
       this.activeTasksBox.setContent('\n  {gray-fg}No active tasks{/gray-fg}');
@@ -282,16 +283,18 @@ export class ModernConsole {
     }
 
     const lines: string[] = ['\n'];
-    
+
     for (const task of activeTasks) {
-      const icon = task.status === 'in-progress' 
-        ? `{cyan-fg}${this.getLoadingFrame()}{/cyan-fg}` 
-        : '{gray-fg}⏸ {/gray-fg}';
+      const icon =
+        task.status === 'in-progress'
+          ? `{cyan-fg}${this.getLoadingFrame()}{/cyan-fg}`
+          : '{gray-fg}⏸ {/gray-fg}';
 
       const status = task.status === 'in-progress' ? 'In Progress' : 'Pending';
-      const duration = task.status === 'in-progress' && task.metadata?.startedAt
-        ? ` | Duration: ${this.formatDuration(Date.now() - new Date(task.metadata.startedAt).getTime())}`
-        : '';
+      const duration =
+        task.status === 'in-progress' && task.metadata?.startedAt
+          ? ` | Duration: ${this.formatDuration(Date.now() - new Date(task.metadata.startedAt).getTime())}`
+          : '';
 
       lines.push(`  ${icon} {bold}${task.title}{/bold}`);
       lines.push(`     Status: ${status}${duration}\n`);
@@ -304,8 +307,11 @@ export class ModernConsole {
    * Render progress bar
    */
   private renderProgressBar(): void {
-    const allTasks = [...this.tasks.filter(t => t.status === 'completed'), ...this.tasks.filter(t => t.status !== 'completed')];
-    const completed = this.tasks.filter(t => t.status === 'completed').length;
+    const allTasks = [
+      ...this.tasks.filter((t) => t.status === 'completed'),
+      ...this.tasks.filter((t) => t.status !== 'completed'),
+    ];
+    const completed = this.tasks.filter((t) => t.status === 'completed').length;
     const total = allTasks.length;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -329,7 +335,7 @@ export class ModernConsole {
   }
 
   /**
-   * Render activity logs (last 10 entries)
+   * Render activity logs (dynamically limited by box height)
    */
   private renderActivityLogs(): void {
     if (this.activityLogs.length === 0) {
@@ -345,18 +351,25 @@ export class ModernConsole {
       tool: '{cyan-fg}🔧{/}',
     };
 
+    // Calculate how many logs fit in the box (height - 2 for padding)
+    const boxHeight = this.logsBox.height;
+    const maxLogs = typeof boxHeight === 'number' ? Math.max(10, boxHeight - 2) : 20;
+
     const lines = this.activityLogs
-      .slice(-20) // Last 20 entries
-      .map(entry => {
+      .slice(-maxLogs) // Show only what fits
+      .map((entry) => {
         const time = entry.timestamp.toLocaleTimeString('en-US', { hour12: false });
         const icon = LOG_ICONS[entry.type];
         return `{gray-fg}[${time}]{/} ${icon} ${entry.message}`;
       });
 
-    this.logsBox.setContent('\n' + lines.join('\n') + '\n');
-    
+    this.logsBox.setContent(lines.join('\n'));
+
     // Auto-scroll to bottom
     this.logsBox.setScrollPerc(100);
+    
+    // Force screen render
+    this.screen.render();
   }
 
   /**
@@ -381,14 +394,14 @@ export class ModernConsole {
    * Mark task as completed and remove from list
    */
   public markTaskCompleted(taskId: string): void {
-    const task = this.tasks.find(t => t.id === taskId);
+    const task = this.tasks.find((t) => t.id === taskId);
     if (task) {
       task.status = 'completed';
       this.logActivity('success', `Task completed: ${task.title}`);
-      
+
       // Remove from active tasks
-      this.tasks = this.tasks.filter(t => t.id !== taskId);
-      
+      this.tasks = this.tasks.filter((t) => t.id !== taskId);
+
       this.render();
     }
   }
@@ -397,12 +410,12 @@ export class ModernConsole {
    * Mark task as in progress
    */
   public markTaskInProgress(taskId: string): void {
-    const task = this.tasks.find(t => t.id === taskId);
+    const task = this.tasks.find((t) => t.id === taskId);
     if (task) {
       task.status = 'in-progress';
       if (!task.metadata) task.metadata = {};
       task.metadata.startedAt = new Date().toISOString();
-      
+
       this.logActivity('info', `Task started: ${task.title}`);
       this.render();
     }
@@ -440,14 +453,13 @@ export class ModernConsole {
       // Animation timer (for loading spinner)
       this.refreshTimer = setInterval(() => {
         this.animationFrame++;
-        
+
         // Only render if there are in-progress tasks (to show spinner)
-        const hasInProgress = this.tasks.some(t => t.status === 'in-progress');
+        const hasInProgress = this.tasks.some((t) => t.status === 'in-progress');
         if (hasInProgress) {
           this.render();
         }
       }, this.options.refreshInterval);
-
     } catch (error) {
       this.logActivity('error', `Failed to start: ${error}`);
       throw error;
@@ -480,4 +492,3 @@ export class ModernConsole {
 export function createModernConsole(options: ModernConsoleOptions): ModernConsole {
   return new ModernConsole(options);
 }
-

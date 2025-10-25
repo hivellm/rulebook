@@ -27,7 +27,9 @@ export class OpenSpecManager {
   /**
    * Set callback for logging (used by watcher UI)
    */
-  setLogCallback(callback: (type: 'info' | 'success' | 'warning' | 'error', message: string) => void): void {
+  setLogCallback(
+    callback: (type: 'info' | 'success' | 'warning' | 'error', message: string) => void
+  ): void {
     this.onLog = callback;
   }
 
@@ -114,18 +116,20 @@ export class OpenSpecManager {
   async syncTaskStatus(): Promise<void> {
     // Clear cached data to force reload
     this.data = null;
-    
+
     // Reload all tasks
     const data = await this.loadOpenSpec();
-    
+
     // Log task summary
     const totalTasks = data.tasks.length + data.history.length;
     const pendingTasks = data.tasks.filter((t: OpenSpecTask) => t.status === 'pending').length;
-    const inProgressTasks = data.tasks.filter((t: OpenSpecTask) => t.status === 'in-progress').length;
+    const inProgressTasks = data.tasks.filter(
+      (t: OpenSpecTask) => t.status === 'in-progress'
+    ).length;
     const completedTasks = data.history.length;
-    
+
     const msg = `   Tasks: ${totalTasks} total | ${pendingTasks} pending | ${inProgressTasks} in progress | ${completedTasks} completed`;
-    
+
     // Use callback if available (watcher mode), otherwise console.log (CLI mode)
     if (this.onLog) {
       this.onLog('info', msg);
@@ -191,7 +195,7 @@ export class OpenSpecManager {
           // 2. Description (id: TASK-ID) (legacy format)
           let id: string;
           let title: string;
-          
+
           const boldIdMatch = taskTitle.match(/^\*\*(.+?)\*\*: (.+)$/);
           if (boldIdMatch) {
             id = boldIdMatch[1];
@@ -213,20 +217,20 @@ export class OpenSpecManager {
           if (priorityMatch) {
             const phase = priorityMatch[1];
             const phaseNumber = parseInt(priorityMatch[2]);
-            
+
             // Map phase names to priority numbers
             const phasePriority: { [key: string]: number } = {
-              'INIT': 0,
-              'TEST': 1,
-              'REFACTOR': 2,
-              'IMPLEMENT': 3,
-              'INTEGRATE': 4,
-              'STYLE': 5,
-              'OPTIMIZE': 6,
-              'DOCS': 7,
-              'QA': 8
+              INIT: 0,
+              TEST: 1,
+              REFACTOR: 2,
+              IMPLEMENT: 3,
+              INTEGRATE: 4,
+              STYLE: 5,
+              OPTIMIZE: 6,
+              DOCS: 7,
+              QA: 8,
             };
-            
+
             priority = (phasePriority[phase] || 9) * 1000 + phaseNumber;
           }
 

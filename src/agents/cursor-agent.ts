@@ -180,7 +180,7 @@ export class CursorAgentStreamParser {
    */
   processEvent(event: CursorAgentEvent): void {
     // Don't log debug info - it interferes with blessed UI
-    
+
     switch (event.type) {
       case 'system':
         this.handleSystemEvent(event);
@@ -198,7 +198,7 @@ export class CursorAgentStreamParser {
         this.handleResultEvent(event);
         break;
       default:
-        // Unknown event type - ignore
+      // Unknown event type - ignore
     }
   }
 
@@ -242,7 +242,7 @@ export class CursorAgentStreamParser {
 
   private handleAssistantEvent(event: AssistantMessageEvent): void {
     this.sessionId = event.session_id;
-    
+
     // Extract text content from assistant message
     const text = event.message.content
       .filter((c) => c.type === 'text')
@@ -364,7 +364,7 @@ export class CursorAgentStreamParser {
       const chars = Math.round(this.accumulatedText.length / 100) / 10; // Convert to KB with 1 decimal
       this.eventCallback('completion', `✅ Done: ${this.toolCalls.length} tools, ${chars}k chars`);
     }
-    
+
     // Mark as completed and trigger callback
     this.completed = true;
     if (this.completionCallback) {

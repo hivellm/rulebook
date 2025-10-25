@@ -61,7 +61,7 @@ export class AgentManager {
     try {
       // Set onLog callback BEFORE initialize
       this.onLog = options.onLog;
-      
+
       await this.initialize();
 
       if (!this.onLog) {
@@ -91,9 +91,9 @@ export class AgentManager {
       } else {
         console.log(chalk.gray('📋 Syncing task status...'));
       }
-      
+
       await this.openspecManager.syncTaskStatus();
-      
+
       if (this.onLog) {
         this.onLog('success', '✅ Task status synced');
       } else {
@@ -127,7 +127,8 @@ export class AgentManager {
     const availableTools = await this.cliBridge.detectCLITools();
 
     if (availableTools.length === 0) {
-      const msg = 'No CLI tools detected. Please install cursor-agent, claude-code, gemini-cli, cursor-cli, or claude-cli.';
+      const msg =
+        'No CLI tools detected. Please install cursor-agent, claude-code, gemini-cli, cursor-cli, or claude-cli.';
       if (this.onLog) {
         this.onLog('error', msg);
       } else {
@@ -285,8 +286,11 @@ export class AgentManager {
         this.onLog('info', '─'.repeat(80));
         this.onLog('info', taskResponse.output || '(no output)');
         this.onLog('info', '─'.repeat(80));
-        this.onLog('info', `Exit Code: ${taskResponse.exitCode} | Duration: ${Math.round(taskResponse.duration / 1000)}s`);
-        
+        this.onLog(
+          'info',
+          `Exit Code: ${taskResponse.exitCode} | Duration: ${Math.round(taskResponse.duration / 1000)}s`
+        );
+
         if (taskResponse.error) {
           this.onLog('warning', '⚠️ Error Output:');
           this.onLog('error', taskResponse.error);
@@ -325,13 +329,16 @@ export class AgentManager {
         this.onLog('info', '─'.repeat(80));
         this.onLog('info', continueResponse.output || '(no output)');
         this.onLog('info', '─'.repeat(80));
-        this.onLog('info', `Exit Code: ${continueResponse.exitCode} | Duration: ${Math.round(continueResponse.duration / 1000)}s`);
-        
+        this.onLog(
+          'info',
+          `Exit Code: ${continueResponse.exitCode} | Duration: ${Math.round(continueResponse.duration / 1000)}s`
+        );
+
         if (continueResponse.error) {
           this.onLog('warning', '⚠️ Error Output:');
           this.onLog('error', continueResponse.error);
         }
-        
+
         if (!continueResponse.success) {
           this.onLog('warning', '⚠️ Continue command failed, but continuing workflow');
         }

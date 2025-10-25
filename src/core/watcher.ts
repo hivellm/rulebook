@@ -7,7 +7,7 @@ import { AgentManager } from './agent-manager.js';
 export async function startWatcher(projectRoot: string): Promise<void> {
   // Create agent manager for watcher integration
   const agentManager = new AgentManager(projectRoot);
-  
+
   const modernConsole = createModernConsole({
     projectRoot,
     refreshInterval: 100,
