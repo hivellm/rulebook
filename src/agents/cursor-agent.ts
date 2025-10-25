@@ -150,7 +150,7 @@ export function parseStreamLine(line: string): CursorAgentEvent | null {
 
     const event = JSON.parse(trimmed) as CursorAgentEvent;
     return event;
-  } catch (error) {
+  } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
     // Failed to parse JSON line - ignore silently
     return null;
   }

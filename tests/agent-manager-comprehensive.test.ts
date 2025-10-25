@@ -561,7 +561,10 @@ describe('Agent Manager Comprehensive Tests', () => {
       const success = await (agentManager as any).executeTaskWorkflow(task, options);
 
       expect(success).toBe(true);
+      // In dry run mode, no actual commands should be sent
       expect(mockCLIBridge.sendTaskCommand).not.toHaveBeenCalled();
+      expect(mockCLIBridge.sendContinueCommand).not.toHaveBeenCalled();
+      expect(mockCLIBridge.sendTestCommand).not.toHaveBeenCalled();
     });
   });
 

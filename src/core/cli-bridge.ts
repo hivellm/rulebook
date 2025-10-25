@@ -76,7 +76,7 @@ export class CLIBridge {
     try {
       const timestamp = new Date().toISOString();
       await appendFile(this.debugLogFile, `[${timestamp}] ${message}\n`);
-    } catch (error) {
+    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
       // Ignore errors in debug logging
     }
   }
