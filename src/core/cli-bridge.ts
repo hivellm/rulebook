@@ -4,6 +4,8 @@ import type { RulebookConfig } from '../types.js';
 import { CursorAgentStreamParser, parseStreamLine } from '../agents/cursor-agent.js';
 import { ClaudeCodeStreamParser, parseClaudeCodeLine } from '../agents/claude-code.js';
 import { GeminiStreamParser, parseGeminiLine } from '../agents/gemini-cli.js';
+import { appendFile } from 'fs/promises';
+import { join } from 'path';
 
 export interface CLITool {
   name: string;
@@ -25,10 +27,29 @@ export class CLIBridge {
   private config: RulebookConfig;
   private activeProcesses: Map<string, ChildProcess> = new Map();
   private onLog?: (level: 'info' | 'success' | 'warning' | 'error', message: string) => void;
+  private debugLogFile?: string;
 
   constructor(logger: ReturnType<typeof createLogger>, config: RulebookConfig) {
     this.logger = logger;
     this.config = config;
+    // Create debug log file with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    this.debugLogFile = join(process.cwd(), `debug-agent-${timestamp}.log`);
+    this.debugLog(`Debug logging started at ${new Date().toISOString()}`);
+    this.debugLog(`Working directory: ${process.cwd()}`);
+  }
+
+  /**
+   * Write to debug log file
+   */
+  private async debugLog(message: string): Promise<void> {
+    if (!this.debugLogFile) return;
+    try {
+      const timestamp = new Date().toISOString();
+      await appendFile(this.debugLogFile, `[${timestamp}] ${message}\n`);
+    } catch (error) {
+      // Ignore errors in debug logging
+    }
   }
 
   /**
@@ -130,6 +151,9 @@ export class CLIBridge {
           command,
         ];
 
+        await this.debugLog(`Starting cursor-agent with command: ${command}`);
+        await this.debugLog(`Args: ${JSON.stringify(args)}`);
+
         const proc = spawn(toolName, args, {
           cwd: options.workingDirectory,
           env: {
@@ -211,10 +235,14 @@ export class CLIBridge {
                 console.log(''); // Empty line for better formatting
               }
               hasOutput = true;
+              this.debugLog('First response received from cursor-agent');
             }
 
             stdout += data;
             buffer += data;
+
+            // Log raw output to debug file
+            this.debugLog(`STDOUT RAW: ${data}`);
 
             // Process complete lines
             const lines = buffer.split('\n');
@@ -223,9 +251,13 @@ export class CLIBridge {
             for (const line of lines) {
               if (line.trim()) {
                 // Parse and process each JSON event
+                this.debugLog(`STDOUT LINE: ${line}`);
                 const event = parseStreamLine(line);
                 if (event) {
+                  this.debugLog(`EVENT PARSED: type=${event.type}`);
                   parser.processEvent(event);
+                } else {
+                  this.debugLog(`EVENT PARSE FAILED: ${line.substring(0, 100)}`);
                 }
               }
             }
@@ -260,7 +292,8 @@ export class CLIBridge {
             }, timeout);
 
             // Resolve when parser detects completion
-            completionPromise.then(() => {
+            completionPromise.then(async () => {
+              await this.debugLog('Parser completion event received');
               clearInterval(progressInterval);
               clearTimeout(timeoutId);
               // Process might still be alive, wait a bit for graceful exit
