@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.4] - 2025-10-25
+
 ### Added
 
 **Agent Automation Module:**
@@ -44,6 +46,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `sendFormatCommand`: Now includes clear formatting application and verification steps
 - `sendCommitCommand`: Now includes explicit staging and commit verification instructions
 - All commands now have appropriate timeout extensions to allow for multiple correction attempts
+
+### Fixed
+
+**Autonomous Agent Quality Enforcement:**
+- Fixed issue where autonomous agent (`rulebook agent`) was only logging quality check results instead of instructing cursor-agent to fix errors
+- Quality check commands now include detailed step-by-step correction instructions
+- Agent now iterates until checks pass instead of proceeding with failures
+- Lint command now retries up to 3 times until 0 warnings achieved
+- Test command now retries up to 5 times until 100% passing with 95%+ coverage
+- Extended timeouts to allow for multiple correction attempts (5-10 minutes)
+- Agent workflow now properly enforces quality gates before committing
 
 ## [0.10.3] - 2025-01-25
 
