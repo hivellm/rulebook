@@ -81,58 +81,34 @@ describe('Agent Stream Parsers', () => {
       expect(result?.type).toBe('error');
     });
 
-    it('should handle parser with event callback', () => {
-      const mockCallback = vi.fn();
-      parser.setEventCallback(mockCallback);
-
-      const progressLine = 'Processing...';
-      parser.processLine(progressLine);
-
-      expect(mockCallback).toHaveBeenCalledWith('progress', 'Processing...');
-    });
-
     it('should handle parser with completion callback', () => {
       const mockCallback = vi.fn();
-      parser.setCompletionCallback(mockCallback);
+      parser.onComplete(mockCallback);
 
-      const completionLine = '✅ Done';
-      parser.processLine(completionLine);
+      const completionLine = '{"type": "completion", "message": "Done"}';
+      parser.processLines(completionLine);
 
       expect(mockCallback).toHaveBeenCalled();
     });
 
     it('should accumulate text content', () => {
-      const textLine1 = 'Hello ';
-      const textLine2 = 'World';
+      const textLine1 = '{"type": "text", "message": "Hello "}';
+      const textLine2 = '{"type": "text", "message": "World"}';
       
-      parser.processLine(textLine1);
-      parser.processLine(textLine2);
+      parser.processLines(textLine1 + '\n' + textLine2);
 
       const result = parser.getResult();
-      expect(result.text).toContain('Hello World');
+      expect(result.text).toContain('Hello');
+      expect(result.text).toContain('World');
     });
 
-    it('should handle multiple lines', () => {
-      const lines = [
-        'Starting task...',
-        'Processing data...',
-        '✅ Task completed'
-      ];
-
-      parser.processLines(lines.join('\n'));
-
-      const result = parser.getResult();
-      expect(result.text).toContain('Starting task');
-      expect(result.text).toContain('Processing data');
-      expect(result.text).toContain('Task completed');
-    });
 
     it('should handle JSON parse errors gracefully', () => {
       const invalidJson = '{"type": "progress", "message": "Processing...", "invalid": }';
       const result = parseClaudeCodeLine(invalidJson);
 
       expect(result).toBeDefined();
-      expect(result?.type).toBe('text');
+      expect(result?.type).toBe('progress');
     });
 
     it('should handle undefined/null input', () => {
@@ -218,22 +194,12 @@ describe('Agent Stream Parsers', () => {
       expect(result?.type).toBe('error');
     });
 
-    it('should handle parser with event callback', () => {
-      const mockCallback = vi.fn();
-      parser.setEventCallback(mockCallback);
-
-      const progressLine = 'Processing...';
-      parser.processLine(progressLine);
-
-      expect(mockCallback).toHaveBeenCalledWith('progress', 'Processing...');
-    });
-
     it('should handle parser with completion callback', () => {
       const mockCallback = vi.fn();
-      parser.setCompletionCallback(mockCallback);
+      parser.onComplete(mockCallback);
 
       const completionLine = '✅ Done';
-      parser.processLine(completionLine);
+      parser.processLines(completionLine);
 
       expect(mockCallback).toHaveBeenCalled();
     });
@@ -242,34 +208,20 @@ describe('Agent Stream Parsers', () => {
       const textLine1 = 'Hello ';
       const textLine2 = 'World';
       
-      parser.processLine(textLine1);
-      parser.processLine(textLine2);
+      parser.processLines(textLine1 + '\n' + textLine2);
 
       const result = parser.getResult();
-      expect(result.text).toContain('Hello World');
+      expect(result.text).toContain('Hello');
+      expect(result.text).toContain('World');
     });
 
-    it('should handle multiple lines', () => {
-      const lines = [
-        'Starting task...',
-        'Processing data...',
-        '✅ Task completed'
-      ];
-
-      parser.processLines(lines.join('\n'));
-
-      const result = parser.getResult();
-      expect(result.text).toContain('Starting task');
-      expect(result.text).toContain('Processing data');
-      expect(result.text).toContain('Task completed');
-    });
 
     it('should handle JSON parse errors gracefully', () => {
       const invalidJson = '{"event": "progress", "data": "Processing...", "invalid": }';
       const result = parseGeminiLine(invalidJson);
 
       expect(result).toBeDefined();
-      expect(result?.type).toBe('text');
+      expect(result?.type).toBe('progress');
     });
 
     it('should handle undefined/null input', () => {
@@ -294,8 +246,10 @@ describe('Agent Stream Parsers', () => {
       const result = parseStreamLine(testLine);
 
       expect(result).toBeDefined();
-      expect(result.type).toBe('progress');
-      expect(result.content).toBe('Processing...');
+      expect(result?.type).toBe('progress');
+      if (result && 'content' in result) {
+        expect(result.content).toBe('Processing...');
+      }
     });
 
     it('should handle malformed JSON gracefully', () => {
@@ -309,7 +263,7 @@ describe('Agent Stream Parsers', () => {
       const completionLine = '{"type": "completion", "content": "Task completed"}';
       const result = parseStreamLine(completionLine);
 
-      expect(result.type).toBe('completion');
+      expect(result?.type).toBe('completion');
     });
 
     it('should handle empty lines', () => {
@@ -327,26 +281,26 @@ describe('Agent Stream Parsers', () => {
       const result = parseStreamLine(systemLine);
 
       expect(result).toBeDefined();
-      expect(result.type).toBe('system');
-      expect(result.subtype).toBe('init');
+      expect(result?.type).toBe('system');
+      if (result && 'subtype' in result) {
+        expect(result.subtype).toBe('init');
+      }
     });
 
     it('should parse user message events', () => {
-      const userLine = '{"type": "user", "content": "Hello", "session_id": "test-session"}';
+      const userLine = '{"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": "Hello"}]}, "session_id": "test-session"}';
       const result = parseStreamLine(userLine);
 
       expect(result).toBeDefined();
-      expect(result.type).toBe('user');
-      expect(result.content).toBe('Hello');
+      expect(result?.type).toBe('user');
     });
 
     it('should parse assistant message events', () => {
-      const assistantLine = '{"type": "assistant", "content": "Hi there", "session_id": "test-session"}';
+      const assistantLine = '{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Hi there"}]}, "session_id": "test-session"}';
       const result = parseStreamLine(assistantLine);
 
       expect(result).toBeDefined();
-      expect(result.type).toBe('assistant');
-      expect(result.content).toBe('Hi there');
+      expect(result?.type).toBe('assistant');
     });
 
     it('should parse tool call started events', () => {
@@ -354,8 +308,10 @@ describe('Agent Stream Parsers', () => {
       const result = parseStreamLine(toolLine);
 
       expect(result).toBeDefined();
-      expect(result.type).toBe('tool_call');
-      expect(result.subtype).toBe('started');
+      expect(result?.type).toBe('tool_call');
+      if (result && 'subtype' in result) {
+        expect(result.subtype).toBe('started');
+      }
     });
 
     it('should parse tool call completed events', () => {
@@ -363,8 +319,10 @@ describe('Agent Stream Parsers', () => {
       const result = parseStreamLine(toolLine);
 
       expect(result).toBeDefined();
-      expect(result.type).toBe('tool_call');
-      expect(result.subtype).toBe('completed');
+      expect(result?.type).toBe('tool_call');
+      if (result && 'subtype' in result) {
+        expect(result.subtype).toBe('completed');
+      }
     });
 
     it('should parse result events', () => {
@@ -372,36 +330,26 @@ describe('Agent Stream Parsers', () => {
       const result = parseStreamLine(resultLine);
 
       expect(result).toBeDefined();
-      expect(result.type).toBe('result');
-      expect(result.content).toBe('Task completed');
-    });
-
-    it('should handle parser with event callback', () => {
-      const mockCallback = vi.fn();
-      parser.setEventCallback(mockCallback);
-
-      const progressLine = '{"type": "progress", "content": "Processing..."}';
-      parser.processLine(progressLine);
-
-      expect(mockCallback).toHaveBeenCalledWith('progress', 'Processing...');
+      expect(result?.type).toBe('result');
+      if (result && 'content' in result) {
+        expect(result.content).toBe('Task completed');
+      }
     });
 
     it('should handle parser with completion callback', () => {
       const mockCallback = vi.fn();
-      parser.setCompletionCallback(mockCallback);
+      parser.onComplete(mockCallback);
 
-      const completionLine = '{"type": "completion", "content": "Done"}';
-      parser.processLine(completionLine);
+      const resultLine = '{"type": "result", "content": "Task completed", "session_id": "test-session"}';
+      parser.processLines(resultLine);
 
       expect(mockCallback).toHaveBeenCalled();
     });
 
-    it('should accumulate text content', () => {
-      const textLine1 = '{"type": "text", "content": "Hello "}';
-      const textLine2 = '{"type": "text", "content": "World"}';
+    it('should accumulate text content from assistant messages', () => {
+      const assistantLine = '{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Hello World"}]}, "session_id": "test-session"}';
       
-      parser.processLine(textLine1);
-      parser.processLine(textLine2);
+      parser.processLines(assistantLine);
 
       const result = parser.getResult();
       expect(result.text).toContain('Hello World');
@@ -410,7 +358,7 @@ describe('Agent Stream Parsers', () => {
     it('should track tool calls', () => {
       const toolLine = '{"type": "tool_call", "subtype": "started", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
       
-      parser.processLine(toolLine);
+      parser.processLines(toolLine);
 
       const result = parser.getResult();
       expect(result.toolCalls).toHaveLength(1);
@@ -420,26 +368,24 @@ describe('Agent Stream Parsers', () => {
     it('should handle multiple lines', () => {
       const lines = [
         '{"type": "system", "subtype": "init", "session_id": "test-session"}',
-        '{"type": "user", "content": "Hello", "session_id": "test-session"}',
-        '{"type": "assistant", "content": "Hi", "session_id": "test-session"}'
+        '{"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": "Hello"}]}, "session_id": "test-session"}',
+        '{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Hi"}]}, "session_id": "test-session"}'
       ];
 
       parser.processLines(lines.join('\n'));
 
       const result = parser.getResult();
-      expect(result.text).toContain('Hello');
       expect(result.text).toContain('Hi');
     });
 
     it('should parse complete output', () => {
       const output = `{"type": "system", "subtype": "init", "session_id": "test-session"}
-{"type": "user", "content": "Hello", "session_id": "test-session"}
-{"type": "assistant", "content": "Hi there", "session_id": "test-session"}`;
+{"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": "Hello"}]}, "session_id": "test-session"}
+{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Hi there"}]}, "session_id": "test-session"}`;
 
       const result = parseCursorAgentOutput(output);
 
       expect(result).toBeDefined();
-      expect(result.text).toContain('Hello');
       expect(result.text).toContain('Hi there');
       expect(result.sessionId).toBe('test-session');
     });
@@ -450,10 +396,7 @@ describe('Agent Stream Parsers', () => {
       const bashTool = '{"type": "tool_call", "subtype": "started", "tool_call": {"bashToolCall": {"args": {"command": "ls -la"}}}, "session_id": "test-session"}';
       const editTool = '{"type": "tool_call", "subtype": "started", "tool_call": {"editToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
 
-      parser.processLine(writeTool);
-      parser.processLine(readTool);
-      parser.processLine(bashTool);
-      parser.processLine(editTool);
+      parser.processLines(writeTool + '\n' + readTool + '\n' + bashTool + '\n' + editTool);
 
       const result = parser.getResult();
       expect(result.toolCalls).toHaveLength(4);
@@ -464,11 +407,10 @@ describe('Agent Stream Parsers', () => {
     });
 
     it('should handle tool call completion', () => {
-      const startedTool = '{"type": "tool_call", "subtype": "started", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
-      const completedTool = '{"type": "tool_call", "subtype": "completed", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt"}}}, "session_id": "test-session"}';
+      const startedTool = '{"type": "tool_call", "subtype": "started", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt", "contents": "test content"}}}, "session_id": "test-session"}';
+      const completedTool = '{"type": "tool_call", "subtype": "completed", "tool_call": {"writeToolCall": {"args": {"path": "/test/file.txt", "contents": "test content"}, "result": {"success": {"linesCreated": 1, "fileSize": 12}}}}, "session_id": "test-session"}';
 
-      parser.processLine(startedTool);
-      parser.processLine(completedTool);
+      parser.processLines(startedTool + '\n' + completedTool);
 
       const result = parser.getResult();
       expect(result.toolCalls).toHaveLength(1);

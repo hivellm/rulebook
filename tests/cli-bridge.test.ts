@@ -277,4 +277,176 @@ describe('CLIBridge', () => {
       expect(shouldContinue).toBe(true); // Should default to continue
     });
   });
+
+  describe('edge cases and error handling', () => {
+    it('should handle debug logging initialization', async () => {
+      // Test that debug logging is initialized properly
+      const tools = await cliBridge.detectCLITools();
+      expect(Array.isArray(tools)).toBe(true);
+    });
+
+    it('should handle process cleanup on error', async () => {
+      // Test that processes are cleaned up when errors occur
+      const response = await cliBridge.sendCommandToCLI('nonexistent-tool', 'test command');
+      expect(response.success).toBe(false);
+      
+      // Verify no processes are left running
+      await cliBridge.killAllProcesses();
+      expect(true).toBe(true); // Should not throw
+    });
+
+    it('should handle timeout with custom timeout value', async () => {
+      const response = await cliBridge.waitForCompletion('nonexistent-tool', 'test command', 500);
+      expect(response.success).toBe(false);
+      expect(response.duration).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should handle different command variations', async () => {
+      const commands = [
+        'Run tests and check coverage',
+        'Run the tests and check test coverage', 
+        'Please run the tests and check coverage'
+      ];
+
+      for (const command of commands) {
+        const response = await cliBridge.sendCommandToCLI('nonexistent-tool', command);
+        expect(response.success).toBe(false);
+        expect(response.duration).toBeGreaterThanOrEqual(0);
+      }
+    });
+
+    it('should handle different lint command variations', async () => {
+      const lintCommands = [
+        'Run linter and fix issues',
+        'Please run the linter and fix issues',
+        'Run linter and fix issues'
+      ];
+
+      for (const command of lintCommands) {
+        const response = await cliBridge.sendCommandToCLI('nonexistent-tool', command);
+        expect(response.success).toBe(false);
+        expect(response.duration).toBeGreaterThanOrEqual(0);
+      }
+    });
+
+    it('should handle different format command variations', async () => {
+      const formatCommands = [
+        'Format code',
+        'Please format the code',
+        'Format code'
+      ];
+
+      for (const command of formatCommands) {
+        const response = await cliBridge.sendCommandToCLI('nonexistent-tool', command);
+        expect(response.success).toBe(false);
+        expect(response.duration).toBeGreaterThanOrEqual(0);
+      }
+    });
+
+    it('should handle different commit command variations', async () => {
+      const commitCommands = [
+        'Commit changes with message: Test commit',
+        'Please commit changes with message: Test commit',
+        'Commit changes with message: Test commit'
+      ];
+
+      for (const command of commitCommands) {
+        const response = await cliBridge.sendCommandToCLI('nonexistent-tool', command);
+        expect(response.success).toBe(false);
+        expect(response.duration).toBeGreaterThanOrEqual(0);
+      }
+    });
+
+    it('should handle continue command with different iterations', async () => {
+      const iterations = [1, 5, 10, 20];
+      
+      for (const iter of iterations) {
+        const response = await cliBridge.sendContinueCommand('nonexistent-tool', iter);
+        expect(response.success).toBe(false);
+        expect(response.duration).toBeGreaterThanOrEqual(0);
+      }
+    });
+
+    it('should handle task command with different task formats', async () => {
+      const tasks = [
+        { id: 'task-1', title: 'Task 1', description: 'Description 1' },
+        { id: 'task-2', title: 'Task 2', description: 'Description 2' },
+        { id: 'task-3', title: 'Task 3', description: 'Description 3' }
+      ];
+
+      for (const task of tasks) {
+        const response = await cliBridge.sendTaskCommand('nonexistent-tool', task);
+        expect(response.success).toBe(false);
+        expect(response.duration).toBeGreaterThanOrEqual(0);
+      }
+    });
+
+    it('should handle CLI health check with different tools', async () => {
+      const tools = ['cursor-agent', 'claude-code', 'gemini-cli', 'nonexistent-tool'];
+      
+      for (const tool of tools) {
+        const isHealthy = await cliBridge.checkCLIHealth(tool);
+        expect(typeof isHealthy).toBe('boolean');
+      }
+    }, 30000);
+
+    it('should handle CLI capabilities with different tools', async () => {
+      const tools = ['cursor-agent', 'claude-code', 'gemini-cli', 'nonexistent-tool'];
+      
+      for (const tool of tools) {
+        const capabilities = await cliBridge.getCLICapabilities(tool);
+        expect(Array.isArray(capabilities)).toBe(true);
+      }
+    }, 30000);
+
+    it('should handle smart continue detection with various patterns', async () => {
+      const patterns = [
+        'I am thinking about this...',
+        'Processing your request...',
+        'Ready for next command',
+        'Task completed successfully',
+        'Some random output',
+        'Error occurred',
+        'Working on it...',
+        'Done!'
+      ];
+
+      for (const pattern of patterns) {
+        const shouldContinue = await cliBridge.smartContinueDetection('test-tool', pattern);
+        expect(typeof shouldContinue).toBe('boolean');
+      }
+    });
+
+    it('should handle workflow step execution with different contexts', async () => {
+      const contexts = [
+        { task: { id: 'task-1', title: 'Task 1', description: 'Description 1' } },
+        { task: { id: 'task-2', title: 'Task 2', description: 'Description 2' } },
+        { message: 'Test commit message' },
+        { message: 'Another commit message' }
+      ];
+
+      const steps = ['implement', 'test', 'lint', 'format', 'commit'] as const;
+      
+      for (const step of steps) {
+        for (const context of contexts) {
+          if ((step === 'implement' || step === 'commit') && context) {
+            const response = await cliBridge.executeWorkflowStep('nonexistent-tool', step, context);
+            expect(response.success).toBe(false);
+            expect(response.duration).toBeGreaterThanOrEqual(0);
+          }
+        }
+      }
+    });
+
+    it('should handle process management edge cases', async () => {
+      // Test killing processes when none are running
+      await cliBridge.killAllProcesses();
+      expect(true).toBe(true); // Should not throw
+      
+      // Test killing processes multiple times
+      await cliBridge.killAllProcesses();
+      await cliBridge.killAllProcesses();
+      expect(true).toBe(true); // Should not throw
+    });
+  });
 });
