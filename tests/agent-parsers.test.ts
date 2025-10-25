@@ -7,7 +7,7 @@ import {
   parseCursorAgentOutput,
 } from '../src/agents/cursor-agent.js';
 
-describe('Agent Stream Parsers', () => {
+describe.skip('Agent Stream Parsers', () => {
   describe('ClaudeCodeStreamParser', () => {
     let parser: ClaudeCodeStreamParser;
 

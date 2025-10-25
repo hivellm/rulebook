@@ -26,8 +26,8 @@ export class TestTaskManager {
       tags: ['test', 'automated'],
       metadata: {
         type: 'test-task',
-        createdBy: 'test-task-manager'
-      }
+        createdBy: 'test-task-manager',
+      },
     };
 
     return await this.openspecManager.addTask(task);
@@ -49,13 +49,13 @@ export class TestTaskManager {
       // Simulate test execution
       console.log(`🧪 Executing test task: ${task.title}`);
       console.log(`📝 Description: ${task.description}`);
-      
+
       // Simulate some work
       await this.delay(1000);
-      
+
       // Simulate test results (randomly pass/fail for demo)
       const testPassed = Math.random() > 0.3; // 70% success rate
-      
+
       if (testPassed) {
         console.log('✅ Test task completed successfully');
         await this.openspecManager.markTaskComplete(taskId);
@@ -77,9 +77,8 @@ export class TestTaskManager {
    */
   async getTestTasks(): Promise<OpenSpecTask[]> {
     const data = await this.openspecManager.loadOpenSpec();
-    return data.tasks.filter(task => 
-      task.tags.includes('test') || 
-      task.metadata?.type === 'test-task'
+    return data.tasks.filter(
+      (task) => task.tags.includes('test') || task.metadata?.type === 'test-task'
     );
   }
 
@@ -94,13 +93,13 @@ export class TestTaskManager {
     failed: number;
   }> {
     const testTasks = await this.getTestTasks();
-    
+
     return {
       total: testTasks.length,
-      pending: testTasks.filter(t => t.status === 'pending').length,
-      inProgress: testTasks.filter(t => t.status === 'in-progress').length,
-      completed: testTasks.filter(t => t.status === 'completed').length,
-      failed: testTasks.filter(t => t.status === 'failed').length
+      pending: testTasks.filter((t) => t.status === 'pending').length,
+      inProgress: testTasks.filter((t) => t.status === 'in-progress').length,
+      completed: testTasks.filter((t) => t.status === 'completed').length,
+      failed: testTasks.filter((t) => t.status === 'failed').length,
     };
   }
 
@@ -109,13 +108,13 @@ export class TestTaskManager {
    */
   async runAllTestTasks(): Promise<{ passed: number; failed: number; total: number }> {
     const testTasks = await this.getTestTasks();
-    const pendingTasks = testTasks.filter(t => t.status === 'pending');
-    
+    const pendingTasks = testTasks.filter((t) => t.status === 'pending');
+
     let passed = 0;
     let failed = 0;
-    
+
     console.log(`🚀 Running ${pendingTasks.length} test tasks...`);
-    
+
     for (const task of pendingTasks) {
       const success = await this.executeTestTask(task.id);
       if (success) {
@@ -124,11 +123,11 @@ export class TestTaskManager {
         failed++;
       }
     }
-    
+
     return {
       passed,
       failed,
-      total: pendingTasks.length
+      total: pendingTasks.length,
     };
   }
 
@@ -136,7 +135,7 @@ export class TestTaskManager {
    * Utility method for delays
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
