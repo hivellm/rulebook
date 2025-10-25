@@ -1,10 +1,12 @@
 import blessed from 'blessed';
 import { createOpenSpecManager } from './openspec-manager.js';
 import type { OpenSpecTask } from '../types.js';
+import type { AgentManager } from './agent-manager.js';
 
 export interface ModernConsoleOptions {
   projectRoot: string;
   refreshInterval?: number;
+  agentManager?: AgentManager;
 }
 
 interface ActivityLogEntry {
@@ -35,6 +37,8 @@ export class ModernConsole {
   // Data
   private tasks: OpenSpecTask[] = [];
   private activityLogs: ActivityLogEntry[] = [];
+  private agentManager?: AgentManager;
+  private isAgentRunning = false;
 
   constructor(options: ModernConsoleOptions) {
     this.options = {
@@ -42,6 +46,7 @@ export class ModernConsole {
       ...options,
     };
 
+    this.agentManager = options.agentManager;
     this.openspecManager = createOpenSpecManager(options.projectRoot);
 
     this.screen = blessed.screen({
@@ -170,8 +175,65 @@ export class ModernConsole {
       this.stop();
     });
 
+    // Start agent on 'A' key
+    this.screen.key(['a', 'A'], async () => {
+      if (!this.isAgentRunning && this.agentManager) {
+        this.logActivity('info', 'Starting autonomous agent...');
+        this.isAgentRunning = true;
+        this.updateStatusBar();
+        
+        try {
+          await this.agentManager.startAgent({
+            tool: 'cursor-agent',
+            maxIterations: 10,
+            watchMode: false, // Already in watch mode
+          });
+          
+          this.logActivity('success', 'Agent completed successfully');
+        } catch (error) {
+          this.logActivity('error', `Agent failed: ${error}`);
+        } finally {
+          this.isAgentRunning = false;
+          this.updateStatusBar();
+        }
+      } else if (this.isAgentRunning) {
+        this.logActivity('warning', 'Agent is already running');
+      } else {
+        this.logActivity('error', 'Agent manager not initialized');
+      }
+    });
+
+    // Refresh on 'R' key
+    this.screen.key(['r', 'R'], async () => {
+      this.logActivity('info', 'Refreshing tasks...');
+      await this.refreshTasks();
+    });
+
     // Focus logs box for scrolling
     this.logsBox.focus();
+  }
+
+  /**
+   * Update status bar
+   */
+  private updateStatusBar(): void {
+    const agentStatus = this.isAgentRunning ? '{green-fg}Agent Running{/green-fg}' : '';
+    this.statusBar.setContent(` Press F10 or Ctrl+C to exit | Press A to start agent | Press R to refresh ${agentStatus}`);
+    this.screen.render();
+  }
+
+  /**
+   * Refresh tasks from OpenSpec
+   */
+  private async refreshTasks(): Promise<void> {
+    try {
+      const data = await this.openspecManager.loadOpenSpec();
+      this.tasks = data.tasks;
+      this.logActivity('success', `Refreshed ${this.tasks.length} tasks`);
+      this.render();
+    } catch (error) {
+      this.logActivity('error', `Failed to refresh tasks: ${error}`);
+    }
   }
 
   /**
@@ -361,6 +423,7 @@ export class ModernConsole {
       this.tasks = data.tasks;
 
       this.logActivity('info', 'Watcher started');
+      this.updateStatusBar();
       this.render();
 
       // Animation timer (for loading spinner)
