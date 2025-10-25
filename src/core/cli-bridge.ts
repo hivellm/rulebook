@@ -156,6 +156,33 @@ export class CLIBridge {
     } = {}
   ): Promise<CLIResponse> {
     const startTime = Date.now();
+    
+    // Check for deprecated tools
+    const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
+    if (deprecatedTools.includes(toolName)) {
+      const duration = Date.now() - startTime;
+      return {
+        success: false,
+        output: '',
+        error: `Tool '${toolName}' is deprecated and not supported. Please use 'cursor-agent', 'claude-code', or 'gemini-cli' instead.`,
+        duration,
+        exitCode: 1,
+      };
+    }
+
+    // Check for supported tools
+    const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
+    if (!supportedTools.includes(toolName)) {
+      const duration = Date.now() - startTime;
+      return {
+        success: false,
+        output: '',
+        error: `Tool '${toolName}' is not supported. Supported tools are: ${supportedTools.join(', ')}`,
+        duration,
+        exitCode: 1,
+      };
+    }
+
     // cursor-agent needs more time to connect to remote server and process
     // Set to 30 minutes for long-running tasks
     const defaultTimeout = toolName === 'cursor-agent' ? 1800000 : 30000; // 30 minutes for cursor-agent

@@ -96,6 +96,24 @@ describe('CLIBridge', () => {
       expect(supportedTools).toContain('claude-code');
       expect(supportedTools).toContain('gemini-cli');
     });
+
+    it('should not support deprecated CLI tools', async () => {
+      // Explicitly test that deprecated tools are not supported
+      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
+      const supportedTools = ['cursor-agent', 'claude-code', 'gemini-cli'];
+
+      // Verify deprecated tools are not in supported list
+      deprecatedTools.forEach((deprecated) => {
+        expect(supportedTools).not.toContain(deprecated);
+      });
+
+      // Verify that deprecated tools would be rejected
+      for (const deprecated of deprecatedTools) {
+        const response = await cliBridge.sendCommandToCLI(deprecated, 'test command');
+        expect(response.success).toBe(false);
+        expect(response.error).toContain('deprecated and not supported');
+      }
+    });
   });
 
   describe('sendCommandToCLI', () => {
@@ -109,6 +127,21 @@ describe('CLIBridge', () => {
         duration: expect.any(Number),
         exitCode: expect.any(Number),
       });
+    });
+
+    it('should reject deprecated CLI tools', async () => {
+      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
+
+      for (const tool of deprecatedTools) {
+        const response = await cliBridge.sendCommandToCLI(tool, 'test command');
+
+        expect(response).toMatchObject({
+          success: false,
+          error: expect.stringContaining('deprecated and not supported'),
+          duration: expect.any(Number),
+          exitCode: expect.any(Number),
+        });
+      }
     });
 
     it('should support all standardized CLI tools', async () => {
@@ -173,6 +206,30 @@ describe('CLIBridge', () => {
         });
       }
     });
+
+    it('should reject deprecated CLI tools in command methods', async () => {
+      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
+      const task = { id: 'task-123', title: 'Test Task', description: 'Test Description' };
+
+      for (const tool of deprecatedTools) {
+        const commands = [
+          () => cliBridge.sendTaskCommand(tool, task),
+          () => cliBridge.sendContinueCommand(tool, 5),
+          () => cliBridge.sendTestCommand(tool),
+          () => cliBridge.sendLintCommand(tool),
+          () => cliBridge.sendFormatCommand(tool),
+          () => cliBridge.sendCommitCommand(tool, 'Test commit'),
+        ];
+
+        for (const command of commands) {
+          const response = await command();
+          expect(response).toMatchObject({
+            success: false,
+            duration: expect.any(Number),
+          });
+        }
+      }
+    });
   });
 
   describe('killAllProcesses', () => {
@@ -223,6 +280,19 @@ describe('CLIBridge', () => {
       }
     });
 
+    it('should reject deprecated CLI tools in workflow steps', async () => {
+      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
+      const task = { id: 'task-123', title: 'Test', description: 'Test' };
+
+      for (const tool of deprecatedTools) {
+        const response = await cliBridge.executeWorkflowStep(tool, 'implement', { task });
+        expect(response).toMatchObject({
+          success: false,
+          duration: expect.any(Number),
+        });
+      }
+    });
+
     it('should throw error for unknown step', async () => {
       await expect(
         cliBridge.executeWorkflowStep('nonexistent-tool', 'unknown' as any)
@@ -259,6 +329,21 @@ describe('CLIBridge', () => {
 
       expect(typeof shouldContinue).toBe('boolean');
       expect(shouldContinue).toBe(true); // Should default to continue
+    });
+
+    it('should handle deprecated CLI tools gracefully', async () => {
+      const deprecatedTools = ['cursor-cli', 'claude-cli', 'gemini-cli-legacy'];
+
+      for (const tool of deprecatedTools) {
+        const shouldContinue = await cliBridge.smartContinueDetection(
+          tool,
+          'Some output'
+        );
+
+        expect(typeof shouldContinue).toBe('boolean');
+        // Should default to continue even for deprecated tools
+        expect(shouldContinue).toBe(true);
+      }
     });
   });
 });
