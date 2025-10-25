@@ -74,8 +74,7 @@ export function parseGeminiLine(line: string): GeminiEvent | null {
       content: trimmed,
       timestamp: Date.now(),
     };
-  } catch (_error) {
-    // eslint-disable-line @typescript-eslint/no-unused-vars
+  } catch {
     // Failed to parse line - ignore silently
     return null;
   }
