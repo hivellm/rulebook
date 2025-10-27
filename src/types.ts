@@ -9,6 +9,7 @@ export interface LanguageDetection {
   language:
     | 'rust'
     | 'typescript'
+    | 'javascript'
     | 'python'
     | 'go'
     | 'java'
@@ -17,7 +18,23 @@ export interface LanguageDetection {
     | 'php'
     | 'swift'
     | 'kotlin'
-    | 'cpp';
+    | 'cpp'
+    | 'c'
+    | 'solidity'
+    | 'zig'
+    | 'erlang'
+    | 'dart'
+    | 'ruby'
+    | 'scala'
+    | 'r'
+    | 'haskell'
+    | 'julia'
+    | 'lua'
+    | 'ada'
+    | 'sas'
+    | 'lisp'
+    | 'objectivec'
+    | 'sql';
   confidence: number;
   indicators: string[];
 }

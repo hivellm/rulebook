@@ -1,0 +1,62 @@
+name: Erlang Tests
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        otp-version: [ '26', '27' ]
+
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Setup Erlang/OTP
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{ matrix.otp-version }}
+        rebar3-version: '3.23'
+    
+    - name: Restore dependencies cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          _build
+          ~/.cache/rebar3
+        key: ${{ runner.os }}-otp-${{ matrix.otp-version }}-${{ hashFiles('rebar.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-otp-${{ matrix.otp-version }}-
+    
+    - name: Compile
+      run: rebar3 compile
+    
+    - name: Run Dialyzer
+      run: rebar3 dialyzer
+    
+    - name: Run EUnit tests
+      run: rebar3 eunit
+    
+    - name: Run Common Test
+      run: rebar3 ct
+    
+    - name: Run PropEr properties
+      run: rebar3 proper
+    
+    - name: Generate coverage report
+      run: rebar3 cover
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: matrix.otp-version == '27'
+      with:
+        files: ./_build/test/cover/eunit.coverdata
+        flags: unittests
+        fail_ci_if_error: false
+
+

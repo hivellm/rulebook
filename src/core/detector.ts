@@ -121,6 +121,144 @@ async function detectLanguages(cwd: string): Promise<LanguageDetection[]> {
     });
   }
 
+  // Detect Solidity
+  const hardhatConfig = path.join(cwd, 'hardhat.config.js');
+  const foundryToml = path.join(cwd, 'foundry.toml');
+  if ((await fileExists(hardhatConfig)) || (await fileExists(foundryToml))) {
+    const solFiles = await findFiles('**/*.sol', cwd);
+    detections.push({
+      language: 'solidity',
+      confidence: solFiles.length > 0 ? 1.0 : 0.8,
+      indicators: [
+        (await fileExists(hardhatConfig)) ? 'hardhat.config.js' : '',
+        (await fileExists(foundryToml)) ? 'foundry.toml' : '',
+        `${solFiles.length} .sol files`,
+      ].filter(Boolean),
+    });
+  }
+
+  // Detect Zig
+  const buildZig = path.join(cwd, 'build.zig');
+  if (await fileExists(buildZig)) {
+    const zigFiles = await findFiles('**/*.zig', cwd);
+    detections.push({
+      language: 'zig',
+      confidence: zigFiles.length > 0 ? 1.0 : 0.9,
+      indicators: ['build.zig', `${zigFiles.length} .zig files`],
+    });
+  }
+
+  // Detect Erlang
+  const rebarConfig = path.join(cwd, 'rebar.config');
+  if (await fileExists(rebarConfig)) {
+    const erlFiles = await findFiles('**/*.erl', cwd);
+    detections.push({
+      language: 'erlang',
+      confidence: erlFiles.length > 0 ? 1.0 : 0.8,
+      indicators: ['rebar.config', `${erlFiles.length} .erl files`],
+    });
+  }
+
+  // Detect JavaScript (pure, not TypeScript)
+  if (await fileExists(packageJson)) {
+    const jsFiles = await findFiles('**/*.js', cwd);
+    const hasTS = detections.some((d) => d.language === 'typescript');
+    if (!hasTS && jsFiles.length > 0) {
+      const pkg = await readJsonFile<{ type?: string }>(packageJson);
+      detections.push({
+        language: 'javascript',
+        confidence: 0.9,
+        indicators: ['package.json', `${jsFiles.length} .js files`, pkg?.type === 'module' ? 'ESM' : ''].filter(Boolean),
+      });
+    }
+  }
+
+  // Detect Dart
+  const pubspecYaml = path.join(cwd, 'pubspec.yaml');
+  if (await fileExists(pubspecYaml)) {
+    const dartFiles = await findFiles('**/*.dart', cwd);
+    detections.push({
+      language: 'dart',
+      confidence: dartFiles.length > 0 ? 1.0 : 0.8,
+      indicators: ['pubspec.yaml', `${dartFiles.length} .dart files`],
+    });
+  }
+
+  // Detect Ruby
+  const gemfile = path.join(cwd, 'Gemfile');
+  const gemspec = await findFiles('**/*.gemspec', cwd);
+  if ((await fileExists(gemfile)) || gemspec.length > 0) {
+    const rbFiles = await findFiles('**/*.rb', cwd);
+    detections.push({
+      language: 'ruby',
+      confidence: rbFiles.length > 0 ? 1.0 : 0.7,
+      indicators: [
+        (await fileExists(gemfile)) ? 'Gemfile' : '',
+        gemspec.length > 0 ? `${gemspec.length} .gemspec` : '',
+        `${rbFiles.length} .rb files`,
+      ].filter(Boolean),
+    });
+  }
+
+  // Detect Scala
+  const buildSbt = path.join(cwd, 'build.sbt');
+  if (await fileExists(buildSbt)) {
+    const scalaFiles = await findFiles('**/*.scala', cwd);
+    detections.push({
+      language: 'scala',
+      confidence: scalaFiles.length > 0 ? 1.0 : 0.8,
+      indicators: ['build.sbt', `${scalaFiles.length} .scala files`],
+    });
+  }
+
+  // Detect R
+  const descriptionFile = path.join(cwd, 'DESCRIPTION');
+  if (await fileExists(descriptionFile)) {
+    const rFiles = await findFiles('**/*.R', cwd);
+    detections.push({
+      language: 'r',
+      confidence: rFiles.length > 0 ? 1.0 : 0.8,
+      indicators: ['DESCRIPTION', `${rFiles.length} .R files`],
+    });
+  }
+
+  // Detect Haskell
+  const stackYaml = path.join(cwd, 'stack.yaml');
+  const cabalFiles = await findFiles('**/*.cabal', cwd);
+  if ((await fileExists(stackYaml)) || cabalFiles.length > 0) {
+    const hsFiles = await findFiles('**/*.hs', cwd);
+    detections.push({
+      language: 'haskell',
+      confidence: hsFiles.length > 0 ? 1.0 : 0.8,
+      indicators: [
+        (await fileExists(stackYaml)) ? 'stack.yaml' : '',
+        cabalFiles.length > 0 ? `${cabalFiles.length} .cabal` : '',
+        `${hsFiles.length} .hs files`,
+      ].filter(Boolean),
+    });
+  }
+
+  // Detect Julia
+  const projectToml = path.join(cwd, 'Project.toml');
+  if (await fileExists(projectToml)) {
+    const jlFiles = await findFiles('**/*.jl', cwd);
+    detections.push({
+      language: 'julia',
+      confidence: jlFiles.length > 0 ? 1.0 : 0.8,
+      indicators: ['Project.toml', `${jlFiles.length} .jl files`],
+    });
+  }
+
+  // Detect Lua
+  const luaFiles = await findFiles('**/*.lua', cwd);
+  if (luaFiles.length > 5) {
+    detections.push({
+      language: 'lua',
+      confidence: 0.9,
+      indicators: [`${luaFiles.length} .lua files`],
+    });
+  }
+
   // Sort by confidence
   return detections.sort((a, b) => b.confidence - a.confidence);
 }

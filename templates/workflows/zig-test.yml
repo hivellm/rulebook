@@ -1,0 +1,40 @@
+name: Zig Tests
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        zig-version: [ '0.13.0', 'master' ]
+
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Setup Zig
+      uses: goto-bus-stop/setup-zig@v2
+      with:
+        version: ${{ matrix.zig-version }}
+    
+    - name: Build (Debug)
+      run: zig build -Doptimize=Debug
+    
+    - name: Build (ReleaseSafe)
+      run: zig build -Doptimize=ReleaseSafe
+    
+    - name: Build (ReleaseFast)
+      run: zig build -Doptimize=ReleaseFast
+    
+    - name: Run tests
+      run: zig build test
+    
+    - name: Test with coverage
+      run: zig build test --summary all
+
+

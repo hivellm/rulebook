@@ -1,0 +1,47 @@
+name: Erlang Lint
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Setup Erlang/OTP
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: '27'
+        rebar3-version: '3.23'
+    
+    - name: Restore dependencies cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          _build
+          ~/.cache/rebar3
+        key: ${{ runner.os }}-otp-27-${{ hashFiles('rebar.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-otp-27-
+    
+    - name: Compile
+      run: rebar3 compile
+    
+    - name: Check formatting
+      run: rebar3 as test fmt --check
+    
+    - name: Run Elvis linter
+      run: rebar3 as test lint
+    
+    - name: Run Dialyzer
+      run: rebar3 dialyzer
+    
+    - name: Cross-reference check
+      run: rebar3 xref
+
+

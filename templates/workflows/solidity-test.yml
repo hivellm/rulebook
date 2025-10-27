@@ -1,0 +1,47 @@
+name: Solidity Tests
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    # IMPORTANT: For cache to work, you MUST commit package-lock.json
+    # Remove package-lock.json from .gitignore if needed
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Compile contracts
+      run: npx hardhat compile
+      # or: forge build (for Foundry)
+    
+    - name: Run tests
+      run: npx hardhat test
+      # or: forge test -vvv (for Foundry)
+    
+    - name: Generate coverage report
+      run: npx hardhat coverage
+      # or: forge coverage (for Foundry)
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage/lcov.info
+        flags: unittests
+        fail_ci_if_error: false
+
+
