@@ -294,22 +294,36 @@ export default class MyClass {}
 
 ## CI/CD Requirements
 
+**CRITICAL**: GitHub Actions `cache: 'npm'` requires `package-lock.json` to be committed.
+
+- **Lockfile Requirement**: Remove `package-lock.json` from `.gitignore`
+- **Cache Strategy**: Use `cache: 'npm'` in `setup-node` action
+- **Install Command**: Use `npm ci` (not `npm install`) for reproducible builds
+- **Error Prevention**: Without committed lockfile, you'll get:
+  ```
+  Error: Dependencies lock file is not found in repository
+  Supported file patterns: package-lock.json,npm-shrinkwrap.json,yarn.lock
+  ```
+
 Must include GitHub Actions workflows for:
 
 1. **Testing** (`typescript-test.yml`):
    - Test on ubuntu-latest, windows-latest, macos-latest
    - Use Vitest for fast execution
    - Upload coverage reports
+   - **MUST**: Commit package-lock.json for caching
 
 2. **Linting** (`typescript-lint.yml`):
    - Type check: `tsc --noEmit`
    - ESLint: `eslint src/**/*.ts`
    - Prettier: `prettier --check "src/**/*.ts"`
+   - **MUST**: Commit package-lock.json for caching
 
 3. **Build** (`typescript-build.yml`):
    - Build: `npm run build`
    - Verify no type errors
    - Check output artifacts
+   - **MUST**: Commit package-lock.json for caching
 
 ## Package Publication
 

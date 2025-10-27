@@ -17,6 +17,9 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     
+    # IMPORTANT: For cache to work, you MUST commit package-lock.json
+    # Remove package-lock.json from .gitignore if needed
+    
     # For pnpm projects, add this step before setup-node:
     # - name: Install pnpm
     #   uses: pnpm/action-setup@v3

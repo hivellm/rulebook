@@ -21,6 +21,9 @@ jobs:
       with:
         ref: ${{ github.event.inputs.tag || github.ref }}
     
+    # IMPORTANT: For cache to work, you MUST commit package-lock.json
+    # Remove package-lock.json from .gitignore if needed
+    
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
