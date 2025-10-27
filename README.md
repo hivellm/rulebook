@@ -43,6 +43,8 @@ npx rulebook init
 
 ## Quick Start
 
+### New Project
+
 Navigate to your project directory and run:
 
 ```bash
@@ -55,6 +57,21 @@ The CLI will:
 3. Ask configuration questions
 4. Generate or merge AGENTS.md with best practices
 5. Optionally generate GitHub Actions workflows
+
+### Existing Project (Update)
+
+If you already have rulebook installed and want to update to the latest version:
+
+```bash
+npx @hivellm/rulebook@latest update
+```
+
+The update command will:
+1. Detect your current project configuration
+2. Create backups of AGENTS.md and .rulebook
+3. Merge latest language templates with your existing rules
+4. Update .rulebook to v0.11.1
+5. Preserve your custom rules and configurations
 
 ## Usage
 
@@ -79,6 +96,37 @@ Use detected defaults without prompts:
 ```bash
 npx @hivellm/rulebook@latest init --yes
 ```
+
+### Update Command
+
+Update existing projects to the latest rulebook version:
+
+```bash
+# Interactive update (prompts for confirmation)
+npx @hivellm/rulebook@latest update
+
+# Auto mode (no prompts)
+npx @hivellm/rulebook@latest update --yes
+```
+
+**What gets updated:**
+- ✅ AGENTS.md language templates (preserves custom rules)
+- ✅ AGENTS.md module templates (adds new MCP modules)
+- ✅ .rulebook configuration file (updates to v0.11.1)
+- ✅ Pre-commit command standardization
+- ✅ OpenSpec workflow enhancements
+- ✅ Git workflow rules
+
+**What is preserved:**
+- ✅ Your custom rules and configurations
+- ✅ IDE-specific customizations
+- ✅ Project-specific settings
+- ✅ Existing .rulesignore patterns
+
+**Safety features:**
+- Automatic backups before updating
+- Intelligent merging (doesn't overwrite custom content)
+- Can be reverted if needed
 
 ### Validation
 

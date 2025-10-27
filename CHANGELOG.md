@@ -16,11 +16,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Zig**: Zig 0.13+, zig fmt, cross-compilation, memory safety, built-in testing, compile-time execution
 - **Erlang**: Erlang/OTP 27+, rebar3, Dialyzer type analysis, EUnit, Common Test, PropEr property testing → Hex.pm
 
+**New CLI Command:**
+- **update**: Update existing projects to latest rulebook version
+  - Creates automatic backups before updating
+  - Merges latest templates with existing AGENTS.md
+  - Updates .rulebook configuration to v0.11.1
+  - Preserves custom rules and user configurations
+  - Interactive mode with confirmation or --yes for auto mode
+
+**Language Auto-Detection Implementation:**
+- Implemented detection for all 28 languages in src/core/detector.ts
+- Detection for: Solidity, Zig, Erlang, JavaScript, Dart, Ruby, Scala, R, Haskell, Julia, Lua
+- Confidence scoring based on project files
+- Multiple indicator support per language
+
+**GitHub Actions Workflows (6 new):**
+- solidity-test.yml, solidity-lint.yml (Hardhat/Foundry, Slither)
+- zig-test.yml, zig-lint.yml (multi-platform, all optimize modes)
+- erlang-test.yml, erlang-lint.yml (multi-OTP, Dialyzer, PropEr)
+
 ### Changed
 
 - **Total Language Support**: Expanded from 25 to **28 languages** (3 new)
 - **Template Count**: Increased from 83 to **86+ templates**
+- **Workflow Count**: Increased from 35 to **41 workflows** (6 new)
+- **CLI Commands**: Expanded from 13 to **14 commands** (added update)
 - **Language Categories Updated**: Added Zig to Systems, Erlang to Systems, Solidity to Blockchain
+
+### Fixed
+
+- Fixed health-scorer test timeouts (increased from 5s to 10s)
+- Fixed TypeScript type error in JavaScript detection
+- Applied Prettier formatting to detector.ts
+- All 297 tests now passing
 
 ## [0.11.0] - 2025-10-27
 

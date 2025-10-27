@@ -16,6 +16,7 @@ import {
   agentCommand,
   configCommand,
   tasksCommand,
+  updateCommand,
 } from './cli/commands.js';
 
 const program = new Command();
@@ -23,7 +24,7 @@ const program = new Command();
 program
   .name('rulebook')
   .description('CLI tool to standardize AI-generated projects with templates and rules')
-  .version('0.10.0');
+  .version('0.11.1');
 
 program
   .command('init')
@@ -134,5 +135,11 @@ program
       status: options.status,
     })
   );
+
+program
+  .command('update')
+  .description('Update AGENTS.md and .rulebook to latest version')
+  .option('-y, --yes', 'Skip confirmation prompt')
+  .action(updateCommand);
 
 program.parse(process.argv);

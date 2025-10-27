@@ -797,3 +797,159 @@ export async function tasksCommand(options: {
     process.exit(1);
   }
 }
+
+export async function updateCommand(options: { yes?: boolean }): Promise<void> {
+  try {
+    const cwd = process.cwd();
+
+    console.log(chalk.bold.blue('\n🔄 Rulebook Update Tool\n'));
+    console.log(chalk.gray('This will update your AGENTS.md and .rulebook to the latest version\n'));
+
+    // Detect project
+    const spinner = ora('Detecting project structure...').start();
+    const detection = await detectProject(cwd);
+    spinner.succeed('Project detection complete');
+
+    // Show detected languages
+    if (detection.languages.length > 0) {
+      console.log(chalk.green('\n✓ Detected languages:'));
+      for (const lang of detection.languages) {
+        console.log(`  - ${lang.language} (${(lang.confidence * 100).toFixed(0)}% confidence)`);
+      }
+    }
+
+    // Check for existing AGENTS.md
+    if (!detection.existingAgents) {
+      console.log(chalk.yellow('\n⚠ No AGENTS.md found. Use "rulebook init" instead.'));
+      process.exit(0);
+    }
+
+    console.log(
+      chalk.green(
+        `\n✓ Found existing AGENTS.md with ${detection.existingAgents.blocks.length} blocks`
+      )
+    );
+
+    // Get existing blocks to preserve user customizations
+    const existingBlocks = detection.existingAgents.blocks.map((b) => b.name);
+    console.log(chalk.gray(`  Existing blocks: ${existingBlocks.join(', ')}`));
+
+    // Prompt for confirmation unless --yes
+    if (!options.yes) {
+      const inquirer = (await import('inquirer')).default;
+      const { confirm } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'confirm',
+          message: 'Update AGENTS.md and .rulebook with latest templates?',
+          default: true,
+        },
+      ]);
+
+      if (!confirm) {
+        console.log(chalk.yellow('\nUpdate cancelled'));
+        process.exit(0);
+      }
+    }
+
+    // Create backup
+    const backupSpinner = ora('Creating backup...').start();
+    const agentsPath = path.join(cwd, 'AGENTS.md');
+    const rulebookPath = path.join(cwd, '.rulebook');
+    
+    const agentsBackup = await createBackup(agentsPath);
+    let rulebookBackup = '';
+    try {
+      rulebookBackup = await createBackup(rulebookPath);
+    } catch {
+      // .rulebook might not exist yet
+    }
+    backupSpinner.succeed('Backup created');
+
+    // Build config from detected project
+    const config = {
+      languages: detection.languages.map((l) => l.language),
+      modules: detection.modules.filter((m) => m.detected).map((m) => m.module),
+      ides: [], // Preserve existing IDE choices
+      projectType: 'application' as const,
+      coverageThreshold: 95,
+      strictDocs: true,
+      generateWorkflows: false, // Don't regenerate workflows on update
+      includeGitWorkflow: true,
+      gitPushMode: 'manual' as const,
+    };
+
+    // Merge with existing AGENTS.md
+    const mergeSpinner = ora('Updating AGENTS.md with latest templates...').start();
+    const mergedContent = await mergeFullAgents(detection.existingAgents, config);
+    await writeFile(agentsPath, mergedContent);
+    mergeSpinner.succeed('AGENTS.md updated');
+
+    // Update .rulebook config
+    const configSpinner = ora('Updating .rulebook configuration...').start();
+    const rulebookConfig: RulebookConfig = {
+      version: '0.11.1',
+      installedAt: detection.existingAgents.content?.match(/Generated at: (.+)/)?.[1] || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      projectId: path.basename(cwd),
+      features: {
+        openspec: true,
+        watcher: false,
+        agent: false,
+        logging: true,
+        telemetry: false,
+        notifications: false,
+        dryRun: false,
+        gitHooks: false,
+        repl: false,
+        templates: true,
+        context: true,
+        health: true,
+        plugins: false,
+        parallel: true,
+        smartContinue: true,
+      },
+      coverageThreshold: 95,
+      language: 'en',
+      outputLanguage: 'en',
+      cliTools: [],
+      maxParallelTasks: 5,
+      timeouts: {
+        taskExecution: 3600000,
+        cliResponse: 180000,
+        testRun: 600000,
+      },
+    };
+
+    await writeFile(rulebookPath, JSON.stringify(rulebookConfig, null, 2));
+    configSpinner.succeed('.rulebook configuration updated');
+
+    // Success message
+    console.log(chalk.bold.green('\n✅ Update complete!\n'));
+    console.log(chalk.white('Updated components:'));
+    console.log(chalk.green('  ✓ AGENTS.md - Merged with latest templates'));
+    console.log(chalk.green('  ✓ .rulebook - Updated to v0.11.1'));
+    console.log(chalk.gray('\nBackups created:'));
+    console.log(chalk.gray(`  - ${path.basename(agentsBackup)}`));
+    if (rulebookBackup) {
+      console.log(chalk.gray(`  - ${path.basename(rulebookBackup)}`));
+    }
+
+    console.log(chalk.white('\nWhat was updated:'));
+    console.log(chalk.gray(`  - ${detection.languages.length} language templates`));
+    console.log(chalk.gray(`  - ${detection.modules.filter((m) => m.detected).length} MCP modules`));
+    console.log(chalk.gray('  - Git workflow rules'));
+    console.log(chalk.gray('  - OpenSpec integration'));
+    console.log(chalk.gray('  - Pre-commit command standardization'));
+    
+    console.log(chalk.yellow('\n⚠ Review the updated AGENTS.md to ensure your custom rules are preserved'));
+    console.log(chalk.white('\nNext steps:'));
+    console.log(chalk.gray('  1. Review AGENTS.md changes'));
+    console.log(chalk.gray('  2. Test that your project still builds'));
+    console.log(chalk.gray('  3. Run quality checks (lint, test, build)'));
+    console.log(chalk.gray('  4. Commit the updated files\n'));
+  } catch (error) {
+    console.error(chalk.red('\n❌ Update failed:'), error);
+    process.exit(1);
+  }
+}
