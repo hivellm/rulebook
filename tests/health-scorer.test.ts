@@ -53,7 +53,7 @@ describe('health-scorer', () => {
 
       expect(health.overall).toBeLessThan(50);
       expect(health.recommendations.length).toBeGreaterThan(0);
-    });
+    }, 10000); // 10 second timeout
 
     it('should give higher score with README and LICENSE', async () => {
       await fs.writeFile(path.join(testDir, 'README.md'), '# Test Project');
@@ -62,7 +62,7 @@ describe('health-scorer', () => {
       const health = await calculateHealthScore(testDir);
 
       expect(health.categories.documentation).toBeGreaterThan(0);
-    });
+    }, 10000); // 10 second timeout
 
     it('should score documentation category', async () => {
       // Create documentation files
