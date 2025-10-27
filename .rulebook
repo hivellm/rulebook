@@ -1,33 +1,33 @@
 {
-  "version": "1.0.0",
-  "installedAt": "2025-10-25T08:32:48.016Z",
-  "updatedAt": "2025-10-25T08:32:48.016Z",
-  "projectId": "74a0edda-44f5-4694-bdf9-c5007de3f072",
+  "version": "0.11.1",
+  "installedAt": "2025-10-27T01:22:52.953Z",
+  "updatedAt": "2025-10-27T01:43:22.959Z",
+  "projectId": "rulebook",
   "features": {
     "openspec": true,
-    "watcher": true,
-    "agent": true,
+    "watcher": false,
+    "agent": false,
     "logging": true,
-    "telemetry": true,
+    "telemetry": false,
     "notifications": false,
     "dryRun": false,
     "gitHooks": false,
     "repl": false,
-    "templates": false,
-    "context": false,
-    "health": false,
+    "templates": true,
+    "context": true,
+    "health": true,
     "plugins": false,
-    "parallel": false,
-    "smartContinue": false
+    "parallel": true,
+    "smartContinue": true
   },
   "coverageThreshold": 95,
   "language": "en",
   "outputLanguage": "en",
   "cliTools": [],
-  "maxParallelTasks": 1,
+  "maxParallelTasks": 5,
   "timeouts": {
-    "taskExecution": 300000,
-    "cliResponse": 60000,
-    "testRun": 120000
+    "taskExecution": 3600000,
+    "cliResponse": 180000,
+    "testRun": 600000
   }
 }
