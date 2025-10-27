@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.2] - 2025-10-27
+
+### Fixed
+
+**OpenSpec Directives Correction:**
+- Updated `OPENSPEC_RULES.md` template to follow standard OpenSpec spec
+- Updated `rulebook/openspec/AGENTS.md` with complete and correct instructions
+- Simplified OpenSpec section in main `AGENTS.md` to reference `openspec/AGENTS.md`
+- Removed outdated/incorrect OpenSpec orientations
+- Now follows the same format as `transmutation-lite/openspec/AGENTS.md`
+
+**Documentation:**
+- OpenSpec workflow now properly documented with three-stage process
+- Correct spec file format with scenario formatting rules
+- Proper delta operations (ADDED/MODIFIED/REMOVED/RENAMED)
+- Complete CLI commands and validation tips
+- Best practices and troubleshooting guidance
+
 ## [0.11.1] - 2025-10-27
 
 ### Added
