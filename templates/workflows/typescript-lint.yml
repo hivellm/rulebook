@@ -39,4 +39,11 @@ jobs:
     
     - name: Check code formatting
       run: npm run format -- --check  # For pnpm: pnpm run format -- --check | For yarn: yarn format --check
+    
+    - name: Security audit
+      run: |
+        echo "Running security audit..."
+        npm audit --production --audit-level=moderate || true
+        echo "Checking for outdated dependencies..."
+        npm outdated || true
 

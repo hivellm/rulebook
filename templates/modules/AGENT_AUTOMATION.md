@@ -3,6 +3,39 @@
 
 **CRITICAL**: These rules define MANDATORY automated tasks that the AI agent MUST execute after EVERY implementation.
 
+## Pre-Implementation Dependency Check
+
+Before starting any implementation, verify project dependencies:
+
+```bash
+# 1. Check for known vulnerabilities
+npm audit --production                # TypeScript/JavaScript
+# OR
+cargo audit                           # Rust
+# OR
+pip-audit                             # Python
+# OR
+go list -json -m all | nancy sleuth  # Go
+# OR
+mvn dependency:analyze                # Java
+
+# 2. Check for outdated dependencies (informational)
+npm outdated                          # TypeScript/JavaScript
+# OR
+cargo outdated                        # Rust
+# OR
+pip list --outdated                   # Python
+# OR
+go list -u -m all                     # Go
+# OR
+mvn versions:display-dependency-updates # Java
+
+# 3. Document current state for comparison
+# Log current dependency versions and vulnerability status
+```
+
+**Purpose**: Establish baseline before changes, catch supply chain issues early, and compare state after implementation.
+
 ## Mandatory Post-Implementation Workflow
 
 After completing ANY feature implementation, bug fix, or code change, you MUST execute this complete workflow in order:
@@ -69,6 +102,49 @@ go test -cover ./...    # Go
 - ❌ FIX the failing check first
 - ✅ Re-run ALL checks from the beginning
 
+### Step 1.5: Security & Dependency Audits (MANDATORY)
+
+After all quality checks pass, run comprehensive security scanning:
+
+```bash
+# TypeScript/JavaScript
+npm audit --production --audit-level=moderate  # Fail on moderate+ vulnerabilities
+npm outdated                                    # Informational
+npx depcheck                                    # Find unused dependencies.(optional)
+
+# Rust
+cargo audit                                     # Check for advisories
+cargo outdated                                  # Informational
+cargo deny check                                # Additional checks (optional)
+
+# Python
+pip-audit                                       # Check for vulnerabilities
+pip list --outdated                             # Informational
+safety check                                    # Alternative to pip-audit
+
+# Go
+go list -json -m all | nancy sleuth            # Check advisories
+go list -u -m all                               # Informational
+gosec ./...                                     # Source code security scan (optional)
+
+# Java
+mvn dependency:analyze                          # Analyze dependencies
+mvn versions:display-dependency-updates         # Informational
+mvn org.owasp:dependency-check-maven:check     # OWASP check (optional)
+```
+
+**Vulnerability Handling:**
+- If vulnerabilities detected, attempt automatic fixes first
+- Document any exceptions with justification
+- Create issue/technical debt tracking if fix deferred
+- Update dependencies cautiously (check breaking changes)
+
+**IF VULNERABILITIES FOUND:**
+- ✅ Attempt automatic fix: `npm audit fix`, `cargo update`, `pip install --upgrade`
+- ✅ If auto-fix fails, document the issue with justification
+- ✅ Include vulnerability summary in Step 5 report
+- ✅ Never ignore critical/high vulnerabilities without explicit user approval
+
 ### Step 2: Update OpenSpec Tasks (MANDATORY)
 
 After all quality checks pass, you MUST update OpenSpec task status:
@@ -128,7 +204,25 @@ if [ -f "README.md" ]; then
   # Add new features to feature list
   # Update version badges
 fi
+
+# 5. Archive test artifacts for traceability
+mkdir -p test-artifacts
+# Save coverage reports
+cp -r coverage test-artifacts/ 2>/dev/null || true
+cp -r htmlcov test-artifacts/ 2>/dev/null || true
+cp -r .coverage test-artifacts/ 2>/dev/null || true
+# Save test logs
+cp last-test.log test-artifacts/ 2>/dev/null || true
+cp logs/*.log test-artifacts/ 2>/dev/null || true
+# Archive for CI integration (Codecov, etc.)
+echo "Test artifacts archived to test-artifacts/ at $(date)" >> test-artifacts/README.txt
 ```
+
+**Artifact Archiving Purpose:**
+- Enable full traceability of test results and coverage
+- Support CI/CD integrations (Codecov, CodeClimate, etc.)
+- Preserve evidence for code reviews and audits
+- Document baseline quality metrics for comparison
 
 ### Step 4: Git Commit (ONLY after all above steps pass)
 
@@ -187,6 +281,11 @@ After completing all steps, provide a summary to the user:
 - ✅ Tests: 42/42 passed (100%)
 - ✅ Coverage: 97.3% (threshold: 95%)
 
+🔒 Security Audit:
+- ✅ No vulnerabilities detected
+- ✅ Dependencies up to date
+- ✅ Supply chain verified
+
 📊 OpenSpec:
 - ✅ STATUS.md updated
 - ✅ Task marked as complete
@@ -197,14 +296,19 @@ After completing all steps, provide a summary to the user:
 - ✅ CHANGELOG.md updated
 - ✅ Feature spec updated
 
+📦 Artifacts:
+- ✅ Test artifacts archived to test-artifacts/
+- ✅ Coverage report: coverage/lcov-report/index.html
+
 💾 Git:
 - ✅ Committed: feat(feature): Description
-- ✅ Hash: abc1234
+- ✅ Hash: abc1234de5678f
 
 📋 Next Steps:
 - [ ] Review changes
 - [ ] Push to remote (manual if SSH password required)
 - [ ] Create PR (if applicable)
+- [ ] Review test artifacts in test-artifacts/
 ```
 
 ## Automation Exceptions

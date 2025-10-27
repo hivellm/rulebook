@@ -52,4 +52,12 @@ jobs:
         name: junit-${{ matrix.os }}.xml
         path: target/nextest/default/junit.xml
         if-no-files-found: ignore
+    
+    - name: Security audit
+      run: |
+        echo "Running security audit..."
+        cargo install cargo-audit --locked 2>/dev/null || true
+        cargo audit || true
+        echo "Checking for outdated dependencies..."
+        cargo outdated || true
 

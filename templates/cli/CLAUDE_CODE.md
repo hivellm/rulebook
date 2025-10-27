@@ -647,6 +647,65 @@ As per AGENTS.md:
 Include before/after comparison.
 ```
 
+## Post-Generation Workflow
+
+**CRITICAL**: After generating code with Claude Code, you MUST execute the AGENT_AUTOMATION workflow:
+
+```bash
+# Step 1: Quality checks (type, lint, format, test, coverage)
+npm run type-check
+npm run lint
+npm test
+npm run test:coverage
+
+# Step 1.5: Security audit
+npm audit --production --audit-level=moderate
+npm outdated
+
+# Step 2: Update OpenSpec tasks if applicable
+# (If working on OpenSpec change)
+
+# Step 3: Update documentation
+# Update README.md, CHANGELOG.md, etc.
+
+# Step 4: Git commit with conventional format
+git add .
+git commit -m "feat: Description"
+
+# Step 5: Report results
+echo "✅ All tasks complete! Commit: $(git rev-parse HEAD)"
+```
+
+**Integration with AGENT_AUTOMATION:**
+Refer to `templates/modules/AGENT_AUTOMATION.md` for complete workflow details.
+
+## Error Recovery
+
+**What to do when Claude Code can't run tests locally:**
+
+```bash
+# Fallback to manual execution
+echo "❌ Claude Code can't run tests locally"
+echo "📝 Manual execution required:"
+echo "   npm test"
+echo "   npm run lint"
+echo "   npm run type-check"
+
+# Integration with AGENT_AUTOMATION error recovery
+# Refer to AGENT_AUTOMATION.md error recovery workflow
+```
+
+**When to abandon current approach:**
+- Same error occurs 3+ times
+- AGENT_AUTOMATION workflow fails repeatedly
+- OpenSpec validation reveals fundamental mismatch
+- Security audit blocks critical path
+
+**Retry with alternative approach:**
+- Try different implementation pattern from AGENTS.md
+- Consider different architecture/design
+- Review OpenSpec for alternative solutions
+
 ## Quality Checklist
 
 Before accepting Claude Code's suggestions:
