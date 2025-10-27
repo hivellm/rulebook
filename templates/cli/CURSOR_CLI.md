@@ -375,6 +375,76 @@ async function ensureCoverage(threshold: number = 95) {
 }
 ```
 
+## Post-Generation Workflow
+
+**CRITICAL**: After generating code with Cursor CLI, you MUST execute the AGENT_AUTOMATION workflow:
+
+```typescript
+async function postGenerationWorkflow() {
+  console.log("✅ Code generated successfully");
+  console.log("\n📋 Executing AGENT_AUTOMATION workflow...");
+  
+  // Step 1: Quality checks
+  await runQualityChecks(); // type, lint, format, test, coverage
+  
+  // Step 1.5: Security audit
+  await runSecurityAudit();
+  
+  // Step 2: Update OpenSpec tasks if applicable
+  await updateOpenSpecTasks();
+  
+  // Step 3: Update documentation
+  await updateDocumentation();
+  
+  // Step 4: Git commit change tracking
+  const commitHash = await git.commit(...);
+  
+  // Step 5: Report to user
+  console.log(`\n✅ All tasks complete! Commit: ${commitHash}`);
+}
+```
+
+**Required Steps:**
+1. Quality checks (type, lint, format, test, coverage)
+2. Security audit (AGENT_AUTOMATION Step 1.5)
+3. Update OpenSpec tasks if applicable
+4. Update documentation (ROADMAP, CHANGELOG)
+5. Commit with conventional format and report
+
+## Error Recovery
+
+**What to do when Cursor CLI can't run tests locally:**
+
+```typescript
+async function errorRecovery() {
+  try {
+    await generateCode();
+    await runTests();
+  } catch (error) {
+    // Fallback to manual execution
+    console.log("❌ CLI tool can't run tests locally");
+    console.log("📝 Manual execution required:");
+    console.log("   npm test");
+    console.log("   npm run lint");
+    console.log("   npm run type-check");
+    
+    // Integration with AGENT_AUTOMATION error recovery
+    await agentAutomationErrorRecovery();
+  }
+}
+```
+
+**When to abandon current approach:**
+- Same error occurs 3+ times
+- AGENT_AUTOMATION workflow fails repeatedly
+- OpenSpec validation reveals fundamental mismatch
+- Security audit blocks critical path
+
+**Retry with alternative approach:**
+- Try different implementation pattern from AGENTS.md
+- Consider different architecture/design
+- Review OpenSpec for alternative solutions
+
 ## Best Practices
 
 ### 1. Always Include AGENTS.md
@@ -452,7 +522,7 @@ async function implementUntilCorrect(spec: string, maxAttempts: number = 3) {
 6. **Automate**: Use CI/CD for consistent enforcement
 7. **Review**: Always review AI-generated code
 
-## Error Handling
+**Basic Error Retry Pattern:**
 
 ```typescript
 async function safeGenerate(prompt: string, retries: number = 3) {

@@ -48,4 +48,12 @@ jobs:
         files: ./coverage.out
         flags: unittests
         fail_ci_if_error: false
+    
+    - name: Security audit
+      run: |
+        echo "Running security audit..."
+        go install github.com/sonatypecommunity/nancy@latest
+        go list -json -m all | nancy sleuth || true
+        echo "Checking for outdated modules..."
+        go list -u -m all || true
 

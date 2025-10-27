@@ -41,4 +41,12 @@ jobs:
         files: ./coverage.xml
         flags: unittests
         fail_ci_if_error: false
+    
+    - name: Security audit
+      run: |
+        echo "Running security audit..."
+        python -m pip install pip-audit
+        pip-audit || true
+        echo "Checking for outdated packages..."
+        pip list --outdated || true
 
