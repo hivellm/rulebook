@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2025-10-27
+
+### Added
+
+**3 More Programming Languages:**
+- **Solidity**: Solidity 0.8.26+, Hardhat/Foundry, Slither/Mythril security analysis, gas optimization, smart contract testing
+- **Zig**: Zig 0.13+, zig fmt, cross-compilation, memory safety, built-in testing, compile-time execution
+- **Erlang**: Erlang/OTP 27+, rebar3, Dialyzer type analysis, EUnit, Common Test, PropEr property testing → Hex.pm
+
+### Changed
+
+- **Total Language Support**: Expanded from 25 to **28 languages** (3 new)
+- **Template Count**: Increased from 83 to **86+ templates**
+- **Language Categories Updated**: Added Zig to Systems, Erlang to Systems, Solidity to Blockchain
+
 ## [0.11.0] - 2025-10-27
 
 ### Added

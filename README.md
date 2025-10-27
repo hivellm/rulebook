@@ -1,11 +1,11 @@
 # @hivellm/rulebook
 
-CLI tool to standardize AI-generated projects with templates, rules enforcement, workflow generation, CI/CD monitoring, and complete publication support for 25 programming languages.
+CLI tool to standardize AI-generated projects with templates, rules enforcement, workflow generation, CI/CD monitoring, and complete publication support for 28 programming languages.
 
 ## Features
 
-- 🔍 **Auto-Detection**: Automatically detects project language (25 languages) and MCP modules
-- 📝 **Template System**: 83+ pre-built templates for languages, modules, IDEs, workflows, and Git
+- 🔍 **Auto-Detection**: Automatically detects project language (28 languages) and MCP modules
+- 📝 **Template System**: 86+ pre-built templates for languages, modules, IDEs, workflows, and Git
 - 🔄 **Smart Merging**: Intelligently merges with existing AGENTS.md files without losing content
 - 🎯 **Customizable**: Configure coverage thresholds, documentation strictness, Git workflow, and more
 - 🚫 **Rules Ignore**: Selectively disable rules using `.rulesignore` file
@@ -367,20 +367,22 @@ npx @hivellm/rulebook@latest generate-docs --yes
 - `docs/ARCHITECTURE.md` - System architecture
 - `docs/DAG.md` - Component dependencies
 
-## Supported Languages (25)
+## Supported Languages (28)
 
-### Systems & Compiled (11)
+### Systems & Compiled (13)
 - ✅ **Rust**: Edition 2024, Clippy, Cargo fmt, nextest, llvm-cov → crates.io
 - ✅ **C**: C11/C17, CMake, clang-format, sanitizers, Valgrind
 - ✅ **C++**: C++20/23, CMake, clang-format, clang-tidy, Google Test → Conan/vcpkg
 - ✅ **C#**: .NET 8+, nullable types, Roslyn analyzers → NuGet
 - ✅ **Go**: gofmt, golangci-lint, go vet, table-driven tests → pkg.go.dev
+- ✅ **Zig**: Zig 0.13+, zig fmt, cross-compilation, built-in testing
 - ✅ **Swift**: Swift 5.10+, SwiftLint, strict concurrency → SPM
 - ✅ **Objective-C**: Modern Obj-C, ARC, XCTest, clang analyzer
 - ✅ **Ada**: Ada 2012/2022, GNAT, GPRbuild, AUnit, SPARK
 - ✅ **Haskell**: GHC 9.4+, Stack/Cabal, HLint, Ormolu, Hspec, QuickCheck
 - ✅ **Scala**: Scala 3.3+, sbt, scalafmt, scalafix, ScalaTest/MUnit → Maven Central
 - ✅ **Dart**: Dart 3.0+, Flutter, dart analyze, package:test → pub.dev
+- ✅ **Erlang**: Erlang/OTP 27+, rebar3, Dialyzer, EUnit, PropEr → Hex.pm
 
 ### Scripting & Dynamic (8)
 - ✅ **TypeScript**: ESLint, Prettier, Vitest, strict mode → npm
@@ -401,7 +403,8 @@ npx @hivellm/rulebook@latest generate-docs --yes
 - ✅ **Julia**: Julia 1.9+, JuliaFormatter, Test.jl, Documenter.jl
 - ✅ **SQL**: SQLFluff, pgTAP, migrations, Flyway/Liquibase
 
-### Specialized (1)
+### Blockchain & Specialized (2)
+- ✅ **Solidity**: Solidity 0.8.26+, Hardhat/Foundry, Slither, security audits
 - ✅ **SAS**: SAS 9.4+, code validation, SASUnit
 
 ## Supported MCP Modules (6)
