@@ -13,41 +13,55 @@
 
 ### Mandatory Quality Checks
 
-**CRITICAL**: After implementing ANY feature, you MUST run these commands in order:
+**CRITICAL**: After implementing ANY feature, you MUST run these commands in order.
+
+**IMPORTANT**: These commands MUST match your GitHub Actions workflows to prevent CI/CD failures!
 
 ```bash
-# For Maven projects:
+# Pre-Commit Checklist - Maven (MUST match .github/workflows/*.yml)
 
-# 1. Format code
-mvn spotless:apply
+# 1. Format check (matches workflow - use check, not apply!)
+mvn spotless:check
 
-# 2. Lint and static analysis
+# 2. Lint and static analysis (matches workflow)
 mvn checkstyle:check
 mvn pmd:check
 
-# 3. Run all tests (MUST pass 100%)
+# 3. Run all tests (MUST pass 100% - matches workflow)
 mvn test
 
-# 4. Check coverage (MUST meet threshold)
-mvn jacoco:report
+# 4. Build (matches workflow)
+mvn package -DskipTests
+
+# 5. Check coverage (MUST meet threshold)
 mvn jacoco:check
 
-# For Gradle projects:
+# Pre-Commit Checklist - Gradle (MUST match .github/workflows/*.yml)
 
-# 1. Format code
-./gradlew spotlessApply
+# 1. Format check (matches workflow - use check, not apply!)
+./gradlew spotlessCheck
 
-# 2. Lint and check
+# 2. Lint and check (matches workflow)
 ./gradlew checkstyleMain checkstyleTest
 
-# 3. Run tests
+# 3. Run tests (matches workflow)
 ./gradlew test
 
-# 4. Check coverage
-./gradlew jacocoTestReport jacocoTestCoverageVerification
+# 4. Build (matches workflow)
+./gradlew build -x test
+
+# 5. Check coverage (matches workflow)
+./gradlew jacocoTestCoverageVerification
+
+# If ANY fails: ❌ DO NOT COMMIT - Fix first!
 ```
 
 **If ANY of these fail, you MUST fix the issues before committing.**
+
+**Why This Matters:**
+- CI/CD failures happen when local commands differ from workflows
+- Example: Using `spotless:apply` locally but `spotless:check` in CI = failure
+- Example: Missing `-DskipTests` in package = slow CI builds
 
 ### Formatting
 

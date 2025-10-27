@@ -30,12 +30,44 @@ openspec/
 2. **Respect Dependencies**: Never start a task with incomplete dependencies
 3. **Update Progress**: Log significant milestones and progress
 4. **Handle Failures**: Mark failed tasks appropriately and log errors
+5. **Update tasks.md**: **CRITICAL** - Update `openspec/changes/[change-id]/tasks.md` after EACH phase completion
+   - Mark completed tasks with `[x]`
+   - Keep tasks.md synchronized with actual implementation status
+   - Never let tasks.md become stale or outdated
 
 ### After Completion
 1. **Run Tests**: Ensure 100% test coverage before marking complete
 2. **Update Status**: Set task status to `completed`
-3. **Move to History**: Completed tasks are moved to `history.json`
-4. **Log Completion**: Record task completion with duration
+3. **Update tasks.md**: Mark all tasks in the phase as `[x]` completed
+4. **Commit Progress**: Commit the updated tasks.md with descriptive message
+5. **Move to History**: Completed tasks are moved to `history.json`
+6. **Log Completion**: Record task completion with duration
+
+### tasks.md Update Frequency
+
+**MANDATORY**: Update `tasks.md` at these checkpoints:
+
+- ✅ **After Each Phase**: Mark all completed tasks in that phase
+- ✅ **Before Committing**: Ensure tasks.md reflects current state
+- ✅ **After Major Milestone**: Update to show progress
+- ✅ **When Blocked**: Mark tasks as blocked with reason
+- ✅ **Daily (for long phases)**: Update at end of work session
+
+**Example Commit Pattern:**
+```bash
+# After completing Phase 1
+git add openspec/changes/implement-feature/tasks.md
+git commit -m "docs: mark Phase 1 tasks as completed in OpenSpec
+
+- All 5 tasks from Phase 1 (Foundation) marked as done
+- Ready to begin Phase 2 (Integration)"
+```
+
+**Why This Matters:**
+- Stale tasks.md makes it hard to track progress
+- Others can't see what's done vs pending
+- Prevents duplicate work
+- Essential for project management and reporting
 5. **Update Metrics**: Track execution time and success rate
 
 ## Task Status Lifecycle
