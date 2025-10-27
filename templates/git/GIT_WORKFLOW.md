@@ -160,9 +160,11 @@ git status
 # Ensure you're on the correct branch
 git branch
 
-# Pull latest changes if working with team
-git pull origin main
+# Pull latest changes if working with team (use --ff-only for safety)
+git pull --ff-only origin main
 ```
+
+**Git Safety**: Use `--ff-only` to prevent unexpected merge commits and maintain linear history.
 
 ### 2. Making Changes
 
@@ -190,7 +192,78 @@ git commit -m "feat: Add user authentication
 
 # Alternative for smaller changes:
 git commit -m "fix: Correct validation logic in user form"
+
+# For signed commits (recommended for production):
+git commit -S -m "feat: Add feature"
 ```
+
+## Advanced Git Safeguards
+
+### Safe Push Operations
+
+```bash
+# NEVER use git push --force on main/master branches
+# Instead, use --force-with-lease which prevents overwriting others' work:
+
+# Force push with safety check (only updates if no one else pushed)
+git push --force-with-lease origin feature-branch
+
+# Regular push is always safest
+git push origin main
+```
+
+### Commit Signing
+
+```bash
+# Sign commits with GPG for verified commits
+# Set GPG key: git config --global user.signingkey <KEY_ID>
+git commit -S -m "feat: Signed commit"
+
+# Configure to always sign commits
+git config --global commit.gpgsign true
+```
+
+### Branch Protection (Recommended Settings)
+
+For GitHub/GitLab repositories, configure branch protection rules:
+
+**For main/master branch:**
+- Require pull request reviews
+- Require status checks to pass
+- Require branches to be up to date
+- Do not allow force pushes
+- Do not allow deletions
+- Require signed commits (optional but recommended)
+
+### Destructive Operation Warnings
+
+**NEVER run these on main/master:**
+- ❌ `git push --force` - Use `--force-with-lease` instead
+- ❌ `git reset --hard` - Destructive, use only on feature branches
+- ❌ `git rebase` main into feature - Causes rewriting of main history
+
+### Pre-Push Checklist
+
+Before pushing any changes, verify:
+
+```bash
+✅ Checklist before push:
+- [ ] All quality checks passed locally
+- [ ] Tests pass with 100% success rate
+- [ ] Coverage meets threshold (95%+)
+- [ ] Linting passes with 0 warnings
+- [ ] Build succeeds without errors
+- [ ] No security vulnerabilities in dependencies
+- [ ] Documentation updated if API changed
+- [ ] OpenSpec tasks marked complete if applicable
+- [ ] Conventional commit format used
+- [ ] Commit hash verified: git rev-parse HEAD
+- [ ] Similar changes passed CI before
+- [ ] No console.log or debug code
+- [ ] No credentials or secrets in code
+```
+
+**Only provide push command if ALL items checked.**
 
 ### 3. Pushing Changes
 

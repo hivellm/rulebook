@@ -45,6 +45,7 @@ Skip proposal for:
 2. Choose a unique verb-led `change-id` and scaffold `proposal.md`, `tasks.md`, optional `design.md`, and spec deltas under `openspec/changes/<id>/`.
 3. Draft spec deltas using `## ADDED|MODIFIED|REMOVED Requirements` with at least one `#### Scenario:` per requirement.
 4. Run `openspec validate <id> --strict` and resolve any issues before sharing the proposal.
+5. **After openspec validate, update ROADMAP and STATUS** - Sync spec changes with documentation to prevent divergence
 
 ### Stage 2: Implementing Changes
 Track these steps as TODOs and complete them one by one.
@@ -52,9 +53,15 @@ Track these steps as TODOs and complete them one by one.
 2. **Read design.md** (if exists) - Review technical decisions
 3. **Read tasks.md** - Get implementation checklist
 4. **Implement tasks sequentially** - Complete in order
-5. **Confirm completion** - Ensure every item in `tasks.md` is finished before updating statuses
-6. **Update checklist** - After all work is done, set every task to `- [x]` so the list reflects reality
-7. **Approval gate** - Do not start implementation until the proposal is reviewed and approved
+5. **Execute AGENT_AUTOMATION workflow** - Run 5-step automation (quality checks, OpenSpec update, docs, commit, report)
+6. **Review automation Step 5 report** - Check coverage/quality metrics, verify commit hash
+7. **Register approved deviations** - Document any spec deviations in tasks.md with justification
+8. **Link commit hash to change tracking** - Reference automation report commit hash in OpenSpec notes
+9. **Confirm completion** - Ensure every item in `tasks.md` is finished before updating statuses
+10. **Update checklist** - After all work is done, set every task to `- [x]` so the list reflects reality
+11. **Approval gate** - Do not start implementation until the proposal is reviewed and approved
+
+**Dependency on AGENT_AUTOMATION**: Stage 2 completion requires AGENT_AUTOMATION workflow to complete successfully. Do not mark tasks complete until automation report confirms all quality gates passed.
 
 ### Stage 3: Archiving Changes
 After deployment, create separate PR to:
@@ -454,3 +461,78 @@ openspec archive [change] [--yes|-y]  # Mark complete (add --yes for automation)
 ```
 
 Remember: Specs are truth. Changes are proposals. Keep them in sync.
+
+## Integration with AGENT_AUTOMATION
+
+OpenSpec integrates tightly with AGENT_AUTOMATION workflow to ensure spec-driven development maintains quality gates and traceability.
+
+### Workflow Integration
+
+**Complete Development Cycle:**
+1. **Create spec** (OpenSpec Stage 1) → Validate → Approve
+2. **Implement** (OpenSpec Stage 2) → Execute AGENT_AUTOMATION workflow
+3. **Automate** (AGENT_AUTOMATION) → Quality checks, security audit, docs, commit
+4. **Report** (AGENT_AUTOMATION Step 5) → Reference commit hash in OpenSpec
+5. **Archive** (OpenSpec Stage 3) → Move completed changes to archive
+
+### Tracking change-id Through Implementation
+
+Every change-id must be tracked from proposal through commit to archive:
+
+```bash
+# Example tracking for change-id: add-pipeline-security
+
+1. Create proposal:
+   openspec/changes/add-pipeline-security/proposal.md
+   openspec/changes/add-pipeline-security/tasks.md
+
+2. Implement and commit (AGENT_AUTOMATION):
+   git commit -m "feat(pipeline): Add security checks
+   
+   - Implement security audit steps
+   - Add dependency vulnerability checks
+   - Coverage: 96.2%
+   
+   Related: OpenSpec change-id add-pipeline-security"
+   
+   Commit hash: abc1234de5678f
+
+3. Update OpenSpec with commit reference:
+   # In tasks.md or notes:
+   Implemented: 2025-01-15
+   Commit: abc1234de5678f
+   All quality gates passed
+
+4. Archive after deployment:
+   openspec archive add-pipeline-security --yes
+```
+
+### Example: Spec-Driven Implementation
+
+```bash
+# 1. Load OpenSpec context for implementation
+CHANGE_ID=add-pipeline-security
+cat openspec/changes/$CHANGE_ID/proposal.md
+cat openspec/changes/$CHANGE_ID/tasks.md
+
+# 2. Implement according to spec
+# (Implementation code follows spec requirements)
+
+# 3. Run AGENT_AUTOMATION workflow
+npm run type-check && npm run lint && npm test
+
+# 4. Security audit (AGENT_AUTOMATION Step 1.5)
+npm audit --production
+
+# 5. Update OpenSpec with metrics
+echo "Coverage: 96.2%" >> openspec/changes/$CHANGE_ID/tasks.md
+echo "Commit: $(git rev-parse HEAD)" >> openspec/changes/$CHANGE_ID/tasks.md
+
+# 6. Commit with OpenSpec reference
+git commit -m "feat: Implement add-pipeline-security
+
+Related: OpenSpec change-id $CHANGE_ID
+All tasks complete per tasks.md"
+```
+
+This integration ensures that specifications drive implementation, quality gates are enforced, and changes are fully traceable from proposal to deployment.

@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2025-01-27
+
+### Added
+
+**Security & Automation Enhancements:**
+
+**AGENT_AUTOMATION Module:**
+- Pre-implementation dependency check to establish baseline and catch supply chain issues early
+- Step 1.5: Security & Dependency Audits (mandatory security scanning)
+  - npm audit, cargo audit, pip-audit, gosec for all languages
+  - Outdated dependency detection
+  - Unused dependency identification (depcheck, cargo deny)
+  - Automatic vulnerability fix workflows
+- Test artifact archiving for full traceability (coverage reports, logs)
+- Enhanced Step 5 report with security audit summary and artifact links
+- Improved commit hash references in automation reports
+
+**Workflow Templates:**
+- Security audit steps added to all language test and lint workflows
+- fail-fast strategy option for test matrices (disabled by default)
+- Improved caching with explicit cache-dependency-path
+- Codecov upload conditional for fork PRs (security best practice)
+- Early lint step in test workflows to fail fast before full matrix
+
+**GIT_WORKFLOW Module:**
+- Advanced Git Safeguards section
+  - `git push --force-with-lease` safety check
+  - Commit signing (`git commit -S`) for verified commits
+  - Branch protection recommendations
+  - Destructive operation warnings
+- Pre-push checklist aligned with AGENT_AUTOMATION requirements
+- `git pull --ff-only` to prevent unexpected merges
+- Comprehensive push verification (13-point checklist)
+
+**DOCUMENTATION_RULES Module:**
+- Automated Documentation Validation section
+  - Markdown linting (markdownlint)
+  - Link validation (markdown-link-check)
+  - Spell checking (codespell)
+  - Code snippet testing guidelines
+- Continuous Documentation Updates per commit type
+  - Documentation requirements for feat, fix, breaking, perf, security, refactor
+  - Migration guide requirements for breaking changes
+  - SECURITY.md update requirements
+- Integration with AGENT_AUTOMATION for auditability
+
+**OPENSPEC_RULES Module:**
+- Stage 1: Added ROADMAP and STATUS sync after validate
+- Stage 2: Enhanced implementation checklist with AGENT_AUTOMATION integration
+  - Execute AGENT_AUTOMATION workflow requirement
+  - Review automation Step 5 report for metrics
+  - Register approved deviations
+  - Link commit hash to change tracking
+- New Integration with AGENT_AUTOMATION section
+  - Complete workflow integration diagram
+  - change-id tracking from proposal through commit to archive
+  - Spec-driven implementation examples
+
+**CLI Agent Templates:**
+- Post-Generation Workflow section (all CLI templates)
+  - Mandatory AGENT_AUTOMATION execution after code generation
+  - Integration examples showing complete workflow
+- OpenSpec-Guided Generation section
+  - Load OpenSpec context (proposal.md, design.md, tasks.md)
+  - Spec-driven implementation tracking
+- Error Recovery section
+  - Fallback workflows when CLI automation fails
+  - Criteria for abandoning and retrying with alternative approach
+
+### Changed
+
+- Enhanced security posture across all language templates
+- Improved CI/CD efficiency with fail-fast strategies and better caching
+- Strengthened integration between OpenSpec, AGENT_AUTOMATION, and Git workflows
+- More comprehensive quality gates before push operations
+
+### Security
+
+- Added supply chain security checks to prevent vulnerable dependencies
+- Automated security audit in CI/CD pipelines
+- Git push operations now include comprehensive safety checks
+
 ## [0.11.2] - 2025-10-27
 
 ### Fixed

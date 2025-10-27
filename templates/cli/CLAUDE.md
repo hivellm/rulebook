@@ -630,5 +630,133 @@ def sanitize_code(code: str) -> str:
     return code
 ```
 
+## Post-Generation Workflow
+
+**CRITICAL**: After generating code, you MUST execute the AGENT_AUTOMATION workflow:
+
+```python
+def post_generation_checklist():
+    """
+    After code generation, execute complete automation workflow:
+    """
+    print("✅ Code generated successfully")
+    print("\n📋 Next Steps (AGENT_AUTOMATION workflow):")
+    print("1. Quality checks (type, lint, format, test, coverage)")
+    print("2. Security audit (Step 1.5)")
+    print("3. Update OpenSpec tasks if applicable")
+    print("4. Update documentation")
+    print("5. Commit with conventional format")
+    print("6. Report to user with summary")
+    
+    # Run AGENT_AUTOMATION steps
+    run_quality_checks()
+    run_security_audit()
+    update_openspec()
+    update_documentation()
+    git_commit_with_format()
+    generate_user_report()
+```
+
+**Integration Example:**
+```python
+# Generate code with Claude
+generated_code = claude_generate(prompt)
+
+# Save generated files
+write_files(generated_code)
+
+# Execute AGENT_AUTOMATION workflow
+print("\n🔄 Executing AGENT_AUTOMATION workflow...")
+execute_agent_automation_workflow()
+
+print("\n✅ Complete! All quality gates passed.")
+```
+
+## OpenSpec-Guided Generation
+
+When implementing OpenSpec changes, load spec context for guided generation:
+
+```python
+def generate_with_openspec_context(change_id: str):
+    """
+    Load OpenSpec context for spec-driven implementation
+    """
+    # Load OpenSpec files
+    proposal = read_file(f"openspec/changes/{change_id}/proposal.md")
+    design = read_file(f"openspec/changes/{change_id}/design.md")
+    tasks = read_file(f"openspec/changes/{change_id}/tasks.md")
+    
+    # Build context-aware prompt
+    prompt = f"""
+    Implementing OpenSpec change: {change_id}
+    
+    Proposal:
+    {proposal}
+    
+    Design:
+    {design}
+    
+    Tasks:
+    {tasks}
+    
+    Follow AGENTS.md standards and complete tasks sequentially.
+    Reference OpenSpec requirements in implementation.
+    """
+    
+    # Generate implementation
+    code = claude_generate(prompt)
+    
+    # Track implementation against spec
+    track_implementation_against_spec(change_id, code)
+    
+    return code
+```
+
+## Error Recovery
+
+If CLI generation or automation fails:
+
+### Fallback Workflows
+
+```python
+def handle_generation_failure(error, tool):
+    """
+    Fallback when CLI tool can't complete automation
+    """
+    if "test failure" in str(error):
+        print("⚠️ Tests failed. Attempting fixes...")
+        # Run AGENT_AUTOMATION error recovery
+        apply_error_recovery()
+    
+    elif "dependency issue" in str(error):
+        print("⚠️ Dependency issue. Checking...")
+        # Run security audit
+        check_dependency_vulnerabilities()
+    
+    elif "OpenSpec validation failed" in str(error):
+        print("⚠️ OpenSpec validation failed. Please fix spec...")
+        # Request user guidance
+        request_spec_correction()
+    
+    else:
+        print("❌ Generation failed. Providing manual recovery steps...")
+        provide_manual_commands()
+        # Follow AGENT_AUTOMATION error recovery workflow
+```
+
+### When to Abandon and Retry
+
+Abandon current approach if:
+- Same error occurs 3+ times
+- AGENT_AUTOMATION workflow fails repeatedly
+- OpenSpec validation reveals fundamental mismatch
+- Security audit blocks critical path
+
+Retry with alternative approach:
+- Try different implementation pattern from AGENTS.md
+- Review related implementations in codebase
+- Consult OpenSpec design.md for alternatives
+- Request user guidance for ambiguous requirements
+
 <!-- CLAUDE:END -->
 
