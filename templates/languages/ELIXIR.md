@@ -74,26 +74,38 @@ end
 
 ### Mandatory Quality Checks
 
-**CRITICAL**: After implementing ANY feature, you MUST run these commands in order:
+**CRITICAL**: After implementing ANY feature, you MUST run these commands in order.
+
+**IMPORTANT**: These commands MUST match your GitHub Actions workflows to prevent CI/CD failures!
 
 ```bash
-# 1. Format code
-mix format
+# Pre-Commit Checklist (MUST match .github/workflows/*.yml)
 
-# 2. Lint (MUST pass with no warnings)
+# 1. Format check (matches workflow - use --check-formatted!)
+mix format --check-formatted
+
+# 2. Lint (MUST pass with no warnings - matches workflow)
 mix credo --strict
 
-# 3. Type check with Dialyzer
+# 3. Type check with Dialyzer (matches workflow)
 mix dialyzer
 
-# 4. Run all tests (MUST pass 100%)
-mix test
+# 4. Run all tests (MUST pass 100% - matches workflow)
+mix test --cover
 
 # 5. Check coverage (MUST meet threshold)
-mix coveralls
+mix test --cover --export-coverage default
+mix test.coverage
+
+# If ANY fails: ❌ DO NOT COMMIT - Fix first!
 ```
 
 **If ANY of these fail, you MUST fix the issues before committing.**
+
+**Why This Matters:**
+- CI/CD failures happen when local commands differ from workflows
+- Example: Using `mix format` locally but `mix format --check-formatted` in CI = failure
+- Example: Missing `--cover` flag = CI coverage failures
 
 ### Formatting
 

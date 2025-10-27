@@ -81,26 +81,37 @@ ktlint {
 
 ### Mandatory Quality Checks
 
-**CRITICAL**: After implementing ANY feature, you MUST run these commands in order:
+**CRITICAL**: After implementing ANY feature, you MUST run these commands in order.
+
+**IMPORTANT**: These commands MUST match your GitHub Actions workflows to prevent CI/CD failures!
 
 ```bash
-# 1. Format code
-./gradlew ktlintFormat
+# Pre-Commit Checklist (MUST match .github/workflows/*.yml)
 
-# 2. Lint
+# 1. Format check (matches workflow - use Check, not Format!)
+./gradlew ktlintCheck
+
+# 2. Lint (matches workflow)
 ./gradlew detekt
 
-# 3. Build (MUST pass with no warnings)
-./gradlew build
+# 3. Build (MUST pass with no warnings - matches workflow)
+./gradlew build -x test
 
-# 4. Run all tests (MUST pass 100%)
+# 4. Run all tests (MUST pass 100% - matches workflow)
 ./gradlew test
 
 # 5. Check coverage (MUST meet threshold)
-./gradlew koverHtmlReport
+./gradlew koverVerify
+
+# If ANY fails: ❌ DO NOT COMMIT - Fix first!
 ```
 
 **If ANY of these fail, you MUST fix the issues before committing.**
+
+**Why This Matters:**
+- CI/CD failures happen when local commands differ from workflows
+- Example: Using `ktlintFormat` locally but `ktlintCheck` in CI = failure
+- Example: Using `koverHtmlReport` locally but `koverVerify` in CI = coverage failures
 
 ### Code Style
 

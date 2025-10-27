@@ -59,26 +59,37 @@
 
 ### Mandatory Quality Checks
 
-**CRITICAL**: After implementing ANY feature, you MUST run these commands in order:
+**CRITICAL**: After implementing ANY feature, you MUST run these commands in order.
+
+**IMPORTANT**: These commands MUST match your GitHub Actions workflows to prevent CI/CD failures!
 
 ```bash
-# 1. Format code
-composer cs-fix
+# Pre-Commit Checklist (MUST match .github/workflows/*.yml)
 
-# 2. Static analysis (MUST pass with no errors)
+# 1. Format check (matches workflow - use check, not fix!)
+composer cs-check
+
+# 2. Static analysis (MUST pass with no errors - matches workflow)
 composer stan
 
-# 3. Code style check
+# 3. Code style check (matches workflow)
 composer phpcs
 
-# 4. Run all tests (MUST pass 100%)
+# 4. Run all tests (MUST pass 100% - matches workflow)
 composer test
 
 # 5. Check coverage (MUST meet threshold)
 ./vendor/bin/phpunit --coverage-text
+
+# If ANY fails: ❌ DO NOT COMMIT - Fix first!
 ```
 
 **If ANY of these fail, you MUST fix the issues before committing.**
+
+**Why This Matters:**
+- CI/CD failures happen when local commands differ from workflows
+- Example: Using `cs-fix` locally but `cs-check` in CI = failure
+- Example: Missing static analysis locally = CI PHPStan failures
 
 ### Code Style
 

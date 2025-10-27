@@ -54,23 +54,34 @@
 
 ### Mandatory Quality Checks
 
-**CRITICAL**: After implementing ANY feature, you MUST run these commands in order:
+**CRITICAL**: After implementing ANY feature, you MUST run these commands in order.
+
+**IMPORTANT**: These commands MUST match your GitHub Actions workflows to prevent CI/CD failures!
 
 ```bash
-# 1. Format code
-dotnet format
+# Pre-Commit Checklist (MUST match .github/workflows/*.yml)
 
-# 2. Build (MUST pass with no warnings)
-dotnet build --no-incremental
+# 1. Format check (matches workflow - use --verify-no-changes!)
+dotnet format --verify-no-changes
 
-# 3. Run all tests (MUST pass 100%)
-dotnet test
+# 2. Build (MUST pass with no warnings - matches workflow)
+dotnet build --no-incremental --warnaserror
+
+# 3. Run all tests (MUST pass 100% - matches workflow)
+dotnet test --no-build
 
 # 4. Check coverage (MUST meet threshold)
 dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+
+# If ANY fails: ❌ DO NOT COMMIT - Fix first!
 ```
 
 **If ANY of these fail, you MUST fix the issues before committing.**
+
+**Why This Matters:**
+- CI/CD failures happen when local commands differ from workflows
+- Example: Using `dotnet format` locally but `dotnet format --verify-no-changes` in CI = failure
+- Example: Missing `--warnaserror` flag = warnings pass locally but fail in CI
 
 ### Code Style
 

@@ -94,32 +94,45 @@ install(TARGETS ${PROJECT_NAME}
 
 ### Mandatory Quality Checks
 
-**CRITICAL**: After implementing ANY feature, you MUST run these commands in order:
+**CRITICAL**: After implementing ANY feature, you MUST run these commands in order.
+
+**IMPORTANT**: These commands MUST match your GitHub Actions workflows to prevent CI/CD failures!
 
 ```bash
-# 1. Format code
-clang-format -i src/**/*.{cpp,hpp} tests/**/*.{cpp,hpp}
+# Pre-Commit Checklist (MUST match .github/workflows/*.yml)
 
-# 2. Static analysis
+# 1. Format check (matches workflow - use --dry-run, not -i!)
+clang-format --dry-run --Werror src/**/*.{cpp,hpp} tests/**/*.{cpp,hpp}
+
+# 2. Static analysis (matches workflow)
 clang-tidy src/**/*.cpp -- -std=c++20
 
-# 3. Build (MUST pass with no warnings)
-cmake -B build -DCMAKE_BUILD_TYPE=Debug
+# 3. Build (MUST pass with no warnings - matches workflow)
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-Werror"
 cmake --build build
 
-# 4. Run all tests (MUST pass 100%)
+# 4. Run all tests (MUST pass 100% - matches workflow)
 ctest --test-dir build --output-on-failure
 
-# 5. Check with sanitizers
-cmake -B build -DENABLE_SANITIZERS=ON
-cmake --build build
-ctest --test-dir build
+# 5. Check with sanitizers (matches workflow)
+cmake -B build-asan -DENABLE_SANITIZERS=ON
+cmake --build build-asan
+ctest --test-dir build-asan
 
-# 6. Check coverage
-cmake -B build -DCMAKE_BUILD_TYPE=Coverage
-cmake --build build
-ctest --test-dir build
-gcov build/CMakeFiles/YourProject.dir/src/*.gcno
+# 6. Check coverage (matches workflow)
+cmake -B build-cov -DCMAKE_BUILD_TYPE=Coverage
+cmake --build build-cov
+ctest --test-dir build-cov
+gcov build-cov/CMakeFiles/YourProject.dir/src/*.gcno
+
+# If ANY fails: ❌ DO NOT COMMIT - Fix first!
+```
+
+**Why This Matters:**
+- CI/CD failures happen when local commands differ from workflows
+- Example: Using `clang-format -i` locally but `--dry-run --Werror` in CI = failure
+- Example: Missing `-Werror` flag = warnings pass locally but fail in CI
+- Example: Skipping sanitizers locally = CI catches memory bugs you missed
 ```
 
 **If ANY of these fail, you MUST fix the issues before committing.**

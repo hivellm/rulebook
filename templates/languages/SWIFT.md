@@ -53,26 +53,37 @@ let package = Package(
 
 ### Mandatory Quality Checks
 
-**CRITICAL**: After implementing ANY feature, you MUST run these commands in order:
+**CRITICAL**: After implementing ANY feature, you MUST run these commands in order.
+
+**IMPORTANT**: These commands MUST match your GitHub Actions workflows to prevent CI/CD failures!
 
 ```bash
-# 1. Format code
-swift-format --in-place --recursive Sources Tests
+# Pre-Commit Checklist (MUST match .github/workflows/*.yml)
 
-# 2. Lint
-swiftlint
+# 1. Format check (matches workflow - use lint mode, not --in-place!)
+swift-format lint --recursive Sources Tests
 
-# 3. Build (MUST pass with no warnings)
+# 2. Lint (matches workflow)
+swiftlint lint --strict
+
+# 3. Build (MUST pass with no warnings - matches workflow)
 swift build -Xswiftc -warnings-as-errors
 
-# 4. Run all tests (MUST pass 100%)
-swift test
+# 4. Run all tests (MUST pass 100% - matches workflow)
+swift test --enable-code-coverage
 
-# 5. Generate documentation
+# 5. Generate documentation (matches workflow)
 swift package generate-documentation
+
+# If ANY fails: ❌ DO NOT COMMIT - Fix first!
 ```
 
 **If ANY of these fail, you MUST fix the issues before committing.**
+
+**Why This Matters:**
+- CI/CD failures happen when local commands differ from workflows
+- Example: Using `swift-format --in-place` locally but `lint` in CI = failure
+- Example: Missing `--enable-code-coverage` = CI coverage failures
 
 ### Code Style
 
