@@ -13,19 +13,23 @@
 
 ### Mandatory Quality Checks
 
-**CRITICAL**: After implementing ANY feature, you MUST run these commands in order:
+**CRITICAL**: After implementing ANY feature, you MUST run these commands in order.
+
+**IMPORTANT**: These commands MUST match your GitHub Actions workflows to prevent CI/CD failures!
 
 ```bash
-# 1. Format code
-ruff format .
+# Pre-Commit Checklist (MUST match .github/workflows/*.yml)
 
-# 2. Lint (MUST pass with no warnings)
+# 1. Format check (matches workflow - use --check, not format!)
+ruff format --check .
+
+# 2. Lint (MUST pass with no warnings - matches workflow)
 ruff check .
 
-# 3. Type check
+# 3. Type check (matches workflow)
 mypy .
 
-# 4. Run all tests (MUST pass 100%)
+# 4. Run all tests (MUST pass 100% - matches workflow)
 pytest
 
 # 5. Check coverage (MUST meet threshold)
@@ -33,6 +37,12 @@ pytest --cov=. --cov-report=term --cov-report=html
 ```
 
 **If ANY of these fail, you MUST fix the issues before committing.**
+
+**Why This Matters:**
+- Running different commands locally than in CI causes "works on my machine" failures
+- CI/CD workflows will fail if commands don't match
+- Example: Using `ruff format .` locally but `ruff format --check .` in CI = failure
+- Example: Missing type check locally = CI mypy failures
 
 ### Formatting
 

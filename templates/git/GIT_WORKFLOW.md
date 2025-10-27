@@ -323,6 +323,75 @@ Only push if you're confident all checks will pass.
 
 ## Quality Gate Enforcement
 
+**CRITICAL**: Pre-commit checks MUST match GitHub Actions workflow commands to prevent CI/CD failures.
+
+### Language-Specific Pre-Commit Commands
+
+**The commands you run locally MUST be identical to those in your GitHub Actions workflows.**
+
+#### TypeScript/JavaScript Projects
+
+```bash
+# These commands MUST match .github/workflows/*.yml
+
+# 1. Type check (matches workflow)
+npm run type-check        # Must match workflow exactly
+
+# 2. Lint (matches workflow)
+npm run lint              # Must match workflow exactly
+
+# 3. Format check (matches workflow)
+npx prettier --check 'src/**/*.ts' 'tests/**/*.ts'  # Must match workflow
+
+# 4. Tests (matches workflow)
+npm test                  # Must match workflow exactly
+
+# 5. Build (matches workflow)
+npm run build             # Must match workflow exactly
+
+# If ANY fails: ❌ DO NOT COMMIT - Fix first!
+```
+
+#### Rust Projects
+
+```bash
+# These commands MUST match .github/workflows/*.yml
+
+# 1. Format check (matches workflow)
+cargo fmt --all -- --check
+
+# 2. Clippy (matches workflow)
+cargo clippy --all-targets --all-features -- -D warnings
+
+# 3. Tests (matches workflow)
+cargo test --all-features
+
+# 4. Build (matches workflow)
+cargo build --release
+
+# If ANY fails: ❌ DO NOT COMMIT - Fix first!
+```
+
+#### Python Projects
+
+```bash
+# These commands MUST match .github/workflows/*.yml
+
+# 1. Format check (matches workflow)
+black --check .
+
+# 2. Lint (matches workflow)
+ruff check .
+
+# 3. Type check (matches workflow)
+mypy .
+
+# 4. Tests (matches workflow)
+pytest
+
+# If ANY fails: ❌ DO NOT COMMIT - Fix first!
+```
+
 ### Before ANY Commit
 
 **MANDATORY CHECKS**:

@@ -38,26 +38,39 @@
 
 ### Mandatory Quality Checks
 
-**CRITICAL**: After implementing ANY feature, you MUST run these commands in order:
+**CRITICAL**: After implementing ANY feature, you MUST run these commands in order.
+
+**IMPORTANT**: These commands MUST match your GitHub Actions workflows to prevent CI/CD failures!
 
 ```bash
-# 1. Type check
+# Pre-Commit Checklist (MUST match .github/workflows/*.yml)
+
+# 1. Type check (matches workflow)
 npm run type-check  # or: tsc --noEmit
 
-# 2. Lint (MUST pass with no warnings)
+# 2. Lint (MUST pass with no warnings - matches workflow)
 npm run lint
 
-# 3. Format code
-npm run format
+# 3. Format check (matches workflow - use same command as CI)
+npx prettier --check 'src/**/*.ts' 'tests/**/*.ts'
 
-# 4. Run all tests (MUST pass 100%)
+# 4. Run all tests (MUST pass 100% - matches workflow)
 npm test
 
-# 5. Check coverage (MUST meet threshold)
+# 5. Build (MUST succeed - matches workflow)
+npm run build
+
+# 6. Check coverage (MUST meet threshold)
 npm run test:coverage
 ```
 
 **If ANY of these fail, you MUST fix the issues before committing.**
+
+**Why This Matters:**
+- Running different commands locally than in CI causes "works on my machine" failures
+- CI/CD workflows will fail if commands don't match
+- Example: Using `prettier --write` locally but `prettier --check` in CI = failure
+- Example: Forgetting `npm run build` locally = CI build failures
 
 ### Linting
 
