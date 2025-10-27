@@ -168,7 +168,11 @@ async function detectLanguages(cwd: string): Promise<LanguageDetection[]> {
       detections.push({
         language: 'javascript',
         confidence: 0.9,
-        indicators: ['package.json', `${jsFiles.length} .js files`, pkg?.type === 'module' ? 'ESM' : ''].filter(Boolean),
+        indicators: [
+          'package.json',
+          `${jsFiles.length} .js files`,
+          pkg?.type === 'module' ? 'ESM' : '',
+        ].filter(Boolean),
       });
     }
   }
