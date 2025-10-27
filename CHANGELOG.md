@@ -7,6 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2025-10-27
+
+### Added
+
+**14 New Programming Languages:**
+- **C**: C11/C17 with CMake, clang-format, sanitizers (ASAN, UBSAN), Valgrind, memory safety patterns
+- **JavaScript**: ES2022+, ESLint, Prettier, Vitest, ESM modules, npm publishing
+- **RMenuR 4.2+, tidyverse, styler, lintr, testthat, CRAN submission workflow
+- **RubyMenuRuby 3.2+, RuboCop, RSpec/Minitest, Bundler, RubyGems publishing
+- **Scala**: Scala 3.3+, sbt, scalafmt, scalafix, ScalaTest/MUnit, Maven Central
+- **Dart**: Dart 3.0+, Flutter, dart analyze, package:test, pub.dev publishing
+- **SQLMenuSQLFluff linting, pgTAP testing, migration validation (Flyway/Liquibase)
+- **HaskellMenuGHC 9.4+, Stack/Cabal, HLint, Ormolu/Fourmolu, Hspec, QuickCheck properties
+- **Julia**: Julia 1.9+, JuliaFormatter, Lint.jl, Test.jl, Documenter.jl
+- **Lua**: Lua 5.4/LuaJIT, luacheck, StyLua, busted testing
+- **Ada**: Ada 2012/2022, GNAT compiler, GPRbuild, AUnit, SPARK verification
+- **SAS**: SAS 9.4+, code validation, SASUnit testing framework
+- **LispMenuCommon Lisp, SBCL, ASDF3 build system, FiveAM, sblint
+- **Objective-CMenuModern Obj-C, ARC, XCTest, clang static analyzer
+
+**Pre-Commit Command Standardization:**
+- All 25 languages now have pre-commit commands that MATCH GitHub Actions workflows
+- Prevents "works on my machine" CI/CD failures
+- Format CHECK commands (not apply/write/fix) to match CI validation
+- Language-specific section in GIT_WORKFLOW.md with TypeScript, Rust, Python, Go, Java examples
+- "Why This Matters" sections in all language templates explaining common failures
+
+**OpenSpec Workflow Enhancement:**
+- **CRITICAL**: Mandatory requirement to update `openspec/changes/[change-id]/tasks.md` after each phase
+- Update frequency documented: after phase, before commit, daily for long phases
+- Example commit pattern for tasks.md updates
+- Prevents stale task tracking and ensures progress visibility
+- Added to OPENSPEC_RULES.md module
+
+**Package Lock File Requirements:**
+- Documented GitHub Actions `cache: 'npm'` requirement for committed lockfiles
+- Added IMPORTANT comments in all TypeScript workflow templates
+- Updated TYPESCRIPT.md with lockfile requirement and error message examples
+- Prevents "Dependencies lock file is not found" CI/CD errors
+
+### Changed
+
+- **Total Language Support**: Expanded from 11 to **25 languages** (14 new)
+- **Template Count**: Increased from 65 to **83+ templates**
+- **Language Categories**: Organized into Systems (11), Scripting (8), JVM (2), Scientific (3), Specialized (1)
+- **Pre-Commit Standards**: All languages now explicitly require workflow-matching commands
+- **Quality Check Documentation**: Enhanced with failure examples and "Why This Matters" sections
+
+### Improved
+
+**Git Workflow Templates:**
+- Enhanced with language-specific pre-commit command sections
+- Clear distinction between modify commands (format, fix, apply) vs check commands
+- Examples of common CI/CD failures and how to prevent them
+- Workflow command parity enforcement across all languages
+
+**Language Template Quality:**
+- All new language templates follow same comprehensive structure as existing ones
+- Complete configuration examples (build files, package managers)
+- Testing framework integration with code examples
+- Best practices and anti-patterns documented
+- CI/CD requirements clearly specified
+- Publishing workflows for each package registry
+
+**TypeScript Package Management:**
+- Clarified package-lock.json must be committed for CI cache to work
+- Updated all workflow templates with lockfile requirement comments
+- Added troubleshooting for "Dependencies lock file not found" error
+
+### Technical Details
+
+**Files Added:**
+- 14 new language templates in `templates/languages/`
+- Updated 11 existing language templates with workflow-matching commands
+- Enhanced OPENSPEC_RULES.md with tasks.md update requirements
+- Enhanced GIT_WORKFLOW.md with language-specific pre-commit sections
+
+**Total Coverage:**
+- 25 programming languages fully documented
+- 25 pre-commit checklists matching CI/CD workflows
+- 25 testing framework integrations
+- 18 package registry publishing workflows
+
 ## [0.10.4] - 2025-10-25
 
 ### Added

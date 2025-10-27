@@ -1,11 +1,11 @@
 # @hivellm/rulebook
 
-CLI tool to standardize AI-generated projects with templates, rules enforcement, workflow generation, CI/CD monitoring, and complete publication support for 11 programming languages.
+CLI tool to standardize AI-generated projects with templates, rules enforcement, workflow generation, CI/CD monitoring, and complete publication support for 25 programming languages.
 
 ## Features
 
-- 🔍 **Auto-Detection**: Automatically detects project language (11 languages) and MCP modules
-- 📝 **Template System**: 65 pre-built templates for languages, modules, IDEs, workflows, and Git
+- 🔍 **Auto-Detection**: Automatically detects project language (25 languages) and MCP modules
+- 📝 **Template System**: 83+ pre-built templates for languages, modules, IDEs, workflows, and Git
 - 🔄 **Smart Merging**: Intelligently merges with existing AGENTS.md files without losing content
 - 🎯 **Customizable**: Configure coverage thresholds, documentation strictness, Git workflow, and more
 - 🚫 **Rules Ignore**: Selectively disable rules using `.rulesignore` file
@@ -367,19 +367,42 @@ npx @hivellm/rulebook@latest generate-docs --yes
 - `docs/ARCHITECTURE.md` - System architecture
 - `docs/DAG.md` - Component dependencies
 
-## Supported Languages (11)
+## Supported Languages (25)
 
+### Systems & Compiled (11)
 - ✅ **Rust**: Edition 2024, Clippy, Cargo fmt, nextest, llvm-cov → crates.io
-- ✅ **TypeScript**: ESLint, Prettier, Vitest, strict mode → npm
-- ✅ **Python**: Ruff, Black, mypy, pytest → PyPI
-- ✅ **Go**: gofmt, golangci-lint, go vet, table-driven tests → pkg.go.dev
-- ✅ **Java**: Maven/Gradle, JUnit 5, Checkstyle, PMD, SpotBugs → Maven Central
-- ✅ **Elixir**: Mix, Credo, Dialyzer, ExUnit → Hex.pm
+- ✅ **C**: C11/C17, CMake, clang-format, sanitizers, Valgrind
+- ✅ **C++**: C++20/23, CMake, clang-format, clang-tidy, Google Test → Conan/vcpkg
 - ✅ **C#**: .NET 8+, nullable types, Roslyn analyzers → NuGet
-- ✅ **PHP**: PHP 8.2+, PHPStan, PHP-CS-Fixer, PHPUnit → Packagist
+- ✅ **Go**: gofmt, golangci-lint, go vet, table-driven tests → pkg.go.dev
 - ✅ **Swift**: Swift 5.10+, SwiftLint, strict concurrency → SPM
+- ✅ **Objective-C**: Modern Obj-C, ARC, XCTest, clang analyzer
+- ✅ **Ada**: Ada 2012/2022, GNAT, GPRbuild, AUnit, SPARK
+- ✅ **Haskell**: GHC 9.4+, Stack/Cabal, HLint, Ormolu, Hspec, QuickCheck
+- ✅ **Scala**: Scala 3.3+, sbt, scalafmt, scalafix, ScalaTest/MUnit → Maven Central
+- ✅ **Dart**: Dart 3.0+, Flutter, dart analyze, package:test → pub.dev
+
+### Scripting & Dynamic (8)
+- ✅ **TypeScript**: ESLint, Prettier, Vitest, strict mode → npm
+- ✅ **JavaScript**: ES2022+, ESLint, Prettier, Vitest, ESM modules → npm
+- ✅ **Python**: Ruff, Black, mypy, pytest → PyPI
+- ✅ **Ruby**: Ruby 3.2+, RuboCop, RSpec/Minitest, Bundler → RubyGems
+- ✅ **PHP**: PHP 8.2+, PHPStan, PHP-CS-Fixer, PHPUnit → Packagist
+- ✅ **Lua**: Lua 5.4/LuaJIT, luacheck, StyLua, busted
+- ✅ **Elixir**: Mix, Credo, Dialyzer, ExUnit → Hex.pm
+- ✅ **Lisp**: Common Lisp, SBCL, ASDF3, FiveAM, sblint
+
+### JVM & Enterprise (2)
+- ✅ **Java**: Maven/Gradle, JUnit 5, Checkstyle, PMD, SpotBugs → Maven Central
 - ✅ **Kotlin**: Kotlin 2.0+, K2 compiler, Detekt, ktlint → Maven Central
-- ✅ **C/C++**: C++20/23, CMake, clang-format, clang-tidy, Google Test → Conan/vcpkg
+
+### Scientific & Data (3)
+- ✅ **R**: R 4.2+, tidyverse, lintr, testthat, CRAN checks
+- ✅ **Julia**: Julia 1.9+, JuliaFormatter, Test.jl, Documenter.jl
+- ✅ **SQL**: SQLFluff, pgTAP, migrations, Flyway/Liquibase
+
+### Specialized (1)
+- ✅ **SAS**: SAS 9.4+, code validation, SASUnit
 
 ## Supported MCP Modules (6)
 
