@@ -803,7 +803,9 @@ export async function updateCommand(options: { yes?: boolean }): Promise<void> {
     const cwd = process.cwd();
 
     console.log(chalk.bold.blue('\n🔄 Rulebook Update Tool\n'));
-    console.log(chalk.gray('This will update your AGENTS.md and .rulebook to the latest version\n'));
+    console.log(
+      chalk.gray('This will update your AGENTS.md and .rulebook to the latest version\n')
+    );
 
     // Detect project
     const spinner = ora('Detecting project structure...').start();
@@ -856,7 +858,7 @@ export async function updateCommand(options: { yes?: boolean }): Promise<void> {
     const backupSpinner = ora('Creating backup...').start();
     const agentsPath = path.join(cwd, 'AGENTS.md');
     const rulebookPath = path.join(cwd, '.rulebook');
-    
+
     const agentsBackup = await createBackup(agentsPath);
     let rulebookBackup = '';
     try {
@@ -889,7 +891,9 @@ export async function updateCommand(options: { yes?: boolean }): Promise<void> {
     const configSpinner = ora('Updating .rulebook configuration...').start();
     const rulebookConfig: RulebookConfig = {
       version: '0.11.1',
-      installedAt: detection.existingAgents.content?.match(/Generated at: (.+)/)?.[1] || new Date().toISOString(),
+      installedAt:
+        detection.existingAgents.content?.match(/Generated at: (.+)/)?.[1] ||
+        new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       projectId: path.basename(cwd),
       features: {
@@ -937,12 +941,16 @@ export async function updateCommand(options: { yes?: boolean }): Promise<void> {
 
     console.log(chalk.white('\nWhat was updated:'));
     console.log(chalk.gray(`  - ${detection.languages.length} language templates`));
-    console.log(chalk.gray(`  - ${detection.modules.filter((m) => m.detected).length} MCP modules`));
+    console.log(
+      chalk.gray(`  - ${detection.modules.filter((m) => m.detected).length} MCP modules`)
+    );
     console.log(chalk.gray('  - Git workflow rules'));
     console.log(chalk.gray('  - OpenSpec integration'));
     console.log(chalk.gray('  - Pre-commit command standardization'));
-    
-    console.log(chalk.yellow('\n⚠ Review the updated AGENTS.md to ensure your custom rules are preserved'));
+
+    console.log(
+      chalk.yellow('\n⚠ Review the updated AGENTS.md to ensure your custom rules are preserved')
+    );
     console.log(chalk.white('\nNext steps:'));
     console.log(chalk.gray('  1. Review AGENTS.md changes'));
     console.log(chalk.gray('  2. Test that your project still builds'));
