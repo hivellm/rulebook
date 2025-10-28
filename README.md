@@ -112,7 +112,7 @@ npx @hivellm/rulebook@latest update --yes
 **What gets updated:**
 - ✅ AGENTS.md language templates (preserves custom rules)
 - ✅ AGENTS.md module templates (adds new MCP modules)
-- ✅ .rulebook configuration file (updates to v0.11.1)
+- ✅ .rulebook configuration file (updates to v0.12.1)
 - ✅ Pre-commit command standardization
 - ✅ OpenSpec workflow enhancements
 - ✅ Git workflow rules
