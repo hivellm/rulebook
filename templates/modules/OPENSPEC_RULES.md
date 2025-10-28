@@ -12,6 +12,44 @@ Instructions for AI coding assistants using OpenSpec for spec-driven development
 - Validate: `openspec validate [change-id] --strict` and fix issues
 - Request approval: Do not start implementation until proposal is approved
 
+### Common Pitfalls & How to Avoid Them
+
+**CRITICAL**: LLMs frequently make these mistakes when creating OpenSpec tasks:
+
+1. **❌ Wrong Scenario Format** (Most Common Error)
+   ```markdown
+   # WRONG - Don't use bullet or bold
+   - **Scenario: Login**
+   **Scenario**: Login
+   ### Scenario: Login
+   
+   # CORRECT - Use exactly 4 hashtags
+   #### Scenario: User login success
+   - **WHEN** valid credentials provided
+   - **THEN** return JWT token
+   ```
+
+2. **❌ Missing Scenarios**
+   - Every requirement MUST have at least one scenario
+   - Use `openspec validate [change] --strict` to catch this
+
+3. **❌ Wrong Directory Structure**
+   ```bash
+   # WRONG
+   openspec/changes/my-feature/spec.md
+   
+   # CORRECT
+   openspec/changes/my-feature/specs/auth/spec.md
+   ```
+
+4. **❌ Missing Delta Headers**
+   - Must start with: `## ADDED Requirements`, `## MODIFIED Requirements`, etc.
+   - Headers are case-sensitive
+
+5. **❌ Incomplete MODIFIED Requirements**
+   - Always copy the FULL existing requirement and modify it
+   - Don't write partial deltas - they cause loss of detail at archive time
+
 ## Three-Stage Workflow
 
 ### Stage 1: Creating Changes

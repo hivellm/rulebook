@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **OPENSPEC Module:** Enhanced instructions with practical examples and Context7 integration
+  - Complete step-by-step guide for creating OpenSpec tasks
+  - Common pitfalls section with visual examples (wrong vs correct scenario formats)
+  - Full authentication feature example with all required files (proposal.md, tasks.md, spec.md)
+  - CLI command reference with all openspec commands
+  - Context7 integration guide for finding examples and best practices
+  - Debugging section for common issues (delta parsing, scenario format, directory structure)
+  - Best practices summary for LLM agents
+- **OPENSPEC_RULES Module:** Added "Common Pitfalls & How to Avoid Them" section at the top
+  - Top 5 mistakes LLMs make when creating OpenSpec tasks
+  - Visual examples of correct vs incorrect formats
+  - Quick reference for validation and debugging
+
 ## [0.12.0] - 2025-01-27
 
 ### Added
