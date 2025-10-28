@@ -9,6 +9,20 @@ import { writeFile, createBackup } from '../utils/file-system.js';
 import { parseRulesIgnore } from '../utils/rulesignore.js';
 import { RulebookConfig } from '../types.js';
 import path from 'path';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+
+// Get version from package.json
+function getRulebookVersion(): string {
+  try {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const packagePath = path.join(__dirname, '..', '..', 'package.json');
+    const packageJson = JSON.parse(readFileSync(packagePath, 'utf-8'));
+    return packageJson.version;
+  } catch {
+    return '0.12.1'; // Fallback version
+  }
+}
 
 export async function initCommand(options: { yes?: boolean }): Promise<void> {
   try {
@@ -890,7 +904,7 @@ export async function updateCommand(options: { yes?: boolean }): Promise<void> {
     // Update .rulebook config
     const configSpinner = ora('Updating .rulebook configuration...').start();
     const rulebookConfig: RulebookConfig = {
-      version: '0.11.1',
+      version: getRulebookVersion(),
       installedAt:
         detection.existingAgents.content?.match(/Generated at: (.+)/)?.[1] ||
         new Date().toISOString(),
@@ -932,7 +946,7 @@ export async function updateCommand(options: { yes?: boolean }): Promise<void> {
     console.log(chalk.bold.green('\n✅ Update complete!\n'));
     console.log(chalk.white('Updated components:'));
     console.log(chalk.green('  ✓ AGENTS.md - Merged with latest templates'));
-    console.log(chalk.green('  ✓ .rulebook - Updated to v0.11.1'));
+    console.log(chalk.green(`  ✓ .rulebook - Updated to v${getRulebookVersion()}`));
     console.log(chalk.gray('\nBackups created:'));
     console.log(chalk.gray(`  - ${path.basename(agentsBackup)}`));
     if (rulebookBackup) {

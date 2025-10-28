@@ -18,13 +18,28 @@ import {
   tasksCommand,
   updateCommand,
 } from './cli/commands.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+// Get version from package.json
+function getVersion(): string {
+  try {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const packagePath = path.join(__dirname, '..', 'package.json');
+    const packageJson = JSON.parse(readFileSync(packagePath, 'utf-8'));
+    return packageJson.version;
+  } catch {
+    return '0.12.1'; // Fallback version
+  }
+}
 
 const program = new Command();
 
 program
   .name('rulebook')
   .description('CLI tool to standardize AI-generated projects with templates and rules')
-  .version('0.11.1');
+  .version(getVersion());
 
 program
   .command('init')
