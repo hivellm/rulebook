@@ -12,9 +12,10 @@ CLI tool to standardize AI-generated projects with templates, rules enforcement,
 - 🤖 **AI-Optimized**: Works with 23 AI coding assistants and 8 IDEs
 - 📦 **Publication Ready**: Complete CI/CD pipelines for all package registries
 - 🔄 **CI/CD Monitoring**: GitHub MCP integration for automated workflow validation
-- 🎨 **Git Workflow**: Quality gates, conventional commits, and version management
+- 🎨 **Git Workflow**: Quality gates, conventional commits, version management, and critical safety restrictions
+- 🔒 **Safety First**: Human authorization required for destructive git operations (checkout, reset, merge conflicts)
 
-### 🆕 Advanced Features (v0.10.0)
+### 🆕 Advanced Features
 
 - 📋 **OpenSpec Integration**: Task management system with dependency tracking
 - 👁️ **Real-time Watcher [BETA]**: Live monitoring of task progress with beautiful ANSI UI
@@ -24,7 +25,13 @@ CLI tool to standardize AI-generated projects with templates, rules enforcement,
 - 🌳 **Dependency Graphs**: Visual task dependency trees and validation
 - 🔗 **CLI Bridge**: Seamless integration with cursor-agent
 - 📈 **Telemetry**: Performance metrics and execution analytics
-- 🔄 **Agent Automation [NEW]**: CRITICAL mandatory workflow that forces AI agents to execute quality checks, update OpenSpec, and maintain documentation after EVERY implementation
+- 🔄 **Agent Automation**: CRITICAL mandatory workflow that forces AI agents to execute quality checks, update OpenSpec, and maintain documentation after EVERY implementation
+- 🔒 **Critical Git Safety (v0.13.0)**: Human authorization required for destructive operations
+  - `git checkout` requires explicit user confirmation
+  - `git reset` requires explicit user confirmation with consequence warning
+  - Merge conflicts must be resolved manually by human
+  - Reduced commit frequency for cleaner git history
+  - Mandatory branch strategy consultation before starting tasks
 
 ## Installation
 
@@ -112,10 +119,10 @@ npx @hivellm/rulebook@latest update --yes
 **What gets updated:**
 - ✅ AGENTS.md language templates (preserves custom rules)
 - ✅ AGENTS.md module templates (adds new MCP modules)
-- ✅ .rulebook configuration file (updates to v0.12.1)
+- ✅ .rulebook configuration file (updates to v0.13.0)
 - ✅ Pre-commit command standardization
 - ✅ OpenSpec workflow enhancements
-- ✅ Git workflow rules
+- ✅ Git workflow rules with critical safety restrictions
 
 **What is preserved:**
 - ✅ Your custom rules and configurations
@@ -575,6 +582,10 @@ When workflow generation is enabled, rulebook creates GitHub Actions workflows:
 
 ### Git Workflow (1)
 - Complete Git workflow guidelines with quality gates and CI/CD monitoring
+- Critical safety restrictions requiring human authorization for destructive operations
+- Merge conflict resolution protocols
+- Commit frequency management
+- Branch strategy consultation workflow
 
 ## Example AGENTS.md Output
 
