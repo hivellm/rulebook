@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2025-10-29
+
 ### Added
 - **CRITICAL GIT RESTRICTIONS:** Added imperative rules requiring human authorization for destructive operations
   - `git checkout` now requires explicit user confirmation before execution
