@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **CRITICAL GIT RESTRICTIONS:** Added imperative rules requiring human authorization for destructive operations
+  - `git checkout` now requires explicit user confirmation before execution
+  - `git reset` now requires explicit user confirmation with consequence explanation
+  - Merge conflict resolution must be handled by human - AI cannot auto-resolve conflicts
+  - Commit frequency management to reduce excessive commits
+  - Mandatory feature branch strategy consultation before starting tasks
+  - New section "CRITICAL RESTRICTIONS - HUMAN AUTHORIZATION REQUIRED" in GIT_WORKFLOW.md
+  - Updated Best Practices section with new DO's and DON'Ts
+
+### Changed
+- **Git Workflow Rules:** Enhanced safety measures for version control operations
+  - Commits should only happen for complete features/fixes, not small incremental changes
+  - AI must always ask user about branching strategy before starting new tasks
+  - Merge conflicts trigger immediate stop and human assistance request
+
 ## [0.12.1] - 2025-10-28
 
 ### Added

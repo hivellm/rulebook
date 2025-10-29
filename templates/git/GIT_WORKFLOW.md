@@ -606,6 +606,121 @@ git tag -a v1.2.1 -m "Hotfix: Security patch"
 # Manual push if required
 ```
 
+## CRITICAL RESTRICTIONS - HUMAN AUTHORIZATION REQUIRED
+
+**⚠️ IMPERATIVE RULES - THESE ARE NON-NEGOTIABLE ⚠️**
+
+### Destructive Git Operations
+
+**ABSOLUTELY FORBIDDEN without explicit human authorization:**
+
+```
+❌ NEVER execute: git checkout
+   ✋ ALWAYS ask user: "Do you want to checkout [branch/commit]? [Y/n]"
+   ✅ Only execute after explicit user confirmation
+   
+❌ NEVER execute: git reset
+   ✋ ALWAYS ask user: "Do you want to reset to [commit]? This may lose changes. [Y/n]"
+   ✅ Only execute after explicit user confirmation
+   ⚠️  Explain consequences before executing
+```
+
+**Rationale**: These commands can cause data loss. Human oversight is mandatory.
+
+### Merge Conflict Resolution
+
+**When merge conflicts occur:**
+
+```
+❌ NEVER attempt to resolve conflicts by editing files automatically
+❌ NEVER commit merged files without human review
+✅ ALWAYS stop and request human assistance
+✅ ALWAYS provide conflict locations and context
+✅ ALWAYS wait for human to resolve manually
+
+Message to user:
+"⚠️ Merge conflict detected in the following files:
+- [list of conflicted files]
+
+Please resolve these conflicts manually. I cannot auto-resolve merge conflicts.
+
+To resolve:
+1. Open the conflicted files
+2. Look for conflict markers (<<<<<<<, =======, >>>>>>>)
+3. Choose the correct version or merge manually
+4. Remove conflict markers
+5. Run: git add <resolved-files>
+6. Run: git commit
+
+Let me know when you're done, and I can help with the next steps."
+```
+
+**Rationale**: Merge conflicts require human judgment about which code to keep.
+
+### Commit Frequency Management
+
+**⚠️ IMPORTANT: Reduce excessive commits**
+
+```
+❌ DO NOT commit after every small change
+❌ DO NOT create multiple commits for the same logical feature
+✅ COMMIT only when:
+   - A complete feature is implemented and tested
+   - A significant bug fix is completed
+   - A major refactoring is done
+   - Before creating a version tag
+   - User explicitly requests a commit
+   
+✅ GROUP related changes into meaningful commits
+✅ USE conventional commit messages that describe the full scope
+
+Example of GOOD commit frequency:
+- Implement entire authentication system → 1 commit
+- Add login, logout, and session management → 1 commit
+- Complete feature with tests and docs → 1 commit
+
+Example of BAD commit frequency (AVOID):
+- Add login function → commit
+- Add logout function → commit  
+- Add session check → commit
+- Fix typo → commit
+- Update comment → commit
+```
+
+**Rationale**: Too many commits pollute git history and make it harder to track meaningful changes.
+
+### Feature Branch Strategy
+
+**BEFORE starting ANY new task or feature:**
+
+```
+✋ ALWAYS ask user FIRST:
+"Should I create a separate branch for this feature/task? [Y/n]
+
+Options:
+1. Create feature branch: git checkout -b feature/[name]
+2. Work directly on current branch
+3. Create hotfix branch: git checkout -b hotfix/[name]
+
+What would you prefer?"
+
+✅ Wait for user decision
+✅ Respect user's branching strategy
+❌ NEVER assume to work on main without asking
+❌ NEVER create branches without permission
+
+If user says YES to branch:
+  → Create branch with descriptive name
+  → Work on that branch
+  → Ask before merging back to main
+  
+If user says NO to branch:
+  → Proceed on current branch
+  → Be extra careful with commits
+```
+
+**Rationale**: Branching strategy varies by team and project. Always confirm with the human first.
+
 ## Critical AI Assistant Rules
 
 ### Repository Initialization
@@ -694,7 +809,11 @@ Auto Mode:
 - **ALWAYS** run tests before commit
 - **ALWAYS** use conventional commit messages
 - **ALWAYS** update CHANGELOG for versions
-- **COMMIT** after each important implementation
+- **ALWAYS** ask before executing `git checkout`
+- **ALWAYS** ask before executing `git reset`
+- **ALWAYS** ask user if a feature branch should be created before starting tasks
+- **ALWAYS** request human assistance when merge conflicts occur
+- **COMMIT** only when complete features/fixes are done (not for every small change)
 - **TAG** releases with semantic versions
 - **VERIFY** quality gates before tagging
 - **DOCUMENT** breaking changes clearly
@@ -703,11 +822,18 @@ Auto Mode:
 - **PROVIDE** manual commands for SSH password users
 - **CHECK** repository state before operations
 - **RESPECT** existing Git configuration
+- **GROUP** related changes into meaningful commits
 
 ### DON'Ts ❌
 
 - **NEVER** run `git init` if .git exists
 - **NEVER** run `git config` (user-specific)
+- **NEVER** run `git checkout` without explicit user authorization
+- **NEVER** run `git reset` without explicit user authorization
+- **NEVER** auto-resolve merge conflicts by editing files
+- **NEVER** commit merged files without human review
+- **NEVER** create excessive commits for small changes
+- **NEVER** assume branching strategy - always ask user first
 - **NEVER** reconfigure existing repository
 - **NEVER** commit without passing tests
 - **NEVER** commit with linting errors
