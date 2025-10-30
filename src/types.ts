@@ -1,8 +1,22 @@
+export type FrameworkId =
+  | 'nestjs'
+  | 'spring'
+  | 'laravel'
+  | 'angular'
+  | 'react'
+  | 'vue'
+  | 'nuxt';
+
 export interface DetectionResult {
   languages: LanguageDetection[];
   modules: ModuleDetection[];
+  frameworks: FrameworkDetection[];
   existingAgents: ExistingAgentsInfo | null;
   projectType?: 'monorepo' | 'library' | 'application' | 'cli';
+  gitHooks?: {
+    preCommitExists: boolean;
+    prePushExists: boolean;
+  };
 }
 
 export interface LanguageDetection {
@@ -45,6 +59,14 @@ export interface ModuleDetection {
   source?: string;
 }
 
+export interface FrameworkDetection {
+  framework: FrameworkId;
+  detected: boolean;
+  languages: LanguageDetection['language'][];
+  confidence: number;
+  indicators: string[];
+}
+
 export interface ExistingAgentsInfo {
   exists: boolean;
   path: string;
@@ -62,6 +84,7 @@ export interface AgentBlock {
 export interface ProjectConfig {
   languages: string[];
   modules: string[];
+  frameworks?: FrameworkId[];
   ides: string[];
   projectType: 'monorepo' | 'library' | 'application' | 'cli';
   coverageThreshold: number;
@@ -69,6 +92,8 @@ export interface ProjectConfig {
   generateWorkflows: boolean;
   includeGitWorkflow?: boolean;
   gitPushMode?: 'manual' | 'prompt' | 'auto';
+  installGitHooks?: boolean;
+  minimal?: boolean;
 }
 
 export interface RuleConfig {
@@ -92,6 +117,7 @@ export interface RulebookConfig {
   installedAt: string;
   updatedAt: string;
   projectId: string;
+  mode: 'full' | 'minimal';
   features: {
     openspec: boolean;
     watcher: boolean;

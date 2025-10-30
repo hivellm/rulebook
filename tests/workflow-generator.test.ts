@@ -89,6 +89,16 @@ describe('workflow-generator', () => {
       const content = await fs.readFile(path.join(workflowsDir, 'rust-test.yml'), 'utf-8');
       expect(content).toBe(customContent);
     });
+
+    it('should generate minimal workflows without lint or codespell', async () => {
+      const config = { ...baseConfig, languages: ['typescript'], minimal: true };
+
+      const workflows = await generateWorkflows(config, testDir, { mode: 'minimal' });
+
+      expect(workflows.some((w) => w.includes('typescript-test.yml'))).toBe(true);
+      expect(workflows.some((w) => w.includes('typescript-lint.yml'))).toBe(false);
+      expect(workflows.some((w) => w.includes('codespell.yml'))).toBe(false);
+    });
   });
 
   describe('generateIDEFiles', () => {

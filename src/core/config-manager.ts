@@ -74,6 +74,7 @@ export class ConfigManager {
       installedAt: now,
       updatedAt: now,
       projectId,
+      mode: 'full',
       features: {
         openspec: true,
         watcher: true,
@@ -133,6 +134,10 @@ export class ConfigManager {
     };
 
     migrated.features = { ...defaultFeatures, ...migrated.features };
+
+    if (!migrated.mode) {
+      migrated.mode = 'full';
+    }
 
     // Add missing top-level properties
     if (!migrated.outputLanguage) {
@@ -276,6 +281,7 @@ export function getDefaultConfig(): RulebookConfig {
     installedAt: now,
     updatedAt: now,
     projectId,
+    mode: 'full',
     features: {
       openspec: true,
       watcher: true,

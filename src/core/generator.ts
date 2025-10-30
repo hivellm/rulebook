@@ -132,6 +132,23 @@ export async function generateLanguageRules(language: string): Promise<string> {
   return `<!-- ${language.toUpperCase()}:START -->\n# ${language.charAt(0).toUpperCase() + language.slice(1)} Rules\n\nLanguage-specific rules for ${language}.\n<!-- ${language.toUpperCase()}:END -->\n`;
 }
 
+export async function generateFrameworkRules(framework: string): Promise<string> {
+  const templatesDir = path.join(getTemplatesDir(), 'frameworks');
+  const templatePath = path.join(templatesDir, `${framework.toUpperCase()}.md`);
+
+  if (await fileExists(templatePath)) {
+    return await readFile(templatePath);
+  }
+
+  const title = framework.charAt(0).toUpperCase() + framework.slice(1);
+  return `<!-- ${framework.toUpperCase()}:START -->
+# ${title} Framework Rules
+
+Framework-specific rules for ${title}.
+<!-- ${framework.toUpperCase()}:END -->
+`;
+}
+
 export async function generateModuleRules(module: string): Promise<string> {
   const templatesDir = path.join(getTemplatesDir(), 'modules');
   const templatePath = path.join(templatesDir, `${module.toUpperCase()}.md`);
@@ -212,10 +229,19 @@ export async function generateFullAgents(config: ProjectConfig): Promise<string>
     sections.push('');
   }
 
-  // Add AGENT_AUTOMATION module (ALWAYS included - critical for agent behavior)
-  const agentAutomation = await generateModuleRules('agent_automation');
-  sections.push(agentAutomation);
-  sections.push('');
+  // Add framework-specific rules
+  for (const framework of config.frameworks || []) {
+    const frameworkRules = await generateFrameworkRules(framework);
+    sections.push(frameworkRules);
+    sections.push('');
+  }
+
+  if (!config.minimal) {
+    // Add AGENT_AUTOMATION module when not in minimal mode
+    const agentAutomation = await generateModuleRules('agent_automation');
+    sections.push(agentAutomation);
+    sections.push('');
+  }
 
   // Add module-specific rules
   for (const module of config.modules) {
