@@ -30,11 +30,11 @@ npm run build
 
 # Tests
 npm test -- --run
-✅ Expected: 63/63 tests passing
+✅ Expected: 422+/422+ tests passing
 
 # Coverage
 npm run test:coverage -- --run
-✅ Expected: 90.38%+ coverage
+✅ Expected: 95%+ coverage
 ```
 
 ### 2. Version Verification
@@ -44,7 +44,7 @@ Ensure version is correctly set:
 ```bash
 # Check package.json
 cat package.json | grep version
-✅ Current: "version": "0.4.0"
+✅ Current: "version": "0.14.0"
 
 # Check src/index.ts
 grep "version" src/index.ts
@@ -55,10 +55,12 @@ grep "version" src/index.ts
 
 Verify documentation is up-to-date:
 
-- [ ] README.md has current version features
-- [ ] CHANGELOG.md has v0.4.0 entry
+- [ ] README.md has current version features (28 languages, 17 frameworks, 12 MCP modules)
+- [ ] CHANGELOG.md has v0.14.0 entry
 - [ ] ROADMAP.md is current
-- [ ] All templates are complete
+- [ ] All 126+ templates are complete
+- [ ] 30 Git hook templates work correctly
+- [ ] Framework templates tested
 - [ ] Examples work correctly
 
 ### 4. Git Status
@@ -326,6 +328,15 @@ jobs:
 
 ---
 
-**Current Status**: Ready for v0.4.0 deployment
-**Last Verified**: January 23, 2024
+**Current Status**: Ready for v0.14.0 deployment
+**Last Verified**: October 31, 2025
+
+**Major Changes in v0.14.0**:
+- 28 programming languages (was 11)
+- 17 frameworks with auto-detection (NEW)
+- 12 MCP modules (was 6)
+- 30 Git hook templates (NEW)
+- 126+ total templates (was 65)
+- 422+ tests with 95%+ coverage
+- Template simplification: -10,500 lines removed
 

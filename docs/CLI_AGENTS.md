@@ -1,5 +1,8 @@
 # CLI Agents Documentation
 
+**Note**: This document covers CLI Agent integration (autonomous agent feature from v0.10.0).  
+For current v0.14.0 features (frameworks, Git hooks, MCP modules), see main documentation.
+
 This document describes the supported CLI agents, their flags, output formats, and usage patterns.
 
 ## Supported Agents

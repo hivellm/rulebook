@@ -1,5 +1,8 @@
 # Agent Manager Test Commands
 
+**Note**: This document covers Agent Manager testing (autonomous agent feature from v0.10.0).  
+For current v0.14.0 features (frameworks, Git hooks), see main test suite.
+
 This document provides comprehensive test commands for the Agent Manager functionality in the Rulebook project.
 
 ## Available Test Commands
