@@ -46,12 +46,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Minimal mode skips community files for faster adoption
 
 ### Changed
+- **Template Simplification**: Massive reduction in template verbosity
+  - CLI templates: 15 files simplified (removed excessive rules)
+  - IDE templates: 8 files simplified (focused on core integration)
+  - Module templates: 8 files condensed (key points only)
+  - Total reduction: ~10,500 lines removed while maintaining essential information
+- **AGENT_AUTOMATION Module**: Refactored to generic core workflow
+  - Language-specific commands moved to individual language templates
+  - Each of 28 languages now has explicit automation commands section
+  - Better modularity and maintainability
 - **AGENTS.md Git Workflow**: Removed ~70 lines of duplicate hook instructions
   - Single source of truth now in templates/git/GIT_WORKFLOW.md
   - AGENTS.md references template for hook details
 - **Language Selection**: CLI prompts now include all 28 supported languages
   - Complete list from Ada to Zig available in interactive mode
 - **Workflow Generation**: Minimal mode generates only test workflows (skips lint, codespell)
+- **MCP Module Count**: Expanded from 6 to 12 modules
+  - Core: Vectorizer, Synap, OpenSpec, Context7, GitHub MCP, Playwright
+  - Services: Supabase, Notion, Atlassian, Serena, Figma, Grafana
 
 ### Improved
 - Framework-aware project initialization with auto-detection

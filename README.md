@@ -79,9 +79,11 @@ Essentials only: README, LICENSE, tests/, basic CI. Perfect for small teams or i
 - Backend: NestJS, Spring Boot, Laravel
 - Frontend: Angular, React, Vue, Nuxt
 
-## MCP Modules (6)
+## MCP Modules (12)
 
-Vectorizer • Synap • OpenSpec • Context7 • GitHub MCP • Playwright
+**Core**: Vectorizer • Synap • OpenSpec • Context7 • GitHub MCP • Playwright
+
+**Services**: Supabase • Notion • Atlassian • Serena • Figma • Grafana
 
 ## AI Tools Supported (23)
 
