@@ -276,34 +276,33 @@
 - [ ] Enterprise features
 - [ ] SLA and support options
 
-## Metrics (v0.9.0)
+## Metrics (Current - Unreleased)
 
-- **Current Version**: v0.9.0 (Extensibility & Automation) ⬆️
-- **Code Coverage**: 90%+ (core modules) ✅
-- **Test Count**: 90 comprehensive tests (100% passing) ✅ ⬆️
-- **Test Files**: 9 test suites ⬆️
-- **CLI Commands**: 9 (init, workflows, validate, check-deps, check-coverage, version, changelog, health, fix) ⬆️ NEW
-- **Supported Languages**: 11 (Rust, TS, Python, Go, Java, Elixir, C#, PHP, Swift, Kotlin, C/C++)
-- **Supported Modules**: 5 (Vectorizer, Synap, OpenSpec, Context7, GitHub MCP)
+- **Current Version**: v0.14.0-dev (Hooks & Frameworks Expansion)
+- **Code Coverage**: 95%+ (target) ✅
+- **Test Count**: 422+ comprehensive tests (100% passing) ✅ ⬆️
+- **Test Files**: 22 test suites ⬆️
+- **CLI Commands**: 9 (init, update, workflows, validate, check-deps, check-coverage, version, changelog, health, fix)
+- **Supported Languages**: **28** (Rust, TypeScript, JavaScript, Python, Go, Java, Kotlin, C, C++, C#, PHP, Ruby, Swift, Elixir, Dart, Scala, Haskell, Julia, R, Lua, Solidity, Zig, Erlang, Ada, SAS, Lisp, Objective-C, SQL) ⬆️
+- **Supported Frameworks**: **17** (NestJS, Spring, Laravel, Django, Flask, Rails, Symfony, Zend, Angular, React, Vue, Nuxt, Next.js, jQuery, React Native, Flutter, Electron) ⬆️ NEW
+- **Supported MCP Modules**: **12** (Vectorizer, Synap, OpenSpec, Context7, GitHub, Playwright, Supabase, Notion, Atlassian, Serena, Figma, Grafana) ⬆️
 - **IDE Templates**: 8 (Cursor, Windsurf, VS Code, Copilot, Tabnine, Replit, JetBrains AI, Zed)
-- **CLI Tools Templates**: 15 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium, Claude Code, Cline, Amazon Q, Auggie, CodeBuddy, Factory Droid, OpenCode, Kilo Code, Codex)
-- **Test/Lint Workflows**: 23 (11 languages x2 + codespell)
-- **Publishing Workflows**: 12 (all languages + npm-publish for rulebook) ⬆️ NEW
-- **Total Workflow Templates**: 36 GitHub Actions workflows ⬆️
-- **Language Templates**: 11 comprehensive guides
-- **Git Workflow Templates**: 1 (GIT_WORKFLOW.md with hooks)
-- **Total Templates**: 65 built-in + unlimited custom ✅ NEW
-- **Core Modules**: 13 (detector, generator, merger, validator, workflow-generator, coverage-checker, dependency-checker, version-bumper, changelog-generator, health-scorer, custom-templates, auto-fixer, + utils) ⬆️ NEW
-- **Documentation Pages**: 12+ guides and specs
-- **Lines of Code**: 28,000+ lines (implementation + templates + docs) ⬆️
+- **CLI Tools Templates**: 15 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium, Claude Code, Cline, Amazon Q, Auggie, CodeBuddy, Factory, OpenCode, Kilo, Codex)
+- **Git Hook Templates**: **30** (15 languages × 2 hooks) ⭐ NEW
+- **Framework Templates**: **17** complete framework guides ⭐ NEW
+- **Test/Lint Workflows**: 56+ (28 languages × 2)
+- **Publishing Workflows**: 18 (package registries for all applicable languages)
+- **Total Workflow Templates**: 74+ GitHub Actions workflows ⬆️
+- **Language Templates**: **28** comprehensive guides ⬆️
+- **Total Templates**: **126+** built-in + unlimited custom ✅
+- **Core Modules**: 15+ (detector, generator, merger, validator, workflow-generator, git-hooks, minimal-scaffolder, and more) ⬆️
+- **Documentation Pages**: 20+ guides and specs
+- **Code Reduction**: ~10,500 lines removed (simplification) ⬇️
 - **GitHub Actions**: Fully configured with automated publishing ✅
-- **Publication Support**: Full CI/CD for all 11 languages ✅
-- **Package Registries**: npm, crates.io, PyPI, pkg.go.dev, Maven Central, Hex.pm, NuGet, Packagist, Conan, vcpkg ✅
-- **Version Management**: Automated bumping across all languages ✅
-- **Changelog**: Automated from conventional commits ✅
-- **Health Scoring**: 6-category analysis with recommendations ✅ NEW
-- **Custom Templates**: User-extensible template system ✅ NEW
-- **Workflow Customization**: .rulebook.json configuration ✅ NEW
+- **Publication Support**: Full CI/CD for 18+ languages ✅
+- **Package Registries**: npm, crates.io, PyPI, pkg.go.dev, Maven Central, Hex.pm, NuGet, Packagist, and more ✅
+- **Git Hooks**: Template-based system following official Git best practices ✅ NEW
+- **Framework Detection**: Language-aware auto-detection for 17 frameworks ✅ NEW
 
 ## Contributing
 
