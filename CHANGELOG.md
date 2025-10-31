@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Quality Enforcement Rules**: Strict anti-bypass rules to prevent AI models from circumventing quality gates
+  - Prohibits test skipping (.skip, .only, commenting out tests)
+  - Prohibits git hook bypassing (--no-verify)
+  - Prohibits boilerplate tests without real assertions
+  - Enforces pragmatic problem-solving over creative shortcuts
+  - Injected into all AGENTS.md by default
+  - Applied on update command unless --light is specified
+- **Light Mode**: New --light flag for minimal rules setup
+  - Skips quality enforcement, testing, linting, coverage requirements
+  - Use for quick prototypes or non-production projects
+  - Usage: `rulebook init --light` or `rulebook update --light`
 - **Framework Templates Expansion**: Added 10 new framework templates with auto-detection
   - Django (Python): requirements.txt and manage.py detection
   - Flask (Python): requirements.txt detection
@@ -70,6 +81,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Minimal mode skips community files for faster adoption
 
 ### Changed
+- Default AGENTS.md now includes strict quality enforcement rules
+- Update command now adds quality enforcement rules to existing projects
+- ProjectConfig extended with lightMode option
 - **Template Simplification**: Massive reduction in template verbosity
   - CLI templates: 15 files simplified (removed excessive rules)
   - IDE templates: 8 files simplified (focused on core integration)

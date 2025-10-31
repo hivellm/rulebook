@@ -46,6 +46,7 @@ program
   .description('Initialize rulebook for current project')
   .option('-y, --yes', 'Skip prompts and use detected defaults')
   .option('--minimal', 'Enable essentials-only setup mode')
+  .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
   .action(initCommand);
 
 program
@@ -157,6 +158,7 @@ program
   .description('Update AGENTS.md and .rulebook to latest version')
   .option('-y, --yes', 'Skip confirmation prompt')
   .option('--minimal', 'Regenerate using minimal mode (essentials only)')
+  .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
   .action(updateCommand);
 
 program.parse(process.argv);

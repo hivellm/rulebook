@@ -11,6 +11,9 @@ npx @hivellm/rulebook@latest init
 # Minimal setup (essentials only)
 npx @hivellm/rulebook@latest init --minimal
 
+# Light mode (prototypes without strict rules)
+npx @hivellm/rulebook@latest init --light
+
 # Update existing project
 npx @hivellm/rulebook@latest update
 ```
@@ -45,8 +48,10 @@ Merges latest templates while preserving your customizations (auto-backup includ
 ```bash
 rulebook init              # Initialize new project
 rulebook init --minimal    # Minimal setup (essentials only)
+rulebook init --light      # Light mode (no quality enforcement)
 rulebook init --yes        # Skip prompts, use defaults
 rulebook update            # Update to latest templates
+rulebook update --light    # Update without quality enforcement
 rulebook validate          # Check project standards
 rulebook health            # Project health score
 rulebook fix               # Auto-fix common issues
@@ -70,6 +75,12 @@ Complete setup with all features: OpenSpec tasks, Watcher, MCP modules, comprehe
 rulebook init --minimal
 ```
 Essentials only: README, LICENSE, tests/, basic CI. Perfect for small teams or initial adoption.
+
+### Light Mode
+```bash
+rulebook init --light
+```
+Bare minimum rules: no quality enforcement, no testing requirements, no linting. Use for quick prototypes or non-production projects.
 
 ## Supported Languages & Frameworks
 
