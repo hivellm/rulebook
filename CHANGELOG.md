@@ -38,15 +38,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Each language now has quality check and security audit commands in template header
   - Integrated with AGENT_AUTOMATION workflow for consistent post-implementation checks
 - **Git Hook Automation**: Optional automated installation of pre-commit and pre-push hooks
-  - Language-aware hook generation for TypeScript, Rust, Python, Go, Java, C#, and more
+  - Language-aware hook generation for 18 languages: TypeScript, JavaScript, Rust, Python, Go, Java, C#, PHP, Ruby, Elixir, Swift, Kotlin, Scala, Dart, Erlang, Haskell
+  - Pre-commit hooks: format check, lint, type check, tests
+  - Pre-push hooks: full test suite, build verification
   - CLI prompts for hook installation only when hooks are missing
   - Hooks run lint, test, type-check, and build commands automatically
   - `.rulebook` gitHooks flag tracks installation status
-- **Framework Detection**: Auto-detects 7 popular frameworks with tailored templates
-  - Backend: NestJS, Spring Boot, Laravel
-  - Frontend: Angular, React, Vue, Nuxt
+  - Fully automated generation during `rulebook init` and `rulebook update`
+- **Framework Detection**: Auto-detects 17 popular frameworks with tailored templates
+  - Backend (8): NestJS, Spring Boot, Laravel, Django, Flask, Ruby on Rails, Symfony, Zend
+  - Frontend (6): Angular, React, Vue, Nuxt, Next.js, jQuery
+  - Mobile (2): React Native, Flutter
+  - Desktop (1): Electron
   - Framework-specific quality gates and best practices in AGENTS.md
-  - Automated detection via package.json, composer.json, and config files
+  - Automated detection via package.json, composer.json, requirements.txt, and config files
 - **Minimal Mode**: New `--minimal` flag for lightweight project setup
   - Scaffolds only essentials: README, LICENSE, tests/, basic CI
   - Skips OpenSpec, Watcher, MCP modules, and heavy templates
