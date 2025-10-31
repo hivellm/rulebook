@@ -1,8 +1,9 @@
 {
-  "version": "0.12.1",
-  "installedAt": "2025-10-27T01:43:22.955Z",
-  "updatedAt": "2025-10-28T01:32:02.587Z",
+  "version": "0.14.0",
+  "installedAt": "2025-10-28T01:32:02.583Z",
+  "updatedAt": "2025-10-31T02:25:38.318Z",
   "projectId": "rulebook",
+  "mode": "full",
   "features": {
     "openspec": true,
     "watcher": false,
@@ -11,7 +12,7 @@
     "telemetry": false,
     "notifications": false,
     "dryRun": false,
-    "gitHooks": false,
+    "gitHooks": true,
     "repl": false,
     "templates": true,
     "context": true,
