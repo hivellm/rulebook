@@ -6,13 +6,13 @@
 
 ```bash
 # New project (interactive)
-npx @hivellm/rulebook init
+npx @hivellm/rulebook@latest init
 
 # Minimal setup (essentials only)
-npx @hivellm/rulebook init --minimal
+npx @hivellm/rulebook@latest init --minimal
 
 # Update existing project
-npx @hivellm/rulebook update
+npx @hivellm/rulebook@latest update
 ```
 
 ## Key Features
