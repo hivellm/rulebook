@@ -54,7 +54,19 @@ export interface LanguageDetection {
 }
 
 export interface ModuleDetection {
-  module: 'vectorizer' | 'synap' | 'openspec' | 'context7' | 'github' | 'playwright';
+  module:
+    | 'vectorizer'
+    | 'synap'
+    | 'openspec'
+    | 'context7'
+    | 'github'
+    | 'playwright'
+    | 'supabase'
+    | 'notion'
+    | 'atlassian'
+    | 'serena'
+    | 'figma'
+    | 'grafana';
   detected: boolean;
   source?: string;
 }
