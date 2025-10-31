@@ -96,9 +96,10 @@ Essentials only: README, LICENSE, tests/, basic CI. Perfect for small teams or i
 ## Documentation
 
 Full documentation available in `/docs`:
-- [Architecture](docs/ARCHITECTURE.md)
-- [Development Guide](docs/DEVELOPMENT.md)
-- [CLI Reference](docs/CLI.md)
+- [Getting Started](docs/guides/GETTING_STARTED.md)
+- [Best Practices](docs/guides/BEST_PRACTICES.md)
+- [CLI Agents](docs/CLI_AGENTS.md)
+- [Roadmap](docs/ROADMAP.md)
 - [Framework Templates](templates/frameworks/)
 
 ## Contributing
