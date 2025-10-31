@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.15.0] - 2025-10-31
 
 ### Added
 - **Quality Enforcement Rules**: Strict anti-bypass rules to prevent AI models from circumventing quality gates
@@ -19,6 +19,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Skips quality enforcement, testing, linting, coverage requirements
   - Use for quick prototypes or non-production projects
   - Usage: `rulebook init --light` or `rulebook update --light`
+
+### Changed
+- Default AGENTS.md now includes strict quality enforcement rules
+- Update command now adds quality enforcement rules to existing projects
+- ProjectConfig extended with lightMode option
+
+## [Unreleased]
+
+### Added
+- _Future features will be documented here_
+
+## [0.14.0] - 2025-10-31
+
+### Added
 - **Framework Templates Expansion**: Added 10 new framework templates with auto-detection
   - Django (Python): requirements.txt and manage.py detection
   - Flask (Python): requirements.txt detection
@@ -81,9 +95,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Minimal mode skips community files for faster adoption
 
 ### Changed
-- Default AGENTS.md now includes strict quality enforcement rules
-- Update command now adds quality enforcement rules to existing projects
-- ProjectConfig extended with lightMode option
 - **Template Simplification**: Massive reduction in template verbosity
   - CLI templates: 15 files simplified (removed excessive rules)
   - IDE templates: 8 files simplified (focused on core integration)

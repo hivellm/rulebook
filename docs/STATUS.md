@@ -3,13 +3,13 @@
 ## Overview
 
 **Project**: @hivellm/rulebook
-**Version**: 0.15.0-rc1
+**Version**: 0.15.0
 **Status**: ✅ **IMPLEMENTATION COMPLETE** - Ready for Release
 **Date**: 2025-10-31
 
 ## Completion Summary
 
-All planned features for v0.15.0-rc1 have been successfully implemented. The project now includes:
+All planned features for v0.15.0 have been successfully implemented. The project now includes:
 - Quality enforcement rules to prevent AI from bypassing quality gates
 - Light mode for minimal rule setup
 - 28 programming languages with automation commands
