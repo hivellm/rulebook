@@ -1,6 +1,23 @@
 <!-- PYTHON:START -->
 # Python Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+ruff format --check .      # Format check
+ruff check .               # Linting
+mypy .                     # Type checking
+pytest                     # All tests (100% pass required)
+pytest --cov               # Coverage check (95%+ required)
+
+# Security audit:
+pip-audit                  # Vulnerability scan
+pip list --outdated        # Check outdated deps
+```
+
 ## Python Version
 
 **CRITICAL**: Use Python 3.11+ for modern features and performance.
@@ -8,41 +25,6 @@
 - **Minimum Version**: Python 3.11+
 - **Recommended**: Python 3.12+
 - **Type Hints**: Required for all public APIs
-
-## Code Quality Standards
-
-### Mandatory Quality Checks
-
-**CRITICAL**: After implementing ANY feature, you MUST run these commands in order.
-
-**IMPORTANT**: These commands MUST match your GitHub Actions workflows to prevent CI/CD failures!
-
-```bash
-# Pre-Commit Checklist (MUST match .github/workflows/*.yml)
-
-# 1. Format check (matches workflow - use --check, not format!)
-ruff format --check .
-
-# 2. Lint (MUST pass with no warnings - matches workflow)
-ruff check .
-
-# 3. Type check (matches workflow)
-mypy .
-
-# 4. Run all tests (MUST pass 100% - matches workflow)
-pytest
-
-# 5. Check coverage (MUST meet threshold)
-pytest --cov=. --cov-report=term --cov-report=html
-```
-
-**If ANY of these fail, you MUST fix the issues before committing.**
-
-**Why This Matters:**
-- Running different commands locally than in CI causes "works on my machine" failures
-- CI/CD workflows will fail if commands don't match
-- Example: Using `ruff format .` locally but `ruff format --check .` in CI = failure
-- Example: Missing type check locally = CI mypy failures
 
 ### Formatting
 

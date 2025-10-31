@@ -1,6 +1,21 @@
 <!-- ADA:START -->
 # Ada Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+gprbuild -P project.gpr   # Build verification
+gnatcheck -P project.gpr  # Style/linting check
+gprclean -P project.gpr && gprbuild -P project.gpr  # Clean build
+# Run tests (project-specific command)
+
+# SPARK verification (if using SPARK):
+gnatprove -P project.gpr  # Formal verification
+```
+
 ## Ada Configuration
 
 **CRITICAL**: Use Ada 2012 or Ada 2022 with GNAT compiler.

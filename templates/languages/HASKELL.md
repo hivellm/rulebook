@@ -1,6 +1,24 @@
 <!-- HASKELL:START -->
 # Haskell Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence (Stack):
+stack build --fast --test --no-run-tests  # Build check
+hlint .                    # Linting
+ormolu --mode check $(find . -name '*.hs')  # Format check
+stack test                 # All tests (100% pass)
+stack test --coverage      # Coverage
+
+# Or with Cabal:
+cabal build
+cabal test
+cabal haddock              # Documentation check
+```
+
 ## Haskell Configuration
 
 **CRITICAL**: Use GHC 9.4+ with strict compiler flags and HLint.

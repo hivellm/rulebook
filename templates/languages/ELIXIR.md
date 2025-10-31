@@ -1,6 +1,24 @@
 <!-- ELIXIR:START -->
 # Elixir Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+mix format --check-formatted  # Format check
+mix credo --strict        # Linting
+mix dialyzer              # Type checking
+mix test                  # All tests (100% pass)
+mix test --cover          # Coverage (95%+ required)
+mix compile --warnings-as-errors  # Build
+
+# Security audit:
+mix hex.audit             # Vulnerability scan
+mix hex.outdated          # Check outdated deps
+```
+
 ## Elixir Configuration
 
 **CRITICAL**: Use Elixir 1.16+ with OTP 26+.

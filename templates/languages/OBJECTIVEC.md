@@ -1,6 +1,20 @@
 <!-- OBJECTIVEC:START -->
 # Objective-C Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+xcodebuild clean build    # Build verification
+xcodebuild test -scheme YourScheme  # All tests
+# clang static analyzer runs automatically in Xcode builds
+
+# Security audit:
+# Use Xcode's built-in analyzer or third-party tools
+```
+
 ## Objective-C Configuration
 
 **CRITICAL**: Use Modern Objective-C with ARC and strict warnings.

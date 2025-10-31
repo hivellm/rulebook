@@ -1,6 +1,21 @@
 <!-- SAS:START -->
 # SAS Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+# Run SAS code validation (project-specific)
+# Run SASUnit tests
+# Check log files for errors/warnings
+
+# SAS projects typically use:
+sas -sysin validate_code.sas  # Code validation
+sas -sysin run_tests.sas      # Run SASUnit tests
+```
+
 ## SAS Configuration
 
 **CRITICAL**: Use SAS 9.4+ with code validation and testing.

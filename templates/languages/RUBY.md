@@ -1,6 +1,21 @@
 <!-- RUBY:START -->
 # Ruby Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+bundle exec rubocop       # Linting and formatting
+bundle exec rspec         # All tests (100% pass)
+bundle exec rspec --format documentation  # Test coverage
+
+# Security audit:
+bundle audit              # Vulnerability scan
+bundle outdated           # Check outdated deps
+```
+
 ## Ruby Configuration
 
 **CRITICAL**: Use Ruby 3.2+ with RuboCop and modern tooling.

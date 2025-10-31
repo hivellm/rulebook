@@ -1,6 +1,21 @@
 <!-- R:START -->
 # R Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+Rscript -e 'styler::style_pkg(dry="on")'  # Format check
+Rscript -e 'lintr::lint_package()'  # Linting
+R CMD check .             # Full check
+Rscript -e 'devtools::test()'  # All tests
+
+# Security audit:
+Rscript -e 'pak::pkg_deps_explain()'  # Dependency check
+```
+
 ## R Configuration
 
 **CRITICAL**: Use R 4.2+ with modern package development tools.

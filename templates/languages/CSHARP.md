@@ -1,6 +1,22 @@
 <!-- CSHARP:START -->
 # C# Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+dotnet format --verify-no-changes  # Format check
+dotnet build              # Build + compile check
+dotnet test               # All tests (100% pass)
+dotnet test --collect:"XPlat Code Coverage"  # Coverage (95%+ required)
+
+# Security audit:
+dotnet list package --vulnerable  # Vulnerability scan
+dotnet list package --outdated    # Check outdated deps
+```
+
 ## C# Configuration
 
 **CRITICAL**: Use .NET 8+ with C# 12+.

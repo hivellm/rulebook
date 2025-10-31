@@ -1,6 +1,22 @@
 <!-- CPP:START -->
 # C/C++ Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+clang-format --dry-run --Werror src/**/*.cpp  # Format check
+clang-tidy src/**/*.cpp   # Linting
+make test                 # All tests (100% pass)
+make                      # Build verification
+
+# Additional checks:
+cppcheck --enable=all src/  # Static analysis
+valgrind --leak-check=full ./build/test  # Memory check
+```
+
 ## C/C++ Configuration
 
 **CRITICAL**: Use C++20 or C++23 with modern CMake.

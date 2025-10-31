@@ -1,6 +1,20 @@
 <!-- JULIA:START -->
 # Julia Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+julia -e 'using JuliaFormatter; format(".", overwrite=false)'  # Format check
+julia -e 'using Lint; lintpkg(".")'  # Linting
+julia --project=. -e 'using Pkg; Pkg.test()'  # All tests
+
+# Security audit:
+julia -e 'using Pkg; Pkg.update()'  # Update deps
+```
+
 ## Julia Configuration
 
 **CRITICAL**: Use Julia 1.9+ with JuliaFormatter and testing.

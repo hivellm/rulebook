@@ -1,6 +1,21 @@
 <!-- DART:START -->
 # Dart Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+dart format --set-exit-if-changed .  # Format check
+dart analyze --fatal-infos  # Linting + analysis
+dart test                   # All tests (100% pass)
+dart test --coverage=coverage  # Coverage check
+
+# Security audit:
+dart pub outdated           # Check outdated deps
+```
+
 ## Dart Configuration
 
 **CRITICAL**: Use Dart 3.0+ with sound null safety and strict analysis.

@@ -1,6 +1,19 @@
 <!-- ZIG:START -->
 # Zig Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+zig fmt --check .         # Format check
+zig build                 # Build verification
+zig build test            # All tests (100% pass)
+
+# No standard security audit tool for Zig yet
+```
+
 ## Zig Configuration
 
 **CRITICAL**: Use Zig 0.11+ with strict compilation and comprehensive testing.

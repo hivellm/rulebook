@@ -1,6 +1,23 @@
 <!-- RUST:START -->
 # Rust Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+cargo fmt --all -- --check           # Format check
+cargo clippy --workspace --all-targets --all-features -- -D warnings  # Lint
+cargo test --workspace --all-features  # All tests (100% pass)
+cargo build --release                # Build verification
+cargo llvm-cov --all                 # Coverage (95%+ required)
+
+# Security audit:
+cargo audit                          # Vulnerability scan
+cargo outdated                       # Check outdated deps
+```
+
 ## Rust Edition and Toolchain
 
 **CRITICAL**: Always use Rust Edition 2024 with nightly toolchain.
@@ -8,43 +25,6 @@
 - **Edition**: 2024
 - **Toolchain**: nightly 1.85+
 - **Update**: Run `rustup update nightly` regularly
-
-## Code Quality Standards
-
-### Mandatory Quality Checks
-
-**CRITICAL**: After implementing ANY feature, you MUST run these commands in order.
-
-**IMPORTANT**: These commands MUST match your GitHub Actions workflows to prevent CI/CD failures!
-
-```bash
-# Pre-Commit Checklist (MUST match .github/workflows/*.yml)
-
-# 1. Format check (matches workflow)
-cargo fmt --all -- --check
-
-# 2. Clippy workspace (matches workflow)
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-
-# 3. Run all tests (MUST pass 100% - matches workflow)
-cargo test --workspace --all-features
-
-# 4. Build release (matches workflow)
-cargo build --release
-
-# 5. Check coverage (MUST meet threshold)
-cargo llvm-cov --all --ignore-filename-regex 'examples'
-
-# If ANY fails: ❌ DO NOT COMMIT - Fix first!
-```
-
-**Why This Matters:**
-- Running different commands locally than in CI causes "works on my machine" failures
-- CI/CD workflows will fail if commands don't match
-- Example: Using `cargo fmt --all` locally but `cargo fmt --all -- --check` in CI = failure
-- Example: Missing `--all-features` flag = CI test failures
-
-**If ANY of these fail, you MUST fix the issues before committing.**
 
 ### Formatting
 
