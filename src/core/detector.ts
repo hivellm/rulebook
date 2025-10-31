@@ -704,6 +704,60 @@ async function detectFrameworks(
         return { detected: false, confidence: 0, indicators: [] };
       },
     },
+    {
+      id: 'nextjs',
+      label: 'Next.js',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps['next']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:next'],
+          };
+        }
+
+        const nextConfig = await findFirstExisting([
+          path.join(cwd, 'next.config.js'),
+          path.join(cwd, 'next.config.mjs'),
+          path.join(cwd, 'next.config.ts'),
+        ]);
+        if (nextConfig) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: [path.basename(nextConfig)],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'electron',
+      label: 'Electron',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps['electron']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:electron'],
+          };
+        }
+
+        // Check for electron-builder or electron-forge
+        if (npmDeps['electron-builder'] || npmDeps['@electron-forge/cli']) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['package.json:electron-builder or electron-forge'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
   ];
 
   const detections: FrameworkDetection[] = [];

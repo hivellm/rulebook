@@ -6,6 +6,7 @@ export type FrameworkId =
   | 'react'
   | 'vue'
   | 'nuxt'
+  | 'nextjs'
   | 'django'
   | 'rails'
   | 'flask'
@@ -13,7 +14,8 @@ export type FrameworkId =
   | 'zend'
   | 'jquery'
   | 'reactnative'
-  | 'flutter';
+  | 'flutter'
+  | 'electron';
 
 export interface DetectionResult {
   languages: LanguageDetection[];

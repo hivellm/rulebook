@@ -9,6 +9,7 @@ const FRAMEWORK_LABELS: Record<FrameworkId, string> = {
   react: 'React',
   vue: 'Vue.js',
   nuxt: 'Nuxt',
+  nextjs: 'Next.js',
   django: 'Django',
   rails: 'Ruby on Rails',
   flask: 'Flask',
@@ -17,6 +18,7 @@ const FRAMEWORK_LABELS: Record<FrameworkId, string> = {
   jquery: 'jQuery',
   reactnative: 'React Native',
   flutter: 'Flutter',
+  electron: 'Electron',
 };
 
 const LANGUAGE_CHOICES: Array<{ name: string; value: string }> = [
