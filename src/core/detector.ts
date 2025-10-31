@@ -505,6 +505,205 @@ async function detectFrameworks(
         return { detected: false, confidence: 0, indicators: [] };
       },
     },
+    {
+      id: 'django',
+      label: 'Django',
+      languages: ['python'],
+      detect: async () => {
+        const requirementsPath = path.join(cwd, 'requirements.txt');
+        if (await fileExists(requirementsPath)) {
+          const content = await readFile(requirementsPath);
+          if (content.includes('Django')) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['requirements.txt:Django'],
+            };
+          }
+        }
+
+        const managePy = path.join(cwd, 'manage.py');
+        if (await fileExists(managePy)) {
+          const content = await readFile(managePy);
+          if (content.includes('django')) {
+            return {
+              detected: true,
+              confidence: 0.9,
+              indicators: ['manage.py'],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'flask',
+      label: 'Flask',
+      languages: ['python'],
+      detect: async () => {
+        const requirementsPath = path.join(cwd, 'requirements.txt');
+        if (await fileExists(requirementsPath)) {
+          const content = await readFile(requirementsPath);
+          if (content.includes('Flask')) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['requirements.txt:Flask'],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'rails',
+      label: 'Ruby on Rails',
+      languages: ['ruby'],
+      detect: async () => {
+        const gemfilePath = path.join(cwd, 'Gemfile');
+        if (await fileExists(gemfilePath)) {
+          const content = await readFile(gemfilePath);
+          if (content.includes('rails')) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['Gemfile:rails'],
+            };
+          }
+        }
+
+        const railsPath = path.join(cwd, 'bin', 'rails');
+        if (await fileExists(railsPath)) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['bin/rails'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'symfony',
+      label: 'Symfony',
+      languages: ['php'],
+      detect: async () => {
+        if (phpDeps['symfony/framework-bundle']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['composer.json:symfony/framework-bundle'],
+          };
+        }
+
+        const symfonyConfig = path.join(cwd, 'symfony.lock');
+        if (await fileExists(symfonyConfig)) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['symfony.lock'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'zend',
+      label: 'Zend Framework',
+      languages: ['php'],
+      detect: async () => {
+        if (phpDeps['zendframework/zendframework'] || phpDeps['laminas/laminas-mvc']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['composer.json:zendframework or laminas'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'jquery',
+      label: 'jQuery',
+      languages: ['javascript', 'typescript'],
+      detect: async () => {
+        if (npmDeps['jquery']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:jquery'],
+          };
+        }
+
+        // Check for jQuery in HTML files
+        const indexHtml = path.join(cwd, 'index.html');
+        if (await fileExists(indexHtml)) {
+          const content = await readFile(indexHtml);
+          if (content.includes('jquery') || content.includes('jQuery')) {
+            return {
+              detected: true,
+              confidence: 0.8,
+              indicators: ['index.html:jquery'],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'reactnative',
+      label: 'React Native',
+      languages: ['javascript', 'typescript'],
+      detect: async () => {
+        if (npmDeps['react-native']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:react-native'],
+          };
+        }
+
+        const appJson = path.join(cwd, 'app.json');
+        if (await fileExists(appJson)) {
+          const content = await readFile(appJson);
+          if (content.includes('react-native') || content.includes('expo')) {
+            return {
+              detected: true,
+              confidence: 0.9,
+              indicators: ['app.json'],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'flutter',
+      label: 'Flutter',
+      languages: ['dart'],
+      detect: async () => {
+        const pubspecPath = path.join(cwd, 'pubspec.yaml');
+        if (await fileExists(pubspecPath)) {
+          const content = await readFile(pubspecPath);
+          if (content.includes('flutter:')) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['pubspec.yaml:flutter'],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
   ];
 
   const detections: FrameworkDetection[] = [];

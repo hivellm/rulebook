@@ -9,6 +9,14 @@ const FRAMEWORK_LABELS: Record<FrameworkId, string> = {
   react: 'React',
   vue: 'Vue.js',
   nuxt: 'Nuxt',
+  django: 'Django',
+  rails: 'Ruby on Rails',
+  flask: 'Flask',
+  symfony: 'Symfony',
+  zend: 'Zend Framework',
+  jquery: 'jQuery',
+  reactnative: 'React Native',
+  flutter: 'Flutter',
 };
 
 const LANGUAGE_CHOICES: Array<{ name: string; value: string }> = [

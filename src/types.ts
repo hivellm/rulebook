@@ -5,7 +5,15 @@ export type FrameworkId =
   | 'angular'
   | 'react'
   | 'vue'
-  | 'nuxt';
+  | 'nuxt'
+  | 'django'
+  | 'rails'
+  | 'flask'
+  | 'symfony'
+  | 'zend'
+  | 'jquery'
+  | 'reactnative'
+  | 'flutter';
 
 export interface DetectionResult {
   languages: LanguageDetection[];
