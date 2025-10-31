@@ -150,6 +150,162 @@ if [ -f "*.csproj" ] || [ -f "*.sln" ]; then
   dotnet test || exit 1
 fi`);
         break;
+        
+      case 'php':
+        checks.push(`
+# PHP checks
+if [ -f "composer.json" ]; then
+  echo "🔍 Running PHP checks..."
+  
+  # Format & Lint
+  if command -v php-cs-fixer &> /dev/null; then
+    php-cs-fixer fix --dry-run --diff || exit 1
+  fi
+  
+  if command -v phpstan &> /dev/null; then
+    phpstan analyze || exit 1
+  fi
+  
+  # Tests
+  if command -v phpunit &> /dev/null; then
+    phpunit || exit 1
+  fi
+fi`);
+        break;
+        
+      case 'ruby':
+        checks.push(`
+# Ruby checks
+if [ -f "Gemfile" ]; then
+  echo "🔍 Running Ruby checks..."
+  
+  # Lint
+  if command -v rubocop &> /dev/null; then
+    rubocop || exit 1
+  fi
+  
+  # Tests
+  if command -v rspec &> /dev/null; then
+    bundle exec rspec || exit 1
+  fi
+fi`);
+        break;
+        
+      case 'elixir':
+        checks.push(`
+# Elixir checks
+if [ -f "mix.exs" ]; then
+  echo "🔍 Running Elixir checks..."
+  
+  # Format check
+  mix format --check-formatted || exit 1
+  
+  # Lint
+  mix credo --strict || exit 1
+  
+  # Tests
+  mix test || exit 1
+fi`);
+        break;
+        
+      case 'swift':
+        checks.push(`
+# Swift checks
+if [ -f "Package.swift" ]; then
+  echo "🔍 Running Swift checks..."
+  
+  # Format & Lint
+  if command -v swiftlint &> /dev/null; then
+    swiftlint || exit 1
+  fi
+  
+  # Tests
+  swift test || exit 1
+fi`);
+        break;
+        
+      case 'kotlin':
+        checks.push(`
+# Kotlin checks
+if [ -f "build.gradle.kts" ]; then
+  echo "🔍 Running Kotlin checks..."
+  
+  # Lint
+  ./gradlew ktlintCheck || exit 1
+  ./gradlew detekt || exit 1
+  
+  # Tests
+  ./gradlew test || exit 1
+fi`);
+        break;
+        
+      case 'scala':
+        checks.push(`
+# Scala checks
+if [ -f "build.sbt" ]; then
+  echo "🔍 Running Scala checks..."
+  
+  # Format check
+  sbt scalafmtCheckAll || exit 1
+  
+  # Tests
+  sbt test || exit 1
+fi`);
+        break;
+        
+      case 'dart':
+        checks.push(`
+# Dart checks
+if [ -f "pubspec.yaml" ]; then
+  echo "🔍 Running Dart checks..."
+  
+  # Format check
+  dart format --set-exit-if-changed . || exit 1
+  
+  # Analyze
+  dart analyze --fatal-infos || exit 1
+  
+  # Tests
+  dart test || exit 1
+fi`);
+        break;
+        
+      case 'erlang':
+        checks.push(`
+# Erlang checks
+if [ -f "rebar.config" ]; then
+  echo "🔍 Running Erlang checks..."
+  
+  # Format check
+  rebar3 format --verify || exit 1
+  
+  # Dialyzer
+  rebar3 dialyzer || exit 1
+  
+  # Tests
+  rebar3 eunit || exit 1
+fi`);
+        break;
+        
+      case 'haskell':
+        checks.push(`
+# Haskell checks
+if [ -f "stack.yaml" ] || [ -f "*.cabal" ]; then
+  echo "🔍 Running Haskell checks..."
+  
+  # Lint
+  if command -v hlint &> /dev/null; then
+    hlint . || exit 1
+  fi
+  
+  # Tests
+  if [ -f "stack.yaml" ]; then
+    stack test || exit 1
+  else
+    cabal test || exit 1
+  fi
+fi`);
+        break;
     }
   }
   
@@ -267,6 +423,101 @@ fi`);
 if [ -f "*.csproj" ] || [ -f "*.sln" ]; then
   echo "🔍 Running .NET checks..."
   dotnet build -c Release || exit 1
+fi`);
+        break;
+        
+      case 'php':
+        checks.push(`
+# PHP checks
+if [ -f "composer.json" ]; then
+  echo "🔍 Running PHP checks..."
+  if command -v phpunit &> /dev/null; then
+    phpunit || exit 1
+  fi
+fi`);
+        break;
+        
+      case 'ruby':
+        checks.push(`
+# Ruby checks
+if [ -f "Gemfile" ]; then
+  echo "🔍 Running Ruby checks..."
+  if command -v rspec &> /dev/null; then
+    bundle exec rspec || exit 1
+  fi
+fi`);
+        break;
+        
+      case 'elixir':
+        checks.push(`
+# Elixir checks
+if [ -f "mix.exs" ]; then
+  echo "🔍 Running Elixir checks..."
+  mix test || exit 1
+  mix release || exit 1
+fi`);
+        break;
+        
+      case 'swift':
+        checks.push(`
+# Swift checks
+if [ -f "Package.swift" ]; then
+  echo "🔍 Running Swift checks..."
+  swift test || exit 1
+  swift build -c release || exit 1
+fi`);
+        break;
+        
+      case 'kotlin':
+        checks.push(`
+# Kotlin checks
+if [ -f "build.gradle.kts" ]; then
+  echo "🔍 Running Kotlin checks..."
+  ./gradlew clean build || exit 1
+fi`);
+        break;
+        
+      case 'scala':
+        checks.push(`
+# Scala checks
+if [ -f "build.sbt" ]; then
+  echo "🔍 Running Scala checks..."
+  sbt clean compile test || exit 1
+fi`);
+        break;
+        
+      case 'dart':
+        checks.push(`
+# Dart checks
+if [ -f "pubspec.yaml" ]; then
+  echo "🔍 Running Dart checks..."
+  dart test || exit 1
+fi`);
+        break;
+        
+      case 'erlang':
+        checks.push(`
+# Erlang checks
+if [ -f "rebar.config" ]; then
+  echo "🔍 Running Erlang checks..."
+  rebar3 compile || exit 1
+  rebar3 eunit || exit 1
+  rebar3 ct || exit 1
+fi`);
+        break;
+        
+      case 'haskell':
+        checks.push(`
+# Haskell checks
+if [ -f "stack.yaml" ] || [ -f "*.cabal" ]; then
+  echo "🔍 Running Haskell checks..."
+  if [ -f "stack.yaml" ]; then
+    stack test || exit 1
+    stack build || exit 1
+  else
+    cabal test || exit 1
+    cabal build || exit 1
+  fi
 fi`);
         break;
     }
