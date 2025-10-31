@@ -315,8 +315,7 @@ async function detectFrameworks(
           .require ?? {})
       : {}),
     ...(composerJson && typeof composerJson === 'object'
-      ? ((composerJson as { require?: Record<string, string>; 'require-dev'?: Record<string, string> })
-          ['require-dev'] ?? {})
+      ? ((composerJson as { require?: Record<string, string>; 'require-dev'?: Record<string, string> })['require-dev'] ?? {})
       : {}),
   };
 

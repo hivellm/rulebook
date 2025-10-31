@@ -160,13 +160,13 @@ export async function uninstallGitHooks(cwd: string): Promise<void> {
   
   try {
     await unlink(path.join(hooksDir, 'pre-commit'));
-  } catch (error) {
+  } catch {
     // Ignore if file doesn't exist
   }
   
   try {
     await unlink(path.join(hooksDir, 'pre-push'));
-  } catch (error) {
+  } catch {
     // Ignore if file doesn't exist
   }
 }
