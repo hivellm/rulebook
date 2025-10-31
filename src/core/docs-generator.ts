@@ -133,11 +133,15 @@ function generateRootReadme(config: DocsConfig, mode: 'full' | 'minimal'): strin
 
 ${documentationLinks.join('\n')}
 
-${communityLinks.length > 0 ? `## Community & Support
+${
+  communityLinks.length > 0
+    ? `## Community & Support
 
 ${communityLinks.join('\n')}
 
-` : ''}## License
+`
+    : ''
+}## License
 
 This project is licensed under the ${config.license} License.
 `;

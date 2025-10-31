@@ -70,7 +70,10 @@ export async function promptProjectConfig(
         name: 'mode',
         message: 'Setup mode:',
         choices: [
-          { name: 'Minimal – essentials only (README, LICENSE, tests, basic CI)', value: 'minimal' },
+          {
+            name: 'Minimal – essentials only (README, LICENSE, tests, basic CI)',
+            value: 'minimal',
+          },
           { name: 'Full – complete setup with all Rulebook features', value: 'full' },
         ],
         default: 'full',
@@ -312,7 +315,7 @@ export async function promptProjectConfig(
   const hasPreCommit = detection.gitHooks?.preCommitExists ?? false;
   const hasPrePush = detection.gitHooks?.prePushExists ?? false;
   const shouldPromptHooks = !hasPreCommit || !hasPrePush;
-  
+
   let installGitHooks = false;
   if (shouldPromptHooks) {
     const hooksAnswer = await inquirer.prompt<{ installHooks: boolean }>([
@@ -332,8 +335,7 @@ export async function promptProjectConfig(
     languages: answers.languages || detection.languages.map((l) => l.language),
     modules: isMinimal ? [] : answers.modules || [],
     frameworks:
-      answers.frameworks ||
-      detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
+      answers.frameworks || detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
     ides: answers.ides || ['cursor'],
     projectType: answers.projectType,
     coverageThreshold: answers.coverageThreshold,

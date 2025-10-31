@@ -147,7 +147,11 @@ export async function initCommand(options: { yes?: boolean; minimal?: boolean })
     const hookLanguages: LanguageDetection[] =
       detection.languages.length > 0
         ? detection.languages
-        : config.languages.map((language) => ({ language: language as LanguageDetection['language'], confidence: 1, indicators: [] }));
+        : config.languages.map((language) => ({
+            language: language as LanguageDetection['language'],
+            confidence: 1,
+            indicators: [],
+          }));
 
     let hooksInstalled = false;
     if (config.installGitHooks) {
@@ -1102,8 +1106,7 @@ export async function updateCommand(options: { yes?: boolean; minimal?: boolean 
       }
     }
 
-    const gitHooksActiveAfterUpdate =
-      hooksInstalledOnUpdate || (hasPreCommit && hasPrePush);
+    const gitHooksActiveAfterUpdate = hooksInstalledOnUpdate || (hasPreCommit && hasPrePush);
     config.installGitHooks = gitHooksActiveAfterUpdate;
 
     // Update .rulebook config

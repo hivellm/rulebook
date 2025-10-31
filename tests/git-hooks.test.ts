@@ -45,8 +45,9 @@ describe('git hook installer', () => {
   it('fails when git repository is not initialized', async () => {
     await fs.rm(gitDir, { recursive: true, force: true });
 
-    await expect(() => installGitHooks({ cwd: tempDir, languages: [tsLanguage] }))
-      .rejects.toThrowError('Git repository not initialized');
+    await expect(() =>
+      installGitHooks({ cwd: tempDir, languages: [tsLanguage] })
+    ).rejects.toThrowError('Git repository not initialized');
   });
 
   it('uninstalls previously installed hooks', async () => {
@@ -131,7 +132,7 @@ describe('git hook installer', () => {
 
   it('generates generic hooks for unsupported languages', async () => {
     const unsupportedLanguage: LanguageDetection = {
-      language: 'sql' as any,  // SQL not in LANGUAGE_HOOK_MAP
+      language: 'sql' as any, // SQL not in LANGUAGE_HOOK_MAP
       confidence: 1,
       indicators: ['schema.sql'],
     };

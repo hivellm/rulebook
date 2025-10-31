@@ -300,22 +300,39 @@ async function detectFrameworks(
   const languageSet = new Set(languages.map((l) => l.language));
   const npmDeps: Record<string, string> = {
     ...(packageJson && typeof packageJson === 'object'
-      ? ((packageJson as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> })
-          .dependencies ?? {})
+      ? ((
+          packageJson as {
+            dependencies?: Record<string, string>;
+            devDependencies?: Record<string, string>;
+          }
+        ).dependencies ?? {})
       : {}),
     ...(packageJson && typeof packageJson === 'object'
-      ? ((packageJson as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> })
-          .devDependencies ?? {})
+      ? ((
+          packageJson as {
+            dependencies?: Record<string, string>;
+            devDependencies?: Record<string, string>;
+          }
+        ).devDependencies ?? {})
       : {}),
   };
 
   const phpDeps: Record<string, string> = {
     ...(composerJson && typeof composerJson === 'object'
-      ? ((composerJson as { require?: Record<string, string>; 'require-dev'?: Record<string, string> })
-          .require ?? {})
+      ? ((
+          composerJson as {
+            require?: Record<string, string>;
+            'require-dev'?: Record<string, string>;
+          }
+        ).require ?? {})
       : {}),
     ...(composerJson && typeof composerJson === 'object'
-      ? ((composerJson as { require?: Record<string, string>; 'require-dev'?: Record<string, string> })['require-dev'] ?? {})
+      ? ((
+          composerJson as {
+            require?: Record<string, string>;
+            'require-dev'?: Record<string, string>;
+          }
+        )['require-dev'] ?? {})
       : {}),
   };
 
@@ -367,7 +384,10 @@ async function detectFrameworks(
           }
         }
 
-        const gradlePath = await findFirstExisting([path.join(cwd, 'build.gradle'), path.join(cwd, 'build.gradle.kts')]);
+        const gradlePath = await findFirstExisting([
+          path.join(cwd, 'build.gradle'),
+          path.join(cwd, 'build.gradle.kts'),
+        ]);
         if (gradlePath) {
           const content = await readFile(gradlePath);
           if (content.includes('spring-boot-starter')) {
@@ -764,7 +784,8 @@ async function detectFrameworks(
   for (const definition of frameworkDefinitions) {
     const match = await definition.detect();
     const availableLanguages = definition.languages.filter((lang) => languageSet.has(lang));
-    const languagesForFramework = availableLanguages.length > 0 ? availableLanguages : definition.languages;
+    const languagesForFramework =
+      availableLanguages.length > 0 ? availableLanguages : definition.languages;
 
     detections.push({
       framework: definition.id,
@@ -929,7 +950,9 @@ function parseAgentBlocks(content: string): AgentBlock[] {
   return blocks;
 }
 
-async function detectGitHooks(cwd: string): Promise<{ preCommitExists: boolean; prePushExists: boolean }> {
+async function detectGitHooks(
+  cwd: string
+): Promise<{ preCommitExists: boolean; prePushExists: boolean }> {
   const preCommitPath = path.join(cwd, '.git', 'hooks', 'pre-commit');
   const prePushPath = path.join(cwd, '.git', 'hooks', 'pre-push');
 

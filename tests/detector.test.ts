@@ -256,7 +256,10 @@ describe('detector', () => {
           '<project><dependencies><dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter</artifactId></dependency></dependencies></project>'
         );
         await fs.mkdir(path.join(testDir, 'src', 'main', 'java'), { recursive: true });
-        await fs.writeFile(path.join(testDir, 'src', 'main', 'java', 'Main.java'), 'public class Main {}');
+        await fs.writeFile(
+          path.join(testDir, 'src', 'main', 'java', 'Main.java'),
+          'public class Main {}'
+        );
 
         const result = await detectProject(testDir);
         const spring = result.frameworks.find((f) => f.framework === 'spring');
@@ -288,7 +291,10 @@ describe('detector', () => {
       });
 
       it('should detect Django framework via requirements.txt', async () => {
-        await fs.writeFile(path.join(testDir, 'requirements.txt'), 'Django==4.2.0\npsycopg2==2.9.0');
+        await fs.writeFile(
+          path.join(testDir, 'requirements.txt'),
+          'Django==4.2.0\npsycopg2==2.9.0'
+        );
         await fs.writeFile(path.join(testDir, 'manage.py'), '#!/usr/bin/env python\nimport django');
 
         const result = await detectProject(testDir);
@@ -300,7 +306,10 @@ describe('detector', () => {
       });
 
       it('should detect Flask framework via requirements.txt', async () => {
-        await fs.writeFile(path.join(testDir, 'requirements.txt'), 'Flask==3.0.0\nFlask-SQLAlchemy==3.0.0');
+        await fs.writeFile(
+          path.join(testDir, 'requirements.txt'),
+          'Flask==3.0.0\nFlask-SQLAlchemy==3.0.0'
+        );
 
         const result = await detectProject(testDir);
         const flask = result.frameworks.find((f) => f.framework === 'flask');
@@ -356,7 +365,10 @@ describe('detector', () => {
       it('should detect Electron framework via package.json', async () => {
         await fs.writeFile(
           path.join(testDir, 'package.json'),
-          JSON.stringify({ dependencies: { electron: '^28.0.0' }, devDependencies: { 'electron-builder': '^24.0.0' } })
+          JSON.stringify({
+            dependencies: { electron: '^28.0.0' },
+            devDependencies: { 'electron-builder': '^24.0.0' },
+          })
         );
 
         const result = await detectProject(testDir);
@@ -372,7 +384,10 @@ describe('detector', () => {
           path.join(testDir, 'package.json'),
           JSON.stringify({ dependencies: { 'react-native': '^0.72.0' } })
         );
-        await fs.writeFile(path.join(testDir, 'app.json'), JSON.stringify({ expo: { name: 'test' } }));
+        await fs.writeFile(
+          path.join(testDir, 'app.json'),
+          JSON.stringify({ expo: { name: 'test' } })
+        );
 
         const result = await detectProject(testDir);
         const reactnative = result.frameworks.find((f) => f.framework === 'reactnative');
