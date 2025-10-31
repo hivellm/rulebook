@@ -75,10 +75,11 @@ Essentials only: README, LICENSE, tests/, basic CI. Perfect for small teams or i
 
 **28 Languages**: TypeScript, JavaScript, Python, Rust, Go, Java, Kotlin, C, C++, C#, PHP, Ruby, Swift, Elixir, Dart, Scala, Haskell, Julia, R, Lua, Solidity, Zig, Erlang, Ada, SAS, Lisp, Objective-C, SQL
 
-**15 Frameworks** (auto-detected):
+**17 Frameworks** (auto-detected):
 - Backend: NestJS, Spring Boot, Laravel, Django, Flask, Ruby on Rails, Symfony, Zend
-- Frontend: Angular, React, Vue, Nuxt, jQuery
+- Frontend: Angular, React, Vue, Nuxt, Next.js, jQuery
 - Mobile: React Native, Flutter
+- Desktop: Electron
 
 ## MCP Modules (12)
 
