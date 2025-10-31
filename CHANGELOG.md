@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Framework Templates Expansion**: Added 8 new framework templates with auto-detection
+  - Django (Python): requirements.txt and manage.py detection
+  - Flask (Python): requirements.txt detection
+  - Ruby on Rails (Ruby): Gemfile and bin/rails detection
+  - Symfony (PHP): composer.json and symfony.lock detection
+  - Zend/Laminas (PHP): composer.json detection
+  - jQuery (JavaScript/TypeScript): package.json and HTML detection
+  - React Native (JavaScript/TypeScript): package.json and app.json detection
+  - Flutter (Dart): pubspec.yaml detection
+  - Total frameworks: 15 (was 7)
+  - Framework detection is language-aware and filtered by project language
 - **MCP Service Integration Templates**: Added 6 new MCP module templates
   - SUPABASE.md: Database operations, authentication, storage, real-time subscriptions
   - NOTION.md: Database queries, page management, task tracking integration
