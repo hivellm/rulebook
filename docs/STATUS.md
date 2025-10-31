@@ -3,20 +3,22 @@
 ## Overview
 
 **Project**: @hivellm/rulebook
-**Version**: 0.14.0-dev (unreleased)
+**Version**: 0.15.0
 **Status**: ✅ **IMPLEMENTATION COMPLETE** - Ready for Release
 **Date**: 2025-10-31
 
 ## Completion Summary
 
-All planned features for v0.14.0 have been successfully implemented. The project now includes:
+All planned features for v0.15.0 have been successfully implemented. The project now includes:
+- Quality enforcement rules to prevent AI from bypassing quality gates
+- Light mode for minimal rule setup
 - 28 programming languages with automation commands
 - 17 framework templates with auto-detection
 - 12 MCP module templates (doubled from 6)
 - 30 Git hook templates following official Git best practices
 - Template-based hook generation system
 - Massive code simplification (-10,500 lines removed)
-- Comprehensive test coverage (422+ tests)
+- Comprehensive test coverage (327+ tests)
 
 ## Features Implemented
 
@@ -82,6 +84,14 @@ All planned features for v0.14.0 have been successfully implemented. The project
 - [x] Health monitoring for CLI tools
 - [x] Capability detection and reporting
 - [x] Smart continue detection based on output patterns
+
+#### Quality Enforcement (v0.15.0-rc1)
+- [x] Strict anti-bypass rules for AI models
+- [x] Prohibits test skipping and git hook bypassing
+- [x] Enforces pragmatic problem-solving approach
+- [x] Light mode for minimal rule setup
+- [x] Automatic injection into AGENTS.md
+- [x] Update command integration
 
 ### ✅ Templates System
 

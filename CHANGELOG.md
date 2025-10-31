@@ -5,7 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2025-10-31
+
+### Added
+- **Quality Enforcement Rules**: Strict anti-bypass rules to prevent AI models from circumventing quality gates
+  - Prohibits test skipping (.skip, .only, commenting out tests)
+  - Prohibits git hook bypassing (--no-verify)
+  - Prohibits boilerplate tests without real assertions
+  - Enforces pragmatic problem-solving over creative shortcuts
+  - Injected into all AGENTS.md by default
+  - Applied on update command unless --light is specified
+- **Light Mode**: New --light flag for minimal rules setup
+  - Skips quality enforcement, testing, linting, coverage requirements
+  - Use for quick prototypes or non-production projects
+  - Usage: `rulebook init --light` or `rulebook update --light`
+
+### Changed
+- Default AGENTS.md now includes strict quality enforcement rules
+- Update command now adds quality enforcement rules to existing projects
+- ProjectConfig extended with lightMode option
+
 ## [Unreleased]
+
+### Added
+- _Future features will be documented here_
+
+## [0.14.0] - 2025-10-31
 
 ### Added
 - **Framework Templates Expansion**: Added 10 new framework templates with auto-detection

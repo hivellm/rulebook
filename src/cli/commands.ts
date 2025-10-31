@@ -47,7 +47,11 @@ function getRulebookVersion(): string {
   }
 }
 
-export async function initCommand(options: { yes?: boolean; minimal?: boolean }): Promise<void> {
+export async function initCommand(options: {
+  yes?: boolean;
+  minimal?: boolean;
+  light?: boolean;
+}): Promise<void> {
   try {
     const cwd = process.cwd();
 
@@ -99,6 +103,7 @@ export async function initCommand(options: { yes?: boolean; minimal?: boolean })
     // Get project configuration
     let config: ProjectConfig;
     const cliMinimal = Boolean(options.minimal);
+    const cliLight = Boolean(options.light);
     if (options.yes) {
       config = {
         languages: detection.languages.map((l) => l.language),
@@ -113,6 +118,7 @@ export async function initCommand(options: { yes?: boolean; minimal?: boolean })
         gitPushMode: 'manual',
         installGitHooks: false,
         minimal: cliMinimal,
+        lightMode: cliLight,
       };
       console.log(chalk.blue('\nUsing detected defaults...'));
     } else {
@@ -120,6 +126,7 @@ export async function initCommand(options: { yes?: boolean; minimal?: boolean })
       config = await promptProjectConfig(detection, {
         defaultMode: cliMinimal ? 'minimal' : 'full',
       });
+      config.lightMode = cliLight;
     }
 
     const minimalMode = config.minimal ?? cliMinimal;
@@ -922,7 +929,11 @@ export async function tasksCommand(options: {
   }
 }
 
-export async function updateCommand(options: { yes?: boolean; minimal?: boolean }): Promise<void> {
+export async function updateCommand(options: {
+  yes?: boolean;
+  minimal?: boolean;
+  light?: boolean;
+}): Promise<void> {
   try {
     const cwd = process.cwd();
 
@@ -1032,18 +1043,24 @@ export async function updateCommand(options: { yes?: boolean; minimal?: boolean 
     backupSpinner.succeed('Backup created');
 
     let existingMode: 'minimal' | 'full' | undefined;
+    let existingLightMode: boolean | undefined;
     if (await fileExists(rulebookPath)) {
       try {
         const currentConfig = JSON.parse(await readFile(rulebookPath));
         if (currentConfig && (currentConfig.mode === 'minimal' || currentConfig.mode === 'full')) {
           existingMode = currentConfig.mode;
         }
+        if (currentConfig && currentConfig.lightMode !== undefined) {
+          existingLightMode = currentConfig.lightMode;
+        }
       } catch {
         existingMode = undefined;
+        existingLightMode = undefined;
       }
     }
 
     const minimalMode = options.minimal ?? existingMode === 'minimal';
+    const lightMode = options.light !== undefined ? options.light : (existingLightMode ?? false);
 
     // Build config from detected project
     const config: ProjectConfig = {
@@ -1059,6 +1076,7 @@ export async function updateCommand(options: { yes?: boolean; minimal?: boolean 
       gitPushMode: 'manual' as const,
       installGitHooks: installHooksOnUpdate,
       minimal: minimalMode,
+      lightMode: lightMode,
     };
 
     if (minimalMode) {

@@ -116,6 +116,7 @@ export interface ProjectConfig {
   gitPushMode?: 'manual' | 'prompt' | 'auto';
   installGitHooks?: boolean;
   minimal?: boolean;
+  lightMode?: boolean;
 }
 
 export interface RuleConfig {

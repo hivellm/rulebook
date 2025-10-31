@@ -26,6 +26,15 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push(`Generated at: ${new Date().toISOString()}`);
   sections.push('');
 
+  // Inject Quality Enforcement Rules if not in light mode
+  if (!config.lightMode) {
+    const enforcementPath = path.join(getTemplatesDir(), 'modules', 'QUALITY_ENFORCEMENT.md');
+    const enforcementContent = await readFile(enforcementPath);
+    sections.push(enforcementContent.trim());
+    sections.push('');
+    sections.push('');
+  }
+
   // Documentation Standards
   sections.push('## Documentation Standards');
   sections.push('');
