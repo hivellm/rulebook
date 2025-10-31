@@ -1,7 +1,7 @@
 {
-  "version": "0.14.0",
-  "installedAt": "2025-10-28T01:32:02.583Z",
-  "updatedAt": "2025-10-31T02:25:38.318Z",
+  "version": "0.15.0-rc1",
+  "installedAt": "2025-10-31T02:25:38.304Z",
+  "updatedAt": "2025-10-31T06:16:56.179Z",
   "projectId": "rulebook",
   "mode": "full",
   "features": {
