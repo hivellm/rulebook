@@ -159,6 +159,41 @@ export async function promptProjectConfig(
           value: 'github',
           checked: detectedModules.includes('github'),
         },
+        {
+          name: 'Playwright (browser automation & testing)',
+          value: 'playwright',
+          checked: detectedModules.includes('playwright'),
+        },
+        {
+          name: 'Supabase (database, auth, storage)',
+          value: 'supabase',
+          checked: detectedModules.includes('supabase'),
+        },
+        {
+          name: 'Notion (documentation & task management)',
+          value: 'notion',
+          checked: detectedModules.includes('notion'),
+        },
+        {
+          name: 'Atlassian (Jira, Confluence, Bitbucket)',
+          value: 'atlassian',
+          checked: detectedModules.includes('atlassian'),
+        },
+        {
+          name: 'Serena (AI development assistant)',
+          value: 'serena',
+          checked: detectedModules.includes('serena'),
+        },
+        {
+          name: 'Figma (design system integration)',
+          value: 'figma',
+          checked: detectedModules.includes('figma'),
+        },
+        {
+          name: 'Grafana (metrics & dashboards)',
+          value: 'grafana',
+          checked: detectedModules.includes('grafana'),
+        },
       ],
     });
   }

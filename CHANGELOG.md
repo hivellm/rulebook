@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **MCP Service Integration Templates**: Added 6 new MCP module templates
+  - SUPABASE.md: Database operations, authentication, storage, real-time subscriptions
+  - NOTION.md: Database queries, page management, task tracking integration
+  - ATLASSIAN.md: Jira issues, Confluence documentation, Bitbucket repositories
+  - SERENA.md: AI-powered development assistance, code analysis, intelligent automation
+  - FIGMA.md: Design system integration, asset export, design-to-code workflows
+  - GRAFANA.md: Dashboard management, alerts, annotations, metrics visualization
+  - Each template includes configuration, common patterns, best practices, and CI/CD integration
+- **Enhanced CLI Prompts**: Updated module selection to include all 12 MCP modules
+  - Playwright, Supabase, Notion, Atlassian, Serena, Figma, Grafana now available in interactive prompts
+  - Better organization and descriptions for each module
+- **Language-Specific Automation Commands**: Added explicit automation commands to all 28 language templates
+  - TypeScript, Rust, Python, Go, Java, JavaScript, PHP, Ruby, C#, Elixir, Kotlin, Swift
+  - Dart, Scala, Haskell, Erlang, Zig, Solidity, C, C++, Julia, R, Lua, Ada, SAS, Lisp, Objective-C, SQL
+  - Each language now has quality check and security audit commands in template header
+  - Integrated with AGENT_AUTOMATION workflow for consistent post-implementation checks
 - **Git Hook Automation**: Optional automated installation of pre-commit and pre-push hooks
   - Language-aware hook generation for TypeScript, Rust, Python, Go, Java, C#, and more
   - CLI prompts for hook installation only when hooks are missing
