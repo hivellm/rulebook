@@ -1,5 +1,87 @@
 # Release Notes
 
+## Version 0.14.0 - 2025-10-31 (Unreleased)
+
+### 🎉 Major Features
+
+#### Framework Support (17 Frameworks)
+- Auto-detects 17 popular frameworks across 4 categories
+- Backend: NestJS, Spring Boot, Laravel, Django, Flask, Ruby on Rails, Symfony, Zend
+- Frontend: Angular, React, Vue, Nuxt, Next.js, jQuery
+- Mobile: React Native, Flutter
+- Desktop: Electron
+- Language-aware filtering (only shows frameworks for detected languages)
+- Framework-specific quality gates and best practices
+
+#### Git Hook Templates (30 Templates)
+- Template-based hook system in `templates/hooks/`
+- 15 languages with pre-commit and pre-push hooks
+- Pre-commit: format check, lint, type check, unit tests
+- Pre-push: full test suite, build verification, coverage, security audits
+- Follows official Git hooks best practices
+- User-customizable template files
+- Automatic installation during `rulebook init` and `rulebook update`
+
+#### MCP Module Expansion (12 Modules)
+- Doubled MCP modules from 6 to 12
+- Core: Vectorizer, Synap, OpenSpec, Context7, GitHub MCP, Playwright
+- Services: Supabase, Notion, Atlassian, Serena, Figma, Grafana
+- Each module with configuration examples and integration patterns
+
+#### Language Automation Commands (28 Languages)
+- All 28 language templates now include explicit automation commands
+- Quality check sequences for each language
+- Security audit commands
+- Integrated with AGENT_AUTOMATION workflow
+
+#### Template Simplification
+- Massive cleanup: -10,500 lines removed
+- CLI templates simplified (15 files)
+- IDE templates simplified (8 files)
+- Module templates condensed (12 files)
+- Maintained essential information while improving readability
+
+### 📊 Improvements
+
+- **Test Count**: 422+ tests (⬆️ from 90)
+- **Coverage**: 95%+ (⬆️ from 90%)
+- **Templates**: 126+ total (⬆️ from 65)
+- **Languages**: 28 (⬆️ from 11)
+- **Frameworks**: 17 (NEW category)
+- **MCP Modules**: 12 (⬆️ from 6)
+- **Code Quality**: -10,500 lines removed (simplification)
+
+### 🐛 Bug Fixes
+
+- Fixed TypeScript types for new MCP modules
+- Corrected README documentation links
+- Updated all documentation for v0.14.0
+
+### 📦 What's Included
+
+- **28 Language Templates**: All major languages with automation
+- **17 Framework Templates**: Complete framework guides
+- **12 Module Templates**: Simplified MCP integration
+- **30 Git Hook Templates**: Pre-commit and pre-push for 15 languages
+- **8 IDE Templates**: Major IDEs and AI assistants
+- **15 CLI Templates**: AI coding assistants
+- **74+ Workflow Templates**: GitHub Actions for all languages
+
+### 🚀 Getting Started
+
+```bash
+# Initialize with framework detection
+npx @hivellm/rulebook init
+
+# Minimal setup
+npx @hivellm/rulebook init --minimal
+
+# Update existing project
+npx @hivellm/rulebook update
+```
+
+---
+
 ## Version 0.2.0 - 2024-01-23
 
 ### 🎉 Major Features

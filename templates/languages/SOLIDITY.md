@@ -1,6 +1,27 @@
 <!-- SOLIDITY:START -->
 # Solidity Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence (Hardhat):
+npx hardhat compile       # Compilation check
+npx hardhat test          # All tests (100% pass)
+npx hardhat coverage      # Coverage check
+npx slither .             # Security analysis
+
+# Or with Foundry:
+forge build               # Compilation
+forge test                # All tests
+forge coverage            # Coverage
+slither .                 # Security scan
+
+# Gas optimization check:
+npx hardhat test --gas
+```
+
 ## Solidity Configuration
 
 **CRITICAL**: Use Solidity 0.8.20+ with strict compiler settings and comprehensive testing.

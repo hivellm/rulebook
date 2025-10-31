@@ -1,6 +1,24 @@
 <!-- GO:START -->
 # Go Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+gofmt -l .                 # Format check (should be empty)
+golangci-lint run          # Linting
+go vet ./...               # Static analysis
+go test ./... -v -race -coverprofile=coverage.out  # Tests + race detection
+go tool cover -func=coverage.out  # Coverage (95%+ required)
+go build ./...             # Build verification
+
+# Security audit:
+go list -json -m all | nancy sleuth  # Vulnerability scan
+go list -u -m all          # Check outdated deps
+```
+
 ## Go Version
 
 **CRITICAL**: Use Go 1.21+ for modern features and performance.
@@ -8,43 +26,6 @@
 - **Minimum Version**: Go 1.21+
 - **Recommended**: Go 1.22+
 - **Module System**: Go modules enabled
-
-## Code Quality Standards
-
-### Mandatory Quality Checks
-
-**CRITICAL**: After implementing ANY feature, you MUST run these commands in order.
-
-**IMPORTANT**: These commands MUST match your GitHub Actions workflows to prevent CI/CD failures!
-
-```bash
-# Pre-Commit Checklist (MUST match .github/workflows/*.yml)
-
-# 1. Format check (matches workflow - use -l to check, not -w!)
-test -z "$(gofmt -l .)"
-
-# 2. Lint (MUST pass with no warnings - matches workflow)
-golangci-lint run
-
-# 3. Vet code (matches workflow)
-go vet ./...
-
-# 4. Run all tests (MUST pass 100% - matches workflow)
-go test ./... -v -race -coverprofile=coverage.out
-
-# 5. Check coverage (MUST meet threshold)
-go tool cover -func=coverage.out
-
-# If ANY fails: ❌ DO NOT COMMIT - Fix first!
-```
-
-**If ANY of these fail, you MUST fix the issues before committing.**
-
-**Why This Matters:**
-- Running different commands locally than in CI causes "works on my machine" failures
-- CI/CD workflows will fail if commands don't match
-- Example: Using `gofmt -w .` locally but `gofmt -l .` in CI = failure
-- Example: Missing `-race` flag locally = CI race condition failures
 
 ### Formatting
 

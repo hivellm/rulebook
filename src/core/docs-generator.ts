@@ -11,7 +11,8 @@ export interface DocsConfig {
 
 export async function generateDocsStructure(
   config: DocsConfig,
-  targetDir: string = process.cwd()
+  targetDir: string = process.cwd(),
+  mode: 'full' | 'minimal' = 'full'
 ): Promise<string[]> {
   const generatedFiles: string[] = [];
 
@@ -24,6 +25,14 @@ export async function generateDocsStructure(
   await ensureDir(path.join(docsDir, 'benchmarks'));
   await ensureDir(path.join(docsDir, 'versions'));
   await ensureDir(path.join(docsDir, 'examples'));
+
+  // Generate root README (concise version)
+  const readmePath = path.join(targetDir, 'README.md');
+  if (!(await fileExists(readmePath))) {
+    const readmeContent = generateRootReadme(config, mode);
+    await writeFile(readmePath, readmeContent);
+    generatedFiles.push(readmePath);
+  }
 
   // Generate ROADMAP.md
   const roadmapPath = path.join(docsDir, 'ROADMAP.md');
@@ -41,39 +50,101 @@ export async function generateDocsStructure(
     generatedFiles.push(archPath);
   }
 
-  // Generate DAG.md
-  const dagPath = path.join(docsDir, 'DAG.md');
-  if (!(await fileExists(dagPath))) {
-    const dag = generateDAG(config);
-    await writeFile(dagPath, dag);
-    generatedFiles.push(dagPath);
+  // Generate DEVELOPMENT.md
+  const developmentPath = path.join(docsDir, 'DEVELOPMENT.md');
+  if (!(await fileExists(developmentPath))) {
+    const development = generateDevelopment(config);
+    await writeFile(developmentPath, development);
+    generatedFiles.push(developmentPath);
   }
 
-  // Generate CONTRIBUTING.md
-  const contributingPath = path.join(targetDir, 'CONTRIBUTING.md');
-  if (!(await fileExists(contributingPath))) {
-    const contributing = generateContributing(config);
-    await writeFile(contributingPath, contributing);
-    generatedFiles.push(contributingPath);
-  }
+  if (mode === 'full') {
+    // Generate DAG.md
+    const dagPath = path.join(docsDir, 'DAG.md');
+    if (!(await fileExists(dagPath))) {
+      const dag = generateDAG(config);
+      await writeFile(dagPath, dag);
+      generatedFiles.push(dagPath);
+    }
 
-  // Generate CODE_OF_CONDUCT.md
-  const cocPath = path.join(targetDir, 'CODE_OF_CONDUCT.md');
-  if (!(await fileExists(cocPath))) {
-    const coc = generateCodeOfConduct(config);
-    await writeFile(cocPath, coc);
-    generatedFiles.push(cocPath);
-  }
+    // Generate CONTRIBUTING.md
+    const contributingPath = path.join(targetDir, 'CONTRIBUTING.md');
+    if (!(await fileExists(contributingPath))) {
+      const contributing = generateContributing(config);
+      await writeFile(contributingPath, contributing);
+      generatedFiles.push(contributingPath);
+    }
 
-  // Generate SECURITY.md
-  const securityPath = path.join(targetDir, 'SECURITY.md');
-  if (!(await fileExists(securityPath))) {
-    const security = generateSecurity(config);
-    await writeFile(securityPath, security);
-    generatedFiles.push(securityPath);
+    // Generate CODE_OF_CONDUCT.md
+    const cocPath = path.join(targetDir, 'CODE_OF_CONDUCT.md');
+    if (!(await fileExists(cocPath))) {
+      const coc = generateCodeOfConduct(config);
+      await writeFile(cocPath, coc);
+      generatedFiles.push(cocPath);
+    }
+
+    // Generate SECURITY.md
+    const securityPath = path.join(targetDir, 'SECURITY.md');
+    if (!(await fileExists(securityPath))) {
+      const security = generateSecurity(config);
+      await writeFile(securityPath, security);
+      generatedFiles.push(securityPath);
+    }
   }
 
   return generatedFiles;
+}
+
+function generateRootReadme(config: DocsConfig, mode: 'full' | 'minimal'): string {
+  const documentationLinks = [
+    '- [Architecture](docs/ARCHITECTURE.md)',
+    '- [Development Guide](docs/DEVELOPMENT.md)',
+    '- [Roadmap](docs/ROADMAP.md)',
+  ];
+
+  if (mode === 'full') {
+    documentationLinks.push('- [Component DAG](docs/DAG.md)');
+  }
+
+  const communityLinks = [] as string[];
+  if (mode === 'full') {
+    communityLinks.push('- [Contributing](CONTRIBUTING.md)');
+    communityLinks.push('- [Code of Conduct](CODE_OF_CONDUCT.md)');
+    communityLinks.push('- [Security Policy](SECURITY.md)');
+  }
+
+  return `# ${config.projectName}
+
+> ${config.description}
+
+## Quick Start
+
+1. Install dependencies
+2. Run tests and linting
+3. Start the application or run your CI pipeline
+
+## Commands to Know
+
+- \`npm install\`
+- \`npm test\`
+- \`npm run lint\`
+
+## Documentation
+
+${documentationLinks.join('\n')}
+
+${
+  communityLinks.length > 0
+    ? `## Community & Support
+
+${communityLinks.join('\n')}
+
+`
+    : ''
+}## License
+
+This project is licensed under the ${config.license} License.
+`;
 }
 
 function generateRoadmap(config: DocsConfig): string {
@@ -450,5 +521,46 @@ We appreciate your efforts to responsibly disclose your findings and will make e
 
 ---
 *For security concerns, contact ${config.email || config.author}*
+`;
+}
+
+function generateDevelopment(config: DocsConfig): string {
+  return `# ${config.projectName} - Development Guide
+
+## Prerequisites
+
+- Node.js 18+ (or language-specific tooling)
+- Package manager (npm, pnpm, yarn)
+- Git
+
+## Setup
+
+\`\`\`bash
+git clone <repository-url>
+cd ${config.projectName}
+npm install
+\`\`\`
+
+## Quality Gates
+
+- \`npm run lint\`
+- \`npm run type-check\`
+- \`npm test\`
+- Coverage threshold: 95%
+
+## Branch Strategy
+
+1. Create feature branch: \`git checkout -b feature/my-feature\`
+2. Commit with conventional commits
+3. Open a pull request and request review
+
+## Documentation Updates
+
+- Update README.md for public-facing changes
+- Document architecture changes in ARCHITECTURE.md
+- Record roadmap updates in ROADMAP.md
+
+---
+*Last Updated: ${new Date().toISOString().split('T')[0]}*
 `;
 }

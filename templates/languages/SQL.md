@@ -1,6 +1,22 @@
 <!-- SQL:START -->
 # SQL Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+sqlfluff lint migrations/  # SQL linting
+sqlfluff format --check migrations/  # Format check
+# Run migration tests (project-specific)
+# Run pgTAP tests if configured
+
+# Migration validation:
+flyway validate           # Flyway migrations
+# OR: liquibase validate  # Liquibase migrations
+```
+
 ## SQL Configuration
 
 **CRITICAL**: Use modern SQL standards with linting and testing.

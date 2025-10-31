@@ -1,6 +1,17 @@
 <!-- LISP:START -->
 # Common Lisp Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+sbcl --eval '(ql:quickload :sblint)' --eval '(sblint:run-lint "src/")'  # Linting
+sbcl --load tests/run-tests.lisp  # All tests
+sbcl --eval '(asdf:make :your-system)'  # Build with ASDF
+```
+
 ## Common Lisp Configuration
 
 **CRITICAL**: Use SBCL 2.3+ or CCL with ASDF3 and modern tooling.

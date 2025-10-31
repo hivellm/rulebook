@@ -13,47 +13,66 @@ function getTemplatesDir(): string {
 
 export async function generateWorkflows(
   config: ProjectConfig,
-  targetDir: string = process.cwd()
+  targetDir: string = process.cwd(),
+  options: { mode?: 'full' | 'minimal' } = {}
 ): Promise<string[]> {
   const generatedFiles: string[] = [];
   const workflowsDir = path.join(targetDir, '.github', 'workflows');
   await ensureDir(workflowsDir);
 
   const templatesDir = path.join(getTemplatesDir(), 'workflows');
+  const mode = options.mode ?? 'full';
 
   // Generate language-specific workflows
   for (const language of config.languages) {
     if (language === 'rust') {
       // Copy Rust workflows
       const rustTest = await copyWorkflow(templatesDir, 'rust-test.yml', workflowsDir);
-      const rustLint = await copyWorkflow(templatesDir, 'rust-lint.yml', workflowsDir);
-      generatedFiles.push(rustTest, rustLint);
+      generatedFiles.push(rustTest);
+      if (mode === 'full') {
+        const rustLint = await copyWorkflow(templatesDir, 'rust-lint.yml', workflowsDir);
+        generatedFiles.push(rustLint);
+      }
     } else if (language === 'typescript') {
       // Copy TypeScript workflows
       const tsTest = await copyWorkflow(templatesDir, 'typescript-test.yml', workflowsDir);
-      const tsLint = await copyWorkflow(templatesDir, 'typescript-lint.yml', workflowsDir);
-      generatedFiles.push(tsTest, tsLint);
+      generatedFiles.push(tsTest);
+      if (mode === 'full') {
+        const tsLint = await copyWorkflow(templatesDir, 'typescript-lint.yml', workflowsDir);
+        generatedFiles.push(tsLint);
+      }
     } else if (language === 'python') {
       // Copy Python workflows
       const pyTest = await copyWorkflow(templatesDir, 'python-test.yml', workflowsDir);
-      const pyLint = await copyWorkflow(templatesDir, 'python-lint.yml', workflowsDir);
-      generatedFiles.push(pyTest, pyLint);
+      generatedFiles.push(pyTest);
+      if (mode === 'full') {
+        const pyLint = await copyWorkflow(templatesDir, 'python-lint.yml', workflowsDir);
+        generatedFiles.push(pyLint);
+      }
     } else if (language === 'go') {
       // Copy Go workflows
       const goTest = await copyWorkflow(templatesDir, 'go-test.yml', workflowsDir);
-      const goLint = await copyWorkflow(templatesDir, 'go-lint.yml', workflowsDir);
-      generatedFiles.push(goTest, goLint);
+      generatedFiles.push(goTest);
+      if (mode === 'full') {
+        const goLint = await copyWorkflow(templatesDir, 'go-lint.yml', workflowsDir);
+        generatedFiles.push(goLint);
+      }
     } else if (language === 'java') {
       // Copy Java workflows
       const javaTest = await copyWorkflow(templatesDir, 'java-test.yml', workflowsDir);
-      const javaLint = await copyWorkflow(templatesDir, 'java-lint.yml', workflowsDir);
-      generatedFiles.push(javaTest, javaLint);
+      generatedFiles.push(javaTest);
+      if (mode === 'full') {
+        const javaLint = await copyWorkflow(templatesDir, 'java-lint.yml', workflowsDir);
+        generatedFiles.push(javaLint);
+      }
     }
   }
 
-  // Always add codespell
-  const codespell = await copyWorkflow(templatesDir, 'codespell.yml', workflowsDir);
-  generatedFiles.push(codespell);
+  if (mode === 'full') {
+    // Always add codespell in full mode
+    const codespell = await copyWorkflow(templatesDir, 'codespell.yml', workflowsDir);
+    generatedFiles.push(codespell);
+  }
 
   return generatedFiles;
 }

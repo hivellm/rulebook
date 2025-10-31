@@ -1,6 +1,24 @@
 <!-- TYPESCRIPT:START -->
 # TypeScript Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+npm run type-check        # Type checking
+npm run lint              # Linting (0 warnings required)
+npm run format            # Code formatting  
+npm test                  # All tests (100% pass required)
+npm run test:coverage     # Coverage check (95%+ required)
+npm run build             # Build verification
+
+# Security audit:
+npm audit --production    # Vulnerability scan
+npm outdated              # Check outdated deps (informational)
+```
+
 ## TypeScript Configuration
 
 **CRITICAL**: Use TypeScript 5.3+ with strict mode enabled.

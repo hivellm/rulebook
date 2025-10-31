@@ -1,6 +1,23 @@
 <!-- ERLANG:START -->
 # Erlang Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+rebar3 format --verify    # Format check
+rebar3 dialyzer           # Type analysis
+rebar3 eunit              # Unit tests
+rebar3 ct                 # Common Test
+rebar3 cover              # Coverage check
+rebar3 compile            # Build verification
+
+# Security audit:
+rebar3 tree               # Dependency tree
+```
+
 ## Erlang Configuration
 
 **CRITICAL**: Use Erlang/OTP 26+ with rebar3 and proper testing.

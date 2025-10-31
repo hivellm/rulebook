@@ -1,8 +1,32 @@
+export type FrameworkId =
+  | 'nestjs'
+  | 'spring'
+  | 'laravel'
+  | 'angular'
+  | 'react'
+  | 'vue'
+  | 'nuxt'
+  | 'nextjs'
+  | 'django'
+  | 'rails'
+  | 'flask'
+  | 'symfony'
+  | 'zend'
+  | 'jquery'
+  | 'reactnative'
+  | 'flutter'
+  | 'electron';
+
 export interface DetectionResult {
   languages: LanguageDetection[];
   modules: ModuleDetection[];
+  frameworks: FrameworkDetection[];
   existingAgents: ExistingAgentsInfo | null;
   projectType?: 'monorepo' | 'library' | 'application' | 'cli';
+  gitHooks?: {
+    preCommitExists: boolean;
+    prePushExists: boolean;
+  };
 }
 
 export interface LanguageDetection {
@@ -40,9 +64,29 @@ export interface LanguageDetection {
 }
 
 export interface ModuleDetection {
-  module: 'vectorizer' | 'synap' | 'openspec' | 'context7' | 'github' | 'playwright';
+  module:
+    | 'vectorizer'
+    | 'synap'
+    | 'openspec'
+    | 'context7'
+    | 'github'
+    | 'playwright'
+    | 'supabase'
+    | 'notion'
+    | 'atlassian'
+    | 'serena'
+    | 'figma'
+    | 'grafana';
   detected: boolean;
   source?: string;
+}
+
+export interface FrameworkDetection {
+  framework: FrameworkId;
+  detected: boolean;
+  languages: LanguageDetection['language'][];
+  confidence: number;
+  indicators: string[];
 }
 
 export interface ExistingAgentsInfo {
@@ -62,6 +106,7 @@ export interface AgentBlock {
 export interface ProjectConfig {
   languages: string[];
   modules: string[];
+  frameworks?: FrameworkId[];
   ides: string[];
   projectType: 'monorepo' | 'library' | 'application' | 'cli';
   coverageThreshold: number;
@@ -69,6 +114,8 @@ export interface ProjectConfig {
   generateWorkflows: boolean;
   includeGitWorkflow?: boolean;
   gitPushMode?: 'manual' | 'prompt' | 'auto';
+  installGitHooks?: boolean;
+  minimal?: boolean;
 }
 
 export interface RuleConfig {
@@ -92,6 +139,7 @@ export interface RulebookConfig {
   installedAt: string;
   updatedAt: string;
   projectId: string;
+  mode: 'full' | 'minimal';
   features: {
     openspec: boolean;
     watcher: boolean;

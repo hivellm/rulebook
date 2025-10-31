@@ -1,6 +1,23 @@
 <!-- PHP:START -->
 # PHP Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+./vendor/bin/pint --test  # Format check (Laravel Pint)
+# OR: ./vendor/bin/php-cs-fixer fix --dry-run
+./vendor/bin/phpstan analyze  # Static analysis
+./vendor/bin/phpunit      # All tests (100% pass)
+./vendor/bin/phpunit --coverage-text  # Coverage (95%+ required)
+
+# Security audit:
+composer audit            # Vulnerability scan
+composer outdated         # Check outdated deps
+```
+
 ## PHP Configuration
 
 **CRITICAL**: Use PHP 8.2+ with strict types enabled.

@@ -1,6 +1,23 @@
 <!-- SCALA:START -->
 # Scala Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+sbt scalafmtCheckAll      # Format check
+sbt scalafix --check      # Linting
+sbt compile               # Compilation check
+sbt test                  # All tests (100% pass)
+sbt coverage              # Coverage (95%+ required)
+
+# Security audit:
+sbt dependencyCheck       # Vulnerability scan
+sbt dependencyUpdates     # Check outdated deps
+```
+
 ## Scala Configuration
 
 **CRITICAL**: Use Scala 3.x with modern tooling and strict compiler flags.

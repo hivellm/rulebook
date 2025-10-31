@@ -4,6 +4,8 @@ import type {
   DetectionResult,
   LanguageDetection,
   ModuleDetection,
+  FrameworkDetection,
+  FrameworkId,
   ExistingAgentsInfo,
   AgentBlock,
 } from '../types.js';
@@ -11,12 +13,16 @@ import type {
 export async function detectProject(cwd: string = process.cwd()): Promise<DetectionResult> {
   const languages = await detectLanguages(cwd);
   const modules = await detectModules(cwd);
+  const frameworks = await detectFrameworks(cwd, languages);
   const existingAgents = await detectExistingAgents(cwd);
+  const gitHooks = await detectGitHooks(cwd);
 
   return {
     languages,
     modules,
+    frameworks,
     existingAgents,
+    gitHooks,
   };
 }
 
@@ -267,6 +273,532 @@ async function detectLanguages(cwd: string): Promise<LanguageDetection[]> {
   return detections.sort((a, b) => b.confidence - a.confidence);
 }
 
+async function detectFrameworks(
+  cwd: string,
+  languages: LanguageDetection[]
+): Promise<FrameworkDetection[]> {
+  const packageJsonPath = path.join(cwd, 'package.json');
+  let packageJson: Record<string, unknown> | null = null;
+  if (await fileExists(packageJsonPath)) {
+    try {
+      packageJson = await readJsonFile<Record<string, unknown>>(packageJsonPath);
+    } catch {
+      packageJson = null;
+    }
+  }
+
+  const composerJsonPath = path.join(cwd, 'composer.json');
+  let composerJson: Record<string, unknown> | null = null;
+  if (await fileExists(composerJsonPath)) {
+    try {
+      composerJson = await readJsonFile<Record<string, unknown>>(composerJsonPath);
+    } catch {
+      composerJson = null;
+    }
+  }
+
+  const languageSet = new Set(languages.map((l) => l.language));
+  const npmDeps: Record<string, string> = {
+    ...(packageJson && typeof packageJson === 'object'
+      ? ((
+          packageJson as {
+            dependencies?: Record<string, string>;
+            devDependencies?: Record<string, string>;
+          }
+        ).dependencies ?? {})
+      : {}),
+    ...(packageJson && typeof packageJson === 'object'
+      ? ((
+          packageJson as {
+            dependencies?: Record<string, string>;
+            devDependencies?: Record<string, string>;
+          }
+        ).devDependencies ?? {})
+      : {}),
+  };
+
+  const phpDeps: Record<string, string> = {
+    ...(composerJson && typeof composerJson === 'object'
+      ? ((
+          composerJson as {
+            require?: Record<string, string>;
+            'require-dev'?: Record<string, string>;
+          }
+        ).require ?? {})
+      : {}),
+    ...(composerJson && typeof composerJson === 'object'
+      ? ((
+          composerJson as {
+            require?: Record<string, string>;
+            'require-dev'?: Record<string, string>;
+          }
+        )['require-dev'] ?? {})
+      : {}),
+  };
+
+  const frameworkDefinitions: Array<{
+    id: FrameworkId;
+    label: string;
+    languages: LanguageDetection['language'][];
+    detect: () => Promise<{ detected: boolean; confidence: number; indicators: string[] }>;
+  }> = [
+    {
+      id: 'nestjs',
+      label: 'NestJS',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps['@nestjs/core'] || npmDeps['@nestjs/common']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:@nestjs/core'],
+          };
+        }
+
+        const nestCli = path.join(cwd, 'nest-cli.json');
+        if (await fileExists(nestCli)) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['nest-cli.json'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'spring',
+      label: 'Spring Boot',
+      languages: ['java', 'kotlin'],
+      detect: async () => {
+        const pomPath = path.join(cwd, 'pom.xml');
+        if (await fileExists(pomPath)) {
+          const content = await readFile(pomPath);
+          if (content.includes('spring-boot-starter')) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['pom.xml:spring-boot-starter'],
+            };
+          }
+        }
+
+        const gradlePath = await findFirstExisting([
+          path.join(cwd, 'build.gradle'),
+          path.join(cwd, 'build.gradle.kts'),
+        ]);
+        if (gradlePath) {
+          const content = await readFile(gradlePath);
+          if (content.includes('spring-boot-starter')) {
+            return {
+              detected: true,
+              confidence: 0.9,
+              indicators: [`${path.basename(gradlePath)}:spring-boot-starter`],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'laravel',
+      label: 'Laravel',
+      languages: ['php'],
+      detect: async () => {
+        if (phpDeps['laravel/framework']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['composer.json:laravel/framework'],
+          };
+        }
+
+        const artisanPath = path.join(cwd, 'artisan');
+        if (await fileExists(artisanPath)) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['artisan'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'angular',
+      label: 'Angular',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps['@angular/core']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:@angular/core'],
+          };
+        }
+
+        const angularConfig = path.join(cwd, 'angular.json');
+        if (await fileExists(angularConfig)) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['angular.json'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'react',
+      label: 'React',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps.react && (npmDeps['react-dom'] || npmDeps['react-native'])) {
+          const indicator = npmDeps['react-dom'] ? 'react-dom' : 'react-native';
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: [`package.json:react`, `package.json:${indicator}`],
+          };
+        }
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'vue',
+      label: 'Vue.js',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps.vue) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['package.json:vue'],
+          };
+        }
+
+        const vueConfig = await findFirstExisting([
+          path.join(cwd, 'vite.config.ts'),
+          path.join(cwd, 'vite.config.js'),
+        ]);
+        if (vueConfig) {
+          const content = await readFile(vueConfig);
+          if (content.includes('@vitejs/plugin-vue') || content.includes('vue()')) {
+            return {
+              detected: true,
+              confidence: 0.8,
+              indicators: [path.basename(vueConfig)],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'nuxt',
+      label: 'Nuxt',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps.nuxt) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['package.json:nuxt'],
+          };
+        }
+
+        const nuxtConfig = await findFiles('nuxt.config.*', cwd);
+        if (nuxtConfig.length > 0) {
+          return {
+            detected: true,
+            confidence: 0.85,
+            indicators: [path.basename(nuxtConfig[0])],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'django',
+      label: 'Django',
+      languages: ['python'],
+      detect: async () => {
+        const requirementsPath = path.join(cwd, 'requirements.txt');
+        if (await fileExists(requirementsPath)) {
+          const content = await readFile(requirementsPath);
+          if (content.includes('Django')) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['requirements.txt:Django'],
+            };
+          }
+        }
+
+        const managePy = path.join(cwd, 'manage.py');
+        if (await fileExists(managePy)) {
+          const content = await readFile(managePy);
+          if (content.includes('django')) {
+            return {
+              detected: true,
+              confidence: 0.9,
+              indicators: ['manage.py'],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'flask',
+      label: 'Flask',
+      languages: ['python'],
+      detect: async () => {
+        const requirementsPath = path.join(cwd, 'requirements.txt');
+        if (await fileExists(requirementsPath)) {
+          const content = await readFile(requirementsPath);
+          if (content.includes('Flask')) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['requirements.txt:Flask'],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'rails',
+      label: 'Ruby on Rails',
+      languages: ['ruby'],
+      detect: async () => {
+        const gemfilePath = path.join(cwd, 'Gemfile');
+        if (await fileExists(gemfilePath)) {
+          const content = await readFile(gemfilePath);
+          if (content.includes('rails')) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['Gemfile:rails'],
+            };
+          }
+        }
+
+        const railsPath = path.join(cwd, 'bin', 'rails');
+        if (await fileExists(railsPath)) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['bin/rails'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'symfony',
+      label: 'Symfony',
+      languages: ['php'],
+      detect: async () => {
+        if (phpDeps['symfony/framework-bundle']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['composer.json:symfony/framework-bundle'],
+          };
+        }
+
+        const symfonyConfig = path.join(cwd, 'symfony.lock');
+        if (await fileExists(symfonyConfig)) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['symfony.lock'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'zend',
+      label: 'Zend Framework',
+      languages: ['php'],
+      detect: async () => {
+        if (phpDeps['zendframework/zendframework'] || phpDeps['laminas/laminas-mvc']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['composer.json:zendframework or laminas'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'jquery',
+      label: 'jQuery',
+      languages: ['javascript', 'typescript'],
+      detect: async () => {
+        if (npmDeps['jquery']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:jquery'],
+          };
+        }
+
+        // Check for jQuery in HTML files
+        const indexHtml = path.join(cwd, 'index.html');
+        if (await fileExists(indexHtml)) {
+          const content = await readFile(indexHtml);
+          if (content.includes('jquery') || content.includes('jQuery')) {
+            return {
+              detected: true,
+              confidence: 0.8,
+              indicators: ['index.html:jquery'],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'reactnative',
+      label: 'React Native',
+      languages: ['javascript', 'typescript'],
+      detect: async () => {
+        if (npmDeps['react-native']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:react-native'],
+          };
+        }
+
+        const appJson = path.join(cwd, 'app.json');
+        if (await fileExists(appJson)) {
+          const content = await readFile(appJson);
+          if (content.includes('react-native') || content.includes('expo')) {
+            return {
+              detected: true,
+              confidence: 0.9,
+              indicators: ['app.json'],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'flutter',
+      label: 'Flutter',
+      languages: ['dart'],
+      detect: async () => {
+        const pubspecPath = path.join(cwd, 'pubspec.yaml');
+        if (await fileExists(pubspecPath)) {
+          const content = await readFile(pubspecPath);
+          if (content.includes('flutter:')) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['pubspec.yaml:flutter'],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'nextjs',
+      label: 'Next.js',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps['next']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:next'],
+          };
+        }
+
+        const nextConfig = await findFirstExisting([
+          path.join(cwd, 'next.config.js'),
+          path.join(cwd, 'next.config.mjs'),
+          path.join(cwd, 'next.config.ts'),
+        ]);
+        if (nextConfig) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: [path.basename(nextConfig)],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'electron',
+      label: 'Electron',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps['electron']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:electron'],
+          };
+        }
+
+        // Check for electron-builder or electron-forge
+        if (npmDeps['electron-builder'] || npmDeps['@electron-forge/cli']) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['package.json:electron-builder or electron-forge'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+  ];
+
+  const detections: FrameworkDetection[] = [];
+
+  for (const definition of frameworkDefinitions) {
+    const match = await definition.detect();
+    const availableLanguages = definition.languages.filter((lang) => languageSet.has(lang));
+    const languagesForFramework =
+      availableLanguages.length > 0 ? availableLanguages : definition.languages;
+
+    detections.push({
+      framework: definition.id,
+      detected: match.detected,
+      languages: languagesForFramework,
+      confidence: match.confidence,
+      indicators: match.indicators,
+    });
+  }
+
+  return detections.sort((a, b) => b.confidence - a.confidence);
+}
+
 interface MCPConfig {
   mcpServers?: Record<string, unknown>;
   servers?: Record<string, unknown>;
@@ -416,4 +948,25 @@ function parseAgentBlocks(content: string): AgentBlock[] {
   }
 
   return blocks;
+}
+
+async function detectGitHooks(
+  cwd: string
+): Promise<{ preCommitExists: boolean; prePushExists: boolean }> {
+  const preCommitPath = path.join(cwd, '.git', 'hooks', 'pre-commit');
+  const prePushPath = path.join(cwd, '.git', 'hooks', 'pre-push');
+
+  return {
+    preCommitExists: await fileExists(preCommitPath),
+    prePushExists: await fileExists(prePushPath),
+  };
+}
+
+async function findFirstExisting(pathsToCheck: string[]): Promise<string | null> {
+  for (const filePath of pathsToCheck) {
+    if (await fileExists(filePath)) {
+      return filePath;
+    }
+  }
+  return null;
 }

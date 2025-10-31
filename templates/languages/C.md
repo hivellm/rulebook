@@ -1,6 +1,21 @@
 <!-- C:START -->
 # C Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+clang-format --dry-run --Werror src/**/*.c  # Format check
+make lint                 # Linting (if configured)
+make test                 # All tests (100% pass)
+make                      # Build verification
+
+# Memory safety (recommended):
+valgrind --leak-check=full ./build/test  # Memory leak check
+```
+
 ## C Configuration
 
 **CRITICAL**: Use C11 or C17 standard with strict warnings enabled.

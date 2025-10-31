@@ -1,8 +1,88 @@
 import inquirer from 'inquirer';
-import type { DetectionResult, ProjectConfig } from '../types.js';
+import type { DetectionResult, ProjectConfig, FrameworkId } from '../types.js';
 
-export async function promptProjectConfig(detection: DetectionResult): Promise<ProjectConfig> {
+const FRAMEWORK_LABELS: Record<FrameworkId, string> = {
+  nestjs: 'NestJS',
+  spring: 'Spring Boot',
+  laravel: 'Laravel',
+  angular: 'Angular',
+  react: 'React',
+  vue: 'Vue.js',
+  nuxt: 'Nuxt',
+  nextjs: 'Next.js',
+  django: 'Django',
+  rails: 'Ruby on Rails',
+  flask: 'Flask',
+  symfony: 'Symfony',
+  zend: 'Zend Framework',
+  jquery: 'jQuery',
+  reactnative: 'React Native',
+  flutter: 'Flutter',
+  electron: 'Electron',
+};
+
+const LANGUAGE_CHOICES: Array<{ name: string; value: string }> = [
+  { name: 'Ada', value: 'ada' },
+  { name: 'C', value: 'c' },
+  { name: 'C#', value: 'csharp' },
+  { name: 'C++', value: 'cpp' },
+  { name: 'Dart', value: 'dart' },
+  { name: 'Elixir', value: 'elixir' },
+  { name: 'Erlang', value: 'erlang' },
+  { name: 'Go', value: 'go' },
+  { name: 'Haskell', value: 'haskell' },
+  { name: 'Java', value: 'java' },
+  { name: 'JavaScript', value: 'javascript' },
+  { name: 'Julia', value: 'julia' },
+  { name: 'Kotlin', value: 'kotlin' },
+  { name: 'Lisp', value: 'lisp' },
+  { name: 'Lua', value: 'lua' },
+  { name: 'Objective-C', value: 'objectivec' },
+  { name: 'PHP', value: 'php' },
+  { name: 'Python', value: 'python' },
+  { name: 'R', value: 'r' },
+  { name: 'Ruby', value: 'ruby' },
+  { name: 'Rust', value: 'rust' },
+  { name: 'SAS', value: 'sas' },
+  { name: 'Scala', value: 'scala' },
+  { name: 'Solidity', value: 'solidity' },
+  { name: 'SQL', value: 'sql' },
+  { name: 'Swift', value: 'swift' },
+  { name: 'TypeScript', value: 'typescript' },
+  { name: 'Zig', value: 'zig' },
+];
+
+export async function promptProjectConfig(
+  detection: DetectionResult,
+  overrides?: {
+    defaultMode?: 'minimal' | 'full';
+  }
+): Promise<ProjectConfig> {
   const questions = [];
+
+  let setupMode: 'minimal' | 'full';
+  if (overrides?.defaultMode) {
+    setupMode = overrides.defaultMode;
+  } else {
+    const { mode } = await inquirer.prompt<{ mode: 'minimal' | 'full' }>([
+      {
+        type: 'list',
+        name: 'mode',
+        message: 'Setup mode:',
+        choices: [
+          {
+            name: 'Minimal – essentials only (README, LICENSE, tests, basic CI)',
+            value: 'minimal',
+          },
+          { name: 'Full – complete setup with all Rulebook features', value: 'full' },
+        ],
+        default: 'full',
+      },
+    ]);
+    setupMode = mode;
+  }
+
+  const isMinimal = setupMode === 'minimal';
 
   // Language selection
   if (detection.languages.length > 0) {
@@ -21,19 +101,7 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
         type: 'checkbox',
         name: 'languages',
         message: 'Select the languages used in this project:',
-        choices: [
-          { name: 'Rust', value: 'rust' },
-          { name: 'TypeScript', value: 'typescript' },
-          { name: 'Python', value: 'python' },
-          { name: 'Go', value: 'go' },
-          { name: 'Java', value: 'java' },
-          { name: 'Elixir', value: 'elixir' },
-          { name: 'C#', value: 'csharp' },
-          { name: 'PHP', value: 'php' },
-          { name: 'Swift', value: 'swift' },
-          { name: 'Kotlin', value: 'kotlin' },
-          { name: 'C/C++', value: 'cpp' },
-        ],
+        choices: LANGUAGE_CHOICES,
         default: detection.languages.map((l) => l.language),
         validate: (answer: string[]) => {
           if (answer.length < 1) {
@@ -48,19 +116,7 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
       type: 'checkbox',
       name: 'languages',
       message: 'Select the languages used in this project:',
-      choices: [
-        { name: 'Rust', value: 'rust' },
-        { name: 'TypeScript', value: 'typescript' },
-        { name: 'Python', value: 'python' },
-        { name: 'Go', value: 'go' },
-        { name: 'Java', value: 'java' },
-        { name: 'Elixir', value: 'elixir' },
-        { name: 'C#', value: 'csharp' },
-        { name: 'PHP', value: 'php' },
-        { name: 'Swift', value: 'swift' },
-        { name: 'Kotlin', value: 'kotlin' },
-        { name: 'C/C++', value: 'cpp' },
-      ],
+      choices: LANGUAGE_CHOICES,
       validate: (answer: string[]) => {
         if (answer.length < 1) {
           return 'You must select at least one language.';
@@ -84,40 +140,95 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
     default: 'application',
   });
 
-  // Module selection
-  const detectedModules = detection.modules.filter((m) => m.detected).map((m) => m.module);
-  questions.push({
-    type: 'checkbox',
-    name: 'modules',
-    message: 'Select MCP modules to include rules for:',
-    choices: [
-      {
-        name: 'Vectorizer (semantic search)',
-        value: 'vectorizer',
-        checked: detectedModules.includes('vectorizer'),
-      },
-      {
-        name: 'Synap (key-value store)',
-        value: 'synap',
-        checked: detectedModules.includes('synap'),
-      },
-      {
-        name: 'OpenSpec (proposal system)',
-        value: 'openspec',
-        checked: detectedModules.includes('openspec'),
-      },
-      {
-        name: 'Context7 (library docs)',
-        value: 'context7',
-        checked: detectedModules.includes('context7'),
-      },
-      {
-        name: 'GitHub MCP Server (workflow validation & CI/CD monitoring)',
-        value: 'github',
-        checked: detectedModules.includes('github'),
-      },
-    ],
-  });
+  if (!isMinimal) {
+    const detectedModules = detection.modules.filter((m) => m.detected).map((m) => m.module);
+    questions.push({
+      type: 'checkbox',
+      name: 'modules',
+      message: 'Select MCP modules to include rules for:',
+      choices: [
+        {
+          name: 'Vectorizer (semantic search)',
+          value: 'vectorizer',
+          checked: detectedModules.includes('vectorizer'),
+        },
+        {
+          name: 'Synap (key-value store)',
+          value: 'synap',
+          checked: detectedModules.includes('synap'),
+        },
+        {
+          name: 'OpenSpec (proposal system)',
+          value: 'openspec',
+          checked: detectedModules.includes('openspec'),
+        },
+        {
+          name: 'Context7 (library docs)',
+          value: 'context7',
+          checked: detectedModules.includes('context7'),
+        },
+        {
+          name: 'GitHub MCP Server (workflow validation & CI/CD monitoring)',
+          value: 'github',
+          checked: detectedModules.includes('github'),
+        },
+        {
+          name: 'Playwright (browser automation & testing)',
+          value: 'playwright',
+          checked: detectedModules.includes('playwright'),
+        },
+        {
+          name: 'Supabase (database, auth, storage)',
+          value: 'supabase',
+          checked: detectedModules.includes('supabase'),
+        },
+        {
+          name: 'Notion (documentation & task management)',
+          value: 'notion',
+          checked: detectedModules.includes('notion'),
+        },
+        {
+          name: 'Atlassian (Jira, Confluence, Bitbucket)',
+          value: 'atlassian',
+          checked: detectedModules.includes('atlassian'),
+        },
+        {
+          name: 'Serena (AI development assistant)',
+          value: 'serena',
+          checked: detectedModules.includes('serena'),
+        },
+        {
+          name: 'Figma (design system integration)',
+          value: 'figma',
+          checked: detectedModules.includes('figma'),
+        },
+        {
+          name: 'Grafana (metrics & dashboards)',
+          value: 'grafana',
+          checked: detectedModules.includes('grafana'),
+        },
+      ],
+    });
+  }
+
+  // Framework selection
+  const frameworkChoices = detection.frameworks.map((framework) => ({
+    name: `${FRAMEWORK_LABELS[framework.framework]} (${framework.languages
+      .map((lang) => lang.toUpperCase())
+      .join(', ')})${framework.detected ? ' – detected' : ''}`,
+    value: framework.framework,
+    checked: framework.detected,
+  }));
+
+  if (frameworkChoices.length > 0) {
+    questions.push({
+      type: 'checkbox',
+      name: 'frameworks',
+      message: 'Select frameworks to include instructions for:',
+      choices: frameworkChoices,
+      pageSize: Math.min(frameworkChoices.length, 10),
+    });
+  }
 
   // IDE selection
   questions.push({
@@ -200,11 +311,31 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
     },
   ]);
 
+  // Git hooks installation prompt (only if hooks don't exist)
+  const hasPreCommit = detection.gitHooks?.preCommitExists ?? false;
+  const hasPrePush = detection.gitHooks?.prePushExists ?? false;
+  const shouldPromptHooks = !hasPreCommit || !hasPrePush;
+
+  let installGitHooks = false;
+  if (shouldPromptHooks) {
+    const hooksAnswer = await inquirer.prompt<{ installHooks: boolean }>([
+      {
+        type: 'confirm',
+        name: 'installHooks',
+        message: `Install Git hooks for automated quality checks? ${!hasPreCommit ? '(pre-commit)' : ''} ${!hasPrePush ? '(pre-push)' : ''}`,
+        default: true,
+      },
+    ]);
+    installGitHooks = hooksAnswer.installHooks;
+  }
+
   const answers = await inquirer.prompt(questions);
 
   return {
     languages: answers.languages || detection.languages.map((l) => l.language),
-    modules: answers.modules || [],
+    modules: isMinimal ? [] : answers.modules || [],
+    frameworks:
+      answers.frameworks || detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
     ides: answers.ides || ['cursor'],
     projectType: answers.projectType,
     coverageThreshold: answers.coverageThreshold,
@@ -212,6 +343,8 @@ export async function promptProjectConfig(detection: DetectionResult): Promise<P
     generateWorkflows: answers.generateWorkflows,
     includeGitWorkflow: answers.includeGitWorkflow,
     gitPushMode: gitWorkflowAnswer.gitPushMode || 'manual',
+    installGitHooks,
+    minimal: isMinimal,
   };
 }
 

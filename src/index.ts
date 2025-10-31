@@ -45,6 +45,7 @@ program
   .command('init')
   .description('Initialize rulebook for current project')
   .option('-y, --yes', 'Skip prompts and use detected defaults')
+  .option('--minimal', 'Enable essentials-only setup mode')
   .action(initCommand);
 
 program
@@ -155,6 +156,7 @@ program
   .command('update')
   .description('Update AGENTS.md and .rulebook to latest version')
   .option('-y, --yes', 'Skip confirmation prompt')
+  .option('--minimal', 'Regenerate using minimal mode (essentials only)')
   .action(updateCommand);
 
 program.parse(process.argv);

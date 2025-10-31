@@ -124,6 +124,293 @@ describe('detector', () => {
       expect(result.languages[0].indicators).toContain('go.mod');
     });
 
+    describe('framework detection', () => {
+      it('should detect NestJS framework from package.json', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'package.json'),
+          JSON.stringify(
+            {
+              name: 'nestjs-app',
+              dependencies: {
+                '@nestjs/core': '^10.0.0',
+                '@nestjs/common': '^10.0.0',
+              },
+            },
+            null,
+            2
+          )
+        );
+        await fs.mkdir(path.join(testDir, 'src'), { recursive: true });
+        await fs.writeFile(path.join(testDir, 'src', 'main.ts'), 'console.log("hello")');
+
+        const result = await detectProject(testDir);
+        const nest = result.frameworks.find((f) => f.framework === 'nestjs');
+
+        expect(nest).toBeDefined();
+        expect(nest?.detected).toBe(true);
+      });
+
+      it('should detect Angular framework via angular.json', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'package.json'),
+          JSON.stringify(
+            {
+              name: 'angular-app',
+              dependencies: {
+                '@angular/core': '^17.0.0',
+              },
+            },
+            null,
+            2
+          )
+        );
+        await fs.writeFile(path.join(testDir, 'angular.json'), '{ "projects": {} }');
+        await fs.mkdir(path.join(testDir, 'src'), { recursive: true });
+        await fs.writeFile(path.join(testDir, 'src', 'main.ts'), 'console.log("hello")');
+
+        const result = await detectProject(testDir);
+        const angular = result.frameworks.find((f) => f.framework === 'angular');
+
+        expect(angular).toBeDefined();
+        expect(angular?.detected).toBe(true);
+      });
+
+      it('should detect React framework via package.json dependencies', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'package.json'),
+          JSON.stringify(
+            {
+              name: 'react-app',
+              dependencies: {
+                react: '^18.0.0',
+                'react-dom': '^18.0.0',
+              },
+            },
+            null,
+            2
+          )
+        );
+        await fs.mkdir(path.join(testDir, 'src'), { recursive: true });
+        await fs.writeFile(path.join(testDir, 'src', 'index.tsx'), 'console.log("hello")');
+
+        const result = await detectProject(testDir);
+        const react = result.frameworks.find((f) => f.framework === 'react');
+
+        expect(react).toBeDefined();
+        expect(react?.detected).toBe(true);
+      });
+
+      it('should detect Vue framework via package.json', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'package.json'),
+          JSON.stringify(
+            {
+              name: 'vue-app',
+              dependencies: {
+                vue: '^3.3.0',
+              },
+            },
+            null,
+            2
+          )
+        );
+        await fs.mkdir(path.join(testDir, 'src'), { recursive: true });
+        await fs.writeFile(path.join(testDir, 'src', 'App.vue'), '<template><div/></template>');
+        await fs.writeFile(path.join(testDir, 'src', 'main.ts'), 'console.log("hello")');
+
+        const result = await detectProject(testDir);
+        const vue = result.frameworks.find((f) => f.framework === 'vue');
+
+        expect(vue).toBeDefined();
+        expect(vue?.detected).toBe(true);
+      });
+
+      it('should detect Nuxt framework via nuxt config', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'package.json'),
+          JSON.stringify(
+            {
+              name: 'nuxt-app',
+              dependencies: {
+                nuxt: '^3.7.0',
+              },
+            },
+            null,
+            2
+          )
+        );
+        await fs.writeFile(path.join(testDir, 'nuxt.config.ts'), 'export default { }');
+        await fs.mkdir(path.join(testDir, 'src'), { recursive: true });
+        await fs.writeFile(path.join(testDir, 'src', 'app.ts'), 'console.log("hello")');
+
+        const result = await detectProject(testDir);
+        const nuxt = result.frameworks.find((f) => f.framework === 'nuxt');
+
+        expect(nuxt).toBeDefined();
+        expect(nuxt?.detected).toBe(true);
+      });
+
+      it('should detect Spring Boot framework via pom.xml', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'pom.xml'),
+          '<project><dependencies><dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter</artifactId></dependency></dependencies></project>'
+        );
+        await fs.mkdir(path.join(testDir, 'src', 'main', 'java'), { recursive: true });
+        await fs.writeFile(
+          path.join(testDir, 'src', 'main', 'java', 'Main.java'),
+          'public class Main {}'
+        );
+
+        const result = await detectProject(testDir);
+        const spring = result.frameworks.find((f) => f.framework === 'spring');
+
+        expect(spring).toBeDefined();
+        expect(spring?.detected).toBe(true);
+      });
+
+      it('should detect Laravel framework via composer.json', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'composer.json'),
+          JSON.stringify(
+            {
+              require: {
+                'laravel/framework': '^10.0',
+              },
+            },
+            null,
+            2
+          )
+        );
+        await fs.writeFile(path.join(testDir, 'artisan'), '<?php echo "artisan";');
+
+        const result = await detectProject(testDir);
+        const laravel = result.frameworks.find((f) => f.framework === 'laravel');
+
+        expect(laravel).toBeDefined();
+        expect(laravel?.detected).toBe(true);
+      });
+
+      it('should detect Django framework via requirements.txt', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'requirements.txt'),
+          'Django==4.2.0\npsycopg2==2.9.0'
+        );
+        await fs.writeFile(path.join(testDir, 'manage.py'), '#!/usr/bin/env python\nimport django');
+
+        const result = await detectProject(testDir);
+        const django = result.frameworks.find((f) => f.framework === 'django');
+
+        expect(django).toBeDefined();
+        expect(django?.detected).toBe(true);
+        expect(django?.languages).toContain('python');
+      });
+
+      it('should detect Flask framework via requirements.txt', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'requirements.txt'),
+          'Flask==3.0.0\nFlask-SQLAlchemy==3.0.0'
+        );
+
+        const result = await detectProject(testDir);
+        const flask = result.frameworks.find((f) => f.framework === 'flask');
+
+        expect(flask).toBeDefined();
+        expect(flask?.detected).toBe(true);
+        expect(flask?.languages).toContain('python');
+      });
+
+      it('should detect Ruby on Rails framework via Gemfile', async () => {
+        await fs.writeFile(path.join(testDir, 'Gemfile'), 'gem "rails", "~> 7.0.0"');
+        await fs.mkdir(path.join(testDir, 'bin'), { recursive: true });
+        await fs.writeFile(path.join(testDir, 'bin', 'rails'), '#!/usr/bin/env ruby');
+
+        const result = await detectProject(testDir);
+        const rails = result.frameworks.find((f) => f.framework === 'rails');
+
+        expect(rails).toBeDefined();
+        expect(rails?.detected).toBe(true);
+        expect(rails?.languages).toContain('ruby');
+      });
+
+      it('should detect Symfony framework via composer.json', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'composer.json'),
+          JSON.stringify({ require: { 'symfony/framework-bundle': '^6.0' } })
+        );
+        await fs.writeFile(path.join(testDir, 'symfony.lock'), '{}');
+
+        const result = await detectProject(testDir);
+        const symfony = result.frameworks.find((f) => f.framework === 'symfony');
+
+        expect(symfony).toBeDefined();
+        expect(symfony?.detected).toBe(true);
+        expect(symfony?.languages).toContain('php');
+      });
+
+      it('should detect Next.js framework via package.json', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'package.json'),
+          JSON.stringify({ dependencies: { next: '^14.0.0', react: '^18.0.0' } })
+        );
+        await fs.writeFile(path.join(testDir, 'next.config.js'), 'module.exports = {}');
+
+        const result = await detectProject(testDir);
+        const nextjs = result.frameworks.find((f) => f.framework === 'nextjs');
+
+        expect(nextjs).toBeDefined();
+        expect(nextjs?.detected).toBe(true);
+        expect(nextjs?.languages).toContain('typescript');
+      });
+
+      it('should detect Electron framework via package.json', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'package.json'),
+          JSON.stringify({
+            dependencies: { electron: '^28.0.0' },
+            devDependencies: { 'electron-builder': '^24.0.0' },
+          })
+        );
+
+        const result = await detectProject(testDir);
+        const electron = result.frameworks.find((f) => f.framework === 'electron');
+
+        expect(electron).toBeDefined();
+        expect(electron?.detected).toBe(true);
+        expect(electron?.languages).toContain('typescript');
+      });
+
+      it('should detect React Native framework via package.json', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'package.json'),
+          JSON.stringify({ dependencies: { 'react-native': '^0.72.0' } })
+        );
+        await fs.writeFile(
+          path.join(testDir, 'app.json'),
+          JSON.stringify({ expo: { name: 'test' } })
+        );
+
+        const result = await detectProject(testDir);
+        const reactnative = result.frameworks.find((f) => f.framework === 'reactnative');
+
+        expect(reactnative).toBeDefined();
+        expect(reactnative?.detected).toBe(true);
+      });
+
+      it('should detect Flutter framework via pubspec.yaml', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'pubspec.yaml'),
+          'name: myapp\ndependencies:\n  flutter:\n    sdk: flutter'
+        );
+
+        const result = await detectProject(testDir);
+        const flutter = result.frameworks.find((f) => f.framework === 'flutter');
+
+        expect(flutter).toBeDefined();
+        expect(flutter?.detected).toBe(true);
+        expect(flutter?.languages).toContain('dart');
+      });
+    });
+
     it('should detect Java project with pom.xml', async () => {
       await fs.writeFile(path.join(testDir, 'pom.xml'), '<project></project>');
       await fs.mkdir(path.join(testDir, 'src', 'main', 'java'), { recursive: true });
@@ -162,6 +449,30 @@ describe('detector', () => {
       expect(result.languages).toHaveLength(1);
       expect(result.languages[0].language).toBe('python');
       expect(result.languages[0].indicators).toContain('requirements.txt');
+    });
+
+    it('should report git hook presence when hooks exist', async () => {
+      const gitHooksDir = path.join(testDir, '.git', 'hooks');
+      await fs.mkdir(gitHooksDir, { recursive: true });
+      await fs.writeFile(path.join(gitHooksDir, 'pre-commit'), '#!/bin/sh\nexit 0');
+      await fs.writeFile(path.join(gitHooksDir, 'pre-push'), '#!/bin/sh\nexit 0');
+
+      const result = await detectProject(testDir);
+
+      expect(result.gitHooks).toBeDefined();
+      expect(result.gitHooks?.preCommitExists).toBe(true);
+      expect(result.gitHooks?.prePushExists).toBe(true);
+    });
+
+    it('should report missing git hooks when directory exists without scripts', async () => {
+      const gitHooksDir = path.join(testDir, '.git', 'hooks');
+      await fs.mkdir(gitHooksDir, { recursive: true });
+
+      const result = await detectProject(testDir);
+
+      expect(result.gitHooks).toBeDefined();
+      expect(result.gitHooks?.preCommitExists).toBe(false);
+      expect(result.gitHooks?.prePushExists).toBe(false);
     });
 
     it('should detect Playwright module from package.json', async () => {

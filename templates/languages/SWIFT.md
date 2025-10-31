@@ -1,6 +1,21 @@
 <!-- SWIFT:START -->
 # Swift Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+swiftlint                  # Linting
+swift build                # Build verification
+swift test                 # All tests (100% pass)
+swift test --enable-code-coverage  # Coverage
+
+# Security audit:
+# (Use dependency scanning tools as needed)
+```
+
 ## Swift Configuration
 
 **CRITICAL**: Use Swift 5.10+ with strict concurrency checking.

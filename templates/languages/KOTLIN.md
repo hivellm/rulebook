@@ -1,6 +1,23 @@
 <!-- KOTLIN:START -->
 # Kotlin Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence (Gradle):
+./gradlew ktlintCheck     # Format check
+./gradlew detekt          # Linting
+./gradlew test            # All tests (100% pass)
+./gradlew build           # Build verification
+./gradlew koverVerify     # Coverage (95%+ required)
+
+# Security audit:
+./gradlew dependencyCheckAnalyze  # Vulnerability scan
+./gradlew dependencyUpdates       # Check outdated deps
+```
+
 ## Kotlin Configuration
 
 **CRITICAL**: Use Kotlin 2.0+ with strict null safety.

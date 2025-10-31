@@ -1,6 +1,30 @@
 <!-- JAVA:START -->
 # Java Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Maven projects:
+mvn spotless:check         # Format check
+mvn checkstyle:check       # Linting
+mvn test                   # All tests (100% pass)
+mvn package -DskipTests    # Build
+mvn jacoco:check           # Coverage (95%+ required)
+
+# Security audit:
+mvn dependency:analyze     # Dependency check
+mvn versions:display-dependency-updates  # Outdated deps
+
+# Gradle projects:
+./gradlew spotlessCheck    # Format check
+./gradlew checkstyleMain   # Linting
+./gradlew test             # All tests
+./gradlew build -x test    # Build
+./gradlew jacocoTestCoverageVerification  # Coverage
+```
+
 ## Java Version
 
 **CRITICAL**: Use Java 17 LTS or Java 21 LTS for modern features and long-term support.
@@ -8,60 +32,6 @@
 - **Minimum Version**: Java 17 LTS
 - **Recommended**: Java 21 LTS
 - **Build Tool**: Maven or Gradle
-
-## Code Quality Standards
-
-### Mandatory Quality Checks
-
-**CRITICAL**: After implementing ANY feature, you MUST run these commands in order.
-
-**IMPORTANT**: These commands MUST match your GitHub Actions workflows to prevent CI/CD failures!
-
-```bash
-# Pre-Commit Checklist - Maven (MUST match .github/workflows/*.yml)
-
-# 1. Format check (matches workflow - use check, not apply!)
-mvn spotless:check
-
-# 2. Lint and static analysis (matches workflow)
-mvn checkstyle:check
-mvn pmd:check
-
-# 3. Run all tests (MUST pass 100% - matches workflow)
-mvn test
-
-# 4. Build (matches workflow)
-mvn package -DskipTests
-
-# 5. Check coverage (MUST meet threshold)
-mvn jacoco:check
-
-# Pre-Commit Checklist - Gradle (MUST match .github/workflows/*.yml)
-
-# 1. Format check (matches workflow - use check, not apply!)
-./gradlew spotlessCheck
-
-# 2. Lint and check (matches workflow)
-./gradlew checkstyleMain checkstyleTest
-
-# 3. Run tests (matches workflow)
-./gradlew test
-
-# 4. Build (matches workflow)
-./gradlew build -x test
-
-# 5. Check coverage (matches workflow)
-./gradlew jacocoTestCoverageVerification
-
-# If ANY fails: ❌ DO NOT COMMIT - Fix first!
-```
-
-**If ANY of these fail, you MUST fix the issues before committing.**
-
-**Why This Matters:**
-- CI/CD failures happen when local commands differ from workflows
-- Example: Using `spotless:apply` locally but `spotless:check` in CI = failure
-- Example: Missing `-DskipTests` in package = slow CI builds
 
 ### Formatting
 

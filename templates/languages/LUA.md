@@ -1,6 +1,19 @@
 <!-- LUA:START -->
 # Lua Project Rules
 
+## Agent Automation Commands
+
+**CRITICAL**: Execute these commands after EVERY implementation (see AGENT_AUTOMATION module for full workflow).
+
+```bash
+# Complete quality check sequence:
+stylua --check .          # Format check
+luacheck .                # Linting
+busted                    # All tests (100% pass)
+
+# No standard security audit for Lua
+```
+
 ## Lua Configuration
 
 **CRITICAL**: Use Lua 5.4 or LuaJIT with linting.
