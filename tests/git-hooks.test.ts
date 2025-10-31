@@ -153,9 +153,17 @@ describe('git hook installer', () => {
     const preCommitStats = await fs.stat(path.join(hooksDir, 'pre-commit'));
     const prePushStats = await fs.stat(path.join(hooksDir, 'pre-push'));
 
-    // Check if files are executable (mode includes execute bit)
-    expect(preCommitStats.mode & 0o111).toBeGreaterThan(0);
-    expect(prePushStats.mode & 0o111).toBeGreaterThan(0);
+    // Check if files exist and have correct mode set
+    // On Unix: mode includes execute bit (0o111)
+    // On Windows: mode check may not work the same way
+    if (process.platform !== 'win32') {
+      expect(preCommitStats.mode & 0o111).toBeGreaterThan(0);
+      expect(prePushStats.mode & 0o111).toBeGreaterThan(0);
+    } else {
+      // On Windows, just verify files were created
+      expect(preCommitStats.isFile()).toBe(true);
+      expect(prePushStats.isFile()).toBe(true);
+    }
   });
 
   it('generates hooks with proper shebang', async () => {
