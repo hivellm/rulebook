@@ -16,6 +16,24 @@ Skip for:
 - ❌ Typos, formatting, comments
 - ❌ Dependency updates (non-breaking)
 
+## Task Creation Guidelines
+
+**CRITICAL**: Before creating ANY OpenSpec task, you MUST:
+
+1. **Check Context7 MCP** (if available):
+   - Use Context7 to review documentation and best practices for the technology/library involved
+   - Verify the correct task format and structure
+   - Review existing task examples from official documentation
+   - Most AIs create tasks in the wrong format - Context7 helps prevent this
+
+2. **Validate Format Requirements**:
+   - Ensure scenario format uses `#### Scenario:` (4 hashtags)
+   - Follow SHALL/MUST conventions for requirements
+   - Include proper WHEN/THEN structure
+
+**Why This Matters:**
+Many AI assistants create OpenSpec tasks in incorrect formats, causing validation failures and rework. Using Context7 to review proper task structures BEFORE creation saves time and ensures consistency.
+
 ## Quick Start
 
 ```bash
@@ -98,6 +116,7 @@ openspec archive [change] --yes  # Complete
 ## Best Practices
 
 ✅ **DO:**
+- **Check Context7 MCP before creating tasks** (prevents format errors)
 - One requirement per concern
 - At least one scenario per requirement
 - Use SHALL/MUST for normative requirements
@@ -105,6 +124,7 @@ openspec archive [change] --yes  # Complete
 - Keep changes focused and small
 
 ❌ **DON'T:**
+- Create tasks without checking Context7 MCP first
 - Mix multiple features in one change
 - Skip scenario definitions
 - Use wrong scenario format

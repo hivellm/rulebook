@@ -28,7 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- _Future features will be documented here_
+- **OpenSpec Task Creation Guidelines**: Added mandatory directive to check Context7 MCP before creating OpenSpec tasks
+  - New "Task Creation Guidelines" section in OPENSPEC.md template
+  - CRITICAL requirement to use Context7 MCP (if available) before task creation
+  - Prevents common format errors made by AI assistants
+  - Includes validation requirements for scenario format (4 hashtags)
+  - Reinforced in Best Practices section (DO's and DON'Ts)
+  - Helps ensure correct SHALL/MUST conventions and WHEN/THEN structure
 
 ## [0.14.0] - 2025-10-31
 
