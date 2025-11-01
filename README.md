@@ -16,6 +16,23 @@
 
 > Standardize AI-generated projects with automated templates, quality gates, and framework detection for 28 languages.
 
+---
+
+## Why Rulebook?
+
+Large Language Models (LLMs) for software development need **clear directives** to generate high-quality code consistently. Without standardized guidelines, AI-generated code can be inconsistent, error-prone, and difficult to maintain.
+
+**Rulebook solves this by providing:**
+
+- 📋 **Comprehensive Rule Sets**: Language-specific guidelines (TypeScript, Rust, Python, etc.), framework conventions (NestJS, Django, React), testing standards, linting rules, spell-checking, CI/CD pipelines, Git hooks, and version control best practices
+- 🎯 **Normalized Deliverables**: Ensures consistent code quality across all AI-generated outputs
+- 🛡️ **Error Reduction**: Catches issues early through automated quality gates and pre-commit/pre-push hooks
+- ⚙️ **Process Automation**: Automates repetitive tasks like formatting, testing, and deployment
+- 🔌 **MCP Integration**: Supports multiple Model Context Protocol (MCP) modules for enhanced AI capabilities
+- 📊 **Task Organization**: Integrates with OpenSpec for structured task management and project planning
+
+By giving LLMs a clear "rulebook" to follow, you ensure that every piece of generated code meets your project's standards—**automatically**.
+
 ## Quick Start
 
 ```bash
@@ -35,7 +52,7 @@ npx @hivellm/rulebook@latest update
 ## Key Features
 
 - 🔍 **Auto-Detection**: Detects languages, frameworks (NestJS, React, Spring, etc.), and MCP modules
-- 🪝 **Git Hook Automation**: Optional pre-commit/pre-push hooks with language-aware quality checks
+- 🔗 **Git Hook Automation**: Optional pre-commit/pre-push hooks with language-aware quality checks
 - 🎯 **Minimal Mode**: Quick setup with just README, LICENSE, tests/, and basic CI
 - 📝 **86+ Templates**: Languages, frameworks, IDEs, workflows pre-configured
 - 🤖 **AI-Optimized**: Works with 23 AI assistants (Cursor, Claude, Gemini, etc.)
