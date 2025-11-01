@@ -192,21 +192,31 @@ Select the new language when prompted.
 
 ### Generate Workflows
 
-If you skipped workflow generation initially:
+Generate GitHub Actions workflows for your detected languages:
 
 ```bash
-# Coming in v0.2.0
 npx @hivellm/rulebook workflows
 ```
+
+This command:
+- Detects your project languages (Rust, TypeScript, Python, etc.)
+- Generates appropriate test, lint, and build workflows
+- Creates publish workflows for applicable package registries
+- Places all workflows in `.github/workflows/` directory
 
 ### Validate Project
 
 Check if your project follows rulebook standards:
 
 ```bash
-# Coming in v0.3.0
 npx @hivellm/rulebook validate
 ```
+
+This validates:
+- Project structure (README, LICENSE, docs/, tests/)
+- AGENTS.md quality and completeness
+- Documentation organization
+- Quality score (0-100)
 
 ## Troubleshooting
 

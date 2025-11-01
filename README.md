@@ -1,5 +1,19 @@
 # @hivellm/rulebook
 
+[![npm version](https://img.shields.io/npm/v/@hivellm/rulebook?logo=npm&logoColor=white)](https://www.npmjs.com/package/@hivellm/rulebook)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+
+[![Languages](https://img.shields.io/badge/languages-28-orange?logo=codefactor&logoColor=white)](#supported-languages--frameworks)
+[![Frameworks](https://img.shields.io/badge/frameworks-17-blueviolet?logo=framework&logoColor=white)](#supported-languages--frameworks)
+[![Templates](https://img.shields.io/badge/templates-86+-green?logo=files&logoColor=white)](templates/)
+[![MCP Modules](https://img.shields.io/badge/MCP%20modules-12-purple?logo=module&logoColor=white)](#mcp-modules-12)
+
+[![AI Tools](https://img.shields.io/badge/AI%20tools-23-yellow?logo=openai&logoColor=white)](#ai-tools-supported-23)
+[![Git Hooks](https://img.shields.io/badge/git%20hooks-automated-success?logo=git&logoColor=white)](#key-features)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-ready-informational?logo=githubactions&logoColor=white)](#what-it-does)
+
 > Standardize AI-generated projects with automated templates, quality gates, and framework detection for 28 languages.
 
 ## Quick Start
@@ -45,24 +59,69 @@ Merges latest templates while preserving your customizations (auto-backup includ
 
 ## Commands
 
+### Core Commands
+
 ```bash
-rulebook init              # Initialize new project
+# Project Initialization & Updates
+rulebook init              # Initialize new project (interactive)
 rulebook init --minimal    # Minimal setup (essentials only)
 rulebook init --light      # Light mode (no quality enforcement)
 rulebook init --yes        # Skip prompts, use defaults
-rulebook update            # Update to latest templates
-rulebook update --light    # Update without quality enforcement
+rulebook update            # Update AGENTS.md to latest version
+rulebook update --yes      # Update without confirmation
+rulebook update --light    # Update in light mode
+
+# Workflow & CI/CD
+rulebook workflows         # Generate GitHub Actions workflows
+
+# Validation & Health
 rulebook validate          # Check project standards
-rulebook health            # Project health score
+rulebook health            # Project health score (0-100)
 rulebook fix               # Auto-fix common issues
+
+# Documentation
 rulebook generate-docs     # Create /docs structure
+rulebook generate-docs --yes  # Skip prompts, use defaults
+
+# Dependencies & Coverage
+rulebook check-deps        # Check outdated/vulnerable dependencies
+rulebook check-coverage    # Check test coverage (default: 95%)
+rulebook check-coverage -t 80  # Custom threshold
+
+# Versioning
+rulebook version <type>    # Bump version (major|minor|patch)
+rulebook changelog         # Generate changelog from git commits
+rulebook changelog -v 1.0.0  # Specify version
 ```
 
-**Advanced (beta):**
+### Advanced Commands (Beta)
+
 ```bash
-rulebook watcher           # Real-time task monitoring
-rulebook agent             # Autonomous workflow automation
-rulebook tasks             # OpenSpec task management
+# Real-time Monitoring
+rulebook watcher           # Full-screen task monitoring UI
+                          # - Live task progress tracking
+                          # - Activity log with timestamps
+                          # - System status monitoring
+                          # - Auto-refresh every 2 seconds
+
+# Autonomous Agent
+rulebook agent             # Start AI CLI workflow automation
+rulebook agent --dry-run   # Simulate without changes
+rulebook agent --tool cursor-agent  # Specify CLI tool
+rulebook agent --iterations 10      # Max iterations
+rulebook agent --watch     # Enable watcher mode
+
+# Task Management
+rulebook tasks             # Manage OpenSpec tasks
+rulebook tasks --tree      # Show dependency tree
+rulebook tasks --current   # Show active task
+rulebook tasks --status <id>  # Update task status
+
+# Configuration
+rulebook config --show     # Show current config
+rulebook config --set key=value  # Set config value
+rulebook config --feature watcher --enable   # Enable feature
+rulebook config --feature agent --disable    # Disable feature
 ```
 
 ## Setup Modes

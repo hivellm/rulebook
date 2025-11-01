@@ -149,28 +149,40 @@
 
 ## Phase 8: Polish & Release ✅
 
-### Current Status: v0.5.0 - IDE Integration Complete
+### Current Status: v0.16.0 - Production Ready
 
-**Recent Achievements:**
-- [x] GitHub Actions workflows fixed (pnpm cache order corrected)
-- [x] TypeScript test and lint workflows fully operational
-- [x] All IDE and CLI tool templates implemented
-- [x] Comprehensive validation suite (structure, coverage, dependencies, security)
-- [x] Support for 5 languages (Rust, TypeScript, Python, Go, Java)
+**Recent Achievements (v0.16.x Series):**
+- [x] 28 languages fully supported with auto-detection
+- [x] 17 framework templates with smart detection (NestJS, Django, Next.js, Spring, Laravel, etc.)
+- [x] 12 MCP modules integration (Vectorizer, Synap, OpenSpec, Context7, GitHub, etc.)
+- [x] Git hooks automation system (30 hook templates across languages)
+- [x] Advanced task management with OpenSpec integration
+- [x] Real-time watcher UI for task monitoring
+- [x] Autonomous agent workflows for AI CLI tools
+- [x] Comprehensive configuration management system
+- [x] 422+ comprehensive tests (100% passing)
+- [x] 95%+ code coverage across core modules
+- [x] Full CI/CD pipeline with automated npm publishing
+- [x] Published to npm with provenance
 
-**Core Completion:**
-- [x] NPX compatibility testing
+**Core Features Complete:**
+- [x] NPX compatibility (npx @hivellm/rulebook)
 - [x] All quality checks passing (type-check, lint, build, test)
-- [x] Test suite with 63 tests (100% passing)
-- [x] Code coverage 90%+ (core modules)
-- [x] Documentation complete
-- [x] Templates complete (28 total)
-- [x] Project committed and ready
-- [x] CI/CD setup for rulebook itself (GitHub Actions workflows fixed)
+- [x] Multi-mode setup (full/minimal/light modes)
+- [x] Framework auto-detection and configuration
+- [x] Git hooks with language-aware quality checks
+- [x] Publishing workflows for 18+ package registries
+- [x] IDE-specific configurations (Cursor, Windsurf, VS Code, etc.)
+- [x] CLI tools integration (15 tools supported)
+- [x] Documentation structure with 20+ guides
+- [x] Package published to npm registry
+- [x] Production-ready with semantic versioning
 
-**Pending Release:**
-- [ ] Package publication to npm (pending user decision)
-- [ ] Version tag creation (pending user decision)
+**Deployment Status:**
+- [x] Published to npm as @hivellm/rulebook
+- [x] Available via npx for zero-install usage
+- [x] Automated releases via GitHub Actions
+- [x] Community feedback integration active
 
 ## Future Enhancements 📋
 
@@ -276,33 +288,34 @@
 - [ ] Enterprise features
 - [ ] SLA and support options
 
-## Metrics (Current - Unreleased)
+## Metrics (v0.16.0 - Current Release)
 
-- **Current Version**: v0.14.0-dev (Hooks & Frameworks Expansion)
-- **Code Coverage**: 95%+ (target) ✅
-- **Test Count**: 422+ comprehensive tests (100% passing) ✅ ⬆️
-- **Test Files**: 22 test suites ⬆️
-- **CLI Commands**: 9 (init, update, workflows, validate, check-deps, check-coverage, version, changelog, health, fix)
-- **Supported Languages**: **28** (Rust, TypeScript, JavaScript, Python, Go, Java, Kotlin, C, C++, C#, PHP, Ruby, Swift, Elixir, Dart, Scala, Haskell, Julia, R, Lua, Solidity, Zig, Erlang, Ada, SAS, Lisp, Objective-C, SQL) ⬆️
-- **Supported Frameworks**: **17** (NestJS, Spring, Laravel, Django, Flask, Rails, Symfony, Zend, Angular, React, Vue, Nuxt, Next.js, jQuery, React Native, Flutter, Electron) ⬆️ NEW
-- **Supported MCP Modules**: **12** (Vectorizer, Synap, OpenSpec, Context7, GitHub, Playwright, Supabase, Notion, Atlassian, Serena, Figma, Grafana) ⬆️
+- **Current Version**: v0.16.0 (Published to npm)
+- **Code Coverage**: 95%+ across core modules ✅
+- **Test Count**: 422+ comprehensive tests (100% passing) ✅
+- **Test Files**: 22 test suites
+- **CLI Commands**: 13 (init, update, workflows, validate, check-deps, check-coverage, version, changelog, health, fix, generate-docs, watcher, agent, config, tasks)
+- **Supported Languages**: **28** (Rust, TypeScript, JavaScript, Python, Go, Java, Kotlin, C, C++, C#, PHP, Ruby, Swift, Elixir, Dart, Scala, Haskell, Julia, R, Lua, Solidity, Zig, Erlang, Ada, SAS, Lisp, Objective-C, SQL)
+- **Supported Frameworks**: **17** (NestJS, Spring, Laravel, Django, Flask, Rails, Symfony, Zend, Angular, React, Vue, Nuxt, Next.js, jQuery, React Native, Flutter, Electron)
+- **Supported MCP Modules**: **12** (Vectorizer, Synap, OpenSpec, Context7, GitHub, Playwright, Supabase, Notion, Atlassian, Serena, Figma, Grafana)
 - **IDE Templates**: 8 (Cursor, Windsurf, VS Code, Copilot, Tabnine, Replit, JetBrains AI, Zed)
 - **CLI Tools Templates**: 15 (Aider, Continue, Claude, Gemini, Cursor CLI, Codeium, Claude Code, Cline, Amazon Q, Auggie, CodeBuddy, Factory, OpenCode, Kilo, Codex)
-- **Git Hook Templates**: **30** (15 languages × 2 hooks) ⭐ NEW
-- **Framework Templates**: **17** complete framework guides ⭐ NEW
+- **Git Hook Templates**: **30** (15 languages × 2 hooks)
+- **Framework Templates**: **17** complete framework guides
 - **Test/Lint Workflows**: 56+ (28 languages × 2)
 - **Publishing Workflows**: 18 (package registries for all applicable languages)
-- **Total Workflow Templates**: 74+ GitHub Actions workflows ⬆️
-- **Language Templates**: **28** comprehensive guides ⬆️
+- **Total Workflow Templates**: 74+ GitHub Actions workflows
+- **Language Templates**: **28** comprehensive guides
 - **Total Templates**: **126+** built-in + unlimited custom ✅
-- **Core Modules**: 15+ (detector, generator, merger, validator, workflow-generator, git-hooks, minimal-scaffolder, and more) ⬆️
+- **Core Modules**: 15+ (detector, generator, merger, validator, workflow-generator, git-hooks, minimal-scaffolder, watcher, agent, task-manager, and more)
 - **Documentation Pages**: 20+ guides and specs
-- **Code Reduction**: ~10,500 lines removed (simplification) ⬇️
 - **GitHub Actions**: Fully configured with automated publishing ✅
 - **Publication Support**: Full CI/CD for 18+ languages ✅
 - **Package Registries**: npm, crates.io, PyPI, pkg.go.dev, Maven Central, Hex.pm, NuGet, Packagist, and more ✅
-- **Git Hooks**: Template-based system following official Git best practices ✅ NEW
-- **Framework Detection**: Language-aware auto-detection for 17 frameworks ✅ NEW
+- **Git Hooks**: Template-based system following official Git best practices ✅
+- **Framework Detection**: Language-aware auto-detection for 17 frameworks ✅
+- **Advanced Features**: Real-time watcher UI, autonomous agent, OpenSpec task management ✅
+- **Setup Modes**: Full, Minimal, Light - flexible configuration for all project types ✅
 
 ## Contributing
 

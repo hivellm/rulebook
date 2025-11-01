@@ -1,7 +1,7 @@
 # CLI Agents Documentation
 
-**Note**: This document covers CLI Agent integration (autonomous agent feature from v0.10.0).  
-For current v0.14.0 features (frameworks, Git hooks, MCP modules), see main documentation.
+**Note**: This document covers CLI Agent integration (autonomous agent feature available since v0.10.0).  
+Current version **v0.16.0** includes: 28 languages, 17 frameworks, 12 MCP modules, Git hooks automation, and advanced task management.
 
 This document describes the supported CLI agents, their flags, output formats, and usage patterns.
 
