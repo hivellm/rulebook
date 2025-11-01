@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- _Future features will be documented here_
+
+## [0.16.0] - 2025-11-01
+
+### Added
 - **OpenSpec Task Creation Guidelines**: Added mandatory directive to check Context7 MCP before creating OpenSpec tasks
   - New "Task Creation Guidelines" section in OPENSPEC.md template
   - CRITICAL requirement to use Context7 MCP (if available) before task creation
@@ -36,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reinforced in Best Practices section (DO's and DON'Ts)
   - Helps ensure correct SHALL/MUST conventions and WHEN/THEN structure
 
-## [0.14.0] - 2025-10-31
+## [0.15.0] - 2025-10-31
 
 ### Added
 - **Framework Templates Expansion**: Added 10 new framework templates with auto-detection
