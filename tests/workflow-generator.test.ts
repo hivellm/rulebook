@@ -92,7 +92,7 @@ describe('workflow-generator', () => {
 
     it('should generate workflows for all supported languages', async () => {
       const languages = ['go', 'java', 'kotlin', 'php', 'ruby', 'swift', 'elixir'];
-      
+
       for (const lang of languages) {
         const config = { ...baseConfig, languages: [lang] };
         const workflows = await generateWorkflows(config, testDir);
@@ -103,15 +103,15 @@ describe('workflow-generator', () => {
     it('should handle C and C++ workflows', async () => {
       const config = { ...baseConfig, languages: ['c', 'cpp'] };
       const workflows = await generateWorkflows(config, testDir);
-      
-      // C and C++ share the same workflows  
+
+      // C and C++ share the same workflows
       expect(workflows.length).toBeGreaterThan(0);
     });
 
     it('should handle csharp workflows', async () => {
       const config = { ...baseConfig, languages: ['csharp'] };
       const workflows = await generateWorkflows(config, testDir);
-      
+
       // Csharp uses dotnet workflows
       expect(workflows.length).toBeGreaterThan(0);
     });

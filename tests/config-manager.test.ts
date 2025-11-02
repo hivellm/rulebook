@@ -99,7 +99,7 @@ describe('ConfigManager', () => {
     it('should handle corrupted config file gracefully', async () => {
       const configPath = join(tempDir, '.rulebook');
       await fs.writeFile(configPath, 'invalid json {{{');
-      
+
       // Should reinitialize with defaults
       const config = await configManager.loadConfig();
       expect(config.version).toBe('1.0.0');
@@ -108,7 +108,7 @@ describe('ConfigManager', () => {
     it('should handle missing features object', async () => {
       const configPath = join(tempDir, '.rulebook');
       await fs.writeFile(configPath, JSON.stringify({ version: '1.0.0' }));
-      
+
       const config = await configManager.loadConfig();
       expect(config.features).toBeDefined();
     });

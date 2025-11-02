@@ -206,5 +206,4 @@ describe('OpenSpecManager', () => {
       expect(tree).toContain('Task Dependency Tree');
     });
   });
-
 });
