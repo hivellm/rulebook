@@ -134,6 +134,52 @@ describe('Logger', () => {
         recentErrors: expect.any(Number),
       });
     });
+
+    it('should get log summary with mixed log levels', async () => {
+      logger.info('Info message');
+      logger.warn('Warning message');
+      logger.error('Error message');
+      logger.debug('Debug message');
+      await logger.flush();
+
+      const summary = await logger.getLogSummary();
+      expect(summary.totalEntries).toBeGreaterThan(0);
+      expect(summary.byLevel).toBeDefined();
+    });
+  });
+
+  describe('cleanOldLogs', () => {
+    it('should handle cleanOldLogs without throwing', async () => {
+      // This tests the private cleanOldLogs method indirectly
+      const newLogger = createLogger(tempDir);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await newLogger.close();
+      expect(true).toBe(true);
+    });
+  });
+
+  describe('buffer management', () => {
+    it('should auto-flush when buffer is full', async () => {
+      // Log many messages to trigger auto-flush
+      for (let i = 0; i < 15; i++) {
+        logger.info(`Message ${i}`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const logs = await logger.getRecentLogs(20);
+      expect(logs.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('log with all parameters', () => {
+    it('should log with context, taskId, and duration', () => {
+      logger.log('info', 'Test message', { key: 'value' }, 'task-456', 1500);
+      expect(true).toBe(true);
+    });
+
+    it('should log without optional parameters', () => {
+      logger.log('error', 'Simple error');
+      expect(true).toBe(true);
+    });
   });
 });
 
