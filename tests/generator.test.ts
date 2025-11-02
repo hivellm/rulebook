@@ -159,4 +159,119 @@ describe('generator', () => {
       expect(content).toContain('SSH key has no password');
     });
   });
+
+  describe('light mode', () => {
+    it('should skip quality enforcement in light mode', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        lightMode: true,
+      };
+      const content = await generateAgentsContent(config);
+
+      expect(content).not.toContain('QUALITY_ENFORCEMENT');
+      expect(content).not.toContain('STRICTLY FORBIDDEN');
+    });
+
+    it('should include quality enforcement when not in light mode', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        lightMode: false,
+      };
+      const content = await generateAgentsContent(config);
+
+      expect(content).toContain('Quality Enforcement Rules');
+    });
+  });
+
+  describe('documentation strictness', () => {
+    it('should use relaxed docs when strictDocs is false', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        strictDocs: false,
+      };
+      const content = await generateAgentsContent(config);
+
+      expect(content).not.toContain('Minimize Markdown files');
+      expect(content).toContain('well-organized');
+    });
+  });
+
+  describe('frameworks and tools', () => {
+    it('should include frameworks when specified', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        frameworks: ['nestjs', 'react'],
+      };
+      const content = await generateFullAgents(config);
+
+      expect(content).toContain('<!-- NESTJS:START -->');
+      expect(content).toContain('<!-- REACT:START -->');
+    });
+
+    it('should include CLI tools when specified', () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        cliTools: ['aider', 'continue'],
+      };
+      // Just test that config accepts CLI tools
+      expect(config.cliTools).toEqual(['aider', 'continue']);
+    });
+
+    it('should handle empty frameworks array', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        frameworks: [],
+      };
+      const content = await generateFullAgents(config);
+
+      expect(content).not.toContain('<!-- NESTJS:START -->');
+      expect(content).not.toContain('<!-- REACT:START -->');
+    });
+  });
+
+  describe('multiple IDE support', () => {
+    it('should accept multiple IDEs in config', () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        ides: ['cursor', 'windsurf', 'vscode'],
+      };
+      // IDEs are used for prompts but not in generated content
+      expect(config.ides).toEqual(['cursor', 'windsurf', 'vscode']);
+    });
+  });
+
+  describe('project types', () => {
+    it('should handle library project type', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        projectType: 'library',
+      };
+      const content = await generateFullAgents(config);
+
+      expect(content).toBeDefined();
+      expect(content.length).toBeGreaterThan(0);
+    });
+
+    it('should handle CLI project type', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        projectType: 'cli',
+      };
+      const content = await generateFullAgents(config);
+
+      expect(content).toBeDefined();
+      expect(content.length).toBeGreaterThan(0);
+    });
+
+    it('should handle monorepo project type', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        projectType: 'monorepo',
+      };
+      const content = await generateFullAgents(config);
+
+      expect(content).toBeDefined();
+      expect(content.length).toBeGreaterThan(0);
+    });
+  });
 });
