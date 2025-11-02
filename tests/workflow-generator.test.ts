@@ -90,6 +90,32 @@ describe('workflow-generator', () => {
       expect(content).toBe(customContent);
     });
 
+    it('should generate workflows for all supported languages', async () => {
+      const languages = ['go', 'java', 'kotlin', 'php', 'ruby', 'swift', 'elixir'];
+      
+      for (const lang of languages) {
+        const config = { ...baseConfig, languages: [lang] };
+        const workflows = await generateWorkflows(config, testDir);
+        expect(workflows.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should handle C and C++ workflows', async () => {
+      const config = { ...baseConfig, languages: ['c', 'cpp'] };
+      const workflows = await generateWorkflows(config, testDir);
+      
+      // C and C++ share the same workflows  
+      expect(workflows.length).toBeGreaterThan(0);
+    });
+
+    it('should handle csharp workflows', async () => {
+      const config = { ...baseConfig, languages: ['csharp'] };
+      const workflows = await generateWorkflows(config, testDir);
+      
+      // Csharp uses dotnet workflows
+      expect(workflows.length).toBeGreaterThan(0);
+    });
+
     it('should generate minimal workflows without lint or codespell', async () => {
       const config = { ...baseConfig, languages: ['typescript'], minimal: true };
 

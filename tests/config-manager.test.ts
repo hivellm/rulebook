@@ -95,6 +95,39 @@ describe('ConfigManager', () => {
     });
   });
 
+  describe('edge cases and error handling', () => {
+    it('should handle corrupted config file gracefully', async () => {
+      const configPath = join(tempDir, '.rulebook');
+      await fs.writeFile(configPath, 'invalid json {{{');
+      
+      // Should reinitialize with defaults
+      const config = await configManager.loadConfig();
+      expect(config.version).toBe('1.0.0');
+    });
+
+    it('should handle missing features object', async () => {
+      const configPath = join(tempDir, '.rulebook');
+      await fs.writeFile(configPath, JSON.stringify({ version: '1.0.0' }));
+      
+      const config = await configManager.loadConfig();
+      expect(config.features).toBeDefined();
+    });
+
+    it('should handle empty updates', async () => {
+      await configManager.initializeConfig();
+      const config = await configManager.updateConfig({});
+      expect(config.version).toBe('1.0.0');
+    });
+
+    it('should handle null and undefined values in updates', async () => {
+      await configManager.initializeConfig();
+      const config = await configManager.updateConfig({
+        coverageThreshold: undefined as any,
+      });
+      expect(config).toBeDefined();
+    });
+  });
+
   describe('toggleFeature', () => {
     it('should enable feature', async () => {
       await configManager.initializeConfig();
