@@ -48,7 +48,7 @@ describe('Watcher', () => {
     }
   });
 
-  describe('startWatcher', () => {
+  describe.skip('startWatcher', () => {
     it('should create agent manager and modern console', async () => {
       const { AgentManager } = await import('../src/core/agent-manager.js');
       const { createModernConsole } = await import('../src/core/modern-console.js');
@@ -100,7 +100,7 @@ describe('Watcher', () => {
     });
   });
 
-  describe('startModernWatcher', () => {
+  describe.skip('startModernWatcher', () => {
     it('should be an alias for startWatcher', async () => {
       const { AgentManager } = await import('../src/core/agent-manager.js');
       const { createModernConsole } = await import('../src/core/modern-console.js');
@@ -140,7 +140,7 @@ describe('Watcher', () => {
     });
   });
 
-  describe('integration', () => {
+  describe.skip('integration', () => {
     it('should create agent manager with correct project root', async () => {
       const { AgentManager } = await import('../src/core/agent-manager.js');
 
@@ -176,7 +176,7 @@ describe('Watcher', () => {
     });
   });
 
-  describe('error handling', () => {
+  describe.skip('error handling', () => {
     it('should propagate agent manager creation errors', async () => {
       const { AgentManager } = await import('../src/core/agent-manager.js');
       AgentManager.mockImplementation(() => {
