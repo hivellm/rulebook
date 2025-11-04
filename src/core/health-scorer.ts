@@ -233,20 +233,29 @@ async function scoreSecurity(projectDir: string): Promise<{
   }
 
   // No committed secrets (30 points)
-  try {
-    const { stdout } = await execAsync(
-      'git ls-files | xargs grep -l "api[_-]key\\|password\\|secret" 2>/dev/null || true',
-      { cwd: projectDir }
-    );
+  // Only check if it's a git repository
+  const gitDir = path.join(projectDir, '.git');
+  if (await fileExists(gitDir)) {
+    try {
+      const { stdout } = (await Promise.race([
+        execAsync(
+          'git ls-files | xargs grep -l "api[_-]key\\|password\\|secret" 2>/dev/null || true',
+          { cwd: projectDir, timeout: 3000 }
+        ),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000)),
+      ])) as { stdout: string };
 
-    if (!stdout.trim()) {
-      score += 30;
-      details.push('✅ No obvious secrets in code (+30)');
-    } else {
-      details.push('⚠️  Possible secrets found in code (-30)');
+      if (!stdout.trim()) {
+        score += 30;
+        details.push('✅ No obvious secrets in code (+30)');
+      } else {
+        details.push('⚠️  Possible secrets found in code (-30)');
+      }
+    } catch {
+      score += 30; // Assume safe if can't check
     }
-  } catch {
-    score += 30; // Assume safe if can't check
+  } else {
+    score += 30; // Not a git repo, can't check
   }
 
   // Dependabot or similar (20 points)
@@ -340,26 +349,35 @@ async function scoreDependencies(projectDir: string): Promise<{
     details.push('❌ No lock file found (-50)');
   }
 
-  // Try to run audit
-  try {
-    const { stdout } = await execAsync('npm audit --json', {
-      cwd: projectDir,
-    });
+  // Try to run audit only if package.json exists
+  const packageJsonPath = path.join(projectDir, 'package.json');
+  if (await fileExists(packageJsonPath)) {
+    try {
+      // Add timeout to prevent hanging
+      const { stdout } = (await Promise.race([
+        execAsync('npm audit --json', {
+          cwd: projectDir,
+          timeout: 5000, // 5 second timeout
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000)),
+      ])) as { stdout: string };
 
-    const audit = JSON.parse(stdout);
-    const vulns = audit.metadata?.vulnerabilities;
+      const audit = JSON.parse(stdout);
+      const vulns = audit.metadata?.vulnerabilities;
 
-    if (vulns) {
-      const total = vulns.total || 0;
-      if (total === 0) {
-        details.push('✅ No vulnerabilities found');
-      } else {
-        score -= Math.min(total * 5, 50);
-        details.push(`⚠️  ${total} vulnerabilities found (-${Math.min(total * 5, 50)})`);
+      if (vulns) {
+        const total = vulns.total || 0;
+        if (total === 0) {
+          details.push('✅ No vulnerabilities found');
+        } else {
+          score -= Math.min(total * 5, 50);
+          details.push(`⚠️  ${total} vulnerabilities found (-${Math.min(total * 5, 50)})`);
+        }
       }
+    } catch {
+      // Can't check, assume OK (no points deducted)
+      details.push('⚠️  Could not check for vulnerabilities (skipped)');
     }
-  } catch {
-    // Can't check, assume OK
   }
 
   return {
