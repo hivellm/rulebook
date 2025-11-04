@@ -66,7 +66,6 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('When in doubt, ask to review @AGENTS.md first.');
   sections.push('');
   sections.push('<!-- RULEBOOK:END -->');
-  sections.push('');
 
   return sections.join('\n');
 }
@@ -217,7 +216,6 @@ function generateReferenceSection(
   for (const item of quickRef) {
     sections.push(`- ${item}`);
   }
-  sections.push('');
   return sections.join('\n');
 }
 
@@ -374,7 +372,6 @@ export async function generateModularAgents(
       sections.push(generateLanguageReference(language, rulebookDir));
     }
 
-    sections.push('');
     sections.push(
       '**Usage**: When working with language-specific code, reference the corresponding `/rulebook/[LANGUAGE].md` file for detailed guidelines.'
     );
@@ -444,7 +441,6 @@ export async function generateModularAgents(
       sections.push(generateModuleReference(module, rulebookDir));
     }
 
-    sections.push('');
     sections.push(
       '**Usage**: When working with module-specific features, reference the corresponding `/rulebook/[MODULE].md` file for detailed instructions.'
     );
