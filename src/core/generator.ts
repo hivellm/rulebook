@@ -209,7 +209,7 @@ function generateReferenceSection(
   rulebookDir: string = 'rulebook'
 ): string {
   const sections: string[] = [];
-  sections.push(`## ${name}`);
+  sections.push(`### ${name}`);
   sections.push('');
   sections.push(`For comprehensive ${description}, see \`/${rulebookDir}/${fileName}.md\``);
   sections.push('');
@@ -362,11 +362,18 @@ export async function generateModularAgents(
       'The following languages are configured for this project. For detailed rules, see the corresponding files in `/rulebook/`:'
     );
     sections.push('');
+
+    // Write all language files first
     for (const language of mergedConfig.languages) {
       const langRules = await generateLanguageRules(language);
       await writeModularFile(projectRoot, language.toUpperCase(), langRules, rulebookDir);
+    }
+
+    // Then add all references together
+    for (const language of mergedConfig.languages) {
       sections.push(generateLanguageReference(language, rulebookDir));
     }
+
     sections.push('');
     sections.push(
       '**Usage**: When working with language-specific code, reference the corresponding `/rulebook/[LANGUAGE].md` file for detailed guidelines.'
@@ -382,11 +389,18 @@ export async function generateModularAgents(
       'The following frameworks are configured for this project. For detailed rules, see the corresponding files in `/rulebook/`:'
     );
     sections.push('');
+
+    // Write all framework files first
     for (const framework of mergedConfig.frameworks) {
       const frameworkRules = await generateFrameworkRules(framework);
       await writeModularFile(projectRoot, framework.toUpperCase(), frameworkRules, rulebookDir);
+    }
+
+    // Then add all references together
+    for (const framework of mergedConfig.frameworks) {
       sections.push(generateFrameworkReference(framework, rulebookDir));
     }
+
     sections.push('');
     sections.push(
       '**Usage**: When working with framework-specific code, reference the corresponding `/rulebook/[FRAMEWORK].md` file for detailed guidelines.'
@@ -395,24 +409,41 @@ export async function generateModularAgents(
   }
 
   // Write module files and add references
+  // First, write AGENT_AUTOMATION if not minimal
   if (!mergedConfig.minimal) {
     const agentAutomation = await generateModuleRules('agent_automation');
     await writeModularFile(projectRoot, 'AGENT_AUTOMATION', agentAutomation, rulebookDir);
-    sections.push(generateModuleReference('agent_automation', rulebookDir));
   }
 
-  if (mergedConfig.modules.length > 0) {
+  // Then handle all modules together
+  const allModules: string[] = [];
+  if (!mergedConfig.minimal) {
+    allModules.push('agent_automation');
+  }
+  allModules.push(...mergedConfig.modules);
+
+  if (allModules.length > 0) {
     sections.push('## Module-Specific Instructions');
     sections.push('');
     sections.push(
       'The following modules are configured for this project. For detailed instructions, see the corresponding files in `/rulebook/`:'
     );
     sections.push('');
+
+    // Write all module files first (except AGENT_AUTOMATION which is already written)
     for (const module of mergedConfig.modules) {
       const moduleRules = await generateModuleRules(module);
       await writeModularFile(projectRoot, module.toUpperCase(), moduleRules, rulebookDir);
+    }
+
+    // Then add all references together
+    if (!mergedConfig.minimal) {
+      sections.push(generateModuleReference('agent_automation', rulebookDir));
+    }
+    for (const module of mergedConfig.modules) {
       sections.push(generateModuleReference(module, rulebookDir));
     }
+
     sections.push('');
     sections.push(
       '**Usage**: When working with module-specific features, reference the corresponding `/rulebook/[MODULE].md` file for detailed instructions.'
