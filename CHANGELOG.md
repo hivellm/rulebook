@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update command now adds quality enforcement rules to existing projects
 - ProjectConfig extended with lightMode option
 
-## [Unreleased]
+## [0.17.0] - 2025-11-04
 
 ### Breaking Changes
 - **Modular Architecture**: AGENTS.md now uses modular structure by default
@@ -44,12 +44,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Reference Format**: AGENTS.md includes clear usage instructions for each module
   - Example: "For TypeScript-specific rules, see `/rulebook/TYPESCRIPT.md`"
 - **Validation**: `rulebook validate` now checks `/rulebook/` directory structure
-- **Backup Removal**: Removed automatic backups from `update` command for cleaner workflow
+- **Configuration Storage**: `.rulebook` now stores languages, frameworks, and modules for accurate template generation
 
 ### Changed
-- Default behavior: All new projects use modular structure
-- AGENTS.md generation: Now generates references instead of embedding full templates
-- Update command: Automatically migrates existing projects to modular structure
+- **AGENTS.md Simplification**: Significantly reduced file size and improved readability
+  - QUALITY_ENFORCEMENT rules moved to `/rulebook/QUALITY_ENFORCEMENT.md`
+  - Git workflow rules moved to `/rulebook/GIT.md`
+  - AGENTS.md now contains only core rules summary and references
+  - Improved hierarchy with proper `##` and `###` subsections
+  - Better organization: all modules grouped under single "Module-Specific Instructions" section
+- **Default behavior**: All new projects use modular structure
+- **AGENTS.md generation**: Now generates references instead of embedding full templates
+- **Update command**: Automatically migrates existing projects to modular structure
+- **Backup Removal**: Removed automatic backups from `update` command for cleaner workflow
+- **Spacing**: Improved formatting with consistent spacing between reference sections
+
+### Fixed
+- Fixed spacing issues in AGENTS.md where Usage messages were glued to quick references
+- Fixed hierarchy issues where reference sections used incorrect heading levels
+- Fixed module grouping where agent_automation appeared outside Module-Specific Instructions section
+
+## [Unreleased]
 
 ## [0.16.0] - 2025-11-01
 
