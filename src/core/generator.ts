@@ -216,6 +216,7 @@ function generateReferenceSection(
   for (const item of quickRef) {
     sections.push(`- ${item}`);
   }
+  sections.push('');
   return sections.join('\n');
 }
 
