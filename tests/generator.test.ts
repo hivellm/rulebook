@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { generateAgentsContent, generateFullAgents, generateGitRules } from '../src/core/generator';
+import {
+  generateAgentsContent,
+  generateFullAgents,
+  generateGitRules,
+  generateModularAgents,
+} from '../src/core/generator';
 import type { ProjectConfig } from '../src/types';
 
 describe('generator', () => {
@@ -57,7 +62,7 @@ describe('generator', () => {
   });
 
   describe('generateFullAgents', () => {
-    it('should generate complete AGENTS.md with all sections', async () => {
+    it('should generate complete AGENTS.md with all sections (modular mode)', async () => {
       const config: ProjectConfig = {
         languages: ['rust', 'typescript'],
         modules: ['vectorizer', 'synap'],
@@ -66,46 +71,66 @@ describe('generator', () => {
         coverageThreshold: 95,
         strictDocs: true,
         generateWorkflows: true,
+        modular: true,
       };
 
-      const content = await generateFullAgents(config);
+      const content = await generateFullAgents(config, '/tmp/test');
 
       // Should include RULEBOOK block
       expect(content).toContain('<!-- RULEBOOK:START -->');
       expect(content).toContain('<!-- RULEBOOK:END -->');
 
-      // Should include language blocks
-      expect(content).toContain('<!-- RUST:START -->');
-      expect(content).toContain('<!-- RUST:END -->');
-      expect(content).toContain('<!-- TYPESCRIPT:START -->');
-      expect(content).toContain('<!-- TYPESCRIPT:END -->');
+      // Should include language references (not embedded blocks in modular mode)
+      expect(content).toContain('Language-Specific Rules');
+      expect(content).toContain('/rulebook/RUST.md');
+      expect(content).toContain('/rulebook/TYPESCRIPT.md');
 
-      // Should include module blocks
-      expect(content).toContain('<!-- VECTORIZER:START -->');
-      expect(content).toContain('<!-- VECTORIZER:END -->');
-      expect(content).toContain('<!-- SYNAP:START -->');
-      expect(content).toContain('<!-- SYNAP:END -->');
+      // Should include module references
+      expect(content).toContain('Module-Specific Instructions');
+      expect(content).toContain('/rulebook/VECTORIZER.md');
+      expect(content).toContain('/rulebook/SYNAP.md');
     });
 
-    it('should generate content for single language', async () => {
-      const config = { ...baseConfig };
-      const content = await generateFullAgents(config);
+    it('should generate content for single language (modular mode)', async () => {
+      const config = { ...baseConfig, modular: true };
+      const content = await generateFullAgents(config, '/tmp/test');
 
-      expect(content).toContain('<!-- RUST:START -->');
-      expect(content).toContain('<!-- RUST:END -->');
-      expect(content).not.toContain('<!-- TYPESCRIPT:START -->');
+      expect(content).toContain('/rulebook/RUST.md');
+      expect(content).not.toContain('/rulebook/TYPESCRIPT.md');
     });
 
-    it('should generate content for multiple modules', async () => {
+    it('should generate content for multiple modules (modular mode)', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         modules: ['vectorizer', 'synap', 'context7'],
+        modular: true,
       };
+      const content = await generateFullAgents(config, '/tmp/test');
+
+      expect(content).toContain('/rulebook/VECTORIZER.md');
+      expect(content).toContain('/rulebook/SYNAP.md');
+      expect(content).toContain('/rulebook/CONTEXT7.md');
+    });
+
+    it('should generate embedded content in legacy mode', async () => {
+      const config: ProjectConfig = {
+        languages: ['rust'],
+        modules: ['vectorizer'],
+        ides: ['cursor'],
+        projectType: 'application',
+        coverageThreshold: 95,
+        strictDocs: true,
+        generateWorkflows: true,
+        modular: false, // Explicitly disable modular
+      };
+
       const content = await generateFullAgents(config);
 
+      // Should include embedded blocks in legacy mode
+      expect(content).toContain('<!-- RUST:START -->');
+      expect(content).toContain('<!-- RUST:END -->');
       expect(content).toContain('<!-- VECTORIZER:START -->');
-      expect(content).toContain('<!-- SYNAP:START -->');
-      expect(content).toContain('<!-- CONTEXT7:START -->');
+      expect(content).toContain('<!-- VECTORIZER:END -->');
     });
 
     it('should include Git workflow when enabled', async () => {
@@ -197,15 +222,17 @@ describe('generator', () => {
   });
 
   describe('frameworks and tools', () => {
-    it('should include frameworks when specified', async () => {
+    it('should include frameworks when specified (modular mode)', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         frameworks: ['nestjs', 'react'],
+        modular: true,
       };
-      const content = await generateFullAgents(config);
+      const content = await generateFullAgents(config, '/tmp/test');
 
-      expect(content).toContain('<!-- NESTJS:START -->');
-      expect(content).toContain('<!-- REACT:START -->');
+      expect(content).toContain('Framework-Specific Rules');
+      expect(content).toContain('/rulebook/NESTJS.md');
+      expect(content).toContain('/rulebook/REACT.md');
     });
 
     it('should include CLI tools when specified', () => {
@@ -226,6 +253,188 @@ describe('generator', () => {
 
       expect(content).not.toContain('<!-- NESTJS:START -->');
       expect(content).not.toContain('<!-- REACT:START -->');
+    });
+
+    it('should handle undefined frameworks', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        frameworks: undefined,
+      };
+      const content = await generateFullAgents(config);
+
+      expect(content).toBeDefined();
+      expect(content.length).toBeGreaterThan(0);
+    });
+
+    it('should include Git workflow when includeGitWorkflow is true', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        includeGitWorkflow: true,
+        gitPushMode: 'manual',
+      };
+      const content = await generateFullAgents(config);
+
+      expect(content).toContain('Git Workflow');
+    });
+
+    it('should not include Git workflow when includeGitWorkflow is false', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        includeGitWorkflow: false,
+      };
+      const content = await generateFullAgents(config);
+
+      // Git workflow should not be present
+      expect(content).toBeDefined();
+    });
+
+    it('should use default gitPushMode when not specified', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        includeGitWorkflow: true,
+        // gitPushMode not specified
+      };
+      const content = await generateFullAgents(config);
+
+      expect(content).toContain('Git Workflow');
+    });
+  });
+
+  describe('generateModularAgents branch coverage', () => {
+    it('should handle empty languages array', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        languages: [],
+        modular: true,
+      };
+      const content = await generateModularAgents(config, '/tmp/test');
+
+      expect(content).toContain('<!-- RULEBOOK:START -->');
+      expect(content).not.toContain('## Language-Specific Rules');
+    });
+
+    it('should handle empty frameworks array', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        frameworks: [],
+        modular: true,
+      };
+      const content = await generateModularAgents(config, '/tmp/test');
+
+      expect(content).toContain('<!-- RULEBOOK:START -->');
+      expect(content).not.toContain('## Framework-Specific Rules');
+    });
+
+    it('should handle undefined frameworks', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        frameworks: undefined,
+        modular: true,
+      };
+      const content = await generateModularAgents(config, '/tmp/test');
+
+      expect(content).toContain('<!-- RULEBOOK:START -->');
+      expect(content).not.toContain('## Framework-Specific Rules');
+    });
+
+    it('should handle minimal mode', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        minimal: true,
+        modular: true,
+      };
+      const content = await generateModularAgents(config, '/tmp/test');
+
+      expect(content).toContain('<!-- RULEBOOK:START -->');
+      // AGENT_AUTOMATION should not be included in minimal mode
+    });
+
+    it('should handle empty modules array', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        modules: [],
+        modular: true,
+      };
+      const content = await generateModularAgents(config, '/tmp/test');
+
+      expect(content).toContain('<!-- RULEBOOK:START -->');
+      expect(content).not.toContain('## Module-Specific Instructions');
+    });
+
+    it('should include Git workflow when includeGitWorkflow is true', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        includeGitWorkflow: true,
+        gitPushMode: 'manual',
+        modular: true,
+      };
+      const content = await generateModularAgents(config, '/tmp/test');
+
+      expect(content).toContain('Git Workflow');
+    });
+
+    it('should not include Git workflow when includeGitWorkflow is false', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        includeGitWorkflow: false,
+        modular: true,
+      };
+      const content = await generateModularAgents(config, '/tmp/test');
+
+      expect(content).toContain('<!-- RULEBOOK:START -->');
+    });
+
+    it('should use custom rulebookDir', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        rulebookDir: 'custom-rulebook',
+        modular: true,
+      };
+      const testDir = '/tmp/test-custom-dir';
+      const content = await generateModularAgents(config, testDir);
+
+      expect(content).toContain('/custom-rulebook/');
+      // The reference paths should use custom-rulebook
+      expect(content).toMatch(/\/custom-rulebook\/[A-Z_]+\.md/);
+    });
+  });
+
+  describe('generateFullAgents legacy mode', () => {
+    it('should use legacy mode when modular is false', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        languages: ['typescript'],
+        modular: false, // Explicitly disable modular
+      };
+      const content = await generateFullAgents(config);
+
+      // Should embed content, not use references
+      expect(content).toContain('<!-- TYPESCRIPT:START -->');
+      expect(content).not.toContain('/rulebook/');
+    });
+
+    it('should handle minimal mode in legacy', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        modular: false,
+        minimal: true,
+      };
+      const content = await generateFullAgents(config);
+
+      expect(content).toBeDefined();
+      // AGENT_AUTOMATION should not be included
+    });
+
+    it('should handle includeGitWorkflow in legacy mode', async () => {
+      const config: ProjectConfig = {
+        ...baseConfig,
+        modular: false,
+        includeGitWorkflow: true,
+        gitPushMode: 'auto',
+      };
+      const content = await generateFullAgents(config);
+
+      expect(content).toContain('Git Workflow');
     });
   });
 

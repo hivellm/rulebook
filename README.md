@@ -52,27 +52,35 @@ npx @hivellm/rulebook@latest update
 ## Key Features
 
 - 🔍 **Auto-Detection**: Detects languages, frameworks (NestJS, React, Spring, etc.), and MCP modules
+- 📁 **Modular Architecture**: Templates stored in `/rulebook/` directory for better organization
+  - Smaller AGENTS.md files (prevents 100k+ character limits)
+  - On-demand loading for better AI performance
+  - Easier maintenance and updates
 - 🔗 **Git Hook Automation**: Optional pre-commit/pre-push hooks with language-aware quality checks
 - 🎯 **Minimal Mode**: Quick setup with just README, LICENSE, tests/, and basic CI
 - 📝 **86+ Templates**: Languages, frameworks, IDEs, workflows pre-configured
 - 🤖 **AI-Optimized**: Works with 23 AI assistants (Cursor, Claude, Gemini, etc.)
 - 📦 **Publication Ready**: CI/CD pipelines for npm, crates.io, PyPI, Maven Central, and more
+- 🔄 **Automatic Migration**: Existing projects automatically migrated to modular structure
 
 ## What It Does
 
 **For New Projects:**
 1. Detects your language(s), frameworks, and MCP modules
 2. Asks setup questions (or use `--minimal` for defaults)
-3. Generates AGENTS.md with AI assistant rules
-4. Optionally installs Git hooks (pre-commit/pre-push)
-5. Creates GitHub Actions workflows
-6. Scaffolds README, LICENSE, /docs, and /tests
+3. Generates AGENTS.md with AI assistant rules (modular structure)
+4. Creates `/rulebook/` directory with language/framework/module templates
+5. Optionally installs Git hooks (pre-commit/pre-push)
+6. Creates GitHub Actions workflows
+7. Scaffolds README, LICENSE, /docs, and /tests
 
 **For Existing Projects:**
 ```bash
 npx @hivellm/rulebook update
 ```
-Merges latest templates while preserving your customizations (auto-backup included).
+- Automatically migrates embedded templates to modular `/rulebook/` structure
+- Merges latest templates while preserving your customizations
+- Updates AGENTS.md with references to modular files
 
 ## Commands
 

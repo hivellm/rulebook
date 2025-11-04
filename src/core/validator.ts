@@ -1,5 +1,5 @@
 import path from 'path';
-import { fileExists, readFile } from '../utils/file-system.js';
+import { fileExists, readFile, findFiles } from '../utils/file-system.js';
 
 export interface ValidationResult {
   valid: boolean;
@@ -28,6 +28,9 @@ export async function validateProject(cwd: string = process.cwd()): Promise<Vali
 
   // Check for AGENTS.md
   await validateAgentsFile(cwd, errors, warnings);
+
+  // Check rulebook directory (if modular mode)
+  await validateRulebookDirectory(cwd, errors, warnings);
 
   // Check documentation structure
   await validateDocumentation(cwd, errors, warnings);
@@ -85,6 +88,30 @@ async function validateAgentsFile(
       message: 'AGENTS.md seems incomplete (very short)',
       file: 'AGENTS.md',
     });
+  }
+}
+
+async function validateRulebookDirectory(
+  cwd: string,
+  _errors: ValidationError[],
+  warnings: ValidationWarning[]
+): Promise<void> {
+  const rulebookPath = path.join(cwd, 'rulebook');
+
+  // Check if rulebook directory exists (optional but recommended for modular mode)
+  const rulebookExists = await fileExists(rulebookPath);
+
+  if (rulebookExists) {
+    // Validate that rulebook directory contains .md files
+    const rulebookFiles = await findFiles('rulebook/*.md', cwd);
+    if (rulebookFiles.length === 0) {
+      warnings.push({
+        type: 'warning',
+        category: 'structure',
+        message: 'rulebook/ directory exists but contains no .md files',
+        file: 'rulebook/',
+      });
+    }
   }
 }
 

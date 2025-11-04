@@ -119,6 +119,7 @@ export async function initCommand(options: {
         installGitHooks: false,
         minimal: cliMinimal,
         lightMode: cliLight,
+        modular: true, // Enable modular /rulebook directory by default
       };
       console.log(chalk.blue('\nUsing detected defaults...'));
     } else {
@@ -136,6 +137,7 @@ export async function initCommand(options: {
     config.ides = minimalMode ? [] : config.ides || ['cursor'];
     config.includeGitWorkflow = config.includeGitWorkflow ?? true;
     config.generateWorkflows = config.generateWorkflows ?? true;
+    config.modular = config.modular ?? true; // Enable modular by default
 
     let minimalArtifacts: string[] = [];
     if (minimalMode) {
@@ -217,12 +219,12 @@ export async function initCommand(options: {
         backupSpinner.succeed(`Backup created: ${path.basename(backupPath)}`);
 
         const genSpinner = ora('Generating new AGENTS.md...').start();
-        finalContent = await generateFullAgents(config);
+        finalContent = await generateFullAgents(config, cwd);
         genSpinner.succeed('AGENTS.md generated');
       }
     } else {
       const genSpinner = ora('Generating AGENTS.md...').start();
-      finalContent = await generateFullAgents(config);
+      finalContent = await generateFullAgents(config, cwd);
       genSpinner.succeed('AGENTS.md generated');
     }
 
@@ -1028,19 +1030,8 @@ export async function updateCommand(options: {
       );
     }
 
-    // Create backup
-    const backupSpinner = ora('Creating backup...').start();
     const agentsPath = path.join(cwd, 'AGENTS.md');
     const rulebookPath = path.join(cwd, '.rulebook');
-
-    const agentsBackup = await createBackup(agentsPath);
-    let rulebookBackup = '';
-    try {
-      rulebookBackup = await createBackup(rulebookPath);
-    } catch {
-      // .rulebook might not exist yet
-    }
-    backupSpinner.succeed('Backup created');
 
     let existingMode: 'minimal' | 'full' | undefined;
     let existingLightMode: boolean | undefined;
@@ -1093,9 +1084,10 @@ export async function updateCommand(options: {
       });
     }
 
-    // Merge with existing AGENTS.md
+    // Merge with existing AGENTS.md (with migration support)
     const mergeSpinner = ora('Updating AGENTS.md with latest templates...').start();
-    const mergedContent = await mergeFullAgents(detection.existingAgents, config);
+    config.modular = config.modular ?? true; // Enable modular by default
+    const mergedContent = await mergeFullAgents(detection.existingAgents, config, cwd);
     await writeFile(agentsPath, mergedContent);
     mergeSpinner.succeed('AGENTS.md updated');
 
@@ -1176,11 +1168,6 @@ export async function updateCommand(options: {
     console.log(chalk.white('Updated components:'));
     console.log(chalk.green('  ✓ AGENTS.md - Merged with latest templates'));
     console.log(chalk.green(`  ✓ .rulebook - Updated to v${getRulebookVersion()}`));
-    console.log(chalk.gray('\nBackups created:'));
-    console.log(chalk.gray(`  - ${path.basename(agentsBackup)}`));
-    if (rulebookBackup) {
-      console.log(chalk.gray(`  - ${path.basename(rulebookBackup)}`));
-    }
 
     console.log(chalk.white('\nWhat was updated:'));
     console.log(chalk.gray(`  - ${detection.languages.length} language templates`));

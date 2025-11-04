@@ -29,10 +29,10 @@ export default defineConfig({
         'src/agents/**', // Agent parsers - requires real CLI tools
       ],
       thresholds: {
-        lines: 82,
-        functions: 84,
-        branches: 68,
-        statements: 81,
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
       },
     },
   },

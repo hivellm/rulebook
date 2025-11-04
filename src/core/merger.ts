@@ -1,5 +1,10 @@
 import type { ExistingAgentsInfo, ProjectConfig, AgentBlock } from '../types.js';
 import { generateAgentsContent, generateLanguageRules, generateModuleRules } from './generator.js';
+import {
+  hasEmbeddedTemplates,
+  migrateEmbeddedTemplates,
+  replaceEmbeddedWithReferences,
+} from './migrator.js';
 
 export async function mergeAgents(
   existing: ExistingAgentsInfo,
@@ -66,8 +71,22 @@ export async function mergeModuleRules(
 
 export async function mergeFullAgents(
   existing: ExistingAgentsInfo,
-  config: ProjectConfig
+  config: ProjectConfig,
+  projectRoot?: string
 ): Promise<string> {
+  // Check if we need to migrate from embedded to modular
+  const needsMigration = hasEmbeddedTemplates(existing) && config.modular !== false;
+
+  if (needsMigration && projectRoot) {
+    // Migrate embedded templates to /rulebook/ directory
+    await migrateEmbeddedTemplates(existing, config, projectRoot);
+
+    // Generate new modular AGENTS.md with references
+    // This replaces the entire content with modular format
+    return await replaceEmbeddedWithReferences(config, projectRoot);
+  }
+
+  // Legacy merge behavior (for non-modular mode or when migration not needed)
   let content = existing.content!;
   let currentExisting = { ...existing };
 
@@ -81,7 +100,13 @@ export async function mergeFullAgents(
     blocks: parseBlocks(content),
   };
 
-  // Merge language rules
+  // If modular mode, use generateModularAgents instead of merging blocks
+  if (config.modular !== false && projectRoot) {
+    const { generateModularAgents } = await import('./generator.js');
+    return await generateModularAgents(config, projectRoot);
+  }
+
+  // Legacy: Merge language rules (embedded)
   for (const language of config.languages) {
     content = await mergeLanguageRules(currentExisting, language);
 
@@ -93,7 +118,7 @@ export async function mergeFullAgents(
     };
   }
 
-  // Merge module rules
+  // Legacy: Merge module rules (embedded)
   for (const module of config.modules) {
     content = await mergeModuleRules(currentExisting, module);
 

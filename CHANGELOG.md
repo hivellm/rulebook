@@ -27,8 +27,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+- **Modular Architecture**: AGENTS.md now uses modular structure by default
+  - Language, framework, and module templates are now stored in `/rulebook/` directory
+  - AGENTS.md contains only core rules and references to modular files
+  - **Migration**: Existing projects are automatically migrated on `rulebook update`
+  - **Legacy Mode**: Set `modular: false` in config to use embedded templates (not recommended)
+
 ### Added
-- _Future features will be documented here_
+- **Modular Directive Structure**: New `/rulebook/` directory for organized templates
+  - Each language, framework, and module has its own `.md` file in `/rulebook/`
+  - Reduces AGENTS.md size significantly (prevents 100k+ character limits)
+  - Better AI performance with on-demand loading
+  - Easier maintenance and updates
+- **Automatic Migration**: `rulebook update` automatically migrates embedded templates to modular structure
+- **Reference Format**: AGENTS.md includes clear usage instructions for each module
+  - Example: "For TypeScript-specific rules, see `/rulebook/TYPESCRIPT.md`"
+- **Validation**: `rulebook validate` now checks `/rulebook/` directory structure
+- **Backup Removal**: Removed automatic backups from `update` command for cleaner workflow
+
+### Changed
+- Default behavior: All new projects use modular structure
+- AGENTS.md generation: Now generates references instead of embedding full templates
+- Update command: Automatically migrates existing projects to modular structure
 
 ## [0.16.0] - 2025-11-01
 

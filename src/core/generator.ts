@@ -1,5 +1,5 @@
 import path from 'path';
-import { readFile, fileExists } from '../utils/file-system.js';
+import { readFile, fileExists, writeFile, ensureDir } from '../utils/file-system.js';
 import type { ProjectConfig } from '../types.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -224,7 +224,221 @@ AI assistants may execute push commands automatically.
   return gitRules;
 }
 
-export async function generateFullAgents(config: ProjectConfig): Promise<string> {
+/**
+ * Write modular directive file to /rulebook/ directory
+ * Adds header and footer comments for consistency
+ */
+async function writeModularFile(
+  projectRoot: string,
+  fileName: string,
+  content: string,
+  rulebookDir: string = 'rulebook'
+): Promise<void> {
+  const rulebookPath = path.join(projectRoot, rulebookDir);
+  await ensureDir(rulebookPath);
+  const filePath = path.join(rulebookPath, `${fileName}.md`);
+
+  // Add header comment if not already present
+  const headerComment = `<!-- ${fileName}:START -->\n`;
+  const footerComment = `\n<!-- ${fileName}:END -->`;
+
+  let finalContent = content.trim();
+
+  // Add header if not present
+  if (!finalContent.startsWith(headerComment.trim())) {
+    finalContent = headerComment + finalContent;
+  }
+
+  // Add footer if not present
+  if (!finalContent.endsWith(footerComment.trim())) {
+    finalContent = finalContent + footerComment;
+  }
+
+  await writeFile(filePath, finalContent);
+}
+
+/**
+ * Generate reference section for AGENTS.md
+ */
+function generateReferenceSection(
+  name: string,
+  fileName: string,
+  description: string,
+  quickRef: string[],
+  rulebookDir: string = 'rulebook'
+): string {
+  const sections: string[] = [];
+  sections.push(`## ${name}`);
+  sections.push('');
+  sections.push(`For comprehensive ${description}, see \`/${rulebookDir}/${fileName}.md\``);
+  sections.push('');
+  sections.push('Quick reference:');
+  for (const item of quickRef) {
+    sections.push(`- ${item}`);
+  }
+  sections.push('');
+  return sections.join('\n');
+}
+
+/**
+ * Generate language reference for AGENTS.md
+ */
+function generateLanguageReference(language: string, rulebookDir: string = 'rulebook'): string {
+  const languageName = language.charAt(0).toUpperCase() + language.slice(1);
+  const quickRef = [
+    'Type safety and strict mode',
+    'Code quality standards',
+    'Testing requirements (95%+ coverage)',
+    'Package management',
+    'Error handling patterns',
+  ];
+  return generateReferenceSection(
+    `${languageName} Development Rules`,
+    language.toUpperCase(),
+    `${languageName}-specific guidelines`,
+    quickRef,
+    rulebookDir
+  );
+}
+
+/**
+ * Generate framework reference for AGENTS.md
+ */
+function generateFrameworkReference(framework: string, rulebookDir: string = 'rulebook'): string {
+  const frameworkName = framework.charAt(0).toUpperCase() + framework.slice(1);
+  const quickRef = [
+    'Framework-specific patterns',
+    'Component structure',
+    'Best practices',
+    'Testing conventions',
+  ];
+  return generateReferenceSection(
+    `${frameworkName} Framework Rules`,
+    framework.toUpperCase(),
+    `${frameworkName}-specific guidelines`,
+    quickRef,
+    rulebookDir
+  );
+}
+
+/**
+ * Generate module reference for AGENTS.md
+ */
+function generateModuleReference(module: string, rulebookDir: string = 'rulebook'): string {
+  const moduleName = module.charAt(0).toUpperCase() + module.slice(1).replace(/_/g, ' ');
+  const quickRef = ['Module-specific instructions', 'Usage guidelines', 'Integration patterns'];
+  return generateReferenceSection(
+    `${moduleName} Instructions`,
+    module.toUpperCase(),
+    `${moduleName}-specific instructions`,
+    quickRef,
+    rulebookDir
+  );
+}
+
+/**
+ * Generate modular AGENTS.md with references
+ */
+export async function generateModularAgents(
+  config: ProjectConfig,
+  projectRoot: string = process.cwd()
+): Promise<string> {
+  const rulebookDir = config.rulebookDir || 'rulebook';
+  const sections: string[] = [];
+
+  // Add Rulebook section (core rules stay embedded)
+  sections.push(await generateAgentsContent(config));
+  sections.push('');
+
+  // Write language files and add references
+  if (config.languages.length > 0) {
+    sections.push('## Language-Specific Rules');
+    sections.push('');
+    sections.push(
+      'The following languages are configured for this project. For detailed rules, see the corresponding files in `/rulebook/`:'
+    );
+    sections.push('');
+    for (const language of config.languages) {
+      const langRules = await generateLanguageRules(language);
+      await writeModularFile(projectRoot, language.toUpperCase(), langRules, rulebookDir);
+      sections.push(generateLanguageReference(language, rulebookDir));
+    }
+    sections.push('');
+    sections.push(
+      '**Usage**: When working with language-specific code, reference the corresponding `/rulebook/[LANGUAGE].md` file for detailed guidelines.'
+    );
+    sections.push('');
+  }
+
+  // Write framework files and add references
+  if (config.frameworks && config.frameworks.length > 0) {
+    sections.push('## Framework-Specific Rules');
+    sections.push('');
+    sections.push(
+      'The following frameworks are configured for this project. For detailed rules, see the corresponding files in `/rulebook/`:'
+    );
+    sections.push('');
+    for (const framework of config.frameworks) {
+      const frameworkRules = await generateFrameworkRules(framework);
+      await writeModularFile(projectRoot, framework.toUpperCase(), frameworkRules, rulebookDir);
+      sections.push(generateFrameworkReference(framework, rulebookDir));
+    }
+    sections.push('');
+    sections.push(
+      '**Usage**: When working with framework-specific code, reference the corresponding `/rulebook/[FRAMEWORK].md` file for detailed guidelines.'
+    );
+    sections.push('');
+  }
+
+  // Write module files and add references
+  if (!config.minimal) {
+    const agentAutomation = await generateModuleRules('agent_automation');
+    await writeModularFile(projectRoot, 'AGENT_AUTOMATION', agentAutomation, rulebookDir);
+    sections.push(generateModuleReference('agent_automation', rulebookDir));
+  }
+
+  if (config.modules.length > 0) {
+    sections.push('## Module-Specific Instructions');
+    sections.push('');
+    sections.push(
+      'The following modules are configured for this project. For detailed instructions, see the corresponding files in `/rulebook/`:'
+    );
+    sections.push('');
+    for (const module of config.modules) {
+      const moduleRules = await generateModuleRules(module);
+      await writeModularFile(projectRoot, module.toUpperCase(), moduleRules, rulebookDir);
+      sections.push(generateModuleReference(module, rulebookDir));
+    }
+    sections.push('');
+    sections.push(
+      '**Usage**: When working with module-specific features, reference the corresponding `/rulebook/[MODULE].md` file for detailed instructions.'
+    );
+    sections.push('');
+  }
+
+  // Git workflow rules (keep embedded in AGENTS.md for now)
+  if (config.includeGitWorkflow) {
+    const gitRules = await generateGitRules(config.gitPushMode || 'manual');
+    sections.push(gitRules);
+    sections.push('');
+  }
+
+  return sections.join('\n').trim() + '\n';
+}
+
+/**
+ * Generate full AGENTS.md (modular by default, legacy mode available)
+ */
+export async function generateFullAgents(
+  config: ProjectConfig,
+  projectRoot: string = process.cwd()
+): Promise<string> {
+  // Use modular generation by default (unless explicitly disabled)
+  if (config.modular !== false) {
+    return await generateModularAgents(config, projectRoot);
+  }
+
+  // Legacy mode: embed all templates
   const sections: string[] = [];
 
   // Add Rulebook section

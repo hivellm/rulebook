@@ -117,6 +117,8 @@ export interface ProjectConfig {
   installGitHooks?: boolean;
   minimal?: boolean;
   lightMode?: boolean;
+  modular?: boolean; // Enable modular /rulebook directory structure
+  rulebookDir?: string; // Custom rulebook directory (default: 'rulebook')
 }
 
 export interface RuleConfig {

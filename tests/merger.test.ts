@@ -195,5 +195,354 @@ Old Rust rules
       expect(merged).toContain('# Rust Project Rules');
       expect(merged).not.toContain('Old Rust rules');
     });
+
+    it('should migrate embedded templates when modular mode enabled', async () => {
+      const existing: ExistingAgentsInfo = {
+        exists: true,
+        path: '/test/AGENTS.md',
+        content: `<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->
+<!-- TYPESCRIPT:START -->
+TypeScript content
+<!-- TYPESCRIPT:END -->`,
+        blocks: [
+          {
+            name: 'RULEBOOK',
+            startLine: 0,
+            endLine: 1,
+            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+          },
+          {
+            name: 'TYPESCRIPT',
+            startLine: 2,
+            endLine: 4,
+            content: '<!-- TYPESCRIPT:START -->\nTypeScript content\n<!-- TYPESCRIPT:END -->',
+          },
+        ],
+      };
+
+      const config: ProjectConfig = {
+        ...baseConfig,
+        languages: ['typescript'],
+        modules: [],
+        modular: true,
+      };
+
+      const projectRoot = '/tmp/test-migration';
+      const merged = await mergeFullAgents(existing, config, projectRoot);
+
+      // Should generate modular format with references
+      expect(merged).toContain('/rulebook/TYPESCRIPT.md');
+      expect(merged).toContain('<!-- RULEBOOK:START -->');
+    });
+
+    it('should use legacy merge when modular is false', async () => {
+      const existing: ExistingAgentsInfo = {
+        exists: true,
+        path: '/test/AGENTS.md',
+        content: `<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->
+<!-- TYPESCRIPT:START -->
+TypeScript content
+<!-- TYPESCRIPT:END -->`,
+        blocks: [
+          {
+            name: 'RULEBOOK',
+            startLine: 0,
+            endLine: 1,
+            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+          },
+          {
+            name: 'TYPESCRIPT',
+            startLine: 2,
+            endLine: 4,
+            content: '<!-- TYPESCRIPT:START -->\nTypeScript content\n<!-- TYPESCRIPT:END -->',
+          },
+        ],
+      };
+
+      const config: ProjectConfig = {
+        ...baseConfig,
+        languages: ['typescript'],
+        modules: [],
+        modular: false, // Explicitly disable modular
+      };
+
+      const merged = await mergeFullAgents(existing, config);
+
+      // Should use legacy embedded format
+      expect(merged).toContain('<!-- TYPESCRIPT:START -->');
+      expect(merged).not.toContain('/rulebook/');
+    });
+
+    it('should use modular generation when modular enabled and projectRoot provided', async () => {
+      const existing: ExistingAgentsInfo = {
+        exists: true,
+        path: '/test/AGENTS.md',
+        content: `<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->`,
+        blocks: [
+          {
+            name: 'RULEBOOK',
+            startLine: 0,
+            endLine: 1,
+            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+          },
+        ],
+      };
+
+      const config: ProjectConfig = {
+        ...baseConfig,
+        languages: ['typescript'],
+        modules: ['openspec'],
+        modular: true,
+      };
+
+      const projectRoot = '/tmp/test-modular';
+      const merged = await mergeFullAgents(existing, config, projectRoot);
+
+      // Should generate modular format
+      expect(merged).toContain('/rulebook/TYPESCRIPT.md');
+      expect(merged).toContain('/rulebook/OPENSPEC.md');
+    });
+
+    it('should use legacy merge when modular enabled but no projectRoot', async () => {
+      const existing: ExistingAgentsInfo = {
+        exists: true,
+        path: '/test/AGENTS.md',
+        content: `<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->
+<!-- TYPESCRIPT:START -->
+TypeScript content
+<!-- TYPESCRIPT:END -->`,
+        blocks: [
+          {
+            name: 'RULEBOOK',
+            startLine: 0,
+            endLine: 1,
+            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+          },
+          {
+            name: 'TYPESCRIPT',
+            startLine: 2,
+            endLine: 4,
+            content: '<!-- TYPESCRIPT:START -->\nTypeScript content\n<!-- TYPESCRIPT:END -->',
+          },
+        ],
+      };
+
+      const config: ProjectConfig = {
+        ...baseConfig,
+        languages: ['typescript'],
+        modules: [],
+        modular: true,
+      };
+
+      // No projectRoot provided
+      const merged = await mergeFullAgents(existing, config);
+
+      // Should fall back to legacy merge
+      expect(merged).toContain('<!-- TYPESCRIPT:START -->');
+    });
+
+    it('should not migrate when no embedded templates detected', async () => {
+      const existing: ExistingAgentsInfo = {
+        exists: true,
+        path: '/test/AGENTS.md',
+        content: `<!-- RULEBOOK:START -->\n# Project Rules\n<!-- RULEBOOK:END -->`,
+        blocks: [
+          {
+            name: 'RULEBOOK',
+            startLine: 0,
+            endLine: 2,
+            content: '<!-- RULEBOOK:START -->\n# Project Rules\n<!-- RULEBOOK:END -->',
+          },
+        ],
+      };
+
+      const config: ProjectConfig = {
+        ...baseConfig,
+        languages: ['typescript'],
+        modules: [],
+        modular: true,
+      };
+
+      const projectRoot = '/tmp/test-no-migration';
+      const merged = await mergeFullAgents(existing, config, projectRoot);
+
+      // Should use modular generation (not migration)
+      expect(merged).toContain('<!-- RULEBOOK:START -->');
+    });
+
+    it('should handle migration when needsMigration but modular is false', async () => {
+      const existing: ExistingAgentsInfo = {
+        exists: true,
+        path: '/test/AGENTS.md',
+        content: `<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->
+<!-- TYPESCRIPT:START -->
+TypeScript content
+<!-- TYPESCRIPT:END -->`,
+        blocks: [
+          {
+            name: 'RULEBOOK',
+            startLine: 0,
+            endLine: 1,
+            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+          },
+          {
+            name: 'TYPESCRIPT',
+            startLine: 2,
+            endLine: 4,
+            content: '<!-- TYPESCRIPT:START -->\nTypeScript content\n<!-- TYPESCRIPT:END -->',
+          },
+        ],
+      };
+
+      const config: ProjectConfig = {
+        ...baseConfig,
+        languages: ['typescript'],
+        modules: [],
+        modular: false, // Explicitly false
+      };
+
+      const projectRoot = '/tmp/test-no-migration';
+      const merged = await mergeFullAgents(existing, config, projectRoot);
+
+      // Should use legacy merge (modular is false)
+      expect(merged).toContain('<!-- TYPESCRIPT:START -->');
+      expect(merged).not.toContain('/rulebook/');
+    });
+  });
+
+  describe('mergeLanguageRules', () => {
+    it('should replace existing language block', async () => {
+      const { mergeLanguageRules } = await import('../src/core/merger');
+      const existing: ExistingAgentsInfo = {
+        exists: true,
+        path: '/test/AGENTS.md',
+        content: `<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->
+<!-- RUST:START -->
+Old Rust rules
+<!-- RUST:END -->
+<!-- OTHER:START -->
+Other content
+<!-- OTHER:END -->`,
+        blocks: [
+          {
+            name: 'RULEBOOK',
+            startLine: 0,
+            endLine: 1,
+            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+          },
+          {
+            name: 'RUST',
+            startLine: 2,
+            endLine: 4,
+            content: '<!-- RUST:START -->\nOld Rust rules\n<!-- RUST:END -->',
+          },
+          {
+            name: 'OTHER',
+            startLine: 6,
+            endLine: 8,
+            content: '<!-- OTHER:START -->\nOther content\n<!-- OTHER:END -->',
+          },
+        ],
+      };
+
+      const merged = await mergeLanguageRules(existing, 'rust');
+
+      expect(merged).toContain('<!-- RUST:START -->');
+      expect(merged).toContain('# Rust Project Rules');
+      expect(merged).not.toContain('Old Rust rules');
+      expect(merged).toContain('<!-- OTHER:START -->');
+      expect(merged).toContain('Other content');
+    });
+
+    it('should append language block when not found', async () => {
+      const { mergeLanguageRules } = await import('../src/core/merger');
+      const existing: ExistingAgentsInfo = {
+        exists: true,
+        path: '/test/AGENTS.md',
+        content: `<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->`,
+        blocks: [
+          {
+            name: 'RULEBOOK',
+            startLine: 0,
+            endLine: 1,
+            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+          },
+        ],
+      };
+
+      const merged = await mergeLanguageRules(existing, 'typescript');
+
+      expect(merged).toContain('<!-- TYPESCRIPT:START -->');
+      expect(merged).toContain('# TypeScript Project Rules');
+      expect(merged).toContain('<!-- RULEBOOK:START -->');
+    });
+  });
+
+  describe('mergeModuleRules', () => {
+    it('should replace existing module block', async () => {
+      const { mergeModuleRules } = await import('../src/core/merger');
+      const existing: ExistingAgentsInfo = {
+        exists: true,
+        path: '/test/AGENTS.md',
+        content: `<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->
+<!-- OPENSPEC:START -->
+Old OpenSpec rules
+<!-- OPENSPEC:END -->
+<!-- OTHER:START -->
+Other content
+<!-- OTHER:END -->`,
+        blocks: [
+          {
+            name: 'RULEBOOK',
+            startLine: 0,
+            endLine: 1,
+            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+          },
+          {
+            name: 'OPENSPEC',
+            startLine: 2,
+            endLine: 4,
+            content: '<!-- OPENSPEC:START -->\nOld OpenSpec rules\n<!-- OPENSPEC:END -->',
+          },
+          {
+            name: 'OTHER',
+            startLine: 6,
+            endLine: 8,
+            content: '<!-- OTHER:START -->\nOther content\n<!-- OTHER:END -->',
+          },
+        ],
+      };
+
+      const merged = await mergeModuleRules(existing, 'openspec');
+
+      expect(merged).toContain('<!-- OPENSPEC:START -->');
+      expect(merged).toContain('# OpenSpec Instructions');
+      expect(merged).not.toContain('Old OpenSpec rules');
+      expect(merged).toContain('<!-- OTHER:START -->');
+      expect(merged).toContain('Other content');
+    });
+
+    it('should append module block when not found', async () => {
+      const { mergeModuleRules } = await import('../src/core/merger');
+      const existing: ExistingAgentsInfo = {
+        exists: true,
+        path: '/test/AGENTS.md',
+        content: `<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->`,
+        blocks: [
+          {
+            name: 'RULEBOOK',
+            startLine: 0,
+            endLine: 1,
+            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+          },
+        ],
+      };
+
+      const merged = await mergeModuleRules(existing, 'vectorizer');
+
+      expect(merged).toContain('<!-- VECTORIZER:START -->');
+      expect(merged).toContain('# Vectorizer Instructions');
+      expect(merged).toContain('<!-- RULEBOOK:START -->');
+    });
   });
 });
