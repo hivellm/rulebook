@@ -54,8 +54,13 @@ npx @hivellm/rulebook@latest update
 - 🔍 **Auto-Detection**: Detects languages, frameworks (NestJS, React, Spring, etc.), and MCP modules
 - 📁 **Modular Architecture**: Templates stored in `/rulebook/` directory for better organization
   - Smaller AGENTS.md files (prevents 100k+ character limits)
+  - QUALITY_ENFORCEMENT and Git rules moved to `/rulebook/` for cleaner structure
   - On-demand loading for better AI performance
   - Easier maintenance and updates
+- 📋 **Simplified AGENTS.md**: Clean, focused structure with only core rules and references
+  - Proper hierarchy with `##` and `###` subsections
+  - All modules grouped logically
+  - Better readability and navigation
 - 🔗 **Git Hook Automation**: Optional pre-commit/pre-push hooks with language-aware quality checks
 - 🎯 **Minimal Mode**: Quick setup with just README, LICENSE, tests/, and basic CI
 - 📝 **86+ Templates**: Languages, frameworks, IDEs, workflows pre-configured
