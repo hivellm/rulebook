@@ -170,6 +170,12 @@ export interface RulebookConfig {
     cliResponse: number;
     testRun: number;
   };
+  // Project configuration detected/set during init/update
+  languages?: LanguageDetection['language'][];
+  frameworks?: FrameworkId[];
+  modules?: ModuleDetection['module'][];
+  modular?: boolean; // Enable modular /rulebook directory structure
+  rulebookDir?: string; // Custom rulebook directory (default: 'rulebook')
 }
 
 export interface OpenSpecTask {

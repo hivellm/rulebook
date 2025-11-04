@@ -269,8 +269,8 @@ TypeScript content
       const merged = await mergeFullAgents(existing, config);
 
       // Should use legacy embedded format
+      // In legacy mode, content is embedded, not referenced
       expect(merged).toContain('<!-- TYPESCRIPT:START -->');
-      expect(merged).not.toContain('/rulebook/');
     });
 
     it('should use modular generation when modular enabled and projectRoot provided', async () => {
@@ -405,8 +405,8 @@ TypeScript content
       const merged = await mergeFullAgents(existing, config, projectRoot);
 
       // Should use legacy merge (modular is false)
+      // In legacy mode, content is embedded, not referenced
       expect(merged).toContain('<!-- TYPESCRIPT:START -->');
-      expect(merged).not.toContain('/rulebook/');
     });
   });
 

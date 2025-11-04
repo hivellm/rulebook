@@ -1,7 +1,7 @@
 {
-  "version": "0.15.0-rc1",
-  "installedAt": "2025-10-31T02:25:38.304Z",
-  "updatedAt": "2025-10-31T06:16:56.179Z",
+  "version": "1.0.0",
+  "installedAt": "2025-11-04T04:56:25.045Z",
+  "updatedAt": "2025-11-04T05:01:11.631Z",
   "projectId": "rulebook",
   "mode": "full",
   "features": {
@@ -30,5 +30,15 @@
     "taskExecution": 3600000,
     "cliResponse": 180000,
     "testRun": 600000
-  }
+  },
+  "languages": [
+    "typescript"
+  ],
+  "frameworks": [],
+  "modules": [
+    "openspec",
+    "context7"
+  ],
+  "modular": true,
+  "rulebookDir": "rulebook"
 }

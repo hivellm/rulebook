@@ -26,103 +26,44 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push(`Generated at: ${new Date().toISOString()}`);
   sections.push('');
 
-  // Inject Quality Enforcement Rules if not in light mode
+  // Core rules summary (detailed rules in /rulebook/)
+  sections.push('## Core Rules');
+  sections.push('');
+  sections.push('This project uses @hivellm/rulebook standards.');
+  sections.push('');
+  sections.push('**CRITICAL RULES:**');
+  sections.push('1. Always reference @AGENTS.md before coding');
+  sections.push(`2. Write tests first (${config.coverageThreshold}%+ coverage required)`);
+  sections.push('3. Run quality checks before committing:');
+  sections.push('   - Type check / Compiler check');
+  sections.push('   - Linter (no warnings allowed)');
+  sections.push('   - All tests (100% pass rate)');
+  sections.push('   - Coverage check');
+  sections.push('4. Update docs/ when implementing features');
+  sections.push('5. Follow strict documentation structure');
+  sections.push('');
+  const rulebookDir = config.rulebookDir || 'rulebook';
+
+  sections.push('## Detailed Rules');
+  sections.push('');
+  sections.push(`For comprehensive rules, see the corresponding files in \`/${rulebookDir}/\`:`);
+  sections.push('');
+
+  // Only reference QUALITY_ENFORCEMENT if not in light mode
   if (!config.lightMode) {
-    const enforcementPath = path.join(getTemplatesDir(), 'modules', 'QUALITY_ENFORCEMENT.md');
-    const enforcementContent = await readFile(enforcementPath);
-    sections.push(enforcementContent.trim());
-    sections.push('');
-    sections.push('');
+    sections.push(`- \`/${rulebookDir}/QUALITY_ENFORCEMENT.md\` - Quality enforcement rules`);
   }
 
-  // Documentation Standards
-  sections.push('## Documentation Standards');
-  sections.push('');
-  if (config.strictDocs) {
-    sections.push('**CRITICAL**: Minimize Markdown files. Keep documentation organized.');
-    sections.push('');
-    sections.push('### Allowed Root-Level Documentation');
-    sections.push('Only these files are allowed in the project root:');
-    sections.push('- ✅ `README.md` - Project overview and quick start');
-    sections.push('- ✅ `CHANGELOG.md` - Version history and release notes');
-    sections.push('- ✅ `AGENTS.md` - This file (AI assistant instructions)');
-    sections.push('- ✅ `LICENSE` - Project license');
-    sections.push('- ✅ `CONTRIBUTING.md` - Contribution guidelines');
-    sections.push('- ✅ `CODE_OF_CONDUCT.md` - Code of conduct');
-    sections.push('- ✅ `SECURITY.md` - Security policy');
-    sections.push('');
-    sections.push('### All Other Documentation');
-    sections.push('**ALL other documentation MUST go in `/docs` directory**:');
-    sections.push('- `/docs/ARCHITECTURE.md` - System architecture');
-    sections.push('- `/docs/DEVELOPMENT.md` - Development guide');
-    sections.push('- `/docs/ROADMAP.md` - Project roadmap');
-    sections.push('- `/docs/DAG.md` - Component dependencies (DAG)');
-    sections.push('- `/docs/specs/` - Feature specifications');
-    sections.push('- `/docs/sdks/` - SDK documentation');
-    sections.push('- `/docs/protocols/` - Protocol specifications');
-    sections.push('- `/docs/guides/` - Developer guides');
-    sections.push('- `/docs/diagrams/` - Architecture diagrams');
-    sections.push('- `/docs/benchmarks/` - Performance benchmarks');
-    sections.push('- `/docs/versions/` - Version release reports');
-    sections.push('');
-  } else {
-    sections.push('Documentation should be well-organized in the `/docs` directory.');
-    sections.push('');
+  // Only reference GIT if enabled
+  if (config.includeGitWorkflow) {
+    sections.push(`- \`/${rulebookDir}/GIT.md\` - Git workflow rules`);
   }
 
-  // Testing Requirements
-  sections.push('## Testing Requirements');
   sections.push('');
-  sections.push('**CRITICAL**: All features must have comprehensive tests.');
+  sections.push(`Language-specific rules are in \`/${rulebookDir}/\`.`);
+  sections.push(`Module-specific patterns are in \`/${rulebookDir}/\`.`);
   sections.push('');
-  sections.push(`- **Minimum Coverage**: ${config.coverageThreshold}%`);
-  sections.push('- **Test Location**: `/tests` directory in project root');
-  sections.push('- **Test Execution**: 100% of tests MUST pass before moving to next task');
-  sections.push('- **Test First**: Write tests based on specifications before implementation');
-  sections.push('');
-
-  // Feature Development Workflow
-  sections.push('## Feature Development Workflow');
-  sections.push('');
-  sections.push('**CRITICAL**: Follow this workflow for all feature development.');
-  sections.push('');
-  sections.push('1. **Check Specifications First**:');
-  sections.push('   - Read `/docs/specs/` for feature specifications');
-  sections.push('   - Review `/docs/ARCHITECTURE.md` for system design');
-  sections.push('   - Check `/docs/ROADMAP.md` for implementation timeline');
-  sections.push('   - Review `/docs/DAG.md` for component dependencies');
-  sections.push('');
-  sections.push('2. **Implement with Tests**:');
-  sections.push('   - Write tests in `/tests` directory first');
-  sections.push('   - Implement feature following specifications');
-  sections.push('   - Ensure tests pass and meet coverage threshold');
-  sections.push('');
-  sections.push('3. **Quality Checks**:');
-  sections.push('   - Run code formatter');
-  sections.push('   - Run linter (must pass with no warnings)');
-  sections.push('   - Run all tests (must be 100% passing)');
-  sections.push('   - Verify coverage meets threshold');
-  sections.push('');
-  sections.push('4. **Update Documentation**:');
-  sections.push('   - Update `/docs/ROADMAP.md` progress');
-  sections.push('   - Update feature specs if implementation differs');
-  sections.push('   - Document any deviations with justification');
-  sections.push('');
-
-  // Rules Ignore
-  sections.push('## Rules Configuration');
-  sections.push('');
-  sections.push('Rules can be selectively disabled using `.rulesignore` file in project root.');
-  sections.push('');
-  sections.push('Example `.rulesignore`:');
-  sections.push('```');
-  sections.push('# Ignore coverage requirement');
-  sections.push('coverage-threshold');
-  sections.push('# Ignore specific language rules');
-  sections.push('rust/edition-2024');
-  sections.push('# Ignore all TypeScript rules');
-  sections.push('typescript/*');
-  sections.push('```');
+  sections.push('When in doubt, ask to review @AGENTS.md first.');
   sections.push('');
   sections.push('<!-- RULEBOOK:END -->');
   sections.push('');
@@ -337,28 +278,91 @@ function generateModuleReference(module: string, rulebookDir: string = 'rulebook
 }
 
 /**
+ * Load project configuration from .rulebook file
+ */
+async function loadProjectConfigFromRulebook(
+  projectRoot: string = process.cwd()
+): Promise<Partial<ProjectConfig>> {
+  const { createConfigManager } = await import('./config-manager.js');
+  const configManager = createConfigManager(projectRoot);
+
+  try {
+    const rulebookConfig = await configManager.loadConfig();
+
+    // Map RulebookConfig to ProjectConfig
+    const projectConfig: Partial<ProjectConfig> = {
+      languages: rulebookConfig.languages || [],
+      frameworks: rulebookConfig.frameworks || [],
+      modules: rulebookConfig.modules || [],
+      modular: rulebookConfig.modular !== false, // Default to true
+      rulebookDir: rulebookConfig.rulebookDir || 'rulebook',
+    };
+
+    return projectConfig;
+  } catch {
+    // If .rulebook doesn't exist or can't be read, return empty config
+    return {};
+  }
+}
+
+/**
  * Generate modular AGENTS.md with references
  */
 export async function generateModularAgents(
   config: ProjectConfig,
   projectRoot: string = process.cwd()
 ): Promise<string> {
-  const rulebookDir = config.rulebookDir || 'rulebook';
+  // Load saved configuration from .rulebook and merge with provided config
+  const savedConfig = await loadProjectConfigFromRulebook(projectRoot);
+
+  // Merge: saved config takes precedence for languages/frameworks/modules
+  // provided config takes precedence for other settings (like rulebookDir when explicitly set)
+  const mergedConfig: ProjectConfig = {
+    ...config,
+    languages: savedConfig.languages?.length ? savedConfig.languages : config.languages,
+    frameworks: savedConfig.frameworks?.length ? savedConfig.frameworks : config.frameworks || [],
+    modules: savedConfig.modules?.length ? savedConfig.modules : config.modules,
+    modular: savedConfig.modular !== undefined ? savedConfig.modular : config.modular !== false,
+    // rulebookDir: provided config takes precedence if explicitly set, otherwise use saved or default
+    rulebookDir: config.rulebookDir || savedConfig.rulebookDir || 'rulebook',
+  };
+
+  const rulebookDir = mergedConfig.rulebookDir || 'rulebook';
   const sections: string[] = [];
 
-  // Add Rulebook section (core rules stay embedded)
-  sections.push(await generateAgentsContent(config));
+  // Add Rulebook section (core rules stay embedded - simplified)
+  sections.push(await generateAgentsContent(mergedConfig));
   sections.push('');
 
+  // Write QUALITY_ENFORCEMENT to /rulebook/ (always included unless light mode)
+  if (!mergedConfig.lightMode) {
+    const enforcementPath = path.join(getTemplatesDir(), 'modules', 'QUALITY_ENFORCEMENT.md');
+    if (await fileExists(enforcementPath)) {
+      const enforcementContent = await readFile(enforcementPath);
+      await writeModularFile(
+        projectRoot,
+        'QUALITY_ENFORCEMENT',
+        enforcementContent.trim(),
+        rulebookDir
+      );
+    }
+  }
+
+  // Write Git workflow rules to /rulebook/GIT.md
+  if (mergedConfig.includeGitWorkflow) {
+    const gitRules = await generateGitRules(mergedConfig.gitPushMode || 'manual');
+    await writeModularFile(projectRoot, 'GIT', gitRules.trim(), rulebookDir);
+  }
+
   // Write language files and add references
-  if (config.languages.length > 0) {
+  if (mergedConfig.languages.length > 0) {
     sections.push('## Language-Specific Rules');
     sections.push('');
     sections.push(
       'The following languages are configured for this project. For detailed rules, see the corresponding files in `/rulebook/`:'
     );
     sections.push('');
-    for (const language of config.languages) {
+    for (const language of mergedConfig.languages) {
       const langRules = await generateLanguageRules(language);
       await writeModularFile(projectRoot, language.toUpperCase(), langRules, rulebookDir);
       sections.push(generateLanguageReference(language, rulebookDir));
@@ -371,14 +375,14 @@ export async function generateModularAgents(
   }
 
   // Write framework files and add references
-  if (config.frameworks && config.frameworks.length > 0) {
+  if (mergedConfig.frameworks && mergedConfig.frameworks.length > 0) {
     sections.push('## Framework-Specific Rules');
     sections.push('');
     sections.push(
       'The following frameworks are configured for this project. For detailed rules, see the corresponding files in `/rulebook/`:'
     );
     sections.push('');
-    for (const framework of config.frameworks) {
+    for (const framework of mergedConfig.frameworks) {
       const frameworkRules = await generateFrameworkRules(framework);
       await writeModularFile(projectRoot, framework.toUpperCase(), frameworkRules, rulebookDir);
       sections.push(generateFrameworkReference(framework, rulebookDir));
@@ -391,20 +395,20 @@ export async function generateModularAgents(
   }
 
   // Write module files and add references
-  if (!config.minimal) {
+  if (!mergedConfig.minimal) {
     const agentAutomation = await generateModuleRules('agent_automation');
     await writeModularFile(projectRoot, 'AGENT_AUTOMATION', agentAutomation, rulebookDir);
     sections.push(generateModuleReference('agent_automation', rulebookDir));
   }
 
-  if (config.modules.length > 0) {
+  if (mergedConfig.modules.length > 0) {
     sections.push('## Module-Specific Instructions');
     sections.push('');
     sections.push(
       'The following modules are configured for this project. For detailed instructions, see the corresponding files in `/rulebook/`:'
     );
     sections.push('');
-    for (const module of config.modules) {
+    for (const module of mergedConfig.modules) {
       const moduleRules = await generateModuleRules(module);
       await writeModularFile(projectRoot, module.toUpperCase(), moduleRules, rulebookDir);
       sections.push(generateModuleReference(module, rulebookDir));
@@ -413,13 +417,6 @@ export async function generateModularAgents(
     sections.push(
       '**Usage**: When working with module-specific features, reference the corresponding `/rulebook/[MODULE].md` file for detailed instructions.'
     );
-    sections.push('');
-  }
-
-  // Git workflow rules (keep embedded in AGENTS.md for now)
-  if (config.includeGitWorkflow) {
-    const gitRules = await generateGitRules(config.gitPushMode || 'manual');
-    sections.push(gitRules);
     sections.push('');
   }
 

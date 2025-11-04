@@ -428,4 +428,3 @@ npm publish --provenance --access public
 This links your package to its source code and build process.
 
 <!-- TYPESCRIPT:END -->
-

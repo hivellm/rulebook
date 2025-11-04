@@ -9,7 +9,7 @@ import { writeFile, createBackup, readFile, fileExists } from '../utils/file-sys
 import { parseRulesIgnore } from '../utils/rulesignore.js';
 import { RulebookConfig } from '../types.js';
 import { installGitHooks } from '../utils/git-hooks.js';
-import type { LanguageDetection, ProjectConfig, FrameworkId } from '../types.js';
+import type { LanguageDetection, ProjectConfig, FrameworkId, ModuleDetection } from '../types.js';
 import { scaffoldMinimalProject } from '../core/minimal-scaffolder.js';
 import path from 'path';
 import { readFileSync } from 'fs';
@@ -199,6 +199,17 @@ export async function initCommand(options: {
       }
     }
 
+    // Save project configuration to .rulebook
+    const { createConfigManager } = await import('../core/config-manager.js');
+    const configManager = createConfigManager(cwd);
+    await configManager.updateConfig({
+      languages: config.languages as LanguageDetection['language'][],
+      frameworks: config.frameworks as FrameworkId[],
+      modules: config.modules as ModuleDetection['module'][],
+      modular: config.modular ?? true,
+      rulebookDir: config.rulebookDir || 'rulebook',
+    });
+
     // Generate or merge AGENTS.md
     const agentsPath = path.join(cwd, 'AGENTS.md');
     let finalContent: string;
@@ -208,7 +219,7 @@ export async function initCommand(options: {
 
       if (strategy === 'merge') {
         const mergeSpinner = ora('Merging with existing AGENTS.md...').start();
-        finalContent = await mergeFullAgents(detection.existingAgents, config);
+        finalContent = await mergeFullAgents(detection.existingAgents, config, cwd);
 
         // Create backup
         const backupPath = await createBackup(agentsPath);
@@ -1083,6 +1094,17 @@ export async function updateCommand(options: {
         license: 'MIT',
       });
     }
+
+    // Save project configuration to .rulebook
+    const { createConfigManager } = await import('../core/config-manager.js');
+    const configManager = createConfigManager(cwd);
+    await configManager.updateConfig({
+      languages: config.languages as LanguageDetection['language'][],
+      frameworks: config.frameworks as FrameworkId[],
+      modules: config.modules as ModuleDetection['module'][],
+      modular: config.modular ?? true,
+      rulebookDir: config.rulebookDir || 'rulebook',
+    });
 
     // Merge with existing AGENTS.md (with migration support)
     const mergeSpinner = ora('Updating AGENTS.md with latest templates...').start();

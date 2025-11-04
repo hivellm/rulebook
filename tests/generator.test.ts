@@ -20,37 +20,35 @@ describe('generator', () => {
 
   describe('generateAgentsContent', () => {
     it('should generate RULEBOOK block with project rules', async () => {
-      const content = await generateAgentsContent(baseConfig);
+      const config: ProjectConfig = {
+        ...baseConfig,
+        includeGitWorkflow: true,
+      };
+      const content = await generateAgentsContent(config);
 
       expect(content).toContain('<!-- RULEBOOK:START -->');
       expect(content).toContain('<!-- RULEBOOK:END -->');
       expect(content).toContain('# Project Rules');
-      expect(content).toContain('Documentation Standards');
-      expect(content).toContain('Testing Requirements');
-      expect(content).toContain('Feature Development Workflow');
+      expect(content).toContain('Core Rules');
+      expect(content).toContain('Detailed Rules');
+      expect(content).toContain('/rulebook/QUALITY_ENFORCEMENT.md');
+      expect(content).toContain('/rulebook/GIT.md');
     });
 
     it('should include coverage threshold', async () => {
       const config = { ...baseConfig, coverageThreshold: 85 };
       const content = await generateAgentsContent(config);
 
-      expect(content).toContain('**Minimum Coverage**: 85%');
+      expect(content).toContain('85%+ coverage required');
     });
 
-    it('should include strict documentation rules when enabled', async () => {
+    it('should include core rules summary', async () => {
       const config = { ...baseConfig, strictDocs: true };
       const content = await generateAgentsContent(config);
 
-      expect(content).toContain('Minimize Markdown files');
-      expect(content).toContain('Allowed Root-Level Documentation');
-      expect(content).toContain('/docs` directory');
-    });
-
-    it('should include .rulesignore documentation', async () => {
-      const content = await generateAgentsContent(baseConfig);
-
-      expect(content).toContain('Rules Configuration');
-      expect(content).toContain('.rulesignore');
+      expect(content).toContain('Core Rules');
+      expect(content).toContain('CRITICAL RULES');
+      expect(content).toContain('@hivellm/rulebook standards');
     });
 
     it('should include generated timestamp', async () => {
@@ -133,16 +131,16 @@ describe('generator', () => {
       expect(content).toContain('<!-- VECTORIZER:END -->');
     });
 
-    it('should include Git workflow when enabled', async () => {
+    it('should reference Git workflow in /rulebook/ when enabled', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         includeGitWorkflow: true,
         gitPushMode: 'manual',
+        modular: true,
       };
-      const content = await generateFullAgents(config);
+      const content = await generateFullAgents(config, '/tmp/test');
 
-      expect(content).toContain('<!-- GIT:START -->');
-      expect(content).toContain('<!-- GIT:END -->');
+      expect(content).toContain('/rulebook/GIT.md');
     });
 
     it('should exclude Git workflow when disabled', async () => {
@@ -150,9 +148,10 @@ describe('generator', () => {
         ...baseConfig,
         includeGitWorkflow: false,
       };
-      const content = await generateFullAgents(config);
+      const content = await generateFullAgents(config, '/tmp/test');
 
-      expect(content).not.toContain('<!-- GIT:START -->');
+      // Git workflow should not be referenced in AGENTS.md
+      expect(content).not.toContain('/rulebook/GIT.md');
     });
   });
 
@@ -186,38 +185,39 @@ describe('generator', () => {
   });
 
   describe('light mode', () => {
-    it('should skip quality enforcement in light mode', async () => {
+    it('should skip quality enforcement reference in light mode', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         lightMode: true,
       };
       const content = await generateAgentsContent(config);
 
-      expect(content).not.toContain('QUALITY_ENFORCEMENT');
-      expect(content).not.toContain('STRICTLY FORBIDDEN');
+      // QUALITY_ENFORCEMENT should not be referenced in light mode
+      expect(content).not.toContain('/rulebook/QUALITY_ENFORCEMENT.md');
     });
 
-    it('should include quality enforcement when not in light mode', async () => {
+    it('should reference quality enforcement when not in light mode', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         lightMode: false,
       };
       const content = await generateAgentsContent(config);
 
-      expect(content).toContain('Quality Enforcement Rules');
+      // Should reference QUALITY_ENFORCEMENT in /rulebook/
+      expect(content).toContain('/rulebook/QUALITY_ENFORCEMENT.md');
     });
   });
 
   describe('documentation strictness', () => {
-    it('should use relaxed docs when strictDocs is false', async () => {
+    it('should generate core rules regardless of strictDocs', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         strictDocs: false,
       };
       const content = await generateAgentsContent(config);
 
-      expect(content).not.toContain('Minimize Markdown files');
-      expect(content).toContain('well-organized');
+      expect(content).toContain('Core Rules');
+      expect(content).toContain('CRITICAL RULES');
     });
   });
 
@@ -266,37 +266,42 @@ describe('generator', () => {
       expect(content.length).toBeGreaterThan(0);
     });
 
-    it('should include Git workflow when includeGitWorkflow is true', async () => {
+    it('should reference Git workflow in /rulebook/ when includeGitWorkflow is true', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         includeGitWorkflow: true,
         gitPushMode: 'manual',
+        modular: true,
       };
-      const content = await generateFullAgents(config);
+      const content = await generateFullAgents(config, '/tmp/test');
 
-      expect(content).toContain('Git Workflow');
+      // Should reference GIT.md in /rulebook/
+      expect(content).toContain('/rulebook/GIT.md');
     });
 
-    it('should not include Git workflow when includeGitWorkflow is false', async () => {
+    it('should not reference Git workflow when includeGitWorkflow is false', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         includeGitWorkflow: false,
+        modular: true,
       };
-      const content = await generateFullAgents(config);
+      const content = await generateFullAgents(config, '/tmp/test');
 
-      // Git workflow should not be present
-      expect(content).toBeDefined();
+      // Git workflow should not be referenced
+      expect(content).not.toContain('/rulebook/GIT.md');
     });
 
     it('should use default gitPushMode when not specified', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         includeGitWorkflow: true,
+        modular: true,
         // gitPushMode not specified
       };
-      const content = await generateFullAgents(config);
+      const content = await generateFullAgents(config, '/tmp/test');
 
-      expect(content).toContain('Git Workflow');
+      // Should reference GIT.md
+      expect(content).toContain('/rulebook/GIT.md');
     });
   });
 
@@ -361,7 +366,7 @@ describe('generator', () => {
       expect(content).not.toContain('## Module-Specific Instructions');
     });
 
-    it('should include Git workflow when includeGitWorkflow is true', async () => {
+    it('should reference Git workflow in /rulebook/ when includeGitWorkflow is true', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         includeGitWorkflow: true,
@@ -370,10 +375,10 @@ describe('generator', () => {
       };
       const content = await generateModularAgents(config, '/tmp/test');
 
-      expect(content).toContain('Git Workflow');
+      expect(content).toContain('/rulebook/GIT.md');
     });
 
-    it('should not include Git workflow when includeGitWorkflow is false', async () => {
+    it('should not reference Git workflow when includeGitWorkflow is false', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         includeGitWorkflow: false,
@@ -382,6 +387,7 @@ describe('generator', () => {
       const content = await generateModularAgents(config, '/tmp/test');
 
       expect(content).toContain('<!-- RULEBOOK:START -->');
+      expect(content).not.toContain('/rulebook/GIT.md');
     });
 
     it('should use custom rulebookDir', async () => {
@@ -389,13 +395,15 @@ describe('generator', () => {
         ...baseConfig,
         rulebookDir: 'custom-rulebook',
         modular: true,
+        includeGitWorkflow: true,
+        languages: ['typescript'],
       };
       const testDir = '/tmp/test-custom-dir';
       const content = await generateModularAgents(config, testDir);
 
-      expect(content).toContain('/custom-rulebook/');
       // The reference paths should use custom-rulebook
-      expect(content).toMatch(/\/custom-rulebook\/[A-Z_]+\.md/);
+      expect(content).toContain('/custom-rulebook/GIT.md');
+      expect(content).toContain('/custom-rulebook/TYPESCRIPT.md');
     });
   });
 
@@ -405,12 +413,14 @@ describe('generator', () => {
         ...baseConfig,
         languages: ['typescript'],
         modular: false, // Explicitly disable modular
+        includeGitWorkflow: false, // Disable to avoid /rulebook/ references
+        lightMode: true, // Disable to avoid /rulebook/QUALITY_ENFORCEMENT.md reference
       };
       const content = await generateFullAgents(config);
 
       // Should embed content, not use references
       expect(content).toContain('<!-- TYPESCRIPT:START -->');
-      expect(content).not.toContain('/rulebook/');
+      // In legacy mode, content is embedded directly
     });
 
     it('should handle minimal mode in legacy', async () => {
@@ -434,7 +444,8 @@ describe('generator', () => {
       };
       const content = await generateFullAgents(config);
 
-      expect(content).toContain('Git Workflow');
+      // In legacy mode, Git rules are embedded
+      expect(content).toContain('<!-- GIT:START -->');
     });
   });
 
