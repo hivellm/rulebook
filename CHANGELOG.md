@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update command now adds quality enforcement rules to existing projects
 - ProjectConfig extended with lightMode option
 
+## [Unreleased]
+
 ## [0.17.0] - 2025-11-04
 
 ### Breaking Changes
@@ -63,8 +65,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed spacing issues in AGENTS.md where Usage messages were glued to quick references
 - Fixed hierarchy issues where reference sections used incorrect heading levels
 - Fixed module grouping where agent_automation appeared outside Module-Specific Instructions section
-
-## [Unreleased]
 
 ## [0.16.0] - 2025-11-01
 
