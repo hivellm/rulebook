@@ -49,6 +49,14 @@ npx @hivellm/rulebook@latest init --light
 npx @hivellm/rulebook@latest update
 ```
 
+## What's New in v0.17.1
+
+- 🔄 **Monorepo-Ready Workflows**: All CI/CD templates updated with monorepo support
+- 📦 **Better Cache Handling**: Cache disabled by default to avoid path resolution errors
+- 🎯 **Working Directory Hints**: Clear `# MONOREPO:` comments in all workflow steps
+- ✅ **Latest Actions**: Updated to actions/checkout@v5 and setup-node@v5
+- 🛠️ **Improved Error Handling**: Optional steps use `continue-on-error`
+
 ## Key Features
 
 - 🔍 **Auto-Detection**: Detects languages, frameworks (NestJS, React, Spring, etc.), and MCP modules

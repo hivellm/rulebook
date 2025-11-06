@@ -27,6 +27,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.1] - 2025-11-06
+
+### Changed - Workflow Templates with Monorepo Support
+
+**Updated all workflow templates** with monorepo best practices based on real-world usage in compression-prompt project:
+
+#### TypeScript Workflows
+- Updated `setup-node` from @v4 to @v5
+- Added `# MONOREPO:` comments for cache and working-directory configuration
+- Cache disabled by default (avoids path resolution errors in monorepo)
+- Added `continue-on-error` for optional steps (coverage, format check)
+- Using `npx tsc --noEmit` for type checking
+
+#### Python Workflows
+- Added `# MONOREPO:` comments for cache and working-directory
+- Added `black` to linting dependencies
+- Made `mypy` optional with `continue-on-error`
+- Cache disabled by default for monorepo compatibility
+
+#### Rust Workflows
+- Added `# MONOREPO:` comments for workspaces and working-directory
+- Removed nightly requirement for rustfmt (stable works with edition 2024)
+- Added fallback: `cargo nextest run || cargo test` for compatibility
+- Swatinem/rust-cache has `workspaces` parameter hint
+
+#### Codespell Workflow
+- Added more skip patterns: `*.csv`, `*.bib`, `venv`, `build`, `benchmarks`
+- Added note about multilingual stopwords in ignore-words-list
+- Better handling of academic papers and benchmark data
+
+### Key Improvements
+- **Monorepo-Ready**: All templates have clear hints for monorepo setup
+- **Better Error Handling**: Optional steps use `continue-on-error`
+- **Cache Strategy**: Disabled by default to avoid path resolution issues
+- **Working Directory**: All commands have hints for subdirectory usage
+- **Latest Actions**: All using @v5 versions
+
+### Templates Updated
+- `typescript-test.yml` - Monorepo support, @v5 actions
+- `typescript-lint.yml` - Monorepo support, @v5 actions
+- `python-test.yml` - Monorepo support, black added
+- `python-lint.yml` - Monorepo support, black added
+- `rust-test.yml` - Monorepo support, nextest fallback
+- `rust-lint.yml` - Monorepo support, stable rustfmt
+- `codespell.yml` - Extended skip patterns and ignore list
+
 ## [0.17.0] - 2025-11-04
 
 ### Breaking Changes
