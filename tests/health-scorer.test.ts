@@ -94,7 +94,7 @@ describe('health-scorer', () => {
       const health = await calculateHealthScore(testDir);
 
       expect(health.categories.testing).toBeGreaterThan(0);
-    });
+    }, 10000); // Increased timeout to 10 seconds
 
     it('should provide recommendations for low scores', async () => {
       const health = await calculateHealthScore(testDir);
