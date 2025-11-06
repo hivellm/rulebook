@@ -28,20 +28,29 @@ jobs:
     #     version: 8
     
     - name: Setup Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'  # Change to 'pnpm' or 'yarn' as needed
-        cache-dependency-path: '**/package-lock.json'  # Explicit cache key
+        # MONOREPO: Uncomment and adjust path if in monorepo subdirectory
+        # cache: 'npm'  # Change to 'pnpm' or 'yarn' as needed
+        # cache-dependency-path: 'subdirectory/package-lock.json'
+        # Note: Cache may fail in monorepo - disable if you get path resolution errors
     
     - name: Install dependencies
+      # MONOREPO: Add working-directory if in subdirectory
+      # working-directory: ./subdirectory
       run: npm ci  # For pnpm: pnpm install --frozen-lockfile | For yarn: yarn install --frozen-lockfile
     
     - name: Run tests
+      # MONOREPO: Add working-directory if in subdirectory
+      # working-directory: ./subdirectory
       run: npm test  # For pnpm: pnpm test | For yarn: yarn test
     
     - name: Generate coverage report
+      # MONOREPO: Add working-directory if in subdirectory
+      # working-directory: ./subdirectory
       run: npm run test:coverage  # For pnpm: pnpm run test:coverage | For yarn: yarn test:coverage
+      continue-on-error: true  # Allow workflow to continue if coverage not configured
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4

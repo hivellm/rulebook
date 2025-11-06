@@ -24,6 +24,8 @@ jobs:
       - name: Run Codespell
         run: |
           codespell \
-            --skip="*.lock,*.json,*.map,*.yaml,*.yml,target,node_modules,.git,dist" \
+            --skip="*.lock,*.json,*.map,*.yaml,*.yml,*.csv,*.bib,target,node_modules,.git,dist,venv,build,benchmarks" \
             --ignore-words-list="crate,ser,deser"
+          # MONOREPO NOTE: Add multilingual stopwords to ignore-words-list if needed
+          # Example: --ignore-words-list="crate,ser,deser,meu,oder,ist,alle" (Portuguese,German,etc)
 

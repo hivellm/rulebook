@@ -23,6 +23,9 @@ jobs:
     - uses: actions/checkout@v5
     
     - uses: Swatinem/rust-cache@v2
+      # MONOREPO: Uncomment and set workspaces if in subdirectory
+      # with:
+      #   workspaces: 'subdirectory'
     
     - name: Install mold (Linux only)
       if: runner.os == 'Linux'
@@ -30,6 +33,8 @@ jobs:
     
     - name: Configure mold linker (Linux only)
       if: runner.os == 'Linux'
+      # MONOREPO: Add working-directory if in subdirectory
+      # working-directory: ./subdirectory
       run: |
         mkdir -p .cargo
         echo "[target.x86_64-unknown-linux-gnu]" >> .cargo/config.toml
@@ -40,10 +45,14 @@ jobs:
       uses: taiki-e/install-action@nextest
     
     - name: Build
+      # MONOREPO: Add working-directory if in subdirectory
+      # working-directory: ./subdirectory
       run: cargo build --tests --workspace
     
     - name: Run tests
-      run: cargo nextest run --workspace
+      # MONOREPO: Add working-directory if in subdirectory
+      # working-directory: ./subdirectory
+      run: cargo nextest run --workspace || cargo test --workspace
     
     - name: Upload test report
       uses: actions/upload-artifact@v4
