@@ -63,10 +63,13 @@ jobs:
         if-no-files-found: ignore
     
     - name: Security audit
+      # MONOREPO: Add working-directory if in subdirectory
+      # working-directory: ./subdirectory
       run: |
         echo "Running security audit..."
-        cargo install cargo-audit --locked 2>/dev/null || true
-        cargo audit || true
+        cargo audit --version || cargo install cargo-audit --locked || echo "cargo-audit install skipped"
+        cargo audit || echo "Audit skipped"
         echo "Checking for outdated dependencies..."
-        cargo outdated || true
+        cargo outdated || echo "Outdated check skipped"
+      shell: bash
 
