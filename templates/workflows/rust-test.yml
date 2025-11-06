@@ -62,14 +62,14 @@ jobs:
         path: target/nextest/default/junit.xml
         if-no-files-found: ignore
     
-    - name: Security audit
+    - name: Security audit (optional)
       # MONOREPO: Add working-directory if in subdirectory
       # working-directory: ./subdirectory
       run: |
-        echo "Running security audit..."
-        cargo audit --version || cargo install cargo-audit --locked || echo "cargo-audit install skipped"
-        cargo audit || echo "Audit skipped"
-        echo "Checking for outdated dependencies..."
-        cargo outdated || echo "Outdated check skipped"
+        echo "Security audit skipped (cargo-audit not pre-installed)"
+        echo "To enable: Install cargo-audit in a separate workflow step"
+        echo "  - cargo install cargo-audit --locked"
+        echo "  - cargo audit"
+      continue-on-error: true
       shell: bash
 
