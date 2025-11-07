@@ -1,5 +1,13 @@
 # Release Notes
 
+# Release Notes
+
+## Version 0.17.2 - 2025-11-07
+
+### 🔒 Safety & Consistency
+- Added a core directive that forbids destructive `rm -rf` usage and mandates `git submodule add` for submodule creation. The rule now appears in every generated `AGENTS.md` (init/update) and in the bundled templates.
+- Updated the CLI generator so new scaffolds automatically include the directive, keeping templates and live projects in sync.
+
 ## Version 0.14.0 - 2025-10-31 (Unreleased)
 
 ### 🎉 Major Features

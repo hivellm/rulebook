@@ -18,6 +18,7 @@ This project uses @hivellm/rulebook standards.
    - Coverage check
 4. Update docs/ when implementing features
 5. Follow strict documentation structure
+6. **NEVER run destructive deletions (`rm -rf`) in repositories generated from this template; always use `git submodule add` when a submodule is requested.**
 
 ## Detailed Rules
 

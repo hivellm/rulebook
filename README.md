@@ -49,13 +49,13 @@ npx @hivellm/rulebook@latest init --light
 npx @hivellm/rulebook@latest update
 ```
 
-## What's New in v0.17.1
+## What's New in v0.17.2
 
-- 🔄 **Monorepo-Ready Workflows**: All CI/CD templates updated with monorepo support
-- 📦 **Better Cache Handling**: Cache disabled by default to avoid path resolution errors
-- 🎯 **Working Directory Hints**: Clear `# MONOREPO:` comments in all workflow steps
-- ✅ **Latest Actions**: Updated to actions/checkout@v5 and setup-node@v5
-- 🛠️ **Improved Error Handling**: Optional steps use `continue-on-error`
+- 🔒 **Safety Directive**: All generated `AGENTS.md` now forbid destructive `rm -rf` usage and require `git submodule add` for submodule creation, keeping repos safe when agents automate tasks.
+- ⚙️ **Generator Updates**: `rulebook init` and `rulebook update` embed the directive automatically so fresh scaffolds and updates stay aligned.
+- 🗂️ **Template Sync**: Bundled rulebooks (`rulebook/AGENTS.md`) updated to match the new directive, ensuring templates and live projects never drift.
+
+> Looking for the CI/CD workflow overhaul? See the [v0.17.1 notes](docs/RELEASE_NOTES.md#version-0171---2025-11-06).
 
 ## Key Features
 

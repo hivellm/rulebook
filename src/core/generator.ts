@@ -41,6 +41,9 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('   - Coverage check');
   sections.push('4. Update docs/ when implementing features');
   sections.push('5. Follow strict documentation structure');
+  sections.push(
+    '6. **NEVER run destructive deletions (`rm -rf`) in this repository; when adding submodules always use `git submodule add`.**'
+  );
   sections.push('');
   const rulebookDir = config.rulebookDir || 'rulebook';
 
