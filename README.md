@@ -49,13 +49,18 @@ npx @hivellm/rulebook@latest init --light
 npx @hivellm/rulebook@latest update
 ```
 
-## What's New in v0.17.2
+## What's New in v0.18.0
 
-- 🔒 **Safety Directive**: All generated `AGENTS.md` now forbid destructive `rm -rf` usage and require `git submodule add` for submodule creation, keeping repos safe when agents automate tasks.
-- ⚙️ **Generator Updates**: `rulebook init` and `rulebook update` embed the directive automatically so fresh scaffolds and updates stay aligned.
-- 🗂️ **Template Sync**: Bundled rulebooks (`rulebook/AGENTS.md`) updated to match the new directive, ensuring templates and live projects never drift.
+- 🎯 **Built-in Task Management**: OpenSpec deprecated and integrated into Rulebook's native task system
+  - Use `rulebook task` commands instead of OpenSpec
+  - OpenSpec-compatible format preserved
+  - Automatic migration from OpenSpec to Rulebook format on `rulebook update`
+- 📋 **RULEBOOK.md Template**: New core template with task management directives and Context7 MCP requirements
+- 🚫 **Automatic .gitignore**: `rulebook init` now creates/updates `.gitignore` automatically for 28 languages
+- 🔄 **Migration Support**: Existing OpenSpec tasks automatically migrated to `/rulebook/tasks/` format
+- 📚 **Complete Documentation**: Migration guide, updated README, and comprehensive CHANGELOG
 
-> Looking for the CI/CD workflow overhaul? See the [v0.17.1 notes](docs/RELEASE_NOTES.md#version-0171---2025-11-06).
+> **Breaking Change**: OpenSpec module removed. Use `rulebook task` commands instead. See [Migration Guide](docs/guides/OPENSPEC_MIGRATION.md).
 
 ## Key Features
 
@@ -70,11 +75,12 @@ npx @hivellm/rulebook@latest update
   - All modules grouped logically
   - Better readability and navigation
 - 🔗 **Git Hook Automation**: Optional pre-commit/pre-push hooks with language-aware quality checks
+- 🚫 **Automatic .gitignore**: Creates/updates `.gitignore` automatically for 28 languages on `rulebook init`
 - 🎯 **Minimal Mode**: Quick setup with just README, LICENSE, tests/, and basic CI
 - 📝 **86+ Templates**: Languages, frameworks, IDEs, workflows pre-configured
 - 🤖 **AI-Optimized**: Works with 23 AI assistants (Cursor, Claude, Gemini, etc.)
 - 📦 **Publication Ready**: CI/CD pipelines for npm, crates.io, PyPI, Maven Central, and more
-- 🔄 **Automatic Migration**: Existing projects automatically migrated to modular structure
+- 🔄 **Automatic Migration**: Existing projects automatically migrated to modular structure and OpenSpec tasks
 
 ## What It Does
 
@@ -83,17 +89,20 @@ npx @hivellm/rulebook@latest update
 2. Asks setup questions (or use `--minimal` for defaults)
 3. Generates AGENTS.md with AI assistant rules (modular structure)
 4. Creates `/rulebook/` directory with language/framework/module templates
-5. Optionally installs Git hooks (pre-commit/pre-push)
-6. Creates GitHub Actions workflows
-7. Scaffolds README, LICENSE, /docs, and /tests
+5. Creates/updates `.gitignore` automatically for detected languages
+6. Optionally installs Git hooks (pre-commit/pre-push)
+7. Creates GitHub Actions workflows
+8. Scaffolds README, LICENSE, /docs, and /tests
 
 **For Existing Projects:**
 ```bash
 npx @hivellm/rulebook update
 ```
 - Automatically migrates embedded templates to modular `/rulebook/` structure
+- Automatically migrates OpenSpec tasks to Rulebook format (if OpenSpec exists)
 - Merges latest templates while preserving your customizations
 - Updates AGENTS.md with references to modular files
+- Updates `.gitignore` with missing patterns for detected languages
 
 ## Commands
 
@@ -150,10 +159,12 @@ rulebook agent --iterations 10      # Max iterations
 rulebook agent --watch     # Enable watcher mode
 
 # Task Management
-rulebook task <command>     # Manage Rulebook tasks (create, list, show, validate, archive)
-rulebook tasks --tree      # Show dependency tree
-rulebook tasks --current   # Show active task
-rulebook tasks --status <id>  # Update task status
+rulebook task create <task-id>    # Create new task
+rulebook task list [--archived]   # List all tasks
+rulebook task show <task-id>      # Show task details
+rulebook task validate <task-id>  # Validate task format
+rulebook task archive <task-id>   # Archive completed task
+rulebook tasks                     # Legacy command (deprecated, use 'task' instead)
 
 # Configuration
 rulebook config --show     # Show current config
