@@ -870,21 +870,15 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
     }
   }
 
-  // Check for OpenSpec
-  const openspecDirs = await findFiles('**/openspec', cwd);
-  if (openspecDirs.length > 0) {
-    modules.push({
-      module: 'openspec',
-      detected: true,
-      source: openspecDirs[0],
-    });
-  }
-
   // Add undetected modules
   const detectedModules = new Set(modules.map((m) => m.module));
-  const allModules: Array<
-    'vectorizer' | 'synap' | 'openspec' | 'context7' | 'github' | 'playwright'
-  > = ['vectorizer', 'synap', 'openspec', 'context7', 'github', 'playwright'];
+  const allModules: Array<'vectorizer' | 'synap' | 'context7' | 'github' | 'playwright'> = [
+    'vectorizer',
+    'synap',
+    'context7',
+    'github',
+    'playwright',
+  ];
 
   for (const module of allModules) {
     if (!detectedModules.has(module)) {

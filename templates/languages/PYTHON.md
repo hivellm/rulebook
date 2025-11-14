@@ -123,6 +123,158 @@ def test_process_data_parametrized(input_val, expected):
     assert result == expected
 ```
 
+### Test Categories: S2S and Slow Tests
+
+**CRITICAL**: Tests must be categorized based on execution time and dependencies.
+
+#### Test Time Limits
+
+- **Fast Tests**: Must complete in ≤ 10-20 seconds
+- **Slow Tests**: Any test taking > 10-20 seconds must be marked as slow
+- **S2S Tests**: Tests requiring active server/database must be isolated and run on-demand
+
+#### S2S (Server-to-Server) Tests
+
+**Tests that require active servers, databases, or external services must be isolated using pytest markers.**
+
+**Implementation**:
+
+1. **Mark S2S tests with pytest markers**:
+```python
+import pytest
+import os
+
+# Regular fast test (always runs)
+def test_local_computation():
+    """Fast test, no external dependencies."""
+    result = compute_locally("input")
+    assert result == "expected"
+
+# S2S test (only runs with -m s2s)
+@pytest.mark.s2s
+def test_database_connection():
+    """Requires active database server."""
+    db = connect_to_database()
+    # ... test implementation
+
+@pytest.mark.s2s
+def test_api_integration():
+    """Requires active API server."""
+    client = create_api_client()
+    # ... test implementation
+```
+
+2. **Configure `pytest.ini` or `pyproject.toml`**:
+```ini
+# pytest.ini
+[pytest]
+markers =
+    s2s: Server-to-server tests requiring active services
+    slow: Slow tests taking > 20 seconds
+```
+
+Or in `pyproject.toml`:
+```toml
+[tool.pytest.ini_options]
+markers = [
+    "s2s: Server-to-server tests requiring active services",
+    "slow: Slow tests taking > 20 seconds",
+]
+```
+
+3. **Run tests**:
+```bash
+# Regular tests (excludes S2S)
+pytest
+
+# Include S2S tests (requires active servers)
+pytest -m s2s
+
+# Run all tests including S2S
+pytest -m "not slow"  # Fast + S2S, excludes slow
+```
+
+#### Slow Tests
+
+**Tests that take > 10-20 seconds must be marked and run separately.**
+
+**Implementation**:
+
+1. **Mark slow tests with pytest markers**:
+```python
+import pytest
+
+# Fast test (always runs)
+def test_quick_operation():
+    """Completes in < 1 second."""
+    result = quick_compute("input")
+    assert result == "expected"
+
+# Slow test (only runs with -m slow)
+@pytest.mark.slow
+def test_heavy_computation():
+    """Takes 30+ seconds."""
+    # Heavy processing, large dataset, etc.
+    result = process_large_dataset()
+    assert result is not None
+
+@pytest.mark.slow
+def test_large_file_processing():
+    """Processes large files, takes > 20 seconds."""
+    result = process_file("large_file.dat")
+    assert result.success
+```
+
+2. **Run tests**:
+```bash
+# Regular tests (excludes slow and S2S)
+pytest -m "not slow and not s2s"
+
+# Include slow tests
+pytest -m slow
+
+# Run all tests
+pytest -m ""  # Empty marker means all tests
+```
+
+3. **Add pytest configuration for timeouts**:
+```python
+# conftest.py
+import pytest
+
+@pytest.fixture(autouse=True)
+def configure_timeouts(request):
+    """Configure timeouts based on test markers."""
+    if 'slow' in request.keywords:
+        request.node.add_marker(pytest.mark.timeout(300))  # 5 minutes
+    elif 's2s' in request.keywords:
+        request.node.add_marker(pytest.mark.timeout(60))  # 1 minute
+    else:
+        request.node.add_marker(pytest.mark.timeout(20))  # 20 seconds
+```
+
+4. **Add scripts in `pyproject.toml` or `setup.py`**:
+```toml
+[tool.poetry.scripts]
+test = "pytest -m 'not slow and not s2s'"
+test-s2s = "pytest -m s2s"
+test-slow = "pytest -m slow"
+test-all = "pytest"
+```
+
+#### Best Practices
+
+- ✅ **Always run fast tests** in CI/CD by default
+- ✅ **Isolate S2S tests** - never run them in standard test suite
+- ✅ **Mark slow tests** - prevent CI/CD timeouts
+- ✅ **Document requirements** - specify which servers/services are needed for S2S tests
+- ✅ **Use timeouts** - Set appropriate timeouts: `@pytest.mark.timeout(60)`
+- ✅ **Use pytest markers** - `@pytest.mark.s2s` and `@pytest.mark.slow`
+- ✅ **Skip conditionally** - `@pytest.mark.skipif(not os.getenv('RUN_S2S_TESTS'), reason='S2S tests disabled')`
+- ❌ **Never mix** fast and slow/S2S tests in same test run
+- ❌ **Never require** external services for standard test suite
+- ❌ **Never exceed** 10-20 seconds for regular tests
+
 ## Dependency Management
 
 **CRITICAL**: Use modern dependency management tools.

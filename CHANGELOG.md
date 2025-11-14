@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2025-11-13
+
+### Breaking Changes
+- **OpenSpec Deprecated**: OpenSpec module has been removed and integrated into Rulebook's built-in task management system
+  - OpenSpec is no longer detected as a module
+  - OpenSpec templates removed from generator
+  - Use `rulebook task` commands instead of OpenSpec commands
+  - **Migration**: Existing OpenSpec tasks are automatically migrated to Rulebook format on `rulebook update`
+
+### Added
+- **Built-in Task Management System**: New Rulebook task management system (OpenSpec-compatible format)
+  - `rulebook task create <task-id>` - Create new task
+  - `rulebook task list` - List all tasks
+  - `rulebook task show <task-id>` - Show task details
+  - `rulebook task validate <task-id>` - Validate task format
+  - `rulebook task archive <task-id>` - Archive completed task
+- **RULEBOOK.md Template**: New core template with task management directives
+  - Task creation workflow (10 mandatory steps)
+  - OpenSpec-compatible format requirements
+  - Context7 MCP requirement for task creation
+  - Validation rules and best practices
+- **Automatic .gitignore Generation**: `rulebook init` now creates/updates `.gitignore` automatically
+  - Language-specific patterns (28 languages supported)
+  - Common patterns (node_modules, build, cache, etc.)
+  - Merges with existing `.gitignore` if present
+- **OpenSpec Migration**: Automatic migration from OpenSpec to Rulebook format
+  - Migrates tasks from `/openspec/changes/` to `/rulebook/tasks/`
+  - Preserves proposal.md, tasks.md, design.md, and specs/
+  - Removes `/rulebook/OPENSPEC.md` if exists
+  - Runs automatically on `rulebook update`
+
+### Changed
+- **AGENTS.md Generation**: Now includes RULEBOOK.md with highest precedence
+  - Task management rules appear at the top
+  - Directives to use Rulebook instead of OpenSpec
+  - Context7 MCP requirement highlighted
+- **Module Detection**: OpenSpec removed from detected modules
+- **Templates Structure**: Core templates moved to `templates/core/`
+  - AGENT_AUTOMATION.md, DOCUMENTATION_RULES.md, QUALITY_ENFORCEMENT.md, RULEBOOK.md, DAG.md
+  - Separated from module templates for better organization
+- **Legacy Commands**: `rulebook tasks` command marked as deprecated
+  - Shows warning and redirects to new `rulebook task` commands
+  - Will be removed in future version
+
+### Removed
+- **OpenSpec Module**: Removed from module detection and templates
+- **OpenSpec Templates**: `templates/modules/OPENSPEC.md` deleted
+- **OpenSpec Feature Flag**: Removed `openspec` feature from RulebookConfig
+
+### Fixed
+- Fixed test coverage issues in config-manager tests after OpenSpec removal
+- Fixed type errors after removing OpenSpec from types
+
 ## [0.17.2] - 2025-11-07
 
 ### Changed

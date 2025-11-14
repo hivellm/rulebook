@@ -107,6 +107,199 @@ func TestMyFunction(t *testing.T) {
 }
 ```
 
+### Test Categories: S2S and Slow Tests
+
+**CRITICAL**: Tests must be categorized based on execution time and dependencies.
+
+#### Test Time Limits
+
+- **Fast Tests**: Must complete in ≤ 10-20 seconds
+- **Slow Tests**: Any test taking > 10-20 seconds must be marked as slow
+- **S2S Tests**: Tests requiring active server/database must be isolated and run on-demand
+
+#### S2S (Server-to-Server) Tests
+
+**Tests that require active servers, databases, or external services must be isolated using build tags.**
+
+**Implementation**:
+
+1. **Use build tags to isolate S2S tests**:
+```go
+// +build s2s
+
+package mypackage
+
+import (
+    "testing"
+    "os"
+)
+
+func TestDatabaseConnection(t *testing.T) {
+    // Requires active database server
+    if os.Getenv("RUN_S2S_TESTS") == "" {
+        t.Skip("S2S tests disabled. Set RUN_S2S_TESTS=1 to enable.")
+    }
+    db := connectToDatabase()
+    // ... test implementation
+}
+
+func TestAPIIntegration(t *testing.T) {
+    // Requires active API server
+    if os.Getenv("RUN_S2S_TESTS") == "" {
+        t.Skip("S2S tests disabled. Set RUN_S2S_TESTS=1 to enable.")
+    }
+    client := createAPIClient()
+    // ... test implementation
+}
+```
+
+2. **Regular tests (without build tag)**:
+```go
+// Regular fast test (always runs)
+package mypackage
+
+import "testing"
+
+func TestLocalComputation(t *testing.T) {
+    // Fast test, no external dependencies
+    result := computeLocally("input")
+    if result != "expected" {
+        t.Errorf("Expected 'expected', got %v", result)
+    }
+}
+```
+
+3. **Run tests**:
+```bash
+# Regular tests (excludes S2S)
+go test ./...
+
+# Include S2S tests (requires active servers)
+RUN_S2S_TESTS=1 go test -tags s2s ./...
+
+# Run only S2S tests
+RUN_S2S_TESTS=1 go test -tags s2s ./... -run TestDatabase
+```
+
+#### Slow Tests
+
+**Tests that take > 10-20 seconds must be marked and run separately.**
+
+**Implementation**:
+
+1. **Use build tags for slow tests**:
+```go
+// +build slow
+
+package mypackage
+
+import (
+    "testing"
+    "time"
+)
+
+func TestHeavyComputation(t *testing.T) {
+    // Takes 30+ seconds
+    start := time.Now()
+    result := processLargeDataset()
+    duration := time.Since(start)
+    
+    if result == nil {
+        t.Error("Expected result, got nil")
+    }
+    t.Logf("Test completed in %v", duration)
+}
+
+func TestLargeFileProcessing(t *testing.T) {
+    // Processes large files, takes > 20 seconds
+    result := processFile("large_file.dat")
+    if !result.Success {
+        t.Error("File processing failed")
+    }
+}
+```
+
+2. **Alternative: Use environment variable**:
+```go
+package mypackage
+
+import (
+    "os"
+    "testing"
+)
+
+func TestHeavyComputation(t *testing.T) {
+    if os.Getenv("RUN_SLOW_TESTS") == "" {
+        t.Skip("Slow tests disabled. Set RUN_SLOW_TESTS=1 to enable.")
+    }
+    // Heavy computation test
+}
+```
+
+3. **Run tests**:
+```bash
+# Regular tests (excludes slow and S2S)
+go test ./...
+
+# Include slow tests
+RUN_SLOW_TESTS=1 go test -tags slow ./...
+
+# Run both S2S and slow tests
+RUN_S2S_TESTS=1 RUN_SLOW_TESTS=1 go test -tags "s2s slow" ./...
+```
+
+4. **Add Makefile targets**:
+```makefile
+.PHONY: test test-s2s test-slow test-all
+
+test:
+	go test ./...
+
+test-s2s:
+	RUN_S2S_TESTS=1 go test -tags s2s ./...
+
+test-slow:
+	RUN_SLOW_TESTS=1 go test -tags slow ./...
+
+test-all:
+	RUN_S2S_TESTS=1 RUN_SLOW_TESTS=1 go test -tags "s2s slow" ./...
+```
+
+5. **Set timeouts in test functions**:
+```go
+func TestWithTimeout(t *testing.T) {
+    done := make(chan bool)
+    go func() {
+        // Long-running test
+        result := heavyOperation()
+        done <- (result != nil)
+    }()
+    
+    select {
+    case success := <-done:
+        if !success {
+            t.Error("Test failed")
+        }
+    case <-time.After(60 * time.Second):
+        t.Fatal("Test timeout after 60 seconds")
+    }
+}
+```
+
+#### Best Practices
+
+- ✅ **Always run fast tests** in CI/CD by default
+- ✅ **Isolate S2S tests** - never run them in standard test suite
+- ✅ **Mark slow tests** - prevent CI/CD timeouts
+- ✅ **Document requirements** - specify which servers/services are needed for S2S tests
+- ✅ **Use build tags** - `// +build s2s` and `// +build slow`
+- ✅ **Use environment variables** - Check `RUN_S2S_TESTS` and `RUN_SLOW_TESTS`
+- ✅ **Set timeouts** - Use `time.After()` or `context.WithTimeout()` for long-running tests
+- ✅ **Skip conditionally** - Use `t.Skip()` when services are unavailable
+- ❌ **Never mix** fast and slow/S2S tests in same test run
+- ❌ **Never require** external services for standard test suite
+- ❌ **Never exceed** 10-20 seconds for regular tests
+
 ## Dependency Management
 
 **CRITICAL**: Use Go modules for dependency management.

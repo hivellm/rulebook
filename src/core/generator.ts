@@ -15,6 +15,18 @@ function getTemplatesDir(): string {
   return path.join(__dirname, '..', '..', 'templates');
 }
 
+// Helper to read core template files (AGENT_AUTOMATION, DOCUMENTATION_RULES, QUALITY_ENFORCEMENT, RULEBOOK)
+async function generateCoreRules(name: string): Promise<string> {
+  const templatesDir = path.join(getTemplatesDir(), 'core');
+  const templatePath = path.join(templatesDir, `${name.toUpperCase()}.md`);
+
+  if (await fileExists(templatePath)) {
+    return await readFile(templatePath);
+  }
+
+  return `<!-- ${name.toUpperCase()}:START -->\n# ${name.charAt(0).toUpperCase() + name.slice(1)} Rules\n\nCore rules for ${name}.\n<!-- ${name.toUpperCase()}:END -->\n`;
+}
+
 export async function generateAgentsContent(config: ProjectConfig): Promise<string> {
   const sections: string[] = [];
 
@@ -26,13 +38,43 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push(`Generated at: ${new Date().toISOString()}`);
   sections.push('');
 
+  const rulebookDir = config.rulebookDir || 'rulebook';
+
+  // RULEBOOK.md has HIGHEST PRECEDENCE - must be first and most prominent
+  sections.push('## ⚠️ CRITICAL: Task Management Rules (HIGHEST PRECEDENCE)');
+  sections.push('');
+  sections.push('**MANDATORY**: All task creation MUST follow Rulebook task management system.');
+  sections.push('');
+  sections.push(
+    `**📋 ALWAYS reference \`/${rulebookDir}/RULEBOOK.md\` FIRST before creating any tasks or when "openspec" is mentioned.**`
+  );
+  sections.push('');
+  sections.push('**Rules from RULEBOOK.md take precedence over all other rules in this file.**');
+  sections.push('');
+  sections.push('**Key Requirements:**');
+  sections.push('- ✅ Context7 MCP is REQUIRED for task creation');
+  sections.push('- ✅ All tasks MUST follow OpenSpec-compatible format');
+  sections.push('- ✅ Use `rulebook task create` instead of OpenSpec commands');
+  sections.push('- ✅ Always validate task format before committing');
+  sections.push('- ❌ NEVER create tasks without checking RULEBOOK.md format requirements');
+  sections.push('- ❌ NEVER use OpenSpec commands - use Rulebook task system instead');
+  sections.push('');
+  sections.push(
+    `**For complete task management guidelines, see: \`/${rulebookDir}/RULEBOOK.md\`**`
+  );
+  sections.push('');
+  sections.push('---');
+  sections.push('');
+
   // Core rules summary (detailed rules in /rulebook/)
   sections.push('## Core Rules');
   sections.push('');
   sections.push('This project uses @hivellm/rulebook standards.');
   sections.push('');
   sections.push('**CRITICAL RULES:**');
-  sections.push('1. Always reference @AGENTS.md before coding');
+  sections.push(
+    '1. **ALWAYS check `RULEBOOK.md` first** when creating tasks or if "openspec" is mentioned'
+  );
   sections.push(`2. Write tests first (${config.coverageThreshold}%+ coverage required)`);
   sections.push('3. Run quality checks before committing:');
   sections.push('   - Type check / Compiler check');
@@ -44,13 +86,22 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push(
     '6. **NEVER run destructive deletions (`rm -rf`) in this repository; when adding submodules always use `git submodule add`.**'
   );
+  sections.push('7. **Temporary files and scripts**:');
+  sections.push('   - ✅ ALL scripts MUST be created in `/scripts` directory');
+  sections.push('   - ✅ ALL temporary files (test, log, debug) MUST be in `/scripts`');
+  sections.push('   - ✅ ALL temporary files MUST be removed immediately after use (MANDATORY)');
+  sections.push('   - ❌ NEVER create temporary files in project root or outside `/scripts`');
+  sections.push('   - ❌ NEVER leave temporary files after use - clean up before committing');
   sections.push('');
-  const rulebookDir = config.rulebookDir || 'rulebook';
-
   sections.push('## Detailed Rules');
   sections.push('');
   sections.push(`For comprehensive rules, see the corresponding files in \`/${rulebookDir}/\`:`);
   sections.push('');
+
+  // RULEBOOK.md is always first in the list (highest precedence)
+  sections.push(
+    `- \`/${rulebookDir}/RULEBOOK.md\` - **Task management rules (HIGHEST PRECEDENCE)**`
+  );
 
   // Only reference QUALITY_ENFORCEMENT if not in light mode
   if (!config.lightMode) {
@@ -336,18 +387,19 @@ export async function generateModularAgents(
   sections.push(await generateAgentsContent(mergedConfig));
   sections.push('');
 
+  // Write RULEBOOK.md to /rulebook/ (ALWAYS included - highest precedence)
+  const rulebookContent = await generateCoreRules('RULEBOOK');
+  await writeModularFile(projectRoot, 'RULEBOOK', rulebookContent.trim(), rulebookDir);
+
   // Write QUALITY_ENFORCEMENT to /rulebook/ (always included unless light mode)
   if (!mergedConfig.lightMode) {
-    const enforcementPath = path.join(getTemplatesDir(), 'modules', 'QUALITY_ENFORCEMENT.md');
-    if (await fileExists(enforcementPath)) {
-      const enforcementContent = await readFile(enforcementPath);
-      await writeModularFile(
-        projectRoot,
-        'QUALITY_ENFORCEMENT',
-        enforcementContent.trim(),
-        rulebookDir
-      );
-    }
+    const enforcementContent = await generateCoreRules('QUALITY_ENFORCEMENT');
+    await writeModularFile(
+      projectRoot,
+      'QUALITY_ENFORCEMENT',
+      enforcementContent.trim(),
+      rulebookDir
+    );
   }
 
   // Write Git workflow rules to /rulebook/GIT.md
@@ -410,9 +462,9 @@ export async function generateModularAgents(
   }
 
   // Write module files and add references
-  // First, write AGENT_AUTOMATION if not minimal
+  // First, write AGENT_AUTOMATION if not minimal (core file, not module)
   if (!mergedConfig.minimal) {
-    const agentAutomation = await generateModuleRules('agent_automation');
+    const agentAutomation = await generateCoreRules('AGENT_AUTOMATION');
     await writeModularFile(projectRoot, 'AGENT_AUTOMATION', agentAutomation, rulebookDir);
   }
 
@@ -473,6 +525,11 @@ export async function generateFullAgents(
   sections.push(await generateAgentsContent(config));
   sections.push('');
 
+  // Add RULEBOOK.md rules (ALWAYS included - highest precedence)
+  const rulebookContent = await generateCoreRules('RULEBOOK');
+  sections.push(rulebookContent);
+  sections.push('');
+
   // Add language-specific rules
   for (const language of config.languages) {
     const langRules = await generateLanguageRules(language);
@@ -488,8 +545,8 @@ export async function generateFullAgents(
   }
 
   if (!config.minimal) {
-    // Add AGENT_AUTOMATION module when not in minimal mode
-    const agentAutomation = await generateModuleRules('agent_automation');
+    // Add AGENT_AUTOMATION (core file, not module) when not in minimal mode
+    const agentAutomation = await generateCoreRules('AGENT_AUTOMATION');
     sections.push(agentAutomation);
     sections.push('');
   }

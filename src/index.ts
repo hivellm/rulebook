@@ -16,6 +16,11 @@ import {
   agentCommand,
   configCommand,
   tasksCommand,
+  taskCreateCommand,
+  taskListCommand,
+  taskShowCommand,
+  taskValidateCommand,
+  taskArchiveCommand,
   updateCommand,
 } from './cli/commands.js';
 import { readFileSync } from 'fs';
@@ -139,9 +144,42 @@ program
     })
   );
 
+// Task management commands
+const taskCommand = program.command('task').description('Manage Rulebook tasks');
+
+taskCommand
+  .command('create <task-id>')
+  .description('Create a new task')
+  .action((taskId: string) => taskCreateCommand(taskId));
+
+taskCommand
+  .command('list')
+  .description('List all tasks')
+  .option('--archived', 'Include archived tasks')
+  .action((options: { archived?: boolean }) => taskListCommand(options.archived || false));
+
+taskCommand
+  .command('show <task-id>')
+  .description('Show task details')
+  .action((taskId: string) => taskShowCommand(taskId));
+
+taskCommand
+  .command('validate <task-id>')
+  .description('Validate task format')
+  .action((taskId: string) => taskValidateCommand(taskId));
+
+taskCommand
+  .command('archive <task-id>')
+  .description('Archive a completed task')
+  .option('--skip-validation', 'Skip validation before archiving')
+  .action((taskId: string, options: { skipValidation?: boolean }) =>
+    taskArchiveCommand(taskId, options.skipValidation || false)
+  );
+
+// Legacy tasks command (deprecated)
 program
   .command('tasks')
-  .description('Manage OpenSpec tasks')
+  .description('Manage OpenSpec tasks (DEPRECATED - use "task" commands)')
   .option('--tree', 'Show task dependency tree')
   .option('--current', 'Show current active task')
   .option('--status <taskId>', 'Update task status')

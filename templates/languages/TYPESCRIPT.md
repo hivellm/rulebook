@@ -169,6 +169,166 @@ describe('myFunction', () => {
 });
 ```
 
+### Test Categories: S2S and Slow Tests
+
+**CRITICAL**: Tests must be categorized based on execution time and dependencies.
+
+#### Test Time Limits
+
+- **Fast Tests**: Must complete in ≤ 10-20 seconds
+- **Slow Tests**: Any test taking > 10-20 seconds must be marked as slow
+- **S2S Tests**: Tests requiring active server/database must be isolated and run on-demand
+
+#### S2S (Server-to-Server) Tests
+
+**Tests that require active servers, databases, or external services must be isolated using test tags.**
+
+**Implementation**:
+
+1. **Use Vitest test tags**:
+```typescript
+import { describe, it, expect } from 'vitest';
+
+// Regular fast test (always runs)
+describe('local computation', () => {
+  it('should compute correctly', () => {
+    // Fast test, no external dependencies
+  });
+});
+
+// S2S test (only runs with --grep s2s)
+describe('database integration', () => {
+  it.skipIf(!process.env.RUN_S2S_TESTS)('should connect to database', async () => {
+    // Requires active database server
+    const db = await connectToDatabase();
+    // ... test implementation
+  });
+});
+
+// Alternative: Use Vitest tags
+describe('API integration', () => {
+  it.tags('s2s')('should call external API', async () => {
+    // Requires active API server
+    const client = createApiClient();
+    // ... test implementation
+  });
+});
+```
+
+2. **Configure `vitest.config.ts`**:
+```typescript
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    // Exclude S2S tests by default
+    exclude: ['**/node_modules/**', '**/dist/**', '**/*.s2s.test.ts'],
+    // Include S2S tests when explicitly requested
+    include: process.env.RUN_S2S_TESTS 
+      ? ['**/*.{test,spec}.ts', '**/*.s2s.test.ts']
+      : ['**/*.{test,spec}.ts'],
+  },
+});
+```
+
+3. **Run tests**:
+```bash
+# Regular tests (excludes S2S)
+npm test
+
+# Include S2S tests (requires active servers)
+RUN_S2S_TESTS=1 npm test
+
+# Run only S2S tests
+npm test -- --grep s2s
+```
+
+#### Slow Tests
+
+**Tests that take > 10-20 seconds must be marked and run separately.**
+
+**Implementation**:
+
+1. **Mark slow tests with tags or separate files**:
+```typescript
+import { describe, it, expect } from 'vitest';
+
+// Fast test (always runs)
+describe('quick operations', () => {
+  it('should complete quickly', () => {
+    // Completes in < 1 second
+  });
+});
+
+// Slow test (only runs with --grep slow)
+describe('heavy computation', () => {
+  it.tags('slow')('should process large dataset', async () => {
+    // Takes 30+ seconds
+    // Heavy processing, large dataset, etc.
+  });
+});
+
+// Or use separate file: `large-file.test.slow.ts`
+describe('large file processing', () => {
+  it('should process large files', async () => {
+    // Processes large files, takes > 20 seconds
+  });
+});
+```
+
+2. **Configure `vitest.config.ts`**:
+```typescript
+export default defineConfig({
+  test: {
+    // Exclude slow tests by default
+    exclude: ['**/node_modules/**', '**/dist/**', '**/*.slow.test.ts'],
+    // Include slow tests when explicitly requested
+    include: process.env.RUN_SLOW_TESTS
+      ? ['**/*.{test,spec}.ts', '**/*.slow.test.ts']
+      : ['**/*.{test,spec}.ts'],
+    // Set timeout for slow tests
+    testTimeout: process.env.RUN_SLOW_TESTS ? 60000 : 20000,
+  },
+});
+```
+
+3. **Run tests**:
+```bash
+# Regular tests (excludes slow)
+npm test
+
+# Include slow tests
+RUN_SLOW_TESTS=1 npm test
+
+# Run only slow tests
+npm test -- --grep slow
+```
+
+4. **Add npm scripts in `package.json`**:
+```json
+{
+  "scripts": {
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:s2s": "RUN_S2S_TESTS=1 vitest --run",
+    "test:slow": "RUN_SLOW_TESTS=1 vitest --run",
+    "test:all": "RUN_S2S_TESTS=1 RUN_SLOW_TESTS=1 vitest --run"
+  }
+}
+```
+
+#### Best Practices
+
+- ✅ **Always run fast tests** in CI/CD by default
+- ✅ **Isolate S2S tests** - never run them in standard test suite
+- ✅ **Mark slow tests** - prevent CI/CD timeouts
+- ✅ **Document requirements** - specify which servers/services are needed for S2S tests
+- ✅ **Use timeouts** - Set appropriate timeouts: `it('test', async () => { ... }, { timeout: 30000 })`
+- ✅ **Use test tags** - Vitest tags (`it.tags('s2s')`) or Jest tags (`it.tags(['s2s'])`)
+- ❌ **Never mix** fast and slow/S2S tests in same test run
+- ❌ **Never require** external services for standard test suite
+- ❌ **Never exceed** 10-20 seconds for regular tests
+
 ## Package Management
 
 **CRITICAL**: Use consistent package manager across team.

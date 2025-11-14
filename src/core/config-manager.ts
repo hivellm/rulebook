@@ -76,7 +76,6 @@ export class ConfigManager {
       projectId,
       mode: 'full',
       features: {
-        openspec: true,
         watcher: true,
         agent: true,
         logging: true,
@@ -116,7 +115,6 @@ export class ConfigManager {
 
     // Add missing features with defaults
     const defaultFeatures = {
-      openspec: true,
       watcher: true,
       agent: true,
       logging: true,
@@ -283,7 +281,6 @@ export function getDefaultConfig(): RulebookConfig {
     projectId,
     mode: 'full',
     features: {
-      openspec: true,
       watcher: true,
       agent: true,
       logging: true,

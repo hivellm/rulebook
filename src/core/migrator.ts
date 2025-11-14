@@ -20,7 +20,7 @@ export function hasEmbeddedTemplates(existing: ExistingAgentsInfo): boolean {
 
   // Check for embedded module blocks (e.g., <!-- OPENSPEC:START -->)
   const embeddedModulePattern =
-    /<!--\s*(OPENSPEC|VECTORIZER|SYNAP|CONTEXT7|GITHUB|PLAYWRIGHT|SUPABASE|NOTION|ATLASSIAN|SERENA|FIGMA|GRAFANA|AGENT_AUTOMATION):START\s*-->/i;
+    /<!--\s*(VECTORIZER|SYNAP|CONTEXT7|GITHUB|PLAYWRIGHT|SUPABASE|NOTION|ATLASSIAN|SERENA|FIGMA|GRAFANA|AGENT_AUTOMATION):START\s*-->/i;
 
   // Check for embedded framework blocks (e.g., <!-- REACT:START -->)
   const embeddedFrameworkPattern =

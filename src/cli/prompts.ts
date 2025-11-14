@@ -158,11 +158,6 @@ export async function promptProjectConfig(
           checked: detectedModules.includes('synap'),
         },
         {
-          name: 'OpenSpec (proposal system)',
-          value: 'openspec',
-          checked: detectedModules.includes('openspec'),
-        },
-        {
           name: 'Context7 (library docs)',
           value: 'context7',
           checked: detectedModules.includes('context7'),

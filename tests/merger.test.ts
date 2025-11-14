@@ -85,9 +85,9 @@ Other content
       const existing: ExistingAgentsInfo = {
         exists: true,
         path: '/test/AGENTS.md',
-        content: `<!-- OPENSPEC:START -->
-OpenSpec content
-<!-- OPENSPEC:END -->
+        content: `<!-- VECTORIZER:START -->
+Vectorizer content
+<!-- VECTORIZER:END -->
 
 <!-- PROJECT:START -->
 Project content
@@ -98,10 +98,10 @@ Vectorizer content
 <!-- VECTORIZER:END -->`,
         blocks: [
           {
-            name: 'OPENSPEC',
+            name: 'VECTORIZER',
             startLine: 0,
             endLine: 2,
-            content: '<!-- OPENSPEC:START -->\nOpenSpec content\n<!-- OPENSPEC:END -->',
+            content: '<!-- VECTORIZER:START -->\nVectorizer content\n<!-- VECTORIZER:END -->',
           },
           {
             name: 'PROJECT',
@@ -120,8 +120,8 @@ Vectorizer content
 
       const merged = await mergeAgents(existing, baseConfig);
 
-      expect(merged).toContain('<!-- OPENSPEC:START -->');
-      expect(merged).toContain('OpenSpec content');
+      expect(merged).toContain('<!-- VECTORIZER:START -->');
+      expect(merged).toContain('Vectorizer content');
       expect(merged).toContain('<!-- PROJECT:START -->');
       expect(merged).toContain('Project content');
       expect(merged).toContain('<!-- VECTORIZER:START -->');
@@ -134,15 +134,15 @@ Vectorizer content
       const existing: ExistingAgentsInfo = {
         exists: true,
         path: '/test/AGENTS.md',
-        content: `<!-- OPENSPEC:START -->
-OpenSpec
-<!-- OPENSPEC:END -->`,
+        content: `<!-- VECTORIZER:START -->
+Vectorizer
+<!-- VECTORIZER:END -->`,
         blocks: [
           {
-            name: 'OPENSPEC',
+            name: 'VECTORIZER',
             startLine: 0,
             endLine: 2,
-            content: '<!-- OPENSPEC:START -->\nOpenSpec\n<!-- OPENSPEC:END -->',
+            content: '<!-- VECTORIZER:START -->\nVectorizer\n<!-- VECTORIZER:END -->',
           },
         ],
       };
@@ -167,8 +167,8 @@ OpenSpec
       expect(merged).toContain('<!-- VECTORIZER:START -->');
 
       // Should preserve existing blocks
-      expect(merged).toContain('<!-- OPENSPEC:START -->');
-      expect(merged).toContain('OpenSpec');
+      expect(merged).toContain('<!-- VECTORIZER:START -->');
+      expect(merged).toContain('Vectorizer');
     });
 
     it('should update existing language blocks', async () => {
@@ -291,7 +291,7 @@ TypeScript content
       const config: ProjectConfig = {
         ...baseConfig,
         languages: ['typescript'],
-        modules: ['openspec'],
+        modules: ['vectorizer'],
         modular: true,
       };
 
@@ -300,7 +300,7 @@ TypeScript content
 
       // Should generate modular format
       expect(merged).toContain('/rulebook/TYPESCRIPT.md');
-      expect(merged).toContain('/rulebook/OPENSPEC.md');
+      expect(merged).toContain('/rulebook/VECTORIZER.md');
     });
 
     it('should use legacy merge when modular enabled but no projectRoot', async () => {
@@ -485,9 +485,9 @@ Other content
         exists: true,
         path: '/test/AGENTS.md',
         content: `<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->
-<!-- OPENSPEC:START -->
-Old OpenSpec rules
-<!-- OPENSPEC:END -->
+<!-- VECTORIZER:START -->
+Old Vectorizer rules
+<!-- VECTORIZER:END -->
 <!-- OTHER:START -->
 Other content
 <!-- OTHER:END -->`,
@@ -499,10 +499,10 @@ Other content
             content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
           },
           {
-            name: 'OPENSPEC',
+            name: 'VECTORIZER',
             startLine: 2,
             endLine: 4,
-            content: '<!-- OPENSPEC:START -->\nOld OpenSpec rules\n<!-- OPENSPEC:END -->',
+            content: '<!-- VECTORIZER:START -->\nOld Vectorizer rules\n<!-- VECTORIZER:END -->',
           },
           {
             name: 'OTHER',
@@ -513,11 +513,11 @@ Other content
         ],
       };
 
-      const merged = await mergeModuleRules(existing, 'openspec');
+      const merged = await mergeModuleRules(existing, 'vectorizer');
 
-      expect(merged).toContain('<!-- OPENSPEC:START -->');
-      expect(merged).toContain('# OpenSpec Instructions');
-      expect(merged).not.toContain('Old OpenSpec rules');
+      expect(merged).toContain('<!-- VECTORIZER:START -->');
+      expect(merged).toContain('# Vectorizer Instructions');
+      expect(merged).not.toContain('Old Vectorizer rules');
       expect(merged).toContain('<!-- OTHER:START -->');
       expect(merged).toContain('Other content');
     });

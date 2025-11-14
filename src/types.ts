@@ -67,7 +67,6 @@ export interface ModuleDetection {
   module:
     | 'vectorizer'
     | 'synap'
-    | 'openspec'
     | 'context7'
     | 'github'
     | 'playwright'
@@ -144,7 +143,6 @@ export interface RulebookConfig {
   projectId: string;
   mode: 'full' | 'minimal';
   features: {
-    openspec: boolean;
     watcher: boolean;
     agent: boolean;
     logging: boolean;

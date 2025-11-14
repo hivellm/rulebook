@@ -38,7 +38,6 @@ describe('ConfigManager', () => {
       });
 
       expect(config.features).toMatchObject({
-        openspec: true,
         watcher: true,
         agent: true,
         logging: true,
@@ -140,9 +139,9 @@ describe('ConfigManager', () => {
     it('should disable feature', async () => {
       await configManager.initializeConfig();
 
-      const config = await configManager.toggleFeature('openspec', false);
+      const config = await configManager.toggleFeature('watcher', false);
 
-      expect(config.features.openspec).toBe(false);
+      expect(config.features.watcher).toBe(false);
     });
   });
 
@@ -186,7 +185,6 @@ describe('getDefaultConfig', () => {
     });
 
     expect(config.features).toMatchObject({
-      openspec: true,
       watcher: true,
       agent: true,
       logging: true,
@@ -214,7 +212,6 @@ describe('getDefaultConfig', () => {
   it('should have all required features', () => {
     const config = getDefaultConfig();
 
-    expect(config.features).toHaveProperty('openspec');
     expect(config.features).toHaveProperty('watcher');
     expect(config.features).toHaveProperty('agent');
     expect(config.features).toHaveProperty('logging');
@@ -270,16 +267,16 @@ describe('ConfigManager edge cases and error handling', () => {
       version: '0.9.0',
       projectId: 'test-id',
       features: {
-        openspec: true,
         watcher: false,
+        agent: false,
       },
     } as any;
 
     const migrated = await configManager.migrateConfig(oldConfig);
 
     expect(migrated.version).toBe('1.0.0');
-    expect(migrated.features.openspec).toBe(true);
     expect(migrated.features.watcher).toBe(false);
+    expect(migrated.features.agent).toBe(false);
   });
 
   it('should handle feature enablement edge cases', async () => {
@@ -287,7 +284,6 @@ describe('ConfigManager edge cases and error handling', () => {
 
     // Test all feature keys
     const features = [
-      'openspec',
       'watcher',
       'agent',
       'logging',
@@ -387,7 +383,7 @@ describe('ConfigManager edge cases and error handling', () => {
 
     expect(summary.enabledFeatures).not.toContain('watcher');
     expect(summary.enabledFeatures).not.toContain('agent');
-    expect(summary.enabledFeatures).toContain('openspec');
+    expect(summary.enabledFeatures).toContain('logging');
   });
 
   it('should handle config summary with custom CLI tools', async () => {

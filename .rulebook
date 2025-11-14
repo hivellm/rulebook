@@ -1,11 +1,10 @@
 {
-  "version": "0.16.0",
-  "installedAt": "2025-11-04T05:19:24.054Z",
-  "updatedAt": "2025-11-04T05:21:36.440Z",
+  "version": "0.18.0",
+  "installedAt": "2025-11-14T03:31:44.691Z",
+  "updatedAt": "2025-11-14T03:36:44.226Z",
   "projectId": "rulebook",
   "mode": "full",
   "features": {
-    "openspec": true,
     "watcher": false,
     "agent": false,
     "logging": true,

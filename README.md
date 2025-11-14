@@ -29,7 +29,7 @@ Large Language Models (LLMs) for software development need **clear directives** 
 - 🛡️ **Error Reduction**: Catches issues early through automated quality gates and pre-commit/pre-push hooks
 - ⚙️ **Process Automation**: Automates repetitive tasks like formatting, testing, and deployment
 - 🔌 **MCP Integration**: Supports multiple Model Context Protocol (MCP) modules for enhanced AI capabilities
-- 📊 **Task Organization**: Integrates with OpenSpec for structured task management and project planning
+- 📊 **Task Management**: Built-in task management system (OpenSpec-compatible format) for structured development
 
 By giving LLMs a clear "rulebook" to follow, you ensure that every piece of generated code meets your project's standards—**automatically**.
 
@@ -150,7 +150,7 @@ rulebook agent --iterations 10      # Max iterations
 rulebook agent --watch     # Enable watcher mode
 
 # Task Management
-rulebook tasks             # Manage OpenSpec tasks
+rulebook task <command>     # Manage Rulebook tasks (create, list, show, validate, archive)
 rulebook tasks --tree      # Show dependency tree
 rulebook tasks --current   # Show active task
 rulebook tasks --status <id>  # Update task status
@@ -165,7 +165,7 @@ rulebook config --feature agent --disable    # Disable feature
 ## Setup Modes
 
 ### Full Mode (Default)
-Complete setup with all features: OpenSpec tasks, Watcher, MCP modules, comprehensive workflows.
+Complete setup with all features: Task management, Watcher, MCP modules, comprehensive workflows.
 
 ### Minimal Mode
 ```bash
@@ -191,7 +191,7 @@ Bare minimum rules: no quality enforcement, no testing requirements, no linting.
 
 ## MCP Modules (12)
 
-**Core**: Vectorizer • Synap • OpenSpec • Context7 • GitHub MCP • Playwright
+**Core**: Vectorizer • Synap • Context7 • GitHub MCP • Playwright
 
 **Services**: Supabase • Notion • Atlassian • Serena • Figma • Grafana
 

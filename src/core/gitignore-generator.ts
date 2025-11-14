@@ -1,0 +1,336 @@
+import { fileExists, readFile, writeFile } from '../utils/file-system.js';
+import type { LanguageDetection } from '../types.js';
+import path from 'path';
+
+/**
+ * Gitignore patterns for each language
+ */
+const GITIGNORE_PATTERNS: Record<string, string[]> = {
+  typescript: [
+    '# TypeScript',
+    '*.tsbuildinfo',
+    '*.tsbuildinfo.*',
+    'dist/',
+    'build/',
+    'out/',
+    '.tsc/',
+    'node_modules/',
+    '*.log',
+    '.env',
+    '.env.local',
+    '.env.*.local',
+  ],
+  javascript: [
+    '# JavaScript',
+    'node_modules/',
+    'dist/',
+    'build/',
+    'out/',
+    '*.log',
+    '.env',
+    '.env.local',
+    '.env.*.local',
+    '.cache/',
+  ],
+  rust: ['# Rust', 'target/', 'Cargo.lock', '**/*.rs.bk', '*.pdb'],
+  python: [
+    '# Python',
+    '__pycache__/',
+    '*.py[cod]',
+    '*$py.class',
+    '*.so',
+    '.Python',
+    'build/',
+    'develop-eggs/',
+    'dist/',
+    'downloads/',
+    'eggs/',
+    '.eggs/',
+    'lib/',
+    'lib64/',
+    'parts/',
+    'sdist/',
+    'var/',
+    'wheels/',
+    '*.egg-info/',
+    '.installed.cfg',
+    '*.egg',
+    '.venv/',
+    'venv/',
+    'ENV/',
+    'env/',
+    '.pytest_cache/',
+    '.mypy_cache/',
+    '.ruff_cache/',
+  ],
+  go: ['# Go', '*.exe', '*.exe~', '*.dll', '*.so', '*.dylib', '*.test', '*.out', 'vendor/', '.go/'],
+  java: [
+    '# Java',
+    '*.class',
+    '*.jar',
+    '*.war',
+    '*.ear',
+    '*.nar',
+    'hs_err_pid*',
+    'replay_pid*',
+    'target/',
+    '.gradle/',
+    'build/',
+    'out/',
+    '.idea/',
+    '*.iml',
+    '.settings/',
+    '.classpath',
+    '.project',
+  ],
+  csharp: [
+    '# C#',
+    'bin/',
+    'obj/',
+    '*.user',
+    '*.suo',
+    '*.cache',
+    '*.dll',
+    '*.exe',
+    '*.pdb',
+    '*.cache',
+    '.vs/',
+    'packages/',
+  ],
+  php: ['# PHP', 'vendor/', 'composer.lock', '*.log', '.phpunit.result.cache', '.php_cs.cache'],
+  swift: ['# Swift', '.build/', '*.xcodeproj', '*.xcworkspace', 'DerivedData/', '*.swiftpm/'],
+  kotlin: [
+    '# Kotlin',
+    '*.class',
+    '*.jar',
+    '*.war',
+    '*.ear',
+    '*.nar',
+    'target/',
+    '.gradle/',
+    'build/',
+    'out/',
+    '.idea/',
+    '*.iml',
+  ],
+  cpp: [
+    '# C++',
+    '*.o',
+    '*.obj',
+    '*.exe',
+    '*.out',
+    '*.app',
+    '*.so',
+    '*.dylib',
+    '*.dll',
+    'build/',
+    'cmake-build-*/',
+    '.vscode/',
+  ],
+  c: ['# C', '*.o', '*.obj', '*.exe', '*.out', '*.app', '*.so', '*.dylib', '*.dll', 'build/'],
+  elixir: ['# Elixir', '_build/', 'deps/', '*.beam', '*.plt', 'erl_crash.dump', '.elixir_ls/'],
+  ruby: [
+    '# Ruby',
+    '*.gem',
+    '*.rbc',
+    '/.bundle/',
+    '/vendor/bundle',
+    '/lib/bundler/man/',
+    '*.pem',
+    '*.log',
+    '.byebug_history',
+    'tmp/',
+    '*.swp',
+    '*.swo',
+    '*~',
+  ],
+  scala: ['# Scala', '*.class', '*.log', 'target/', '.idea/', '*.iml', '.metals/', '.bloop/'],
+  dart: ['# Dart', '.dart_tool/', 'build/', '.packages', 'pubspec.lock'],
+  solidity: [
+    '# Solidity',
+    'node_modules/',
+    'artifacts/',
+    'cache/',
+    'typechain/',
+    'typechain-types/',
+  ],
+  zig: ['# Zig', 'zig-cache/', 'zig-out/'],
+  erlang: ['# Erlang', '*.beam', '*.plt', 'erl_crash.dump', '_build/', 'rebar.lock'],
+  haskell: [
+    '# Haskell',
+    'dist/',
+    'dist-*',
+    'cabal-dev',
+    '*.o',
+    '*.hi',
+    '*.chi',
+    '*.chs.h',
+    '*.dyn_o',
+    '*.dyn_hi',
+    '.hpc',
+    '.hsenv',
+    '.cabal-sandbox/',
+    'cabal.sandbox.config',
+    '*.prof',
+    '*.aux',
+    '*.hp',
+    '*.ps',
+    '*.pdf',
+  ],
+  julia: ['# Julia', '*.jl.cov', '*.jl.*.cov', '*.jl.mem', 'Manifest.toml'],
+  lua: ['# Lua', '*.luac', '*.o', '*.so', '*.rockspec'],
+  r: ['# R', '.Rhistory', '.RData', '.Ruserdata', '*.Rproj.user'],
+  sql: ['# SQL', '*.db', '*.sqlite', '*.sqlite3'],
+  objectivec: [
+    '# Objective-C',
+    '*.hmap',
+    '*.ipa',
+    '*.dSYM.zip',
+    '*.dSYM',
+    'DerivedData/',
+    '*.xcodeproj',
+    '*.xcworkspace',
+  ],
+};
+
+/**
+ * Common patterns that should always be included
+ */
+const COMMON_PATTERNS = [
+  '# Common',
+  '.DS_Store',
+  'Thumbs.db',
+  '.idea/',
+  '.vscode/',
+  '*.swp',
+  '*.swo',
+  '*~',
+  '.env',
+  '.env.local',
+  '.env.*.local',
+  '*.log',
+  'logs/',
+  '.cache/',
+  'tmp/',
+  'temp/',
+];
+
+/**
+ * Generate .gitignore content based on detected languages
+ */
+export function generateGitignoreContent(languages: LanguageDetection[]): string {
+  const patterns: Set<string> = new Set();
+
+  // Add common patterns
+  COMMON_PATTERNS.forEach((pattern) => patterns.add(pattern));
+
+  // Add language-specific patterns
+  for (const lang of languages) {
+    const langPatterns = GITIGNORE_PATTERNS[lang.language];
+    if (langPatterns) {
+      langPatterns.forEach((pattern) => patterns.add(pattern));
+    }
+  }
+
+  // Convert to array and sort
+  const sortedPatterns = Array.from(patterns).sort();
+
+  // Add header
+  const header = [
+    '# .gitignore',
+    '# Generated by @hivellm/rulebook',
+    `# Generated at: ${new Date().toISOString()}`,
+    '',
+  ];
+
+  return header.concat(sortedPatterns).join('\n') + '\n';
+}
+
+/**
+ * Merge existing .gitignore with new patterns
+ */
+function mergeGitignore(existing: string, newPatterns: string[]): string {
+  const existingLines = existing.split('\n');
+  const existingPatterns = new Set(
+    existingLines
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('#') && !line.startsWith('!'))
+  );
+
+  // Find missing patterns
+  const missingPatterns = newPatterns.filter(
+    (pattern) => pattern && !pattern.startsWith('#') && !existingPatterns.has(pattern)
+  );
+
+  if (missingPatterns.length === 0) {
+    return existing; // No new patterns to add
+  }
+
+  // Preserve existing content
+  const merged = existingLines.slice();
+
+  // Check if file ends with newline
+  const endsWithNewline = existing.endsWith('\n');
+
+  // Add separator if needed
+  if (merged.length > 0) {
+    const lastLine = merged[merged.length - 1].trim();
+    if (lastLine && !lastLine.startsWith('#')) {
+      merged.push('');
+    }
+  }
+
+  // Add header for new patterns
+  merged.push('# Patterns added by @hivellm/rulebook');
+  merged.push(`# Added at: ${new Date().toISOString()}`);
+  merged.push('');
+
+  // Add missing patterns
+  missingPatterns.sort().forEach((pattern) => merged.push(pattern));
+
+  // Ensure file ends with newline
+  const result = merged.join('\n');
+  return endsWithNewline ? result + '\n' : result + '\n';
+}
+
+/**
+ * Generate or update .gitignore file
+ */
+export async function generateGitignore(
+  projectRoot: string,
+  languages: LanguageDetection[]
+): Promise<{ created: boolean; updated: boolean }> {
+  const gitignorePath = path.join(projectRoot, '.gitignore');
+  const exists = await fileExists(gitignorePath);
+
+  if (!exists) {
+    // Create new .gitignore
+    const content = generateGitignoreContent(languages);
+    await writeFile(gitignorePath, content);
+    return { created: true, updated: false };
+  } else {
+    // Update existing .gitignore
+    const existing = await readFile(gitignorePath);
+    const newContent = generateGitignoreContent(languages);
+    const newPatterns = newContent
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('#'));
+
+    // Check if any new patterns are missing
+    const existingPatterns = existing
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('#'));
+
+    const missingPatterns = newPatterns.filter((pattern) => !existingPatterns.includes(pattern));
+
+    if (missingPatterns.length > 0) {
+      const merged = mergeGitignore(existing, missingPatterns);
+      await writeFile(gitignorePath, merged);
+      return { created: false, updated: true };
+    }
+
+    return { created: false, updated: false };
+  }
+}
