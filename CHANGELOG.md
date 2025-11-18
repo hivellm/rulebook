@@ -10,6 +10,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-11-18
+
+### Changed
+- **License**: Changed from MIT License to Apache License 2.0
+  - Updated LICENSE file with full Apache 2.0 text
+  - Updated package.json license field
+  - Updated all documentation references
+  - Updated code generators to create Apache 2.0 licenses by default
+  - Updated CONTRIBUTING.md to reflect Apache 2.0 licensing
+
+### Milestone
+- **Version 1.0.0**: First stable release
+  - Comprehensive task management system (OpenSpec-compatible)
+  - Support for 28 programming languages
+  - Support for 17 frameworks
+  - Support for 12 MCP modules
+  - 76.8%+ test coverage
+  - 411+ passing tests
+  - Complete migration from OpenSpec to Rulebook
+  - Full CLI command suite with 15+ commands
+  - Automated quality gates and workflows
+  - Comprehensive documentation and guides
+
 ## [0.19.1] - 2025-11-18
 
 ### Fixed

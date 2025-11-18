@@ -301,7 +301,7 @@ Share on:
 - **95%+ Coverage** on core modules
 - **Code Simplification**: -10,500 lines removed while maintaining functionality
 - **Zero Warnings** - Production ready
-- **MIT Licensed** - Free for all
+- **Apache 2.0 Licensed** - Free for all
 
 ## 🎯 Value Proposition
 

@@ -199,7 +199,7 @@ All planned features for v0.15.0 have been successfully implemented. The project
 
 - [x] README.md - Comprehensive usage guide
 - [x] CHANGELOG.md - Version history
-- [x] LICENSE - MIT license
+- [x] LICENSE - Apache 2.0 license
 - [x] AGENTS.md - Self-documenting rules
 - [x] docs/ROADMAP.md - Project roadmap
 - [x] docs/STATUS.md - This file

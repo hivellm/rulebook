@@ -379,7 +379,7 @@ npx @hivellm/rulebook validate
 
 ## License
 
-MIT License - Free for commercial and personal use
+Apache License 2.0 - Free for commercial and personal use
 
 ## Contributing
 
