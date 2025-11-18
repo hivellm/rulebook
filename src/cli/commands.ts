@@ -1310,6 +1310,28 @@ export async function updateCommand(options: {
         );
       }
 
+      // Generate Rulebook commands if Cursor is detected or if OpenSpec was used (likely Cursor project)
+      const cursorRulesPath = path.join(cwd, '.cursorrules');
+      const cursorCommandsDir = path.join(cwd, '.cursor', 'commands');
+      const usesCursor = existsSync(cursorRulesPath) || existsSync(cursorCommandsDir);
+
+      // Always generate commands if OpenSpec exists (OpenSpec was primarily used with Cursor)
+      // or if Cursor is explicitly detected
+      if (usesCursor || removedCommands > 0) {
+        const { generateCursorCommands } = await import('../core/workflow-generator.js');
+        const generatedCommands = await generateCursorCommands(cwd);
+        if (generatedCommands.length > 0) {
+          console.log(
+            chalk.green(
+              `  Generated ${generatedCommands.length} Rulebook command(s) in .cursor/commands/`
+            )
+          );
+        } else if (usesCursor || removedCommands > 0) {
+          // Commands already exist, just inform user
+          console.log(chalk.gray('  Rulebook commands already exist in .cursor/commands/'));
+        }
+      }
+
       // Remove OpenSpec directory after successful migration
       const openspecPath = path.join(cwd, 'openspec');
       if (existsSync(openspecPath)) {
@@ -1332,6 +1354,80 @@ export async function updateCommand(options: {
           console.log(
             chalk.yellow(
               '  ⚠️  /openspec directory kept due to migration errors (review and remove manually)'
+            )
+          );
+        }
+      }
+    } else {
+      // Check if /openspec directory exists (even without /openspec/changes)
+      const openspecPath = path.join(cwd, 'openspec');
+      if (existsSync(openspecPath)) {
+        // Remove OpenSpec commands and generate Rulebook commands
+        const { removeOpenSpecCommands } = await import('../core/openspec-migrator.js');
+        const removedCommands = await removeOpenSpecCommands(cwd);
+        if (removedCommands > 0) {
+          console.log(
+            chalk.gray(`  Removed ${removedCommands} OpenSpec command(s) from .cursor/commands/`)
+          );
+        }
+
+        // Generate Rulebook commands if Cursor is detected or if OpenSpec was used
+        const cursorRulesPath = path.join(cwd, '.cursorrules');
+        const cursorCommandsDir = path.join(cwd, '.cursor', 'commands');
+        const usesCursor = existsSync(cursorRulesPath) || existsSync(cursorCommandsDir);
+
+        // Always generate commands if OpenSpec exists (OpenSpec was primarily used with Cursor)
+        // or if Cursor is explicitly detected
+        if (usesCursor || removedCommands > 0) {
+          const { generateCursorCommands } = await import('../core/workflow-generator.js');
+          const generatedCommands = await generateCursorCommands(cwd);
+          if (generatedCommands.length > 0) {
+            console.log(
+              chalk.green(
+                `  Generated ${generatedCommands.length} Rulebook command(s) in .cursor/commands/`
+              )
+            );
+          } else if (usesCursor || removedCommands > 0) {
+            // Commands already exist, just inform user
+            console.log(chalk.gray('  Rulebook commands already exist in .cursor/commands/'));
+          }
+        }
+      }
+    }
+
+    // Always generate Rulebook commands if Cursor is detected (even without OpenSpec)
+    // This ensures commands are available for all Cursor projects
+    const cursorRulesPath = path.join(cwd, '.cursorrules');
+    const cursorCommandsDir = path.join(cwd, '.cursor', 'commands');
+    const usesCursor = existsSync(cursorRulesPath) || existsSync(cursorCommandsDir);
+
+    if (usesCursor) {
+      // Check if commands already exist to avoid duplicate generation
+      const existingCommandsDir = path.join(cwd, '.cursor', 'commands');
+      if (existsSync(existingCommandsDir)) {
+        const { readdir } = await import('fs/promises');
+        const existingFiles = await readdir(existingCommandsDir);
+        const hasRulebookCommands = existingFiles.some((file) => file.startsWith('rulebook-task-'));
+
+        if (!hasRulebookCommands) {
+          const { generateCursorCommands } = await import('../core/workflow-generator.js');
+          const generatedCommands = await generateCursorCommands(cwd);
+          if (generatedCommands.length > 0) {
+            console.log(
+              chalk.green(
+                `  Generated ${generatedCommands.length} Rulebook command(s) in .cursor/commands/`
+              )
+            );
+          }
+        }
+      } else {
+        // Directory doesn't exist, create it and generate commands
+        const { generateCursorCommands } = await import('../core/workflow-generator.js');
+        const generatedCommands = await generateCursorCommands(cwd);
+        if (generatedCommands.length > 0) {
+          console.log(
+            chalk.green(
+              `  Generated ${generatedCommands.length} Rulebook command(s) in .cursor/commands/`
             )
           );
         }

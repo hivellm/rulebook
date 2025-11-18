@@ -292,7 +292,7 @@ ${config.languages.map((lang) => `### ${lang.charAt(0).toUpperCase() + lang.slic
 /**
  * Generate Cursor commands from templates
  */
-async function generateCursorCommands(targetDir: string): Promise<string[]> {
+export async function generateCursorCommands(targetDir: string): Promise<string[]> {
   const commandsDir = path.join(targetDir, '.cursor', 'commands');
   await ensureDir(commandsDir);
 

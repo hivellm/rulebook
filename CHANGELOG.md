@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2025-11-18
+
+### Fixed
+- **Rulebook Commands Generation**: Fixed issue where `rulebook update` was not generating Rulebook task commands in `.cursor/commands/`
+  - Commands are now generated when OpenSpec is detected and removed
+  - Commands are generated when Cursor IDE is detected (`.cursorrules` or `.cursor/commands` exists)
+  - Added fallback check to ensure commands are always generated for Cursor projects, even without OpenSpec
+  - Improved detection logic to handle cases where `.cursor/commands` directory doesn't exist yet
+
 ## [0.19.0] - 2025-11-18
 
 ### Added
