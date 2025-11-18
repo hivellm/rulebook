@@ -187,7 +187,9 @@ describe('workflow-generator', () => {
 
       const files = await generateIDEFiles(config, testDir);
 
-      expect(files).toHaveLength(0);
+      // .cursorrules should not be overwritten, but Cursor commands may be generated
+      // Commands are only generated if they don't exist, so count may vary
+      expect(files).not.toContain(path.join(testDir, '.cursorrules'));
 
       const content = await fs.readFile(path.join(testDir, '.cursorrules'), 'utf-8');
       expect(content).toBe(customContent);

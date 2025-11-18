@@ -126,6 +126,115 @@ export async function migrateOpenSpecToRulebook(
 }
 
 /**
+ * Migrate OpenSpec archived tasks to Rulebook format
+ */
+export async function migrateOpenSpecArchives(
+  projectRoot: string,
+  rulebookDir: string = 'rulebook'
+): Promise<MigrationResult> {
+  const result: MigrationResult = {
+    migrated: 0,
+    skipped: 0,
+    errors: [],
+    migratedTasks: [],
+  };
+
+  const openspecPath = join(projectRoot, OPENSPEC_DIR);
+  const archivePath = join(openspecPath, CHANGES_DIR, 'archive');
+
+  // Check if OpenSpec archive directory exists
+  if (!existsSync(archivePath)) {
+    return result; // No archived tasks to migrate
+  }
+
+  // Get all archived task directories
+  let archiveDirs: string[] = [];
+  try {
+    archiveDirs = readdirSync(archivePath, { withFileTypes: true })
+      .filter((dirent) => dirent.isDirectory())
+      .map((dirent) => dirent.name);
+  } catch (error: any) {
+    result.errors.push(`Failed to read OpenSpec archive directory: ${error.message}`);
+    return result;
+  }
+
+  if (archiveDirs.length === 0) {
+    return result; // No archived tasks to migrate
+  }
+
+  // Initialize TaskManager
+  const taskManager = createTaskManager(projectRoot, rulebookDir);
+  await taskManager.initialize();
+
+  // Migrate each archived task
+  for (const archiveDir of archiveDirs) {
+    const sourceArchivePath = join(archivePath, archiveDir);
+    // Preserve archive date prefix (YYYY-MM-DD-task-id format)
+    const archiveName = archiveDir; // Keep original name with date prefix
+    const targetArchivePath = join(projectRoot, rulebookDir, 'tasks', 'archive', archiveName);
+
+    try {
+      // Check if archive already exists in Rulebook
+      if (existsSync(targetArchivePath)) {
+        result.skipped++;
+        continue;
+      }
+
+      // Create target archive directory
+      mkdirSync(targetArchivePath, { recursive: true });
+      mkdirSync(join(targetArchivePath, SPECS_DIR), { recursive: true });
+
+      // Migrate proposal.md
+      const proposalSource = join(sourceArchivePath, PROPOSAL_FILE);
+      if (await fileExists(proposalSource)) {
+        const proposalContent = await readFile(proposalSource);
+        await writeFile(join(targetArchivePath, PROPOSAL_FILE), proposalContent);
+      }
+
+      // Migrate tasks.md
+      const tasksSource = join(sourceArchivePath, TASKS_FILE);
+      if (await fileExists(tasksSource)) {
+        const tasksContent = await readFile(tasksSource);
+        await writeFile(join(targetArchivePath, TASKS_FILE), tasksContent);
+      }
+
+      // Migrate design.md (if exists)
+      const designSource = join(sourceArchivePath, DESIGN_FILE);
+      if (await fileExists(designSource)) {
+        const designContent = await readFile(designSource);
+        await writeFile(join(targetArchivePath, DESIGN_FILE), designContent);
+      }
+
+      // Migrate specs
+      const specsSource = join(sourceArchivePath, SPECS_DIR);
+      if (existsSync(specsSource)) {
+        const specDirs = readdirSync(specsSource, { withFileTypes: true })
+          .filter((dirent) => dirent.isDirectory())
+          .map((dirent) => dirent.name);
+
+        for (const specDir of specDirs) {
+          const specSource = join(specsSource, specDir, 'spec.md');
+          if (await fileExists(specSource)) {
+            const specContent = await readFile(specSource);
+            const targetSpecDir = join(targetArchivePath, SPECS_DIR, specDir);
+            mkdirSync(targetSpecDir, { recursive: true });
+            await writeFile(join(targetSpecDir, 'spec.md'), specContent);
+          }
+        }
+      }
+
+      result.migrated++;
+      result.migratedTasks.push(archiveName);
+    } catch (error: any) {
+      result.errors.push(`Failed to migrate archived task ${archiveName}: ${error.message}`);
+      result.skipped++;
+    }
+  }
+
+  return result;
+}
+
+/**
  * Remove /rulebook/OPENSPEC.md if it exists
  */
 export async function removeOpenSpecRulebookFile(
@@ -139,6 +248,30 @@ export async function removeOpenSpecRulebookFile(
     return true;
   }
   return false;
+}
+
+/**
+ * Remove OpenSpec commands from .cursor/commands/
+ */
+export async function removeOpenSpecCommands(projectRoot: string): Promise<number> {
+  const commandsDir = join(projectRoot, '.cursor', 'commands');
+  if (!existsSync(commandsDir)) {
+    return 0;
+  }
+
+  const openspecCommands = ['openspec-proposal.md', 'openspec-archive.md', 'openspec-apply.md'];
+
+  let removed = 0;
+  for (const command of openspecCommands) {
+    const commandPath = join(commandsDir, command);
+    if (await fileExists(commandPath)) {
+      const { unlink } = await import('fs/promises');
+      await unlink(commandPath);
+      removed++;
+    }
+  }
+
+  return removed;
 }
 
 /**

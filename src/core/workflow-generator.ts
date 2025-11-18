@@ -107,6 +107,9 @@ export async function generateIDEFiles(
     if (ide === 'cursor') {
       const cursorRulesPath = await generateCursorRules(config, targetDir);
       if (cursorRulesPath) generatedFiles.push(cursorRulesPath);
+      // Generate Cursor commands
+      const cursorCommands = await generateCursorCommands(targetDir);
+      generatedFiles.push(...cursorCommands);
     } else if (ide === 'windsurf') {
       const windsurfRulesPath = await generateWindsurfRules(config, targetDir);
       if (windsurfRulesPath) generatedFiles.push(windsurfRulesPath);
@@ -284,4 +287,44 @@ ${config.languages.map((lang) => `### ${lang.charAt(0).toUpperCase() + lang.slic
 
   await writeFile(targetPath, content);
   return targetPath;
+}
+
+/**
+ * Generate Cursor commands from templates
+ */
+async function generateCursorCommands(targetDir: string): Promise<string[]> {
+  const commandsDir = path.join(targetDir, '.cursor', 'commands');
+  await ensureDir(commandsDir);
+
+  const templatesDir = path.join(getTemplatesDir(), 'commands');
+  const generatedFiles: string[] = [];
+
+  // List of command templates to copy
+  const commandTemplates = [
+    'rulebook-task-create.md',
+    'rulebook-task-list.md',
+    'rulebook-task-show.md',
+    'rulebook-task-validate.md',
+    'rulebook-task-archive.md',
+    'rulebook-task-apply.md',
+  ];
+
+  for (const template of commandTemplates) {
+    const sourcePath = path.join(templatesDir, template);
+    const targetPath = path.join(commandsDir, template);
+
+    // Skip if already exists (don't overwrite user customizations)
+    if (await fileExists(targetPath)) {
+      continue;
+    }
+
+    // Check if template exists
+    if (await fileExists(sourcePath)) {
+      const content = await readFile(sourcePath);
+      await writeFile(targetPath, content);
+      generatedFiles.push(targetPath);
+    }
+  }
+
+  return generatedFiles;
 }

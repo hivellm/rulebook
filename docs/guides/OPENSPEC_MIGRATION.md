@@ -17,8 +17,11 @@ rulebook update
 This command will:
 1. Detect existing OpenSpec tasks in `/openspec/changes/`
 2. Migrate them to `/rulebook/tasks/`
-3. Remove `/rulebook/OPENSPEC.md` if it exists
-4. Update AGENTS.md with new task management directives
+3. Migrate archived tasks from `/openspec/changes/archive/` to `/rulebook/tasks/archive/`
+4. Remove `/rulebook/OPENSPEC.md` if it exists
+5. Remove OpenSpec commands from `.cursor/commands/`
+6. **Remove `/openspec` directory** after successful migration
+7. Update AGENTS.md with new task management directives
 
 ## What Gets Migrated
 
@@ -171,6 +174,45 @@ If validation fails after migration:
    - Ensure scenarios use `#### Scenario:` (4 hashtags)
    - Ensure requirements have SHALL/MUST keywords
    - Ensure purpose section has ≥20 characters
+
+## Archive Migration
+
+**Automatic Archive Migration:**
+
+Starting with v0.18.0, `rulebook update` automatically migrates archived OpenSpec tasks:
+
+```bash
+rulebook update
+```
+
+This will:
+1. Migrate active tasks from `/openspec/changes/` to `/rulebook/tasks/`
+2. Migrate archived tasks from `/openspec/changes/archive/` to `/rulebook/tasks/archive/`
+3. Preserve archive date prefixes (e.g., `2025-01-15-task-id`)
+4. Preserve all task structure (proposal.md, tasks.md, design.md, specs/)
+
+**Manual Archive Migration:**
+
+If you need to manually migrate archives:
+
+```bash
+# For each archived task in /openspec/changes/archive/:
+mkdir -p rulebook/tasks/archive/2025-01-15-task-id
+cp -r openspec/changes/archive/2025-01-15-task-id/* rulebook/tasks/archive/2025-01-15-task-id/
+```
+
+**Verify Archive Migration:**
+
+```bash
+# List archived tasks
+rulebook task list --archived
+
+# Show archived task details
+rulebook task show 2025-01-15-task-id
+
+# Validate archived task format
+rulebook task validate 2025-01-15-task-id
+```
 
 ## Archive OpenSpec Directory
 

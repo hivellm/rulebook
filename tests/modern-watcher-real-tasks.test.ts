@@ -76,7 +76,8 @@ vi.mock('blessed', () => ({
   },
 }));
 
-describe('Modern Watcher with Real Tasks', () => {
+// Skip this test suite - OpenSpec has been deprecated in favor of Rulebook task system
+describe.skip('Modern Watcher with Real Tasks', () => {
   let tempDir: string;
   let openspecManager: ReturnType<typeof createOpenSpecManager>;
   let modernConsole: ModernConsole;

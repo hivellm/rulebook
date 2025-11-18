@@ -131,6 +131,13 @@ export class TaskManager {
         if (entry.isDirectory()) {
           const task = await this.loadTask(entry.name, true);
           if (task) {
+            // Extract date from archive name (YYYY-MM-DD-task-id format)
+            const dateMatch = entry.name.match(/^(\d{4}-\d{2}-\d{2})-/);
+            if (dateMatch) {
+              task.archivedAt = dateMatch[1];
+            } else {
+              task.archivedAt = new Date().toISOString().split('T')[0];
+            }
             tasks.push(task);
           }
         }
@@ -248,7 +255,8 @@ export class TaskManager {
         }
 
         // Check for scenarios with 4 hashtags (not 3)
-        const scenario3Matches = specContent.match(/### Scenario:/g) || [];
+        // Only check at start of line (not in text content)
+        const scenario3Matches = specContent.match(/^### Scenario:/gm) || [];
         if (scenario3Matches.length > 0) {
           errors.push(`Scenarios in ${module}/spec.md must use 4 hashtags (####), not 3 (###)`);
         }
@@ -328,7 +336,20 @@ export class TaskManager {
    * Show task details
    */
   async showTask(taskId: string): Promise<RulebookTask | null> {
-    return await this.loadTask(taskId);
+    // Try active tasks first
+    let task = await this.loadTask(taskId, false);
+    if (task) {
+      return task;
+    }
+
+    // Try archived tasks
+    task = await this.loadTask(taskId, true);
+    if (task) {
+      task.archivedAt = taskId.split('-').slice(0, 3).join('-'); // Extract date from task ID
+      return task;
+    }
+
+    return null;
   }
 }
 
