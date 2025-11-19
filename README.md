@@ -169,12 +169,14 @@ npx @hivellm/rulebook@latest agent --iterations 10      # Max iterations
 npx @hivellm/rulebook@latest agent --watch     # Enable watcher mode
 
 # Task Management
-npx @hivellm/rulebook@latest task create <task-id>    # Create new task
-npx @hivellm/rulebook@latest task list [--archived]   # List all tasks
-npx @hivellm/rulebook@latest task show <task-id>      # Show task details
-npx @hivellm/rulebook@latest task validate <task-id>  # Validate task format
-npx @hivellm/rulebook@latest task archive <task-id>   # Archive completed task
-npx @hivellm/rulebook@latest tasks                     # Legacy command (deprecated, use 'task' instead)
+npx @hivellm/rulebook@latest task create <task-id>     # Create new task
+npx @hivellm/rulebook@latest task list                 # List all tasks
+npx @hivellm/rulebook@latest task list --archived      # List including archived tasks
+npx @hivellm/rulebook@latest task show <task-id>       # Show task details
+npx @hivellm/rulebook@latest task validate <task-id>    # Validate task format
+npx @hivellm/rulebook@latest task archive <task-id>    # Archive completed task
+npx @hivellm/rulebook@latest task archive --skip-validation <task-id>  # Archive without validation
+npx @hivellm/rulebook@latest tasks [options]           # Legacy command (DEPRECATED - use 'task' commands)
 
 # Configuration
 npx @hivellm/rulebook@latest config --show     # Show current config
