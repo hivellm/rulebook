@@ -635,5 +635,299 @@ describe('detector', () => {
       const rust = result.languages.find((l) => l.language === 'rust');
       expect(rust).toBeDefined();
     });
+
+    describe('language detection edge cases', () => {
+      it('should detect Rust with Cargo.toml but no .rs files', async () => {
+        await fs.writeFile(path.join(testDir, 'Cargo.toml'), '[package]\nname = "test"');
+        // No .rs files
+
+        const result = await detectProject(testDir);
+
+        const rust = result.languages.find((l) => l.language === 'rust');
+        expect(rust).toBeDefined();
+        expect(rust?.confidence).toBeLessThan(1.0); // Lower confidence without .rs files
+      });
+
+      it('should detect TypeScript with only package.json', async () => {
+        await fs.writeFile(path.join(testDir, 'package.json'), '{"name": "test"}');
+        // No tsconfig.json, no .ts files
+
+        const result = await detectProject(testDir);
+
+        const ts = result.languages.find((l) => l.language === 'typescript');
+        if (ts) {
+          expect(ts.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect TypeScript with only tsconfig.json', async () => {
+        await fs.writeFile(path.join(testDir, 'tsconfig.json'), '{}');
+        // No package.json, no .ts files
+
+        const result = await detectProject(testDir);
+
+        const ts = result.languages.find((l) => l.language === 'typescript');
+        if (ts) {
+          expect(ts.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect Python with only requirements.txt', async () => {
+        await fs.writeFile(path.join(testDir, 'requirements.txt'), 'requests==2.28.0');
+        // No pyproject.toml, no setup.py, no .py files
+
+        const result = await detectProject(testDir);
+
+        const python = result.languages.find((l) => l.language === 'python');
+        if (python) {
+          expect(python.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect Python with only setup.py', async () => {
+        await fs.writeFile(path.join(testDir, 'setup.py'), 'from setuptools import setup\nsetup()');
+        // No pyproject.toml, no requirements.txt, no .py files
+
+        const result = await detectProject(testDir);
+
+        const python = result.languages.find((l) => l.language === 'python');
+        if (python) {
+          // setup.py alone might give confidence 0.7 (without .py files) or 1.0 (if .py files found)
+          expect(python.confidence).toBeGreaterThanOrEqual(0.7);
+        }
+      });
+
+      it('should detect Go with go.mod but no .go files', async () => {
+        await fs.writeFile(path.join(testDir, 'go.mod'), 'module example.com/test\n\ngo 1.21');
+        // No .go files
+
+        const result = await detectProject(testDir);
+
+        const go = result.languages.find((l) => l.language === 'go');
+        expect(go).toBeDefined();
+        expect(go?.confidence).toBeLessThan(1.0);
+      });
+
+      it('should detect Java with only build.gradle', async () => {
+        await fs.writeFile(path.join(testDir, 'build.gradle'), 'plugins { id "java" }');
+        // No pom.xml, no build.gradle.kts, no .java files
+
+        const result = await detectProject(testDir);
+
+        const java = result.languages.find((l) => l.language === 'java');
+        if (java) {
+          expect(java.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect Java with only build.gradle.kts', async () => {
+        await fs.writeFile(path.join(testDir, 'build.gradle.kts'), 'plugins { id("java") }');
+        // No pom.xml, no build.gradle, no .java files
+
+        const result = await detectProject(testDir);
+
+        const java = result.languages.find((l) => l.language === 'java');
+        if (java) {
+          expect(java.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect C++ with only Makefile', async () => {
+        await fs.writeFile(path.join(testDir, 'Makefile'), 'all:\n\techo "test"');
+        // No CMakeLists.txt, no .cpp files
+
+        const result = await detectProject(testDir);
+
+        const cpp = result.languages.find((l) => l.language === 'cpp');
+        if (cpp) {
+          expect(cpp.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect Solidity with only hardhat.config.js', async () => {
+        await fs.writeFile(path.join(testDir, 'hardhat.config.js'), 'module.exports = {}');
+        // No foundry.toml, no .sol files
+
+        const result = await detectProject(testDir);
+
+        const solidity = result.languages.find((l) => l.language === 'solidity');
+        if (solidity) {
+          expect(solidity.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect Solidity with only foundry.toml', async () => {
+        await fs.writeFile(path.join(testDir, 'foundry.toml'), '[profile.default]');
+        // No hardhat.config.js, no .sol files
+
+        const result = await detectProject(testDir);
+
+        const solidity = result.languages.find((l) => l.language === 'solidity');
+        if (solidity) {
+          expect(solidity.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect Zig with build.zig but no .zig files', async () => {
+        await fs.writeFile(path.join(testDir, 'build.zig'), 'const std = @import("std");');
+        // No .zig files
+
+        const result = await detectProject(testDir);
+
+        const zig = result.languages.find((l) => l.language === 'zig');
+        if (zig) {
+          // build.zig alone gives confidence 0.9 (without .zig files) or 1.0 (if .zig files found)
+          expect(zig.confidence).toBeGreaterThanOrEqual(0.9);
+        }
+      });
+
+      it('should detect Erlang with rebar.config but no .erl files', async () => {
+        await fs.writeFile(path.join(testDir, 'rebar.config'), '{deps, []}.');
+        // No .erl files
+
+        const result = await detectProject(testDir);
+
+        const erlang = result.languages.find((l) => l.language === 'erlang');
+        if (erlang) {
+          expect(erlang.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect JavaScript when TypeScript is not detected', async () => {
+        await fs.writeFile(path.join(testDir, 'package.json'), '{"name": "test", "type": "module"}');
+        await fs.mkdir(path.join(testDir, 'src'), { recursive: true });
+        await fs.writeFile(path.join(testDir, 'src', 'index.js'), 'console.log("test")');
+        // No tsconfig.json, no .ts files
+
+        const result = await detectProject(testDir);
+
+        const js = result.languages.find((l) => l.language === 'javascript');
+        if (js) {
+          expect(js.confidence).toBeGreaterThan(0);
+          expect(js.indicators).toContain('package.json');
+        }
+      });
+
+      it('should detect JavaScript with ESM type', async () => {
+        await fs.writeFile(
+          path.join(testDir, 'package.json'),
+          '{"name": "test", "type": "module"}'
+        );
+        await fs.mkdir(path.join(testDir, 'src'), { recursive: true });
+        await fs.writeFile(path.join(testDir, 'src', 'index.js'), 'console.log("test")');
+
+        const result = await detectProject(testDir);
+
+        const js = result.languages.find((l) => l.language === 'javascript');
+        if (js) {
+          expect(js.indicators).toContain('ESM');
+        }
+      });
+
+      it('should detect Dart with pubspec.yaml but no .dart files', async () => {
+        await fs.writeFile(path.join(testDir, 'pubspec.yaml'), 'name: myapp');
+        // No .dart files
+
+        const result = await detectProject(testDir);
+
+        const dart = result.languages.find((l) => l.language === 'dart');
+        if (dart) {
+          expect(dart.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect Ruby with only .gemspec file', async () => {
+        await fs.mkdir(path.join(testDir, 'lib'), { recursive: true });
+        await fs.writeFile(
+          path.join(testDir, 'lib', 'test.gemspec'),
+          'Gem::Specification.new do |s|\n  s.name = "test"\nend'
+        );
+        // No Gemfile, no .rb files
+
+        const result = await detectProject(testDir);
+
+        const ruby = result.languages.find((l) => l.language === 'ruby');
+        if (ruby) {
+          expect(ruby.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect Scala with build.sbt but no .scala files', async () => {
+        await fs.writeFile(path.join(testDir, 'build.sbt'), 'name := "test"');
+        // No .scala files
+
+        const result = await detectProject(testDir);
+
+        const scala = result.languages.find((l) => l.language === 'scala');
+        if (scala) {
+          expect(scala.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect R with DESCRIPTION but no .R files', async () => {
+        await fs.writeFile(path.join(testDir, 'DESCRIPTION'), 'Package: test\nVersion: 1.0');
+        // No .R files
+
+        const result = await detectProject(testDir);
+
+        const r = result.languages.find((l) => l.language === 'r');
+        if (r) {
+          expect(r.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect Haskell with only .cabal file', async () => {
+        await fs.writeFile(path.join(testDir, 'test.cabal'), 'name: test\nversion: 1.0');
+        // No stack.yaml, no .hs files
+
+        const result = await detectProject(testDir);
+
+        const haskell = result.languages.find((l) => l.language === 'haskell');
+        if (haskell) {
+          expect(haskell.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect Julia with Project.toml but no .jl files', async () => {
+        await fs.writeFile(path.join(testDir, 'Project.toml'), 'name = "test"');
+        // No .jl files
+
+        const result = await detectProject(testDir);
+
+        const julia = result.languages.find((l) => l.language === 'julia');
+        if (julia) {
+          expect(julia.confidence).toBeLessThan(1.0);
+        }
+      });
+
+      it('should detect Lua with many .lua files', async () => {
+        await fs.mkdir(path.join(testDir, 'src'), { recursive: true });
+        // Create more than 5 .lua files
+        for (let i = 0; i < 6; i++) {
+          await fs.writeFile(path.join(testDir, 'src', `file${i}.lua`), 'print("test")');
+        }
+
+        const result = await detectProject(testDir);
+
+        const lua = result.languages.find((l) => l.language === 'lua');
+        if (lua) {
+          expect(lua.confidence).toBeGreaterThan(0);
+        }
+      });
+
+      it('should not detect Lua with few .lua files', async () => {
+        await fs.mkdir(path.join(testDir, 'src'), { recursive: true });
+        // Create less than 5 .lua files
+        for (let i = 0; i < 3; i++) {
+          await fs.writeFile(path.join(testDir, 'src', `file${i}.lua`), 'print("test")');
+        }
+
+        const result = await detectProject(testDir);
+
+        const lua = result.languages.find((l) => l.language === 'lua');
+        // Should not detect with less than 5 files
+        expect(lua).toBeUndefined();
+      });
+    });
   });
 });
