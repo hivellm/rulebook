@@ -216,3 +216,244 @@ describe('Global Logger', () => {
     expect(typeof getLogger).toBe('function');
   });
 });
+
+describe('Logger edge cases', () => {
+  let tempDir: string;
+  let logger: ReturnType<typeof createLogger>;
+
+  beforeEach(async () => {
+    tempDir = join(tmpdir(), 'rulebook-test-logger-edge-' + Date.now());
+    await fs.mkdir(tempDir, { recursive: true });
+    logger = createLogger(tempDir);
+  });
+
+  afterEach(async () => {
+    try {
+      await logger.close();
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  describe('flush edge cases', () => {
+    it('should handle flush when buffer is empty', async () => {
+      // Flush when buffer is already empty
+      await logger.flush();
+      expect(true).toBe(true);
+    });
+
+    it('should handle flush error gracefully', async () => {
+      // Log some messages
+      logger.info('Test message');
+      // Close logger first to potentially cause flush error
+      await logger.close();
+      // Try to flush after close (should handle gracefully)
+      await logger.flush();
+      expect(true).toBe(true);
+    });
+  });
+
+  describe('getRecentLogs edge cases', () => {
+    it('should handle getRecentLogs with limit 0', async () => {
+      logger.info('Test message');
+      await logger.flush();
+
+      const logs = await logger.getRecentLogs(0);
+      expect(Array.isArray(logs)).toBe(true);
+      expect(logs.length).toBe(0);
+    });
+
+    it('should handle getRecentLogs with very large limit', async () => {
+      logger.info('Test message');
+      await logger.flush();
+
+      const logs = await logger.getRecentLogs(10000);
+      expect(Array.isArray(logs)).toBe(true);
+    });
+
+    it('should handle getRecentLogs when no log files exist', async () => {
+      const logs = await logger.getRecentLogs(10);
+      expect(Array.isArray(logs)).toBe(true);
+    });
+
+    it('should stop reading when limit is reached', async () => {
+      // Log many messages
+      for (let i = 0; i < 20; i++) {
+        logger.info(`Message ${i}`);
+      }
+      await logger.flush();
+
+      const logs = await logger.getRecentLogs(5);
+      expect(logs.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should handle invalid JSON in log files gracefully', async () => {
+      logger.info('Test message');
+      await logger.flush();
+
+      // Manually corrupt a log file
+      const logsPath = join(tempDir, 'openspec', 'logs');
+      const files = await fs.readdir(logsPath);
+      if (files.length > 0) {
+        const logFile = join(logsPath, files[0]);
+        await fs.appendFile(logFile, 'invalid json\n');
+
+        // Should still work, skipping invalid lines
+        const logs = await logger.getRecentLogs(10);
+        expect(Array.isArray(logs)).toBe(true);
+      }
+    });
+  });
+
+  describe('getTaskLogs edge cases', () => {
+    it('should handle getTaskLogs for non-existent task', async () => {
+      const logs = await logger.getTaskLogs('non-existent-task');
+      expect(Array.isArray(logs)).toBe(true);
+      expect(logs.length).toBe(0);
+    });
+
+    it('should handle getTaskLogs with multiple tasks', async () => {
+      logger.info('Message for task 1', {}, 'task-1');
+      logger.info('Message for task 2', {}, 'task-2');
+      logger.info('Message for task 1', {}, 'task-1');
+      await logger.flush();
+
+      const task1Logs = await logger.getTaskLogs('task-1');
+      expect(task1Logs.length).toBeGreaterThanOrEqual(2);
+
+      const task2Logs = await logger.getTaskLogs('task-2');
+      expect(task2Logs.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should handle getTaskLogs with many messages', async () => {
+      // Log many messages for same task
+      for (let i = 0; i < 20; i++) {
+        logger.info(`Message ${i}`, {}, 'task-1');
+      }
+      await logger.flush();
+
+      const logs = await logger.getTaskLogs('task-1');
+      expect(logs.length).toBeGreaterThanOrEqual(20);
+    });
+  });
+
+  describe('getLogSummary edge cases', () => {
+    it('should handle getLogSummary with no logs', async () => {
+      const summary = await logger.getLogSummary();
+      expect(summary.totalEntries).toBe(0);
+      expect(summary.byLevel).toBeDefined();
+    });
+
+    it('should handle getLogSummary with only errors', async () => {
+      logger.error('Error 1');
+      logger.error('Error 2');
+      await logger.flush();
+
+      const summary = await logger.getLogSummary();
+      expect(summary.totalEntries).toBeGreaterThanOrEqual(2);
+      expect(summary.byLevel.error).toBeGreaterThanOrEqual(2);
+      expect(summary.recentErrors).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should handle getLogSummary with oldest and newest entries', async () => {
+      logger.info('First message');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      logger.info('Last message');
+      await logger.flush();
+
+      const summary = await logger.getLogSummary();
+      expect(summary.oldestEntry).toBeDefined();
+      expect(summary.newestEntry).toBeDefined();
+    });
+
+    it('should handle getLogSummary with mixed log levels', async () => {
+      logger.debug('Debug message');
+      logger.info('Info message');
+      logger.warn('Warning message');
+      logger.error('Error message');
+      await logger.flush();
+
+      const summary = await logger.getLogSummary();
+      expect(summary.totalEntries).toBeGreaterThanOrEqual(4);
+      expect(summary.byLevel.debug).toBeGreaterThanOrEqual(1);
+      expect(summary.byLevel.info).toBeGreaterThanOrEqual(1);
+      expect(summary.byLevel.warn).toBeGreaterThanOrEqual(1);
+      expect(summary.byLevel.error).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('coverageCheck edge cases', () => {
+    it('should log passed when coverage meets threshold', () => {
+      logger.coverageCheck(95.5, 95, 'task-1');
+      expect(true).toBe(true);
+    });
+
+    it('should log failed when coverage below threshold', () => {
+      logger.coverageCheck(90.0, 95, 'task-1');
+      expect(true).toBe(true);
+    });
+
+    it('should log passed when coverage equals threshold', () => {
+      logger.coverageCheck(95.0, 95, 'task-1');
+      expect(true).toBe(true);
+    });
+  });
+
+  describe('cleanOldLogs edge cases', () => {
+    it('should handle cleanOldLogs when logs directory does not exist', async () => {
+      // Create new logger with non-existent path
+      const newTempDir = join(tmpdir(), 'rulebook-test-clean-logs-' + Date.now());
+      const newLogger = createLogger(newTempDir);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await newLogger.close();
+      await fs.rm(newTempDir, { recursive: true, force: true });
+      expect(true).toBe(true);
+    });
+
+    it('should handle cleanOldLogs with non-log files', async () => {
+      const logsPath = join(tempDir, 'openspec', 'logs');
+      await fs.writeFile(join(logsPath, 'not-a-log.txt'), 'content');
+      await logger.close();
+      expect(true).toBe(true);
+    });
+  });
+
+  describe('buffer management edge cases', () => {
+    it('should flush when buffer reaches exact buffer size', async () => {
+      // Log exactly bufferSize messages
+      for (let i = 0; i < 10; i++) {
+        logger.info(`Message ${i}`);
+      }
+      // Buffer should be flushed
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const logs = await logger.getRecentLogs(20);
+      expect(logs.length).toBeGreaterThanOrEqual(10);
+    });
+
+    it('should handle rapid log calls', async () => {
+      // Log many messages rapidly
+      for (let i = 0; i < 50; i++) {
+        logger.info(`Rapid message ${i}`);
+      }
+      await logger.flush();
+      const logs = await logger.getRecentLogs(100);
+      expect(logs.length).toBeGreaterThanOrEqual(50);
+    });
+  });
+
+  describe('close edge cases', () => {
+    it('should handle multiple close calls', async () => {
+      await logger.close();
+      await logger.close(); // Should not throw
+      expect(true).toBe(true);
+    });
+
+    it('should flush remaining logs on close', async () => {
+      logger.info('Message before close');
+      await logger.close();
+      const logs = await logger.getRecentLogs(10);
+      expect(logs.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});

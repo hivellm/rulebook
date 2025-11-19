@@ -427,4 +427,243 @@ describe('validator', () => {
       expect(report).toContain('⚠️ **warn2**: Warning 2');
     });
   });
+
+  describe('validateRulebookDirectory edge cases', () => {
+    it('should warn when rulebook directory exists but is empty', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      await fs.mkdir(path.join(testDir, 'rulebook'), { recursive: true });
+      // Don't create any .md files in rulebook
+
+      const result = await validateProject(testDir);
+
+      expect(result.warnings.some((w) => w.message.includes('rulebook/ directory exists but contains no .md files'))).toBe(true);
+    });
+
+    it('should not warn when rulebook directory has .md files', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      await fs.mkdir(path.join(testDir, 'rulebook'), { recursive: true });
+      await fs.writeFile(path.join(testDir, 'rulebook', 'TYPESCRIPT.md'), '# TypeScript');
+
+      const result = await validateProject(testDir);
+
+      expect(result.warnings.some((w) => w.message.includes('rulebook/ directory exists but contains no .md files'))).toBe(false);
+    });
+
+    it('should not warn when rulebook directory does not exist', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      // Don't create rulebook directory
+
+      const result = await validateProject(testDir);
+
+      expect(result.warnings.some((w) => w.message.includes('rulebook/ directory exists but contains no .md files'))).toBe(false);
+    });
+  });
+
+  describe('validateDocumentation edge cases', () => {
+    it('should warn when docs/specs directory is missing', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      await fs.mkdir(path.join(testDir, 'docs'), { recursive: true });
+      // Don't create docs/specs
+
+      const result = await validateProject(testDir);
+
+      expect(result.warnings.some((w) => w.message.includes('/docs/specs directory not found'))).toBe(true);
+    });
+
+    it('should not warn when docs/specs directory exists', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      await fs.mkdir(path.join(testDir, 'docs', 'specs'), { recursive: true });
+
+      const result = await validateProject(testDir);
+
+      expect(result.warnings.some((w) => w.message.includes('/docs/specs directory not found'))).toBe(false);
+    });
+
+    it('should warn for each missing important doc', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      await fs.mkdir(path.join(testDir, 'docs'), { recursive: true });
+      // Don't create ROADMAP.md or ARCHITECTURE.md
+
+      const result = await validateProject(testDir);
+
+      expect(result.warnings.some((w) => w.message.includes('ROADMAP.md not found'))).toBe(true);
+      expect(result.warnings.some((w) => w.message.includes('ARCHITECTURE.md not found'))).toBe(true);
+    });
+
+    it('should not warn when all important docs exist', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      await fs.mkdir(path.join(testDir, 'docs'), { recursive: true });
+      await fs.writeFile(path.join(testDir, 'docs', 'ROADMAP.md'), '# Roadmap');
+      await fs.writeFile(path.join(testDir, 'docs', 'ARCHITECTURE.md'), '# Architecture');
+
+      const result = await validateProject(testDir);
+
+      expect(result.warnings.some((w) => w.message.includes('ROADMAP.md not found'))).toBe(false);
+      expect(result.warnings.some((w) => w.message.includes('ARCHITECTURE.md not found'))).toBe(false);
+    });
+  });
+
+  describe('validateRulesIgnore edge cases', () => {
+    it('should not warn when .rulesignore has few patterns', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      await fs.writeFile(path.join(testDir, '.rulesignore'), 'pattern1\npattern2\npattern3');
+
+      const result = await validateProject(testDir);
+
+      expect(result.warnings.some((w) => w.message.includes('rules ignored'))).toBe(false);
+    });
+
+    it('should warn when .rulesignore has many patterns', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      const patterns = Array.from({ length: 15 }, (_, i) => `rule-${i}`).join('\n');
+      await fs.writeFile(path.join(testDir, '.rulesignore'), patterns);
+
+      const result = await validateProject(testDir);
+
+      expect(result.warnings.some((w) => w.message.includes('rules ignored'))).toBe(true);
+    });
+
+    it('should handle .rulesignore with comments', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      await fs.writeFile(
+        path.join(testDir, '.rulesignore'),
+        '# This is a comment\npattern1\n# Another comment\npattern2'
+      );
+
+      const result = await validateProject(testDir);
+
+      // Comments should be filtered out, so only 2 patterns
+      expect(result.warnings.some((w) => w.message.includes('rules ignored'))).toBe(false);
+    });
+
+    it('should handle .rulesignore with empty lines', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      await fs.writeFile(path.join(testDir, '.rulesignore'), 'pattern1\n\npattern2\n\npattern3');
+
+      const result = await validateProject(testDir);
+
+      // Empty lines should be filtered out, so only 3 patterns
+      expect(result.warnings.some((w) => w.message.includes('rules ignored'))).toBe(false);
+    });
+
+    it('should warn about wildcard pattern *', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      await fs.writeFile(path.join(testDir, '.rulesignore'), '*');
+
+      const result = await validateProject(testDir);
+
+      expect(result.warnings.some((w) => w.message.includes('ignores all rules'))).toBe(true);
+    });
+
+    it('should warn about wildcard pattern **/*', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      await fs.writeFile(path.join(testDir, '.rulesignore'), '**/*');
+
+      const result = await validateProject(testDir);
+
+      expect(result.warnings.some((w) => w.message.includes('ignores all rules'))).toBe(true);
+    });
+
+    it('should not warn about non-wildcard patterns', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      await fs.writeFile(path.join(testDir, '.rulesignore'), 'specific-pattern\nanother-pattern');
+
+      const result = await validateProject(testDir);
+
+      expect(result.warnings.some((w) => w.message.includes('ignores all rules'))).toBe(false);
+    });
+  });
+
+  describe('score calculation edge cases', () => {
+    it('should calculate score with many errors', async () => {
+      await fs.writeFile(path.join(testDir, 'AGENTS.md'), 'Short');
+      // Missing tests, missing docs, etc. - multiple errors
+
+      const result = await validateProject(testDir);
+
+      expect(result.score).toBeLessThan(100);
+      expect(result.score).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should calculate score with many warnings', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'AGENTS.md'),
+        '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
+      );
+      await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
+      // Missing docs, missing rulebook files, etc. - multiple warnings
+
+      const result = await validateProject(testDir);
+
+      expect(result.score).toBeLessThan(100);
+      expect(result.score).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should not allow negative scores', async () => {
+      // Create a scenario with many errors and warnings
+      await fs.writeFile(path.join(testDir, 'AGENTS.md'), 'Short');
+      const patterns = Array.from({ length: 20 }, (_, i) => `rule-${i}`).join('\n');
+      await fs.writeFile(path.join(testDir, '.rulesignore'), patterns);
+
+      const result = await validateProject(testDir);
+
+      expect(result.score).toBeGreaterThanOrEqual(0);
+    });
+  });
 });

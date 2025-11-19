@@ -420,7 +420,7 @@ Then something occurs
       await taskManager.createTask('task-archive-no-date');
       const archivePath = join(testDir, 'rulebook', 'tasks', 'archive');
       const taskPath = join(testDir, 'rulebook', 'tasks', 'task-archive-no-date');
-      
+
       // Move task to archive manually (simulating archive without date prefix)
       await fs.rename(taskPath, join(archivePath, 'task-archive-no-date'));
 
