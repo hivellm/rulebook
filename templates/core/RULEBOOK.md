@@ -357,6 +357,112 @@ The system requires a second factor.  # ❌ Missing SHALL/MUST
 4. Commit with conventional commit format
 5. Archive task when complete
 
+## ⚠️ CRITICAL: Git Hooks Will Block Commits with Problems
+
+**ABSOLUTE RULE**: Pre-commit and pre-push hooks will **BLOCK** any commit attempt if there are:
+- ❌ Lint errors or warnings
+- ❌ Test failures
+- ❌ Type check errors
+- ❌ Formatting issues
+- ❌ Coverage below thresholds
+
+### Why This Matters
+
+**DO NOT attempt to commit code with problems:**
+- ❌ `git commit` will **FAIL** if lint has errors
+- ❌ `git commit` will **FAIL** if tests are failing
+- ❌ `git push` will **FAIL** if pre-push checks fail
+- ❌ You will waste time trying to commit broken code
+- ❌ The hooks will reject your commit automatically
+
+**ALWAYS fix problems BEFORE attempting to commit:**
+- ✅ Run `npm run lint` and fix ALL errors/warnings first
+- ✅ Run `npm test` and ensure ALL tests pass
+- ✅ Run `npm run type-check` and fix ALL type errors
+- ✅ Run `npm run format` if formatting is required
+- ✅ Run `npm test -- --coverage` and ensure coverage thresholds are met
+- ✅ **ONLY THEN** attempt `git commit`
+
+### Mandatory Pre-Commit Workflow
+
+**BEFORE every commit, you MUST:**
+
+```bash
+# 1. Fix lint errors FIRST (highest priority)
+npm run lint
+# Fix ALL errors and warnings
+# If lint fails, commit will be blocked
+
+# 2. Fix test failures SECOND
+npm test
+# Fix ALL failing tests
+# If tests fail, commit will be blocked
+
+# 3. Fix type errors THIRD
+npm run type-check
+# Fix ALL type errors
+# If type check fails, commit will be blocked
+
+# 4. Fix formatting (if required)
+npm run format
+# Apply formatting fixes
+
+# 5. Verify coverage (if required by hooks)
+npm test -- --coverage
+# Ensure coverage thresholds are met
+
+# 6. ONLY AFTER all checks pass, attempt commit
+git add .
+git commit -m "feat: your commit message"
+# This will now succeed because all checks passed
+```
+
+### What Happens If You Try to Commit with Problems
+
+**Example of blocked commit:**
+
+```bash
+$ git commit -m "feat: add new feature"
+
+🔍 Running TypeScript/JavaScript pre-commit checks...
+  → Type checking...
+  → Linting...
+
+/mnt/f/project/src/feature.ts
+   42:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 1 problem (1 error, 0 warnings)
+
+❌ Commit blocked: Lint errors found
+```
+
+**You MUST fix the error before committing:**
+
+```bash
+# Fix the lint error
+# ... edit code to fix the issue ...
+
+# Run lint again to verify
+npm run lint
+# ✅ All checks pass
+
+# NOW commit will succeed
+git commit -m "feat: add new feature"
+# ✅ Commit successful
+```
+
+### Summary
+
+**CRITICAL RULES:**
+- ⚠️ **NEVER** attempt to commit code with lint errors - hooks will block it
+- ⚠️ **NEVER** attempt to commit code with test failures - hooks will block it
+- ⚠️ **NEVER** attempt to commit code with type errors - hooks will block it
+- ⚠️ **ALWAYS** fix ALL problems BEFORE attempting to commit
+- ⚠️ **ALWAYS** run quality checks manually before `git commit`
+- ⚠️ **ALWAYS** ensure all checks pass before committing
+
+**The hooks are there to protect code quality - they will NOT let broken code through. Always resolve problems first, then commit.**
+
 ## MANDATORY: Task List Updates During Implementation
 
 **CRITICAL RULE**: You MUST update the task list (`tasks.md`) immediately after completing and testing each implementation step.
