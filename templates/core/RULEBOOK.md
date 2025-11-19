@@ -451,17 +451,73 @@ git commit -m "feat: add new feature"
 # ✅ Commit successful
 ```
 
+### ⚠️ CRITICAL: NEVER Use --no-verify to Bypass Hooks
+
+**ABSOLUTE PROHIBITION**: You MUST NEVER use `--no-verify` or `--no-gpg-sign` flags to bypass git hooks.
+
+**FORBIDDEN COMMANDS:**
+- ❌ `git commit --no-verify` - **NEVER USE THIS**
+- ❌ `git commit -n` - **NEVER USE THIS** (short form of --no-verify)
+- ❌ `git push --no-verify` - **NEVER USE THIS**
+- ❌ Any flag that skips pre-commit or pre-push hooks
+
+### Why This Is Prohibited
+
+**Using `--no-verify` defeats the entire purpose of quality gates:**
+- ❌ Allows broken code to be committed
+- ❌ Bypasses all quality checks (lint, test, type-check)
+- ❌ Introduces technical debt and bugs
+- ❌ Violates project quality standards
+- ❌ Can break the build for other developers
+- ❌ Makes code review harder (reviewers see broken code)
+
+**The hooks exist for a reason:**
+- ✅ They protect code quality
+- ✅ They prevent bugs from entering the codebase
+- ✅ They ensure consistency across the project
+- ✅ They catch errors before they reach production
+
+### What to Do Instead
+
+**If you're tempted to use `--no-verify`, it means:**
+1. **You have problems that need fixing** - Fix them first
+2. **You're trying to commit too early** - Complete the work properly
+3. **You're rushing** - Slow down and do it right
+
+**Correct approach:**
+
+```bash
+# ❌ WRONG: Trying to bypass hooks
+git commit --no-verify -m "feat: add feature"
+# This is FORBIDDEN - never do this
+
+# ✅ CORRECT: Fix problems first, then commit
+npm run lint
+# Fix all errors...
+
+npm test
+# Fix all failing tests...
+
+npm run type-check
+# Fix all type errors...
+
+# NOW commit (hooks will pass)
+git commit -m "feat: add feature"
+# ✅ Commit successful - all checks passed
+```
+
 ### Summary
 
 **CRITICAL RULES:**
 - ⚠️ **NEVER** attempt to commit code with lint errors - hooks will block it
 - ⚠️ **NEVER** attempt to commit code with test failures - hooks will block it
 - ⚠️ **NEVER** attempt to commit code with type errors - hooks will block it
+- ⚠️ **NEVER** use `--no-verify` or any flag to bypass hooks - **ABSOLUTELY FORBIDDEN**
 - ⚠️ **ALWAYS** fix ALL problems BEFORE attempting to commit
 - ⚠️ **ALWAYS** run quality checks manually before `git commit`
 - ⚠️ **ALWAYS** ensure all checks pass before committing
 
-**The hooks are there to protect code quality - they will NOT let broken code through. Always resolve problems first, then commit.**
+**The hooks are there to protect code quality - they will NOT let broken code through. Always resolve problems first, then commit. Bypassing hooks is strictly prohibited and defeats the purpose of quality gates.**
 
 ## MANDATORY: Task List Updates During Implementation
 
