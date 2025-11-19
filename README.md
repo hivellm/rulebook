@@ -61,14 +61,14 @@ npx @hivellm/rulebook@latest update
   - Prohibits creating README.md or PROCESS.md files in task directories
   - Clear examples of correct vs incorrect usage
 - 🎯 **Built-in Task Management**: OpenSpec deprecated and integrated into Rulebook's native task system
-  - Use `rulebook task` commands instead of OpenSpec
+  - Use `npx @hivellm/rulebook@latest task` commands instead of OpenSpec
   - OpenSpec-compatible format preserved
-  - Automatic migration from OpenSpec to Rulebook format on `rulebook update`
+  - Automatic migration from OpenSpec to Rulebook format on `npx @hivellm/rulebook@latest update`
 - 📋 **RULEBOOK.md Template**: Core template with task management directives and Context7 MCP requirements
-- 🚫 **Automatic .gitignore**: `rulebook init` now creates/updates `.gitignore` automatically for 28 languages
+- 🚫 **Automatic .gitignore**: `npx @hivellm/rulebook@latest init` now creates/updates `.gitignore` automatically for 28 languages
 - 🔄 **Migration Support**: Existing OpenSpec tasks automatically migrated to `/rulebook/tasks/` format
 
-> **Breaking Change**: OpenSpec module removed. Use `rulebook task` commands instead. See [Migration Guide](docs/guides/OPENSPEC_MIGRATION.md).
+> **Breaking Change**: OpenSpec module removed. Use `npx @hivellm/rulebook@latest task` commands instead. See [Migration Guide](docs/guides/OPENSPEC_MIGRATION.md).
 
 ## Key Features
 
@@ -83,7 +83,7 @@ npx @hivellm/rulebook@latest update
   - All modules grouped logically
   - Better readability and navigation
 - 🔗 **Git Hook Automation**: Optional pre-commit/pre-push hooks with language-aware quality checks
-- 🚫 **Automatic .gitignore**: Creates/updates `.gitignore` automatically for 28 languages on `rulebook init`
+- 🚫 **Automatic .gitignore**: Creates/updates `.gitignore` automatically for 28 languages on `npx @hivellm/rulebook@latest init`
 - 🎯 **Minimal Mode**: Quick setup with just README, LICENSE, tests/, and basic CI
 - 📝 **86+ Templates**: Languages, frameworks, IDEs, workflows pre-configured
 - 🤖 **AI-Optimized**: Works with 23 AI assistants (Cursor, Claude, Gemini, etc.)
