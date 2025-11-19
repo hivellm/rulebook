@@ -20,6 +20,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated code generators to create Apache 2.0 licenses by default
   - Updated CONTRIBUTING.md to reflect Apache 2.0 licensing
 
+### Added
+- **Git Hooks Enforcement**: Added CRITICAL directives in RULEBOOK.md template about git hooks blocking commits
+  - Pre-commit and pre-push hooks will block commits with lint errors, test failures, or type errors
+  - Mandatory workflow to fix problems before attempting to commit
+  - Added examples of blocked commits and how to resolve them
+- **Prohibition of --no-verify**: Added ABSOLUTE PROHIBITION of using `--no-verify` flag to bypass git hooks
+  - Prohibits `git commit --no-verify`, `git commit -n`, and `git push --no-verify`
+  - Explains why bypassing hooks defeats quality gates
+  - Provides correct workflow to fix problems before committing
+- **Task File Structure Rules**: Enhanced AGENTS.md generation with CRITICAL section about correct task file structure
+  - Prohibits adding long explanations or specifications in `tasks.md`
+  - Specifies that technical details must go in `specs/<module>/spec.md`
+  - Prohibits creating `README.md` or `PROCESS.md` files in task directories
+  - Adds examples of WRONG vs CORRECT usage
+  - Clarifies what goes in each file (proposal.md, tasks.md, specs/, design.md)
+
 ### Milestone
 - **Version 1.0.0**: First stable release
   - Comprehensive task management system (OpenSpec-compatible)

@@ -1,7 +1,7 @@
 # @hivellm/rulebook
 
 [![npm version](https://img.shields.io/npm/v/@hivellm/rulebook?logo=npm&logoColor=white)](https://www.npmjs.com/package/@hivellm/rulebook)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
@@ -49,16 +49,24 @@ npx @hivellm/rulebook@latest init --light
 npx @hivellm/rulebook@latest update
 ```
 
-## What's New in v0.18.0
+## What's New in v1.0.0
 
+- 🎉 **Version 1.0.0 - First Stable Release**: Production-ready with comprehensive features
+- 🔒 **Apache 2.0 License**: Changed from MIT to Apache License 2.0 for better compatibility
+- 🛡️ **Git Hooks Enforcement**: Pre-commit and pre-push hooks now block commits with lint/test errors
+  - Directives added to prevent use of `--no-verify` to bypass quality gates
+  - Mandatory workflow to fix problems before committing
+- 📋 **Task File Structure Rules**: Enhanced directives in AGENTS.md about correct task structure
+  - Prohibits adding long explanations in `tasks.md` (use `specs/` instead)
+  - Prohibits creating README.md or PROCESS.md files in task directories
+  - Clear examples of correct vs incorrect usage
 - 🎯 **Built-in Task Management**: OpenSpec deprecated and integrated into Rulebook's native task system
   - Use `rulebook task` commands instead of OpenSpec
   - OpenSpec-compatible format preserved
   - Automatic migration from OpenSpec to Rulebook format on `rulebook update`
-- 📋 **RULEBOOK.md Template**: New core template with task management directives and Context7 MCP requirements
+- 📋 **RULEBOOK.md Template**: Core template with task management directives and Context7 MCP requirements
 - 🚫 **Automatic .gitignore**: `rulebook init` now creates/updates `.gitignore` automatically for 28 languages
 - 🔄 **Migration Support**: Existing OpenSpec tasks automatically migrated to `/rulebook/tasks/` format
-- 📚 **Complete Documentation**: Migration guide, updated README, and comprehensive CHANGELOG
 
 > **Breaking Change**: OpenSpec module removed. Use `rulebook task` commands instead. See [Migration Guide](docs/guides/OPENSPEC_MIGRATION.md).
 
@@ -110,67 +118,69 @@ npx @hivellm/rulebook update
 
 ```bash
 # Project Initialization & Updates
-rulebook init              # Initialize new project (interactive)
-rulebook init --minimal    # Minimal setup (essentials only)
-rulebook init --light      # Light mode (no quality enforcement)
-rulebook init --yes        # Skip prompts, use defaults
-rulebook update            # Update AGENTS.md to latest version
-rulebook update --yes      # Update without confirmation
-rulebook update --light    # Update in light mode
+npx @hivellm/rulebook@latest init              # Initialize new project (interactive)
+npx @hivellm/rulebook@latest init --minimal    # Minimal setup (essentials only)
+npx @hivellm/rulebook@latest init --light       # Light mode (no quality enforcement)
+npx @hivellm/rulebook@latest init --yes         # Skip prompts, use defaults
+npx @hivellm/rulebook@latest update             # Update AGENTS.md to latest version
+npx @hivellm/rulebook@latest update --yes      # Update without confirmation
+npx @hivellm/rulebook@latest update --light    # Update in light mode
 
 # Workflow & CI/CD
-rulebook workflows         # Generate GitHub Actions workflows
+npx @hivellm/rulebook@latest workflows         # Generate GitHub Actions workflows
 
 # Validation & Health
-rulebook validate          # Check project standards
-rulebook health            # Project health score (0-100)
-rulebook fix               # Auto-fix common issues
+npx @hivellm/rulebook@latest validate          # Check project standards
+npx @hivellm/rulebook@latest health            # Project health score (0-100)
+npx @hivellm/rulebook@latest fix               # Auto-fix common issues
 
 # Documentation
-rulebook generate-docs     # Create /docs structure
-rulebook generate-docs --yes  # Skip prompts, use defaults
+npx @hivellm/rulebook@latest generate-docs      # Create /docs structure
+npx @hivellm/rulebook@latest generate-docs --yes  # Skip prompts, use defaults
 
 # Dependencies & Coverage
-rulebook check-deps        # Check outdated/vulnerable dependencies
-rulebook check-coverage    # Check test coverage (default: 95%)
-rulebook check-coverage -t 80  # Custom threshold
+npx @hivellm/rulebook@latest check-deps       # Check outdated/vulnerable dependencies
+npx @hivellm/rulebook@latest check-coverage   # Check test coverage (default: 95%)
+npx @hivellm/rulebook@latest check-coverage -t 80  # Custom threshold
 
 # Versioning
-rulebook version <type>    # Bump version (major|minor|patch)
-rulebook changelog         # Generate changelog from git commits
-rulebook changelog -v 1.0.0  # Specify version
+npx @hivellm/rulebook@latest version <type>   # Bump version (major|minor|patch)
+npx @hivellm/rulebook@latest changelog        # Generate changelog from git commits
+npx @hivellm/rulebook@latest changelog -v 1.0.0  # Specify version
 ```
+
+> **Note**: If installed globally (`npm install -g @hivellm/rulebook`), you can use `rulebook` directly instead of `npx @hivellm/rulebook@latest`.
 
 ### Advanced Commands (Beta)
 
 ```bash
 # Real-time Monitoring
-rulebook watcher           # Full-screen task monitoring UI
-                          # - Live task progress tracking
-                          # - Activity log with timestamps
-                          # - System status monitoring
-                          # - Auto-refresh every 2 seconds
+npx @hivellm/rulebook@latest watcher           # Full-screen task monitoring UI
+                                                # - Live task progress tracking
+                                                # - Activity log with timestamps
+                                                # - System status monitoring
+                                                # - Auto-refresh every 2 seconds
 
 # Autonomous Agent
-rulebook agent             # Start AI CLI workflow automation
-rulebook agent --dry-run   # Simulate without changes
-rulebook agent --tool cursor-agent  # Specify CLI tool
-rulebook agent --iterations 10      # Max iterations
-rulebook agent --watch     # Enable watcher mode
+npx @hivellm/rulebook@latest agent             # Start AI CLI workflow automation
+npx @hivellm/rulebook@latest agent --dry-run   # Simulate without changes
+npx @hivellm/rulebook@latest agent --tool cursor-agent  # Specify CLI tool
+npx @hivellm/rulebook@latest agent --iterations 10      # Max iterations
+npx @hivellm/rulebook@latest agent --watch     # Enable watcher mode
 
 # Task Management
-rulebook task create <task-id>    # Create new task
-rulebook task list [--archived]   # List all tasks
-rulebook task show <task-id>      # Show task details
-rulebook task validate <task-id>  # Validate task format
-rulebook task archive <task-id>   # Archive completed task
-rulebook tasks                     # Legacy command (deprecated, use 'task' instead)
+npx @hivellm/rulebook@latest task create <task-id>    # Create new task
+npx @hivellm/rulebook@latest task list [--archived]   # List all tasks
+npx @hivellm/rulebook@latest task show <task-id>      # Show task details
+npx @hivellm/rulebook@latest task validate <task-id>  # Validate task format
+npx @hivellm/rulebook@latest task archive <task-id>   # Archive completed task
+npx @hivellm/rulebook@latest tasks                     # Legacy command (deprecated, use 'task' instead)
 
 # Configuration
-rulebook config --show     # Show current config
-rulebook config --set key=value  # Set config value
-rulebook config --feature watcher --enable   # Enable feature
-rulebook config --feature agent --disable    # Disable feature
+npx @hivellm/rulebook@latest config --show     # Show current config
+npx @hivellm/rulebook@latest config --set key=value  # Set config value
+npx @hivellm/rulebook@latest config --feature watcher --enable   # Enable feature
+npx @hivellm/rulebook@latest config --feature agent --disable    # Disable feature
 ```
 
 ## Setup Modes
@@ -180,13 +190,13 @@ Complete setup with all features: Task management, Watcher, MCP modules, compreh
 
 ### Minimal Mode
 ```bash
-rulebook init --minimal
+npx @hivellm/rulebook@latest init --minimal
 ```
 Essentials only: README, LICENSE, tests/, basic CI. Perfect for small teams or initial adoption.
 
 ### Light Mode
 ```bash
-rulebook init --light
+npx @hivellm/rulebook@latest init --light
 ```
 Bare minimum rules: no quality enforcement, no testing requirements, no linting. Use for quick prototypes or non-production projects.
 
@@ -233,7 +243,7 @@ npm run build
 
 ## License
 
-MIT © HiveLLM Team
+Apache License 2.0 © HiveLLM Team
 
 ---
 
