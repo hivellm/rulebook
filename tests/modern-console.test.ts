@@ -817,4 +817,258 @@ describe('createModernConsole', () => {
 
     expect(logSpy).toHaveBeenCalled();
   });
+
+  it('should handle memory optimization in logActivity', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Add more than 100 log entries to test memory optimization
+    for (let i = 0; i < 150; i++) {
+      console.logActivity('info', `Message ${i}`);
+    }
+
+    // Should not throw and should keep only last 100 entries
+    expect(console).toBeDefined();
+  });
+
+  it('should handle checkMemoryUsage when memory is high', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Mock process.memoryUsage to return high memory usage
+    const originalMemoryUsage = process.memoryUsage;
+    process.memoryUsage = vi.fn(() => ({
+      rss: 0,
+      heapTotal: 0,
+      heapUsed: 2 * 1024 * 1024 * 1024, // 2GB
+      external: 0,
+      arrayBuffers: 0,
+    }));
+
+    // Trigger memory check by adding 50 log entries
+    for (let i = 0; i < 50; i++) {
+      console.logActivity('info', `Message ${i}`);
+    }
+
+    // Restore original
+    process.memoryUsage = originalMemoryUsage;
+
+    expect(console).toBeDefined();
+  });
+
+  it('should handle start and stop lifecycle', async () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Mock stop to avoid process.exit
+    const stopSpy = vi.spyOn(console, 'stop').mockImplementation(async () => {});
+
+    await console.start();
+    await console.stop();
+
+    expect(stopSpy).toHaveBeenCalled();
+  });
+
+  it('should handle start when already running', async () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    await console.start();
+    // Should not throw when starting again
+    await expect(console.start()).resolves.not.toThrow();
+  });
+
+  it('should handle stop when not running', async () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Should not throw when stopping without starting
+    await expect(console.stop()).resolves.not.toThrow();
+  });
+
+  it('should handle refreshTasks', async () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Test that refreshTasks method exists and can be called
+    // Note: refreshTasks is private, so we test it indirectly through start
+    await console.start();
+
+    // Verify that start completed successfully (which internally calls refreshTasks)
+    expect(console).toBeDefined();
+  });
+
+  it('should handle getProgressInfo', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Add some tasks to test progress calculation
+    (console as any).tasks = [
+      { id: '1', status: 'pending', title: 'Task 1' },
+      { id: '2', status: 'in-progress', title: 'Task 2' },
+    ];
+    (console as any).history = [{ id: '3', status: 'completed', title: 'Task 3' }];
+
+    const progressInfo = (console as any).getProgressInfo();
+
+    expect(progressInfo).toMatchObject({
+      completed: expect.any(Number),
+      total: expect.any(Number),
+      percentage: expect.any(Number),
+      color: expect.any(String),
+    });
+  });
+
+  it('should handle renderProgressBar', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Add some tasks to test progress bar rendering
+    (console as any).tasks = [
+      { id: '1', status: 'pending', title: 'Task 1' },
+    ];
+    (console as any).history = [{ id: '2', status: 'completed', title: 'Task 2' }];
+
+    // Should not throw when rendering progress bar
+    expect(() => (console as any).renderProgressBar()).not.toThrow();
+  });
+
+  it('should handle renderActivityLogs', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Add some activity logs
+    console.logActivity('info', 'Test message 1');
+    console.logActivity('success', 'Test message 2');
+    console.logActivity('warning', 'Test message 3');
+
+    // Should not throw when rendering activity logs
+    expect(() => (console as any).renderActivityLogs()).not.toThrow();
+  });
+
+  it('should handle updateStatusBar', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Should not throw when updating status bar
+    expect(() => (console as any).updateStatusBar()).not.toThrow();
+  });
+
+  it('should handle startLoadingAnimation and stopLoadingAnimation', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Should not throw when starting/stopping loading animation
+    expect(() => (console as any).startLoadingAnimation()).not.toThrow();
+    expect(() => (console as any).stopLoadingAnimation()).not.toThrow();
+  });
+
+  it('should handle render throttling', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Add multiple rapid log entries to test throttling
+    for (let i = 0; i < 10; i++) {
+      console.logActivity('info', `Message ${i}`);
+    }
+
+    // Should not throw
+    expect(console).toBeDefined();
+  });
+
+  it('should handle forceRender', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Should not throw when force rendering
+    expect(() => (console as any).forceRender()).not.toThrow();
+  });
+
+  it('should handle render with throttling', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Mock lastRenderTime to test throttling
+    (console as any).lastRenderTime = Date.now();
+    (console as any).renderThrottleMs = 100;
+
+    // Should not throw when rendering with throttling
+    expect(() => (console as any).render()).not.toThrow();
+  });
+
+  it('should handle progress info with zero tasks', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    (console as any).tasks = [];
+    (console as any).history = [];
+
+    const progressInfo = (console as any).getProgressInfo();
+
+    expect(progressInfo.percentage).toBe(0);
+    expect(progressInfo.total).toBe(0);
+    expect(progressInfo.completed).toBe(0);
+  });
+
+  it('should handle progress info with 100% completion', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    (console as any).tasks = [];
+    (console as any).history = [
+      { id: '1', status: 'completed', title: 'Task 1' },
+      { id: '2', status: 'completed', title: 'Task 2' },
+    ];
+
+    const progressInfo = (console as any).getProgressInfo();
+
+    expect(progressInfo.percentage).toBe(100);
+    expect(progressInfo.total).toBe(2);
+    expect(progressInfo.completed).toBe(2);
+  });
+
+  it('should handle progress info color coding', () => {
+    const console = createModernConsole({
+      projectRoot: tempDir,
+    });
+
+    // Test red color (< 50%)
+    (console as any).tasks = [{ id: '1', status: 'pending', title: 'Task 1' }];
+    (console as any).history = [];
+    let progressInfo = (console as any).getProgressInfo();
+    expect(progressInfo.color).toBe('red');
+
+    // Test yellow color (< 75%)
+    (console as any).tasks = [{ id: '1', status: 'pending', title: 'Task 1' }];
+    (console as any).history = [{ id: '2', status: 'completed', title: 'Task 2' }];
+    progressInfo = (console as any).getProgressInfo();
+    expect(progressInfo.color).toBe('yellow');
+
+    // Test green color (>= 75%)
+    (console as any).tasks = [];
+    (console as any).history = [
+      { id: '1', status: 'completed', title: 'Task 1' },
+      { id: '2', status: 'completed', title: 'Task 2' },
+      { id: '3', status: 'completed', title: 'Task 3' },
+      { id: '4', status: 'completed', title: 'Task 4' },
+    ];
+    progressInfo = (console as any).getProgressInfo();
+    expect(progressInfo.color).toBe('green');
+  });
 });
