@@ -932,9 +932,7 @@ describe('createModernConsole', () => {
     });
 
     // Add some tasks to test progress bar rendering
-    (console as any).tasks = [
-      { id: '1', status: 'pending', title: 'Task 1' },
-    ];
+    (console as any).tasks = [{ id: '1', status: 'pending', title: 'Task 1' }];
     (console as any).history = [{ id: '2', status: 'completed', title: 'Task 2' }];
 
     // Should not throw when rendering progress bar

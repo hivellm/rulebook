@@ -440,7 +440,11 @@ describe('validator', () => {
 
       const result = await validateProject(testDir);
 
-      expect(result.warnings.some((w) => w.message.includes('rulebook/ directory exists but contains no .md files'))).toBe(true);
+      expect(
+        result.warnings.some((w) =>
+          w.message.includes('rulebook/ directory exists but contains no .md files')
+        )
+      ).toBe(true);
     });
 
     it('should not warn when rulebook directory has .md files', async () => {
@@ -454,7 +458,11 @@ describe('validator', () => {
 
       const result = await validateProject(testDir);
 
-      expect(result.warnings.some((w) => w.message.includes('rulebook/ directory exists but contains no .md files'))).toBe(false);
+      expect(
+        result.warnings.some((w) =>
+          w.message.includes('rulebook/ directory exists but contains no .md files')
+        )
+      ).toBe(false);
     });
 
     it('should not warn when rulebook directory does not exist', async () => {
@@ -467,7 +475,11 @@ describe('validator', () => {
 
       const result = await validateProject(testDir);
 
-      expect(result.warnings.some((w) => w.message.includes('rulebook/ directory exists but contains no .md files'))).toBe(false);
+      expect(
+        result.warnings.some((w) =>
+          w.message.includes('rulebook/ directory exists but contains no .md files')
+        )
+      ).toBe(false);
     });
   });
 
@@ -483,7 +495,9 @@ describe('validator', () => {
 
       const result = await validateProject(testDir);
 
-      expect(result.warnings.some((w) => w.message.includes('/docs/specs directory not found'))).toBe(true);
+      expect(
+        result.warnings.some((w) => w.message.includes('/docs/specs directory not found'))
+      ).toBe(true);
     });
 
     it('should not warn when docs/specs directory exists', async () => {
@@ -496,7 +510,9 @@ describe('validator', () => {
 
       const result = await validateProject(testDir);
 
-      expect(result.warnings.some((w) => w.message.includes('/docs/specs directory not found'))).toBe(false);
+      expect(
+        result.warnings.some((w) => w.message.includes('/docs/specs directory not found'))
+      ).toBe(false);
     });
 
     it('should warn for each missing important doc', async () => {
@@ -511,7 +527,9 @@ describe('validator', () => {
       const result = await validateProject(testDir);
 
       expect(result.warnings.some((w) => w.message.includes('ROADMAP.md not found'))).toBe(true);
-      expect(result.warnings.some((w) => w.message.includes('ARCHITECTURE.md not found'))).toBe(true);
+      expect(result.warnings.some((w) => w.message.includes('ARCHITECTURE.md not found'))).toBe(
+        true
+      );
     });
 
     it('should not warn when all important docs exist', async () => {
@@ -527,7 +545,9 @@ describe('validator', () => {
       const result = await validateProject(testDir);
 
       expect(result.warnings.some((w) => w.message.includes('ROADMAP.md not found'))).toBe(false);
-      expect(result.warnings.some((w) => w.message.includes('ARCHITECTURE.md not found'))).toBe(false);
+      expect(result.warnings.some((w) => w.message.includes('ARCHITECTURE.md not found'))).toBe(
+        false
+      );
     });
   });
 

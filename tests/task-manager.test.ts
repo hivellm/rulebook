@@ -444,7 +444,13 @@ Then something occurs
   describe('validateTask edge cases', () => {
     it('should validate task without proposal', async () => {
       await taskManager.createTask('task-no-proposal-validate');
-      const proposalPath = join(testDir, 'rulebook', 'tasks', 'task-no-proposal-validate', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        'rulebook',
+        'tasks',
+        'task-no-proposal-validate',
+        'proposal.md'
+      );
       await fs.unlink(proposalPath);
 
       const validation = await taskManager.validateTask('task-no-proposal-validate');
@@ -474,7 +480,13 @@ Test
 
     it('should validate task with no purpose match', async () => {
       await taskManager.createTask('task-no-purpose-match');
-      const proposalPath = join(testDir, 'rulebook', 'tasks', 'task-no-purpose-match', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        'rulebook',
+        'tasks',
+        'task-no-purpose-match',
+        'proposal.md'
+      );
       await fs.writeFile(
         proposalPath,
         `# Proposal: task-no-purpose-match
@@ -652,7 +664,13 @@ Then something occurs
       await taskManager.createTask('task-duplicate-archive');
 
       // Fix proposal
-      const proposalPath = join(testDir, 'rulebook', 'tasks', 'task-duplicate-archive', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        'rulebook',
+        'tasks',
+        'task-duplicate-archive',
+        'proposal.md'
+      );
       const content = await fs.readFile(proposalPath, 'utf-8');
       const updated = content.replace(
         '[Explain why this change is needed - minimum 20 characters]',
@@ -665,7 +683,13 @@ Then something occurs
 
       // Create a new task with same ID (should not happen in practice, but test the branch)
       await taskManager.createTask('task-duplicate-archive');
-      const proposalPath2 = join(testDir, 'rulebook', 'tasks', 'task-duplicate-archive', 'proposal.md');
+      const proposalPath2 = join(
+        testDir,
+        'rulebook',
+        'tasks',
+        'task-duplicate-archive',
+        'proposal.md'
+      );
       const content2 = await fs.readFile(proposalPath2, 'utf-8');
       const updated2 = content2.replace(
         '[Explain why this change is needed - minimum 20 characters]',

@@ -512,7 +512,9 @@ describe('OpenSpecManager', () => {
     it('should not throw error for non-existent task', async () => {
       await openspecManager.initialize();
 
-      await expect(openspecManager.incrementTaskAttempts('non-existent-task')).resolves.not.toThrow();
+      await expect(
+        openspecManager.incrementTaskAttempts('non-existent-task')
+      ).resolves.not.toThrow();
     });
   });
 

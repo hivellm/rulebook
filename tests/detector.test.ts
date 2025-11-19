@@ -794,7 +794,10 @@ describe('detector', () => {
       });
 
       it('should detect JavaScript when TypeScript is not detected', async () => {
-        await fs.writeFile(path.join(testDir, 'package.json'), '{"name": "test", "type": "module"}');
+        await fs.writeFile(
+          path.join(testDir, 'package.json'),
+          '{"name": "test", "type": "module"}'
+        );
         await fs.mkdir(path.join(testDir, 'src'), { recursive: true });
         await fs.writeFile(path.join(testDir, 'src', 'index.js'), 'console.log("test")');
         // No tsconfig.json, no .ts files
