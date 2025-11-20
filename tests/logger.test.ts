@@ -451,7 +451,7 @@ describe('Logger edge cases', () => {
       await logger.flush();
       // Wait a bit for file system to sync
       await new Promise((resolve) => setTimeout(resolve, 200));
-      
+
       const logs = await logger.getRecentLogs(100);
       // Buffer auto-flushes at 10, so we should have at least some messages
       // The exact number depends on timing, but we should have multiple batches
