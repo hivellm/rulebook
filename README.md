@@ -51,7 +51,21 @@ npx @hivellm/rulebook@latest update
 
 ## What's New
 
-### v1.0.2 (Latest)
+### v1.0.3 (Latest)
+
+- ⚡ **Zod v4 Upgrade**: Major performance improvements with Zod v4.1.13
+  - 14x faster string parsing, 50% smaller bundle size
+  - Full backward compatibility maintained
+  - MCP server schemas updated to use Zod v4 API
+- 🔄 **Dependency Updates**: All dependencies updated to latest versions
+  - TypeScript tooling (ESLint 8.47.0, Vitest 4.0.13)
+  - Node.js types updated to support Node.js 24.x
+  - CLI tools and build utilities updated
+- 🐛 **Windows CI Fix**: Fixed PowerShell compatibility in GitHub Actions workflows
+  - Removed bash-specific syntax from Windows runners
+  - Cross-platform compatibility improved
+
+### v1.0.2
 
 - 🔌 **MCP Server for Task Management**: New MCP server enables AI models to manage tasks programmatically
   - 6 MCP functions: create, list, show, update, validate, archive tasks

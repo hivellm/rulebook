@@ -10,6 +10,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2025-11-24
+
+### Changed
+- **Dependency Updates**: Updated all dependencies to latest versions
+  - **Zod**: Upgraded from `3.25.76` to `^4.1.13` (major version update)
+    - Zod v4 brings significant performance improvements (14x faster string parsing, 50% smaller bundle)
+    - Full backward compatibility maintained through subpath imports
+    - MCP server schemas updated to use Zod v4 API
+  - **TypeScript Tooling**: Updated ESLint plugins and parsers to `^8.47.0`
+  - **Testing**: Updated Vitest and coverage tools to `^4.0.13`
+  - **Node Types**: Updated `@types/node` to `^24.10.1` (supports Node.js 24.x)
+  - **CLI Tools**: Updated commander, execa, glob, inquirer, uuid to latest versions
+  - **Build Tools**: Updated ansi-escapes, cli-cursor, js-yaml to latest versions
+  - **Type Definitions**: Updated all `@types/*` packages to latest versions
+- **CI/CD Workflow**: Fixed Windows compatibility issue
+  - Removed bash-specific syntax from Windows CI runners
+  - MCP configuration step now works across all platforms (Ubuntu, Windows, macOS)
+
+### Fixed
+- **Windows CI**: Removed bash syntax (`if [ -f ...]`) that caused PowerShell errors on Windows runners
+  - MCP configuration verification step removed (not needed for CI)
+  - Setup step continues to work with `continue-on-error: true`
+
 ## [1.0.2] - 2025-11-19
 
 ### Changed
