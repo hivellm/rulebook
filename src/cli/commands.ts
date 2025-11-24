@@ -158,10 +158,10 @@ export async function initCommand(options: {
       detection.languages.length > 0
         ? detection.languages
         : config.languages.map((language) => ({
-            language: language as LanguageDetection['language'],
-            confidence: 1,
-            indicators: [],
-          }));
+          language: language as LanguageDetection['language'],
+          confidence: 1,
+          indicators: [],
+        }));
 
     let hooksInstalled = false;
     if (config.installGitHooks) {
@@ -1116,8 +1116,8 @@ export async function mcpInitCommand(): Promise<void> {
     config.mcp = config.mcp ?? {};
     if (config.mcp.enabled === undefined) config.mcp.enabled = true;
     if (!config.mcp.transport) config.mcp.transport = 'stdio';
-    if (!config.mcp.tasksDir) config.mcp.tasksDir = '.rulebook/tasks';
-    if (!config.mcp.archiveDir) config.mcp.archiveDir = '.rulebook/archive';
+    if (!config.mcp.tasksDir) config.mcp.tasksDir = 'rulebook/tasks';
+    if (!config.mcp.archiveDir) config.mcp.archiveDir = 'rulebook/archive';
 
     // Save updated config
     writeFileSync(rulebookPath, JSON.stringify(config, null, 2) + '\n');
@@ -1301,9 +1301,8 @@ export async function updateCommand(options: {
           {
             type: 'confirm',
             name: 'installHooks',
-            message: `Install Git hooks for automated quality checks? Missing: ${
-              hasPreCommit ? '' : 'pre-commit '
-            }${hasPrePush ? '' : 'pre-push'}`.trim(),
+            message: `Install Git hooks for automated quality checks? Missing: ${hasPreCommit ? '' : 'pre-commit '
+              }${hasPrePush ? '' : 'pre-push'}`.trim(),
             default: true,
           },
         ]);
@@ -1571,10 +1570,10 @@ export async function updateCommand(options: {
         detection.languages.length > 0
           ? detection.languages
           : config.languages.map((language) => ({
-              language: language as LanguageDetection['language'],
-              confidence: 1,
-              indicators: [],
-            }));
+            language: language as LanguageDetection['language'],
+            confidence: 1,
+            indicators: [],
+          }));
       const hookSpinner = ora('Installing Git hooks (pre-commit & pre-push)...').start();
       try {
         await installGitHooks({ languages: hookLanguages, cwd });
