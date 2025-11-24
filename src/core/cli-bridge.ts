@@ -1083,7 +1083,9 @@ Report the commit hash when complete.`;
    */
   async getCLICapabilities(toolName: string): Promise<string[]> {
     try {
-      const response = await this.sendCommandToCLI(toolName, 'capabilities', { timeout: 10000 });
+      // Use very short timeout in test environment to avoid hanging on Windows
+      const timeout = process.env.NODE_ENV === 'test' || process.env.VITEST ? 100 : 10000;
+      const response = await this.sendCommandToCLI(toolName, 'capabilities', { timeout });
 
       if (response.success) {
         return response.output.split('\n').filter((line) => line.trim());
