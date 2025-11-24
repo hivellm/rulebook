@@ -252,25 +252,20 @@ Rulebook provides an MCP (Model Context Protocol) server that exposes task manag
 - ✅ Consistent interface with other MCP operations
 - ✅ Better automation capabilities for AI agents
 - ✅ Improved reliability compared to terminal command execution
+- ✅ Automatic project detection - finds `.rulebook` by walking up directories (like git)
+- ✅ Zero configuration - works out of the box after `rulebook mcp init`
 
-**Start the MCP server:**
+**Quick Setup:**
 
 ```bash
-# Via npx (recommended)
-npx @hivellm/rulebook@latest mcp-server
-
-# Or using the binary directly
-npx rulebook-mcp
-
-# Or via npm script (if installed locally)
-npm run mcp-server
-
-# Or via CLI command with custom port
-npx @hivellm/rulebook@latest mcp-server --project-root /path/to/project --port 8080
-
-# Using environment variable for port
-MCP_PORT=8080 npx @hivellm/rulebook@latest mcp-server
+# Initialize MCP configuration in your project (one-time setup)
+npx @hivellm/rulebook@latest mcp init
 ```
+
+This command:
+- Adds `mcp` block to your `.rulebook` file
+- Creates/updates `.cursor/mcp.json` automatically
+- Configures MCP server to use stdio transport
 
 **Available MCP Functions:**
 
@@ -293,97 +288,80 @@ MCP_PORT=8080 npx @hivellm/rulebook@latest mcp-server
   - Input: `taskId` (string), optional `skipValidation`
   - Output: Archive confirmation with archive path
 
-The server runs as an HTTP server and can be integrated with any MCP-compatible client that supports HTTP transport (Cursor, Claude Desktop, etc.).
-
 **Server Details:**
-- **Transport**: HTTP (StreamableHTTPServerTransport)
-- **Default Port**: 30000 (configurable via `--port` or `MCP_PORT` environment variable)
-- **Endpoint**: `http://localhost:30000/mcp`
-- **Protocol**: MCP over HTTP
+- **Transport**: stdio (default) - stdout contains ONLY JSON-RPC 2.0 messages
+- **Configuration**: Loaded from `.rulebook` file automatically
+- **Project Detection**: Finds `.rulebook` by walking up directories (like git)
+- **Protocol**: MCP over stdio (MCP-compliant, no stdout pollution)
 
-**Starting the Server:**
+**Configuration:**
 
-```bash
-# Start server on default port (30000)
-npx @hivellm/rulebook@latest mcp-server
-
-# Start server on custom port
-npx @hivellm/rulebook@latest mcp-server --port 30001
-
-# With custom project root
-npx @hivellm/rulebook@latest mcp-server --project-root /path/to/project --port 30000
-```
-
-**Configuration (mcp.json):**
-
-For HTTP-based MCP clients, configure the server URL. The location depends on your client:
-
-- **Cursor**: `~/.cursor/mcp.json` or `.cursor/mcp.json` in your project
-- **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
-
-**Example configuration (HTTP transport):**
+The MCP server configuration lives in your `.rulebook` file:
 
 ```json
 {
-  "mcpServers": {
-    "rulebook": {
-      "url": "http://localhost:30000/mcp"
-    }
+  "mcp": {
+    "enabled": true,
+    "transport": "stdio",
+    "tasksDir": "rulebook/tasks",
+    "archiveDir": "rulebook/archive"
   }
 }
 ```
 
-**Alternative configuration (using command to start server):**
+**Cursor Configuration (`.cursor/mcp.json`):**
 
-If your client supports starting the server automatically:
+After running `rulebook mcp init`, your `.cursor/mcp.json` will be automatically configured:
 
 ```json
 {
   "mcpServers": {
     "rulebook": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@hivellm/rulebook@latest",
-        "mcp-server",
-        "--port",
-        "30000"
-      ],
-      "env": {
-        "MCP_PORT": "30000"
-      }
+      "args": ["-y", "@hivellm/rulebook@latest", "mcp-server"]
     }
   }
 }
 ```
 
-**With custom project root:**
+That's it! No need for `--project-root`, `--port`, or environment variables. The server automatically:
+- Finds your `.rulebook` file by walking up directories
+- Uses the `mcp` configuration from `.rulebook`
+- Works from any subdirectory in your project
+
+**Manual Override (if needed):**
+
+If you need to override the `.rulebook` location:
 
 ```json
 {
   "mcpServers": {
     "rulebook": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@hivellm/rulebook@latest",
-        "mcp-server",
-        "--project-root",
-        "/path/to/your/project",
-        "--port",
-        "30000"
-      ],
+      "args": ["-y", "@hivellm/rulebook@latest", "mcp-server"],
       "env": {
-        "MCP_PORT": "30000"
+        "RULEBOOK_CONFIG": "/path/to/.rulebook"
       }
     }
   }
 }
 ```
 
-**Note:** After adding the configuration, restart your MCP client (Cursor or Claude Desktop) for the changes to take effect.
+**Note:** After running `rulebook mcp init` or updating `.cursor/mcp.json`, restart Cursor for the changes to take effect.
 
 **Troubleshooting:**
+
+### Server Not Starting
+
+If the MCP server fails to start:
+
+1. **Verify `.rulebook` exists**: Run `rulebook mcp init` in your project root
+2. **Check Node.js version**: Requires Node.js 20+ (`node --version`)
+3. **Verify MCP configuration**: Check that `.cursor/mcp.json` exists and is valid JSON
+4. **Debug mode**: Set `RULEBOOK_MCP_DEBUG=1` to see debug logs in stderr:
+   ```bash
+   RULEBOOK_MCP_DEBUG=1 npx @hivellm/rulebook@latest mcp-server
+   ```
 
 ### Empty Schemas or Missing Parameters
 
@@ -398,37 +376,36 @@ npm cache clean --force
 rm -rf ~/.npm/_npx
 ```
 
-3. **Rebuild the project**:
+2. **Rebuild the project**:
 ```bash
 npm run build
 ```
 
-4. Restart your MCP client and try again.
+3. Restart your MCP client and try again.
 
-### Connection Errors
+### "Unexpected token" or "Invalid JSON" Errors
 
-If you encounter connection errors, verify:
-- Node.js version is 20+ (`node --version`)
-- MCP configuration file exists and is valid JSON
-- Server is running: `npx @hivellm/rulebook@latest mcp-server`
-- Server is accessible at `http://localhost:30000/mcp` (or your configured port)
-- Port is not already in use (change with `--port` if needed)
-- Firewall allows connections to the server port
+These errors occur when the server outputs non-JSON to stdout. This is fixed in v1.0.9+:
+- Ensure you're using `@hivellm/rulebook@latest` (v1.0.9 or newer)
+- stdout now contains ONLY JSON-RPC 2.0 messages
+- All logs go to stderr (use `RULEBOOK_MCP_DEBUG=1` to see them)
 
-**Automated Setup (CI/CD):**
+### ".rulebook not found" Error
 
-The MCP configuration can be automatically created during CI builds:
+If you see this error:
+1. Run `rulebook mcp init` in your project root
+2. Or manually create `.rulebook` file with `mcp` block
+3. Or set `RULEBOOK_CONFIG` environment variable to point to your `.rulebook` file
+
+**Automated Setup:**
 
 ```bash
-# Setup MCP config automatically (detects IDE from environment)
+# Initialize MCP in your project (recommended)
+npx @hivellm/rulebook@latest mcp init
+
+# Or use the setup script (for CI/CD)
 npm run setup:mcp
-
-# Or specify IDE explicitly
-MCP_IDE=cursor npm run setup:mcp
-MCP_IDE=claude npm run setup:mcp
 ```
-
-In GitHub Actions workflows, the MCP configuration is automatically created when the build step runs. Set the `MCP_IDE` environment variable to configure for a specific IDE (defaults to `cursor`).
 
 ## AI Tools Supported (23)
 
