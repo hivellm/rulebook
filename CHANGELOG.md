@@ -10,6 +10,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.3] - 2025-11-24
+
+### Added
+- **MCP Tool: `rulebook_task_delete`** - Delete tasks permanently
+  - New tool to permanently delete tasks from the filesystem
+  - Removes task directory recursively
+  - Useful for cleaning up test tasks or removing unwanted tasks
+
+## [1.1.2] - 2025-11-24
+
+### Fixed
+- **MCP Server ID Synchronization**: Improved server initialization to prevent race conditions
+  - Enhanced comments documenting critical synchronization requirements
+  - Ensured all tools/resources are registered synchronously before `server.connect()`
+  - Prevents potential "unknown message ID" errors caused by race conditions
+
+### Changed
+- **MCP Server Documentation**: Added troubleshooting note about "unknown message ID" warnings
+  - Clarified that these warnings are cosmetic and don't affect functionality
+  - Documented that this is a known Cursor client issue, not a server problem
+
 ## [1.1.1] - 2025-11-24
 
 ### Changed

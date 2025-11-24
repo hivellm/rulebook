@@ -55,6 +55,13 @@ export class TaskManager {
   }
 
   /**
+   * Get the path to a task directory
+   */
+  getTaskPath(taskId: string): string {
+    return join(this.tasksPath, taskId);
+  }
+
+  /**
    * Create a new task
    */
   async createTask(taskId: string): Promise<void> {
@@ -332,9 +339,8 @@ export class TaskManager {
     task.status = status;
     task.updatedAt = new Date().toISOString();
 
-    // Update tasks.md with status if needed
-    // For now, we just update the metadata
-    // In the future, we could add a status.md file or update tasks.md
+    // Status is updated in memory only
+    // In the future, we could persist this to a status.md file or update tasks.md
   }
 
   /**
@@ -355,6 +361,21 @@ export class TaskManager {
     }
 
     return null;
+  }
+
+  /**
+   * Delete a task permanently
+   */
+  async deleteTask(taskId: string): Promise<void> {
+    const taskPath = join(this.tasksPath, taskId);
+
+    if (!existsSync(taskPath)) {
+      throw new Error(`Task ${taskId} not found`);
+    }
+
+    // Remove task directory recursively
+    const { rmSync } = await import('fs');
+    rmSync(taskPath, { recursive: true, force: true });
   }
 }
 

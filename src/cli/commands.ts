@@ -1086,7 +1086,7 @@ export async function taskArchiveCommand(
  * Adds mcp block to .rulebook and creates/updates .cursor/mcp.json
  */
 export async function mcpInitCommand(): Promise<void> {
-  const { findRulebookFile } = await import('../mcp/rulebook-config.js');
+  const { findRulebookFile } = await import('../mcp/rulebook-server.js');
   const { existsSync, readFileSync, writeFileSync } = await import('fs');
   const { join, dirname } = await import('path');
   const { createConfigManager } = await import('../core/config-manager.js');

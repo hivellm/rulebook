@@ -67,7 +67,7 @@ npx @hivellm/rulebook@latest update
 ### v1.0.2
 
 - 🔌 **MCP Server for Task Management**: New MCP server enables AI models to manage tasks programmatically
-  - 6 MCP functions: create, list, show, update, validate, archive tasks
+  - 7 MCP functions: create, list, show, update, validate, archive, delete tasks
   - Available via `npx @hivellm/rulebook@latest mcp-server` or `npx rulebook-mcp`
   - Better integration with MCP-compatible AI assistants
 - ⚡ **Faster Pre-commit Hooks**: Tests removed from pre-commit for faster backup commits
@@ -287,6 +287,9 @@ This command:
 - `rulebook_task_archive` - Archive completed task and apply spec deltas
   - Input: `taskId` (string), optional `skipValidation`
   - Output: Archive confirmation with archive path
+- `rulebook_task_delete` - Delete a task permanently
+  - Input: `taskId` (string)
+  - Output: Deletion confirmation
 
 **Server Details:**
 - **Transport**: stdio only - stdout contains ONLY JSON-RPC 2.0 messages
@@ -397,6 +400,15 @@ If you see this error:
 1. Run `rulebook mcp init` in your project root
 2. Or manually create `.rulebook` file with `mcp` block
 3. Or set `RULEBOOK_CONFIG` environment variable to point to your `.rulebook` file
+
+### "Received a response for an unknown message ID" Warning
+
+If you see this warning in Cursor logs:
+- **This is a cosmetic warning** - it does NOT affect functionality
+- All tools work correctly despite this warning
+- The server is responding correctly with valid JSON-RPC 2.0 messages
+- This is a known issue with Cursor's MCP client ID tracking
+- The warning can be safely ignored - all MCP tools function normally
 
 ### "Received a response for an unknown message ID" Warning
 
