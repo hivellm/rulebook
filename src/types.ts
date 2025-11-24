@@ -178,7 +178,6 @@ export interface RulebookConfig {
   // MCP server configuration
   mcp?: {
     enabled?: boolean;
-    transport?: 'stdio' | 'http';
     tasksDir?: string; // Relative to project root
     archiveDir?: string; // Relative to project root
   };

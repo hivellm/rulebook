@@ -158,10 +158,10 @@ export async function initCommand(options: {
       detection.languages.length > 0
         ? detection.languages
         : config.languages.map((language) => ({
-          language: language as LanguageDetection['language'],
-          confidence: 1,
-          indicators: [],
-        }));
+            language: language as LanguageDetection['language'],
+            confidence: 1,
+            indicators: [],
+          }));
 
     let hooksInstalled = false;
     if (config.installGitHooks) {
@@ -1115,7 +1115,6 @@ export async function mcpInitCommand(): Promise<void> {
     // Add/update mcp block
     config.mcp = config.mcp ?? {};
     if (config.mcp.enabled === undefined) config.mcp.enabled = true;
-    if (!config.mcp.transport) config.mcp.transport = 'stdio';
     if (!config.mcp.tasksDir) config.mcp.tasksDir = 'rulebook/tasks';
     if (!config.mcp.archiveDir) config.mcp.archiveDir = 'rulebook/archive';
 
@@ -1156,37 +1155,20 @@ export async function mcpInitCommand(): Promise<void> {
   }
 }
 
-export async function mcpServerCommand(projectRoot?: string, port?: number): Promise<void> {
+export async function mcpServerCommand(): Promise<void> {
   try {
     const { startRulebookMcpServer } = await import('../mcp/rulebook-server.js');
-    const cwd = projectRoot || process.cwd();
-    const serverPort = port || parseInt(process.env.MCP_PORT || '3000');
-    const transport = (process.env.MCP_TRANSPORT as 'stdio' | 'http') || 'stdio';
 
-    // CRITICAL: When transport is 'stdio', we MUST NOT log to stdout
+    // CRITICAL: In stdio mode, stdout MUST contain ONLY JSON-RPC 2.0 messages
     // stdout must contain ONLY JSON-RPC 2.0 messages for MCP protocol
     // All logs must go to stderr
-    if (transport === 'stdio') {
-      // In stdio mode, no logs to stdout - only stderr for errors/debug
-      // Use environment variable for debug: RULEBOOK_MCP_DEBUG=1
-      if (process.env.RULEBOOK_MCP_DEBUG === '1') {
-        console.error(chalk.gray('[rulebook-mcp] Starting MCP server with stdio transport'));
-        console.error(chalk.gray(`[rulebook-mcp] Project root: ${cwd}`));
-      }
-    } else {
-      // HTTP mode: logs can go to stderr (not stdout)
-      console.error(chalk.bold.blue('\n🚀 Starting Rulebook MCP Server\n'));
-      console.error(chalk.gray(`Project root: ${cwd}`));
-      console.error(chalk.gray(`Transport: ${transport}`));
-      console.error(chalk.gray(`Server will run on http://localhost:${serverPort}/mcp`));
-      console.error();
+    // Use environment variable for debug: RULEBOOK_MCP_DEBUG=1
+    if (process.env.RULEBOOK_MCP_DEBUG === '1') {
+      console.error(chalk.gray('[rulebook-mcp] Starting MCP server with stdio transport'));
+      console.error(chalk.gray('[rulebook-mcp] Server will find .rulebook automatically'));
     }
 
-    await startRulebookMcpServer({
-      projectRoot: cwd,
-      transport,
-      port: transport === 'http' ? serverPort : undefined,
-    });
+    await startRulebookMcpServer();
   } catch (error: any) {
     // Errors always go to stderr
     console.error(chalk.red(`\n❌ Failed to start MCP server: ${error.message}`));
@@ -1301,8 +1283,9 @@ export async function updateCommand(options: {
           {
             type: 'confirm',
             name: 'installHooks',
-            message: `Install Git hooks for automated quality checks? Missing: ${hasPreCommit ? '' : 'pre-commit '
-              }${hasPrePush ? '' : 'pre-push'}`.trim(),
+            message: `Install Git hooks for automated quality checks? Missing: ${
+              hasPreCommit ? '' : 'pre-commit '
+            }${hasPrePush ? '' : 'pre-push'}`.trim(),
             default: true,
           },
         ]);
@@ -1570,10 +1553,10 @@ export async function updateCommand(options: {
         detection.languages.length > 0
           ? detection.languages
           : config.languages.map((language) => ({
-            language: language as LanguageDetection['language'],
-            confidence: 1,
-            indicators: [],
-          }));
+              language: language as LanguageDetection['language'],
+              confidence: 1,
+              indicators: [],
+            }));
       const hookSpinner = ora('Installing Git hooks (pre-commit & pre-push)...').start();
       try {
         await installGitHooks({ languages: hookLanguages, cwd });

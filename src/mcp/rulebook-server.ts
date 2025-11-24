@@ -2,8 +2,6 @@
 
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import express from 'express';
 import { z } from 'zod';
 import { TaskManager } from '../core/task-manager.js';
 import { loadRulebookMCPConfig } from './rulebook-config.js';
@@ -301,84 +299,33 @@ export async function createRulebookMcpServer(options: {
 }
 
 /**
- * Start the MCP server with stdio transport (default) or HTTP transport
+ * Start the MCP server with stdio transport
  * Following Context7 MCP server patterns: https://github.com/upstash/context7
  * Loads configuration from .rulebook file (found by walking up directories)
  */
-export async function startRulebookMcpServer(
-  options: {
-    projectRoot?: string;
-    transport?: 'stdio' | 'http';
-    port?: number;
-  } = {}
-): Promise<void> {
+export async function startRulebookMcpServer(): Promise<void> {
   // Load configuration from .rulebook file
   const mcpConfig = loadRulebookMCPConfig();
 
-  // Override with options if provided (for backward compatibility)
-  const projectRoot = options.projectRoot || mcpConfig.projectRoot;
-  const transport = options.transport || mcpConfig.transport;
-  const port = options.port || parseInt(process.env.MCP_PORT || '3000');
-
   const server = await createRulebookMcpServer({
-    projectRoot,
+    projectRoot: mcpConfig.projectRoot,
     tasksDir: mcpConfig.tasksDir,
     archiveDir: mcpConfig.archiveDir,
   });
 
-  if (transport === 'http') {
-    // Use HTTP transport (for remote HTTP server)
-    const app = express();
-    app.use(express.json());
-
-    app.post('/mcp', async (req, res) => {
-      // Create a new transport for each request to prevent request ID collisions
-      const httpTransport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined,
-        enableJsonResponse: true,
-      });
-
-      res.on('close', () => {
-        httpTransport.close();
-      });
-
-      try {
-        await server.connect(httpTransport);
-        await httpTransport.handleRequest(req, res, req.body);
-      } catch (error) {
-        // HTTP mode: errors can go to stderr
-        console.error('MCP request error:', error);
-        if (!res.headersSent) {
-          res.status(500).json({ error: 'Internal server error' });
-        }
-      }
-    });
-
-    app
-      .listen(port, () => {
-        // HTTP mode: logs can go to stderr (not stdout)
-        console.error(`Rulebook MCP Server running on http://localhost:${port}/mcp`);
-        console.error(`Server ready to accept MCP requests`);
-      })
-      .on('error', (error: Error) => {
-        console.error('Server error:', error);
-        process.exit(1);
-      });
-  } else {
-    // Use stdio transport (default for MCP clients that spawn the process)
-    // CRITICAL: In stdio mode, stdout MUST contain ONLY JSON-RPC 2.0 messages
-    // No logs, banners, emojis, or any other text output to stdout
-    const stdioTransport = new StdioServerTransport();
-    try {
-      debug('Starting MCP server with stdio transport');
-      debug(`Project root: ${projectRoot}`);
-      await server.connect(stdioTransport);
-      // Server is now running - do NOT log anything to stdout
-    } catch (error) {
-      // Errors go to stderr, not stdout
-      console.error('Failed to start MCP server:', error);
-      process.exit(1);
-    }
+  // Use stdio transport (MCP standard)
+  // CRITICAL: In stdio mode, stdout MUST contain ONLY JSON-RPC 2.0 messages
+  // No logs, banners, emojis, or any other text output to stdout
+  const stdioTransport = new StdioServerTransport();
+  try {
+    debug('Starting MCP server with stdio transport');
+    debug(`Project root: ${mcpConfig.projectRoot}`);
+    await server.connect(stdioTransport);
+    // Server is now running - do NOT log anything to stdout
+  } catch (error) {
+    // Errors go to stderr, not stdout
+    console.error('Failed to start MCP server:', error);
+    process.exit(1);
   }
 }
 
@@ -393,8 +340,8 @@ const isMainModule =
 if (isMainModule) {
   // MCP server now loads config from .rulebook automatically
   // No need for command line arguments - .rulebook is the source of truth
-  // Environment variables can still override: MCP_TRANSPORT, MCP_PORT, RULEBOOK_CONFIG
-  startRulebookMcpServer({}).catch((error) => {
+  // Environment variables can override: RULEBOOK_CONFIG
+  startRulebookMcpServer().catch((error) => {
     // Errors go to stderr, not stdout
     console.error('Failed to start MCP server:', error);
     process.exit(1);

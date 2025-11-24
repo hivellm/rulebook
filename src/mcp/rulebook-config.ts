@@ -5,7 +5,6 @@ import type { RulebookConfig } from '../types.js';
 export interface MCPConfig {
   configPath: string;
   projectRoot: string;
-  transport: 'stdio' | 'http';
   tasksDir: string;
   archiveDir: string;
   rawConfig: RulebookConfig;
@@ -64,14 +63,12 @@ export function loadRulebookMCPConfig(): MCPConfig {
 
   // Extract MCP config with defaults
   const mcp = rawConfig.mcp ?? {};
-  const transport = mcp.transport ?? 'stdio';
   const tasksDir = resolve(projectRoot, mcp.tasksDir ?? 'rulebook/tasks');
   const archiveDir = resolve(projectRoot, mcp.archiveDir ?? 'rulebook/archive');
 
   return {
     configPath,
     projectRoot,
-    transport,
     tasksDir,
     archiveDir,
     rawConfig,
