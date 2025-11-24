@@ -360,6 +360,20 @@ If you need to specify a different project root:
 
 **Note:** After adding the configuration, restart your MCP client (Cursor or Claude Desktop) for the changes to take effect.
 
+**Troubleshooting:**
+
+If you encounter issues with the MCP server (empty schemas, connection errors, etc.), try clearing the npm cache:
+
+```bash
+# Clear npm cache
+npm cache clean --force
+
+# Or clear npx cache specifically
+rm -rf ~/.npm/_npx
+```
+
+Then restart your MCP client and try again.
+
 **Automated Setup (CI/CD):**
 
 The MCP configuration can be automatically created during CI builds:
