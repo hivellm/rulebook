@@ -1,7 +1,7 @@
 {
-  "version": "1.1.0",
-  "installedAt": "2025-11-24T04:43:10.477Z",
-  "updatedAt": "2025-11-24T04:51:10.668Z",
+  "version": "1.1.1",
+  "installedAt": "2025-11-24T04:51:10.660Z",
+  "updatedAt": "2025-11-24T04:56:29.138Z",
   "projectId": "rulebook",
   "mode": "full",
   "features": {
@@ -32,7 +32,6 @@
   },
   "mcp": {
     "enabled": true,
-    "transport": "stdio",
     "tasksDir": "rulebook/tasks",
     "archiveDir": "rulebook/archive"
   }

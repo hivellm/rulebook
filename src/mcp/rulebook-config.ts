@@ -39,6 +39,9 @@ export function findRulebookFile(startDir: string): string | null {
 /**
  * Load Rulebook MCP configuration from .rulebook file
  * Finds .rulebook by walking up directories, or uses RULEBOOK_CONFIG env var
+ *
+ * IMPORTANT: This function must complete synchronously before server.connect() is called
+ * to avoid race conditions in the MCP handshake protocol.
  */
 export function loadRulebookMCPConfig(): MCPConfig {
   // Allow manual override via environment variable
@@ -46,6 +49,7 @@ export function loadRulebookMCPConfig(): MCPConfig {
   const configPath = envPath ? resolve(envPath) : findRulebookFile(process.cwd());
 
   if (!configPath) {
+    // Write to stderr, not stdout (MCP protocol requirement)
     console.error('[rulebook-mcp] .rulebook not found. Run `rulebook mcp init` in this project.');
     process.exit(1);
   }
@@ -54,9 +58,11 @@ export function loadRulebookMCPConfig(): MCPConfig {
 
   let rawConfig: RulebookConfig;
   try {
+    // Synchronous file read - must complete before server.connect()
     const raw = readFileSync(configPath, 'utf8');
     rawConfig = JSON.parse(raw) as RulebookConfig;
   } catch (error) {
+    // Write to stderr, not stdout (MCP protocol requirement)
     console.error(`[rulebook-mcp] Failed to parse .rulebook: ${error}`);
     process.exit(1);
   }

@@ -304,9 +304,11 @@ export async function createRulebookMcpServer(options: {
  * Loads configuration from .rulebook file (found by walking up directories)
  */
 export async function startRulebookMcpServer(): Promise<void> {
-  // Load configuration from .rulebook file
+  // Load configuration from .rulebook file BEFORE creating server
+  // This ensures all config is loaded synchronously before any async operations
   const mcpConfig = loadRulebookMCPConfig();
 
+  // Create server instance
   const server = await createRulebookMcpServer({
     projectRoot: mcpConfig.projectRoot,
     tasksDir: mcpConfig.tasksDir,
@@ -317,11 +319,17 @@ export async function startRulebookMcpServer(): Promise<void> {
   // CRITICAL: In stdio mode, stdout MUST contain ONLY JSON-RPC 2.0 messages
   // No logs, banners, emojis, or any other text output to stdout
   const stdioTransport = new StdioServerTransport();
+
   try {
     debug('Starting MCP server with stdio transport');
     debug(`Project root: ${mcpConfig.projectRoot}`);
+
+    // Connect server to transport - this starts the MCP protocol handshake
+    // The server will wait for the client's initialize request before responding
     await server.connect(stdioTransport);
-    // Server is now running - do NOT log anything to stdout
+
+    // Server is now running and waiting for client requests
+    // Do NOT log anything to stdout after this point
   } catch (error) {
     // Errors go to stderr, not stdout
     console.error('Failed to start MCP server:', error);
