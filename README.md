@@ -265,7 +265,7 @@ npx @hivellm/rulebook@latest mcp init
 This command:
 - Adds `mcp` block to your `.rulebook` file
 - Creates/updates `.cursor/mcp.json` automatically
-- Configures MCP server to use stdio transport
+- Server uses stdio transport (MCP standard)
 
 **Available MCP Functions:**
 
@@ -289,7 +289,7 @@ This command:
   - Output: Archive confirmation with archive path
 
 **Server Details:**
-- **Transport**: stdio (default) - stdout contains ONLY JSON-RPC 2.0 messages
+- **Transport**: stdio only - stdout contains ONLY JSON-RPC 2.0 messages
 - **Configuration**: Loaded from `.rulebook` file automatically
 - **Project Detection**: Finds `.rulebook` by walking up directories (like git)
 - **Protocol**: MCP over stdio (MCP-compliant, no stdout pollution)
@@ -302,12 +302,13 @@ The MCP server configuration lives in your `.rulebook` file:
 {
   "mcp": {
     "enabled": true,
-    "transport": "stdio",
     "tasksDir": "rulebook/tasks",
     "archiveDir": "rulebook/archive"
   }
 }
 ```
+
+**Note:** The server uses stdio transport only (no configuration needed).
 
 **Cursor Configuration (`.cursor/mcp.json`):**
 
