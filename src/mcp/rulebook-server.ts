@@ -3,6 +3,7 @@
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { relative } from 'path';
 import { TaskManager } from '../core/task-manager.js';
 import { loadRulebookMCPConfig } from './rulebook-config.js';
 
@@ -26,11 +27,11 @@ import { archiveTaskHandler } from './handlers/archive-task.js';
 /**
  * Create and configure the Rulebook MCP server
  */
-export async function createRulebookMcpServer(options: {
+export function createRulebookMcpServer(options: {
   projectRoot: string;
   tasksDir: string;
   archiveDir: string;
-}): Promise<McpServer> {
+}): McpServer {
   const server = new McpServer({
     name: 'rulebook-task-management',
     version: '1.1.1',
@@ -38,7 +39,7 @@ export async function createRulebookMcpServer(options: {
 
   // Initialize task manager with custom paths from .rulebook config
   // TaskManager needs rulebookDir relative to projectRoot
-  const { relative } = await import('path');
+  // Use synchronous path operations to avoid async delays before connect()
   const rulebookDir =
     relative(options.projectRoot, options.tasksDir).split(/[/\\]/)[0] || 'rulebook';
   const taskManager = new TaskManager(options.projectRoot, rulebookDir);
@@ -308,8 +309,9 @@ export async function startRulebookMcpServer(): Promise<void> {
   // This ensures all config is loaded synchronously before any async operations
   const mcpConfig = loadRulebookMCPConfig();
 
-  // Create server instance
-  const server = await createRulebookMcpServer({
+  // Create server instance and register all tools synchronously
+  // Following cmmv-mcp pattern: register all tools BEFORE connecting transport
+  const server = createRulebookMcpServer({
     projectRoot: mcpConfig.projectRoot,
     tasksDir: mcpConfig.tasksDir,
     archiveDir: mcpConfig.archiveDir,
@@ -325,6 +327,7 @@ export async function startRulebookMcpServer(): Promise<void> {
     debug(`Project root: ${mcpConfig.projectRoot}`);
 
     // Connect server to transport - this starts the MCP protocol handshake
+    // Following cmmv-mcp pattern: connect AFTER all tools are registered
     // The server will wait for the client's initialize request before responding
     await server.connect(stdioTransport);
 
