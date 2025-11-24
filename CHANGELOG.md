@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.8] - 2025-11-24
+
+### Fixed
+- **MCP Server Dependencies**: Added missing dependencies for Express 5.x compatibility
+  - Added `http-errors@^2.0.1` as explicit dependency
+  - Added `raw-body@^3.0.2` as explicit dependency
+  - Added `body-parser@^2.2.0` as explicit dependency
+  - Fixes "Cannot find module 'http-errors'" error when running via npx
+
 ## [1.0.7] - 2025-11-24
 
 ### Fixed
