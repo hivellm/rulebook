@@ -33,7 +33,7 @@ export async function createRulebookMcpServer(options: {
 }): Promise<McpServer> {
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '1.1.0',
+    version: '1.1.1',
   });
 
   // Initialize task manager with custom paths from .rulebook config

@@ -10,6 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2025-11-24
+
+### Changed
+- **MCP Server**: Removed HTTP transport support, stdio only
+  - Simplified server architecture - only stdio transport (MCP standard)
+  - Removed `express`, `StreamableHTTPServerTransport`, and related HTTP dependencies
+  - Removed `transport` field from `.rulebook` configuration
+  - Removed `--port` and `--project-root` command-line options
+  - Server now always uses stdio transport (no configuration needed)
+
+### Removed
+- HTTP transport support from MCP server
+- `transport` field from `RulebookConfig.mcp`
+- Command-line options `--port` and `--project-root` from `mcp-server` command
+
 ## [1.1.0] - 2025-11-24
 
 ### Added
