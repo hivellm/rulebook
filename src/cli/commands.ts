@@ -1086,14 +1086,24 @@ export async function mcpServerCommand(projectRoot?: string): Promise<void> {
     const { startRulebookMcpServer } = await import('../mcp/rulebook-server.js');
     const cwd = projectRoot || process.cwd();
 
-    console.log(chalk.bold.blue('\n🚀 Starting Rulebook MCP Server\n'));
-    console.log(chalk.gray(`Project root: ${cwd}`));
-    console.log(chalk.gray('Server will communicate via stdio (standard input/output)\n'));
+    // Check if running via MCP (stdio mode) - don't print messages in that case
+    const isMcpMode = process.stdin.isTTY === false || process.env.MCP_MODE === 'true';
+
+    if (!isMcpMode) {
+      // Only print messages when running via CLI (not via MCP stdio)
+      console.log(chalk.bold.blue('\n🚀 Starting Rulebook MCP Server\n'));
+      console.log(chalk.gray(`Project root: ${cwd}`));
+      console.log(chalk.gray('Server will communicate via stdio (standard input/output)\n'));
+    }
 
     await startRulebookMcpServer(cwd);
   } catch (error: any) {
-    console.error(chalk.red(`\n❌ Failed to start MCP server: ${error.message}`));
-    console.error(error.stack);
+    // Don't print errors in MCP mode - it breaks the protocol
+    const isMcpMode = process.stdin.isTTY === false || process.env.MCP_MODE === 'true';
+    if (!isMcpMode) {
+      console.error(chalk.red(`\n❌ Failed to start MCP server: ${error.message}`));
+      console.error(error.stack);
+    }
     process.exit(1);
   }
 }

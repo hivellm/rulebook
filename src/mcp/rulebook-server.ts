@@ -218,8 +218,9 @@ const isMainModule =
   process.argv[1]?.includes('rulebook-mcp');
 
 if (isMainModule) {
-  startRulebookMcpServer().catch((error) => {
-    console.error('Failed to start MCP server:', error);
+  startRulebookMcpServer().catch(() => {
+    // Don't use console.error - it breaks MCP stdio protocol
+    // Errors will be handled by the transport layer
     process.exit(1);
   });
 }
