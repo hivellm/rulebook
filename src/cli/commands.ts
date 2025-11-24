@@ -1088,13 +1088,24 @@ export async function mcpServerCommand(projectRoot?: string, port?: number): Pro
     const serverPort = port || parseInt(process.env.MCP_PORT || '3000');
     const transport = (process.env.MCP_TRANSPORT as 'stdio' | 'http') || 'stdio';
 
-    console.log(chalk.bold.blue('\n🚀 Starting Rulebook MCP Server\n'));
-    console.log(chalk.gray(`Project root: ${cwd}`));
-    console.log(chalk.gray(`Transport: ${transport}`));
-    if (transport === 'http') {
-      console.log(chalk.gray(`Server will run on http://localhost:${serverPort}/mcp`));
+    // CRITICAL: When transport is 'stdio', we MUST NOT log to stdout
+    // stdout must contain ONLY JSON-RPC 2.0 messages for MCP protocol
+    // All logs must go to stderr
+    if (transport === 'stdio') {
+      // In stdio mode, no logs to stdout - only stderr for errors/debug
+      // Use environment variable for debug: RULEBOOK_MCP_DEBUG=1
+      if (process.env.RULEBOOK_MCP_DEBUG === '1') {
+        console.error(chalk.gray('[rulebook-mcp] Starting MCP server with stdio transport'));
+        console.error(chalk.gray(`[rulebook-mcp] Project root: ${cwd}`));
+      }
+    } else {
+      // HTTP mode: logs can go to stderr (not stdout)
+      console.error(chalk.bold.blue('\n🚀 Starting Rulebook MCP Server\n'));
+      console.error(chalk.gray(`Project root: ${cwd}`));
+      console.error(chalk.gray(`Transport: ${transport}`));
+      console.error(chalk.gray(`Server will run on http://localhost:${serverPort}/mcp`));
+      console.error();
     }
-    console.log();
 
     await startRulebookMcpServer({
       projectRoot: cwd,
@@ -1102,6 +1113,7 @@ export async function mcpServerCommand(projectRoot?: string, port?: number): Pro
       port: transport === 'http' ? serverPort : undefined,
     });
   } catch (error: any) {
+    // Errors always go to stderr
     console.error(chalk.red(`\n❌ Failed to start MCP server: ${error.message}`));
     console.error(error.stack);
     process.exit(1);

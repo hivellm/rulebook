@@ -1,6 +1,6 @@
 {
   "name": "@hivellm/rulebook",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Standardize AI-generated projects with automated templates, quality gates, and framework detection for 28 languages, 17 frameworks, and 12 MCP modules",
   "type": "module",
   "main": "dist/index.js",

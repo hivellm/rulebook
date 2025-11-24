@@ -7,6 +7,15 @@ import express from 'express';
 import { z } from 'zod';
 import { TaskManager } from '../core/task-manager.js';
 
+// Debug helper - only logs to stderr when RULEBOOK_MCP_DEBUG=1
+// MCP protocol requires stdout to be EXCLUSIVELY JSON-RPC 2.0 messages
+// All logs, banners, emojis, etc. must go to stderr
+const debug = (...args: unknown[]): void => {
+  if (process.env.RULEBOOK_MCP_DEBUG === '1') {
+    console.error('[rulebook-mcp]', ...args);
+  }
+};
+
 // Import handlers
 import { createTaskHandler } from './handlers/create-task.js';
 import { listTasksHandler } from './handlers/list-tasks.js';
@@ -21,7 +30,7 @@ import { archiveTaskHandler } from './handlers/archive-task.js';
 export function createRulebookMcpServer(projectRoot: string = process.cwd()): McpServer {
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '1.0.8',
+    version: '1.0.9',
   });
 
   // Initialize task manager
@@ -319,6 +328,7 @@ export async function startRulebookMcpServer(
         await server.connect(httpTransport);
         await httpTransport.handleRequest(req, res, req.body);
       } catch (error) {
+        // HTTP mode: errors can go to stderr
         console.error('MCP request error:', error);
         if (!res.headersSent) {
           res.status(500).json({ error: 'Internal server error' });
@@ -328,8 +338,9 @@ export async function startRulebookMcpServer(
 
     app
       .listen(port, () => {
-        console.log(`Rulebook MCP Server running on http://localhost:${port}/mcp`);
-        console.log(`Server ready to accept MCP requests`);
+        // HTTP mode: logs can go to stderr (not stdout)
+        console.error(`Rulebook MCP Server running on http://localhost:${port}/mcp`);
+        console.error(`Server ready to accept MCP requests`);
       })
       .on('error', (error: Error) => {
         console.error('Server error:', error);
@@ -337,10 +348,16 @@ export async function startRulebookMcpServer(
       });
   } else {
     // Use stdio transport (default for MCP clients that spawn the process)
+    // CRITICAL: In stdio mode, stdout MUST contain ONLY JSON-RPC 2.0 messages
+    // No logs, banners, emojis, or any other text output to stdout
     const stdioTransport = new StdioServerTransport();
     try {
+      debug('Starting MCP server with stdio transport');
+      debug(`Project root: ${projectRoot}`);
       await server.connect(stdioTransport);
+      // Server is now running - do NOT log anything to stdout
     } catch (error) {
+      // Errors go to stderr, not stdout
       console.error('Failed to start MCP server:', error);
       process.exit(1);
     }
@@ -385,6 +402,7 @@ if (isMainModule) {
     transport,
     port,
   }).catch((error) => {
+    // Errors go to stderr, not stdout
     console.error('Failed to start MCP server:', error);
     process.exit(1);
   });

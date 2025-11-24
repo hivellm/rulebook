@@ -10,6 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.9] - 2025-11-24
+
+### Fixed
+- **MCP Server stdout compliance**: Fixed critical MCP protocol violation
+  - Removed all console.log, banners, and emojis from stdout in stdio mode
+  - stdout now contains ONLY JSON-RPC 2.0 messages as required by MCP protocol
+  - All logs, debug info, and errors now go to stderr
+  - Added debug helper that only logs to stderr when `RULEBOOK_MCP_DEBUG=1`
+  - Fixes "Unexpected token" errors when MCP client tries to parse logs as JSON
+  - Fixes "Received a response for an unknown message ID" errors caused by stream desynchronization
+
+### Changed
+- **MCP Server logging**: Improved logging behavior for MCP compliance
+  - stdio mode: No output to stdout (except JSON-RPC messages)
+  - HTTP mode: Logs go to stderr (not stdout)
+  - Debug mode: Set `RULEBOOK_MCP_DEBUG=1` to see debug logs in stderr
+  - CLI command: Only shows banners in HTTP mode, silent in stdio mode
+
 ## [1.0.8] - 2025-11-24
 
 ### Fixed
