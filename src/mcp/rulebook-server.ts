@@ -54,12 +54,6 @@ export function createRulebookMcpServer(options: {
         taskId: z.string().describe('Task ID in kebab-case (e.g., add-feature-name)'),
         proposal: z.string().optional().describe('Proposal content as JSON string (optional)'),
       },
-      outputSchema: z.object({
-        success: z.boolean(),
-        taskId: z.string(),
-        message: z.string(),
-        path: z.string().optional(),
-      }),
     },
     async (args: any, _extra?: any) => {
       return createTaskHandler(taskManager, args);
@@ -79,10 +73,6 @@ export function createRulebookMcpServer(options: {
           .optional()
           .describe('Filter by status'),
       },
-      outputSchema: z.object({
-        tasks: z.array(z.any()),
-        count: z.number(),
-      }),
     },
     async (args: any, _extra?: any) => {
       return listTasksHandler(taskManager, args);
@@ -98,10 +88,6 @@ export function createRulebookMcpServer(options: {
       inputSchema: {
         taskId: z.string().describe('Task ID to show'),
       },
-      outputSchema: z.object({
-        task: z.any().nullable(),
-        found: z.boolean(),
-      }),
     },
     async (args: any, _extra?: any) => {
       return showTaskHandler(taskManager, args);
@@ -122,11 +108,6 @@ export function createRulebookMcpServer(options: {
           .describe('New status'),
         progress: z.number().min(0).max(100).optional().describe('Progress percentage (0-100)'),
       },
-      outputSchema: z.object({
-        success: z.boolean(),
-        taskId: z.string(),
-        message: z.string(),
-      }),
     },
     async (args: any, _extra?: any) => {
       return updateTaskHandler(taskManager, args);
@@ -142,11 +123,6 @@ export function createRulebookMcpServer(options: {
       inputSchema: {
         taskId: z.string().describe('Task ID to validate'),
       },
-      outputSchema: z.object({
-        valid: z.boolean(),
-        errors: z.array(z.string()),
-        warnings: z.array(z.string()),
-      }),
     },
     async (args: any, _extra?: any) => {
       return validateTaskHandler(taskManager, args);
@@ -167,12 +143,6 @@ export function createRulebookMcpServer(options: {
           .default(false)
           .describe('Skip validation before archiving'),
       },
-      outputSchema: z.object({
-        success: z.boolean(),
-        taskId: z.string(),
-        archivePath: z.string(),
-        message: z.string(),
-      }),
     },
     async (args: any, _extra?: any) => {
       return archiveTaskHandler(taskManager, args);
