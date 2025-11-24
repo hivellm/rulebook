@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - MCP SDK v1.22.0 requires Zod schemas, not JSON Schema directly
   - All MCP functions now work correctly: rulebook_task_create, rulebook_task_list, rulebook_task_show, rulebook_task_update, rulebook_task_validate, rulebook_task_archive
   - Fixed "keyValidator._parse is not a function" error
+- **MCP Server Dependencies**: Added missing dependencies for Express 5.x compatibility
+  - Added `http-errors@^2.0.1` as explicit dependency
+  - Added `raw-body@^3.0.2` as explicit dependency
+  - Added `body-parser@^2.2.0` as explicit dependency
+  - Fixes "Cannot find module 'http-errors'" error when running via npx
 
 ### Changed
 - **MCP Server**: Updated schema definitions to match MCP SDK requirements
