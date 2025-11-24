@@ -1,7 +1,7 @@
 {
-  "version": "1.0.2",
-  "installedAt": "2025-11-19T21:00:06.426Z",
-  "updatedAt": "2025-11-24T01:50:45.927Z",
+  "version": "1.0.9",
+  "installedAt": "2025-11-24T01:50:45.920Z",
+  "updatedAt": "2025-11-24T04:43:10.485Z",
   "projectId": "rulebook",
   "mode": "full",
   "features": {
@@ -29,5 +29,11 @@
     "taskExecution": 3600000,
     "cliResponse": 180000,
     "testRun": 600000
+  },
+  "mcp": {
+    "enabled": true,
+    "transport": "stdio",
+    "tasksDir": ".rulebook/tasks",
+    "archiveDir": ".rulebook/archive"
   }
 }

@@ -175,6 +175,13 @@ export interface RulebookConfig {
   modules?: ModuleDetection['module'][];
   modular?: boolean; // Enable modular /rulebook directory structure
   rulebookDir?: string; // Custom rulebook directory (default: 'rulebook')
+  // MCP server configuration
+  mcp?: {
+    enabled?: boolean;
+    transport?: 'stdio' | 'http';
+    tasksDir?: string; // Relative to project root
+    archiveDir?: string; // Relative to project root
+  };
 }
 
 export interface OpenSpecTask {

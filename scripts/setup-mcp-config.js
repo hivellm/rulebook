@@ -40,54 +40,45 @@ function detectIDE() {
 }
 
 /**
- * Generate MCP config for Cursor (HTTP transport)
+ * Generate MCP config for Cursor (stdio transport)
+ * Server automatically finds .rulebook by walking up directories
  */
 function generateCursorConfig() {
-    const port = process.env.MCP_PORT || '30000';
     return {
         mcpServers: {
             rulebook: {
-                command: 'node',
-                args: ['dist/mcp/rulebook-server.js', '--port', port],
-                env: {
-                    MCP_PORT: port,
-                },
+                command: 'npx',
+                args: ['-y', '@hivellm/rulebook@latest', 'mcp-server'],
             },
         },
     };
 }
 
 /**
- * Generate MCP config for Claude Desktop (HTTP transport)
+ * Generate MCP config for Claude Desktop (stdio transport)
+ * Server automatically finds .rulebook by walking up directories
  */
 function generateClaudeConfig() {
-    const port = process.env.MCP_PORT || '30000';
     return {
         mcpServers: {
             rulebook: {
-                command: 'node',
-                args: ['dist/mcp/rulebook-server.js', '--port', port],
-                env: {
-                    MCP_PORT: port,
-                },
+                command: 'npx',
+                args: ['-y', '@hivellm/rulebook@latest', 'mcp-server'],
             },
         },
     };
 }
 
 /**
- * Generate MCP config for generic MCP client (HTTP transport)
+ * Generate MCP config for generic MCP client (stdio transport)
+ * Server automatically finds .rulebook by walking up directories
  */
 function generateGenericConfig() {
-    const port = process.env.MCP_PORT || '30000';
     return {
         mcpServers: {
             rulebook: {
-                command: 'node',
-                args: ['dist/mcp/rulebook-server.js', '--port', port],
-                env: {
-                    MCP_PORT: port,
-                },
+                command: 'npx',
+                args: ['-y', '@hivellm/rulebook@latest', 'mcp-server'],
             },
         },
     };
@@ -145,15 +136,13 @@ async function main() {
     // Write config file
     await writeFile(configPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
 
-    const port = process.env.MCP_PORT || '30000';
     console.log(`✅ MCP configuration created successfully!`);
     console.log(`   IDE: ${ide}`);
     console.log(`   Path: ${configPath}`);
     console.log(`   Server: rulebook`);
-    console.log(`   Transport: HTTP`);
-    console.log(`   Port: ${port}`);
-    console.log(`   Endpoint: http://localhost:${port}/mcp`);
-    console.log(`   Command: node dist/mcp/rulebook-server.js --port ${port}`);
+    console.log(`   Transport: stdio (automatic)`);
+    console.log(`   Command: npx -y @hivellm/rulebook@latest mcp-server`);
+    console.log(`   Note: Server will find .rulebook automatically by walking up directories`);
 
     // Output config path for CI/CD
     if (process.env.CI) {

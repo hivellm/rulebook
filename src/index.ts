@@ -23,6 +23,7 @@ import {
   taskArchiveCommand,
   updateCommand,
   mcpServerCommand,
+  mcpInitCommand,
 } from './cli/commands.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -200,10 +201,18 @@ program
   .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
   .action(updateCommand);
 
+// MCP commands
+const mcpCommand = program.command('mcp').description('Manage Rulebook MCP server');
+
+mcpCommand
+  .command('init')
+  .description('Initialize MCP configuration in .rulebook and .cursor/mcp.json')
+  .action(() => mcpInitCommand());
+
 program
   .command('mcp-server')
-  .description('Start Rulebook MCP server for task management via MCP protocol (HTTP)')
-  .option('--project-root <path>', 'Project root directory (default: current directory)')
+  .description('Start Rulebook MCP server for task management via MCP protocol')
+  .option('--project-root <path>', 'Project root directory (default: auto-detect from .rulebook)')
   .option('--port <port>', 'HTTP server port (default: 3000)', '3000')
   .action((options: { projectRoot?: string; port?: string }) => {
     const port = options.port ? parseInt(options.port) : undefined;

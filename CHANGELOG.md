@@ -10,6 +10,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2025-11-24
+
+### Added
+- **MCP Configuration in .rulebook**: MCP configuration now lives in `.rulebook` file
+  - Added `mcp` block to `.rulebook` configuration
+  - MCP server automatically finds `.rulebook` by walking up directories (like git)
+  - No need for `--project-root` or environment variables
+  - Configuration includes: `enabled`, `transport`, `tasksDir`, `archiveDir`
+
+### Changed
+- **MCP Server Architecture**: Complete redesign of MCP server initialization
+  - Server now loads configuration from `.rulebook` file automatically
+  - Removed need for command-line arguments (`--project-root`, `--port`, etc.)
+  - Server finds project root by locating `.rulebook` file
+  - Uses `stdio` transport by default (no HTTP needed)
+  - Simplified `.cursor/mcp.json` format: just `npx -y @hivellm/rulebook@latest mcp-server`
+
+### Added
+- **New Command: `rulebook mcp init`**: Initialize MCP configuration
+  - Adds `mcp` block to `.rulebook` file
+  - Creates/updates `.cursor/mcp.json` automatically
+  - One-time setup per project
+
+### Fixed
+- **MCP Server stdout compliance**: Fixed critical MCP protocol violation
+  - Removed all console.log, banners, and emojis from stdout in stdio mode
+  - stdout now contains ONLY JSON-RPC 2.0 messages as required by MCP protocol
+  - All logs, debug info, and errors now go to stderr
+  - Added debug helper that only logs to stderr when `RULEBOOK_MCP_DEBUG=1`
+  - Fixes "Unexpected token" errors when MCP client tries to parse logs as JSON
+  - Fixes "Received a response for an unknown message ID" errors caused by stream desynchronization
+
 ## [1.0.9] - 2025-11-24
 
 ### Fixed

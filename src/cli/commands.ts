@@ -1081,6 +1081,81 @@ export async function taskArchiveCommand(
   }
 }
 
+/**
+ * Initialize MCP configuration in .rulebook file
+ * Adds mcp block to .rulebook and creates/updates .cursor/mcp.json
+ */
+export async function mcpInitCommand(): Promise<void> {
+  const { findRulebookFile } = await import('../mcp/rulebook-config.js');
+  const { existsSync, readFileSync, writeFileSync } = await import('fs');
+  const { join, dirname } = await import('path');
+  const { createConfigManager } = await import('../core/config-manager.js');
+
+  try {
+    // Find or create .rulebook file
+    const cwd = process.cwd();
+    let rulebookPath = findRulebookFile(cwd);
+
+    if (!rulebookPath) {
+      // Create new .rulebook file
+      rulebookPath = join(cwd, '.rulebook');
+      const configManager = createConfigManager(cwd);
+      await configManager.initializeConfig();
+    }
+
+    const projectRoot = dirname(rulebookPath);
+
+    // Load existing config
+    let config: any = {};
+    if (existsSync(rulebookPath)) {
+      const raw = readFileSync(rulebookPath, 'utf8');
+      config = JSON.parse(raw);
+    }
+
+    // Add/update mcp block
+    config.mcp = config.mcp ?? {};
+    if (config.mcp.enabled === undefined) config.mcp.enabled = true;
+    if (!config.mcp.transport) config.mcp.transport = 'stdio';
+    if (!config.mcp.tasksDir) config.mcp.tasksDir = '.rulebook/tasks';
+    if (!config.mcp.archiveDir) config.mcp.archiveDir = '.rulebook/archive';
+
+    // Save updated config
+    writeFileSync(rulebookPath, JSON.stringify(config, null, 2) + '\n');
+
+    // Create/update .cursor/mcp.json if .cursor directory exists
+    const cursorDir = join(projectRoot, '.cursor');
+    if (existsSync(cursorDir)) {
+      const mcpJsonPath = join(cursorDir, 'mcp.json');
+      let mcpConfig: any = { mcpServers: {} };
+
+      if (existsSync(mcpJsonPath)) {
+        const raw = readFileSync(mcpJsonPath, 'utf8');
+        mcpConfig = JSON.parse(raw);
+      }
+
+      mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
+      mcpConfig.mcpServers.rulebook = {
+        command: 'npx',
+        args: ['-y', '@hivellm/rulebook@latest', 'mcp-server'],
+      };
+
+      writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+      console.log(chalk.green('✓ Rulebook MCP initialized'));
+      console.log(chalk.gray(`  • Updated .rulebook with MCP configuration`));
+      console.log(chalk.gray(`  • Updated .cursor/mcp.json`));
+      console.log(chalk.gray(`  • MCP server will find .rulebook automatically`));
+    } else {
+      console.log(chalk.green('✓ Rulebook MCP initialized'));
+      console.log(chalk.gray(`  • Updated .rulebook with MCP configuration`));
+      console.log(chalk.gray(`  • To use with Cursor, create .cursor/mcp.json manually`));
+    }
+  } catch (error: any) {
+    console.error(chalk.red(`\n❌ Failed to initialize MCP: ${error.message}`));
+    console.error(error.stack);
+    process.exit(1);
+  }
+}
+
 export async function mcpServerCommand(projectRoot?: string, port?: number): Promise<void> {
   try {
     const { startRulebookMcpServer } = await import('../mcp/rulebook-server.js');

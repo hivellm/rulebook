@@ -6,6 +6,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import express from 'express';
 import { z } from 'zod';
 import { TaskManager } from '../core/task-manager.js';
+import { loadRulebookMCPConfig } from './rulebook-config.js';
 
 // Debug helper - only logs to stderr when RULEBOOK_MCP_DEBUG=1
 // MCP protocol requires stdout to be EXCLUSIVELY JSON-RPC 2.0 messages
@@ -27,14 +28,22 @@ import { archiveTaskHandler } from './handlers/archive-task.js';
 /**
  * Create and configure the Rulebook MCP server
  */
-export function createRulebookMcpServer(projectRoot: string = process.cwd()): McpServer {
+export async function createRulebookMcpServer(options: {
+  projectRoot: string;
+  tasksDir: string;
+  archiveDir: string;
+}): Promise<McpServer> {
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '1.0.9',
+    version: '1.1.0',
   });
 
-  // Initialize task manager
-  const taskManager = new TaskManager(projectRoot, 'rulebook');
+  // Initialize task manager with custom paths from .rulebook config
+  // TaskManager needs rulebookDir relative to projectRoot
+  const { relative } = await import('path');
+  const rulebookDir =
+    relative(options.projectRoot, options.tasksDir).split(/[/\\]/)[0] || 'rulebook';
+  const taskManager = new TaskManager(options.projectRoot, rulebookDir);
 
   // Register tool: rulebook_task_create
   server.registerTool(
@@ -294,6 +303,7 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
 /**
  * Start the MCP server with stdio transport (default) or HTTP transport
  * Following Context7 MCP server patterns: https://github.com/upstash/context7
+ * Loads configuration from .rulebook file (found by walking up directories)
  */
 export async function startRulebookMcpServer(
   options: {
@@ -302,11 +312,19 @@ export async function startRulebookMcpServer(
     port?: number;
   } = {}
 ): Promise<void> {
-  const projectRoot = options.projectRoot || process.cwd();
-  const transport = options.transport || (process.env.MCP_TRANSPORT as 'stdio' | 'http') || 'stdio';
+  // Load configuration from .rulebook file
+  const mcpConfig = loadRulebookMCPConfig();
+
+  // Override with options if provided (for backward compatibility)
+  const projectRoot = options.projectRoot || mcpConfig.projectRoot;
+  const transport = options.transport || mcpConfig.transport;
   const port = options.port || parseInt(process.env.MCP_PORT || '3000');
 
-  const server = createRulebookMcpServer(projectRoot);
+  const server = await createRulebookMcpServer({
+    projectRoot,
+    tasksDir: mcpConfig.tasksDir,
+    archiveDir: mcpConfig.archiveDir,
+  });
 
   if (transport === 'http') {
     // Use HTTP transport (for remote HTTP server)
@@ -373,35 +391,10 @@ const isMainModule =
   process.argv[1]?.includes('rulebook-mcp');
 
 if (isMainModule) {
-  // Parse command line arguments (following Context7 pattern)
-  let transport: 'stdio' | 'http' | undefined;
-  let port: number | undefined;
-  let projectRoot: string | undefined;
-
-  for (let i = 0; i < process.argv.length; i++) {
-    const arg = process.argv[i];
-    if (arg === '--transport' && process.argv[i + 1]) {
-      transport = process.argv[i + 1] as 'stdio' | 'http';
-    } else if (arg === '--port' && process.argv[i + 1]) {
-      port = parseInt(process.argv[i + 1]);
-    } else if (arg === '--project-root' && process.argv[i + 1]) {
-      projectRoot = process.argv[i + 1];
-    }
-  }
-
-  // Environment variables take precedence
-  if (process.env.MCP_TRANSPORT) {
-    transport = process.env.MCP_TRANSPORT as 'stdio' | 'http';
-  }
-  if (process.env.MCP_PORT) {
-    port = parseInt(process.env.MCP_PORT);
-  }
-
-  startRulebookMcpServer({
-    projectRoot,
-    transport,
-    port,
-  }).catch((error) => {
+  // MCP server now loads config from .rulebook automatically
+  // No need for command line arguments - .rulebook is the source of truth
+  // Environment variables can still override: MCP_TRANSPORT, MCP_PORT, RULEBOOK_CONFIG
+  startRulebookMcpServer({}).catch((error) => {
     // Errors go to stderr, not stdout
     console.error('Failed to start MCP server:', error);
     process.exit(1);
