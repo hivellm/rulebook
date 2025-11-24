@@ -19,7 +19,7 @@ import { archiveTaskHandler } from './handlers/archive-task.js';
 export function createRulebookMcpServer(projectRoot: string = process.cwd()): McpServer {
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '1.0.3',
+    version: '1.0.4',
   });
 
   // Initialize task manager
