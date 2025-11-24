@@ -398,6 +398,14 @@ If you see this error:
 2. Or manually create `.rulebook` file with `mcp` block
 3. Or set `RULEBOOK_CONFIG` environment variable to point to your `.rulebook` file
 
+### "Received a response for an unknown message ID" Warning
+
+If you see this warning in the logs:
+- This is usually harmless - the server is working correctly
+- The warning appears during the initial handshake but doesn't affect functionality
+- If you see "Successfully connected to stdio server" after the warning, everything is fine
+- This is a known behavior with some MCP clients and can be safely ignored
+
 **Automated Setup:**
 
 ```bash
