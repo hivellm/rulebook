@@ -10,6 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.6] - 2025-11-24
+
+### Changed
+- **Zod Version**: Reverted to Zod v3.25.76 for full MCP SDK compatibility
+  - MCP SDK v1.22.0 requires Zod v3 (see [Issue #1429](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1429))
+  - Removed all `as any` type assertions from MCP schemas
+  - Schemas now properly display parameters and descriptions in MCP clients
+
+### Fixed
+- **MCP Server Schemas**: Fixed empty schemas issue by using Zod v3 compatible format
+  - All tool schemas now use proper `ZodRawShape` format
+  - Parameters and descriptions are correctly exposed to MCP clients
+
+## [1.0.5] - 2025-11-24
+
 ## [1.0.3] - 2025-11-24
 
 ### Changed

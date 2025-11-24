@@ -53,10 +53,9 @@ npx @hivellm/rulebook@latest update
 
 ### v1.0.3 (Latest)
 
-- ⚡ **Zod v4 Upgrade**: Major performance improvements with Zod v4.1.13
-  - 14x faster string parsing, 50% smaller bundle size
-  - Full backward compatibility maintained
-  - MCP server schemas updated to use Zod v4 API
+- 🔧 **Zod v3 Compatibility**: Using Zod v3.25.76 for full MCP SDK compatibility
+  - MCP SDK v1.22.0 requires Zod v3 (see [Issue #1429](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1429))
+  - Will upgrade to Zod v4 when MCP SDK officially supports it
 - 🔄 **Dependency Updates**: All dependencies updated to latest versions
   - TypeScript tooling (ESLint 8.47.0, Vitest 4.0.13)
   - Node.js types updated to support Node.js 24.x
@@ -362,8 +361,11 @@ If you need to specify a different project root:
 
 **Troubleshooting:**
 
-If you encounter issues with the MCP server (empty schemas, connection errors, etc.), try clearing the npm cache:
+### Empty Schemas or Missing Parameters
 
+If tools don't show descriptions or parameters:
+
+1. **Clear npm cache**:
 ```bash
 # Clear npm cache
 npm cache clean --force
@@ -372,7 +374,19 @@ npm cache clean --force
 rm -rf ~/.npm/_npx
 ```
 
-Then restart your MCP client and try again.
+3. **Rebuild the project**:
+```bash
+npm run build
+```
+
+4. Restart your MCP client and try again.
+
+### Connection Errors
+
+If you encounter connection errors, verify:
+- Node.js version is 20+ (`node --version`)
+- MCP configuration file exists and is valid JSON
+- Server is accessible: `npx @hivellm/rulebook@latest mcp-server`
 
 **Automated Setup (CI/CD):**
 

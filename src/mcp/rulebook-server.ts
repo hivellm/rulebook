@@ -2,6 +2,8 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+// Import Zod v3 for MCP SDK compatibility
+// MCP SDK v1.22.0 requires Zod v3 (see: https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1429)
 import { z } from 'zod';
 import { TaskManager } from '../core/task-manager.js';
 
@@ -19,7 +21,7 @@ import { archiveTaskHandler } from './handlers/archive-task.js';
 export function createRulebookMcpServer(projectRoot: string = process.cwd()): McpServer {
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '1.0.5',
+    version: '1.0.6',
   });
 
   // Initialize task manager
@@ -48,13 +50,13 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
           })
           .optional()
           .describe('Proposal content (optional, will use template if not provided)'),
-      } as any,
+      },
       outputSchema: {
         success: z.boolean(),
         taskId: z.string(),
         message: z.string(),
         path: z.string().optional(),
-      } as any,
+      },
     },
     async (args: any, _extra?: any) => {
       return createTaskHandler(taskManager, args);
@@ -73,7 +75,7 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
           .enum(['pending', 'in-progress', 'completed', 'blocked'])
           .optional()
           .describe('Filter by status'),
-      } as any,
+      },
       outputSchema: {
         tasks: z.array(
           z.object({
@@ -86,7 +88,7 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
           })
         ),
         count: z.number(),
-      } as any,
+      },
     },
     async (args: any, _extra?: any) => {
       return listTasksHandler(taskManager, args);
@@ -101,7 +103,7 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
       description: 'Show detailed information about a specific task',
       inputSchema: {
         taskId: z.string().describe('Task ID to show'),
-      } as any,
+      },
       outputSchema: {
         task: z
           .object({
@@ -118,7 +120,7 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
           })
           .nullable(),
         found: z.boolean(),
-      } as any,
+      },
     },
     async (args: any, _extra?: any) => {
       return showTaskHandler(taskManager, args);
@@ -138,12 +140,12 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
           .optional()
           .describe('New status'),
         progress: z.number().min(0).max(100).optional().describe('Progress percentage (0-100)'),
-      } as any,
+      },
       outputSchema: {
         success: z.boolean(),
         taskId: z.string(),
         message: z.string(),
-      } as any,
+      },
     },
     async (args: any, _extra?: any) => {
       return updateTaskHandler(taskManager, args);
@@ -158,12 +160,12 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
       description: 'Validate task format against OpenSpec-compatible requirements',
       inputSchema: {
         taskId: z.string().describe('Task ID to validate'),
-      } as any,
+      },
       outputSchema: {
         valid: z.boolean(),
         errors: z.array(z.string()),
         warnings: z.array(z.string()),
-      } as any,
+      },
     },
     async (args: any, _extra?: any) => {
       return validateTaskHandler(taskManager, args);
@@ -183,13 +185,13 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
           .optional()
           .default(false)
           .describe('Skip validation before archiving'),
-      } as any,
+      },
       outputSchema: {
         success: z.boolean(),
         taskId: z.string(),
         archivePath: z.string(),
         message: z.string(),
-      } as any,
+      },
     },
     async (args: any, _extra?: any) => {
       return archiveTaskHandler(taskManager, args);
