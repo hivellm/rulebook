@@ -863,6 +863,15 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
               source: mcpPath,
             });
           }
+
+          // Check for Rulebook MCP Server
+          if (config.mcpServers?.rulebook || config.servers?.rulebook) {
+            modules.push({
+              module: 'rulebook_mcp',
+              detected: true,
+              source: mcpPath,
+            });
+          }
         }
       } catch {
         // Ignore JSON parse errors
@@ -872,13 +881,9 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
 
   // Add undetected modules
   const detectedModules = new Set(modules.map((m) => m.module));
-  const allModules: Array<'vectorizer' | 'synap' | 'context7' | 'github' | 'playwright'> = [
-    'vectorizer',
-    'synap',
-    'context7',
-    'github',
-    'playwright',
-  ];
+  const allModules: Array<
+    'vectorizer' | 'synap' | 'context7' | 'github' | 'playwright' | 'rulebook_mcp'
+  > = ['vectorizer', 'synap', 'context7', 'github', 'playwright', 'rulebook_mcp'];
 
   for (const module of allModules) {
     if (!detectedModules.has(module)) {

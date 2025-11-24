@@ -2,39 +2,56 @@ name: Build
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ '**' ]
+    branches: ["**"]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22.x'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Build project
-      run: npm run build
-    
-    - name: Verify build output
-      run: |
-        test -f dist/index.js || exit 1
-        test -d templates || exit 1
-        echo "Build verification passed"
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist
-        path: dist/
-        retention-days: 7
+      - uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Setup MCP configuration
+        env:
+          MCP_IDE: ${{ vars.MCP_IDE || 'cursor' }}
+        run: |
+          node scripts/setup-mcp-config.js
+        continue-on-error: true
+
+      - name: Verify build output
+        run: |
+          test -f dist/index.js || exit 1
+          test -f dist/mcp/rulebook-server.js || exit 1
+          test -d templates || exit 1
+          echo "Build verification passed"
+
+      - name: Verify MCP server
+        run: |
+          if [ -f dist/mcp/rulebook-server.js ]; then
+            echo "✅ MCP server built successfully"
+            node -e "console.log(require('fs').readFileSync('dist/mcp/rulebook-server.js', 'utf8').substring(0, 100))"
+          else
+            echo "❌ MCP server not found"
+            exit 1
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7

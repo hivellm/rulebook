@@ -22,6 +22,7 @@ import {
   taskValidateCommand,
   taskArchiveCommand,
   updateCommand,
+  mcpServerCommand,
 } from './cli/commands.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -198,5 +199,11 @@ program
   .option('--minimal', 'Regenerate using minimal mode (essentials only)')
   .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
   .action(updateCommand);
+
+program
+  .command('mcp-server')
+  .description('Start Rulebook MCP server for task management via MCP protocol')
+  .option('--project-root <path>', 'Project root directory (default: current directory)')
+  .action((options: { projectRoot?: string }) => mcpServerCommand(options.projectRoot));
 
 program.parse(process.argv);

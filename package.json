@@ -1,11 +1,12 @@
 {
   "name": "@hivellm/rulebook",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Standardize AI-generated projects with automated templates, quality gates, and framework detection for 28 languages, 17 frameworks, and 12 MCP modules",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "rulebook": "./dist/index.js"
+    "rulebook": "./dist/index.js",
+    "rulebook-mcp": "./dist/mcp/rulebook-server.js"
   },
   "scripts": {
     "build": "tsc",
@@ -17,12 +18,14 @@
     "test:agent:quick": "node scripts/test-agent-simple.mjs",
     "test:agent:full": "node scripts/test-agent-manager.js all",
     "test:agent:comprehensive": "npx vitest run tests/agent-manager-comprehensive.test.ts",
+    "setup:mcp": "node scripts/setup-mcp-config.js",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "type-check": "tsc --noEmit",
     "prepublishOnly": "npm run build",
-    "publish:wsl": "export BROWSER=wslview && npm publish"
+    "publish:wsl": "export BROWSER=wslview && npm publish",
+    "mcp-server": "node dist/mcp/rulebook-server.js"
   },
   "keywords": [
     "ai",
@@ -51,6 +54,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
     "@types/blessed": "^0.1.25",
     "ansi-escapes": "^6.2.0",
     "blessed": "^0.1.81",
@@ -64,7 +68,8 @@
     "node-notifier": "^10.0.1",
     "ora": "^9.0.0",
     "picocolors": "^1.0.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.0",

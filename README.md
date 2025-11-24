@@ -49,21 +49,32 @@ npx @hivellm/rulebook@latest init --light
 npx @hivellm/rulebook@latest update
 ```
 
-## What's New in v1.0.0
+## What's New
 
-- 🎉 **Version 1.0.0 - First Stable Release**: Production-ready with comprehensive features
+### v1.0.2 (Latest)
+
+- 🔌 **MCP Server for Task Management**: New MCP server enables AI models to manage tasks programmatically
+  - 6 MCP functions: create, list, show, update, validate, archive tasks
+  - Available via `npx @hivellm/rulebook@latest mcp-server` or `npx rulebook-mcp`
+  - Better integration with MCP-compatible AI assistants
+- ⚡ **Faster Pre-commit Hooks**: Tests removed from pre-commit for faster backup commits
+  - Pre-commit now runs only: format check, lint, type-check
+  - Tests moved to pre-push hook for comprehensive validation
+- 🏗️ **Build Verification**: Build check now mandatory before push (runs first)
+- 📦 **pnpm Recommendation**: Added pnpm as preferred package manager with `.npmrc` configuration
+- 🚀 **Rust Build Optimization**: Comprehensive guide for faster Rust builds
+  - sccache configuration, incremental compilation, lld linker
+  - Anti-pattern documentation for `pub use big_crate::*;`
+- 📋 **Enhanced Task Management**: Strengthened OpenSpec format compliance and archiving rules
+- 📁 **Strict Markdown Organization**: UPPERCASE naming and `/docs` directory requirements
+
+### v1.0.0
+
+- 🎉 **First Stable Release**: Production-ready with comprehensive features
 - 🔒 **Apache 2.0 License**: Changed from MIT to Apache License 2.0 for better compatibility
 - 🛡️ **Git Hooks Enforcement**: Pre-commit and pre-push hooks now block commits with lint/test errors
-  - Directives added to prevent use of `--no-verify` to bypass quality gates
-  - Mandatory workflow to fix problems before committing
 - 📋 **Task File Structure Rules**: Enhanced directives in AGENTS.md about correct task structure
-  - Prohibits adding long explanations in `tasks.md` (use `specs/` instead)
-  - Prohibits creating README.md or PROCESS.md files in task directories
-  - Clear examples of correct vs incorrect usage
 - 🎯 **Built-in Task Management**: OpenSpec deprecated and integrated into Rulebook's native task system
-  - Use `npx @hivellm/rulebook@latest task` commands instead of OpenSpec
-  - OpenSpec-compatible format preserved
-  - Automatic migration from OpenSpec to Rulebook format on `npx @hivellm/rulebook@latest update`
 - 📋 **RULEBOOK.md Template**: Core template with task management directives and Context7 MCP requirements
 - 🚫 **Automatic .gitignore**: `npx @hivellm/rulebook@latest init` now creates/updates `.gitignore` automatically for 28 languages
 - 🔄 **Migration Support**: Existing OpenSpec tasks automatically migrated to `/rulebook/tasks/` format
@@ -217,6 +228,138 @@ Bare minimum rules: no quality enforcement, no testing requirements, no linting.
 **Core**: Vectorizer • Synap • Context7 • GitHub MCP • Playwright
 
 **Services**: Supabase • Notion • Atlassian • Serena • Figma • Grafana
+
+### MCP Server for Task Management
+
+Rulebook provides an MCP (Model Context Protocol) server that exposes task management functions, allowing AI models to manage tasks programmatically through MCP instead of executing terminal commands.
+
+**Benefits:**
+- ✅ Direct MCP integration - no shell command execution needed
+- ✅ Structured error handling with proper error codes and messages
+- ✅ Consistent interface with other MCP operations
+- ✅ Better automation capabilities for AI agents
+- ✅ Improved reliability compared to terminal command execution
+
+**Start the MCP server:**
+
+```bash
+# Via npx (recommended)
+npx @hivellm/rulebook@latest mcp-server
+
+# Or using the binary directly
+npx rulebook-mcp
+
+# Or via npm script (if installed locally)
+npm run mcp-server
+
+# Or via CLI command
+npx @hivellm/rulebook@latest mcp-server --project-root /path/to/project
+```
+
+**Available MCP Functions:**
+
+- `rulebook_task_create` - Create a new task with OpenSpec-compatible format
+  - Input: `taskId` (string), optional `proposal` object
+  - Output: Task creation confirmation with path
+- `rulebook_task_list` - List all tasks with optional filters
+  - Input: `includeArchived` (boolean), `status` (enum)
+  - Output: Array of tasks with metadata
+- `rulebook_task_show` - Show detailed task information
+  - Input: `taskId` (string)
+  - Output: Complete task details including proposal, tasks, specs
+- `rulebook_task_update` - Update task status or progress
+  - Input: `taskId` (string), optional `status`, `progress`
+  - Output: Update confirmation
+- `rulebook_task_validate` - Validate task format against OpenSpec requirements
+  - Input: `taskId` (string)
+  - Output: Validation results with errors and warnings
+- `rulebook_task_archive` - Archive completed task and apply spec deltas
+  - Input: `taskId` (string), optional `skipValidation`
+  - Output: Archive confirmation with archive path
+
+The server communicates via stdio (standard input/output) and can be integrated with any MCP-compatible client (Cursor, Claude Desktop, etc.).
+
+**Configuration (mcp.json):**
+
+Add the Rulebook MCP server to your `mcp.json` configuration file. The location depends on your client:
+
+- **Cursor**: `~/.cursor/mcp.json` or `.cursor/mcp.json` in your project
+- **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
+
+**Example configuration:**
+
+```json
+{
+  "mcpServers": {
+    "rulebook": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@hivellm/rulebook@latest",
+        "mcp-server"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+**Alternative configuration (using local installation):**
+
+If you have Rulebook installed locally in your project:
+
+```json
+{
+  "mcpServers": {
+    "rulebook": {
+      "command": "node",
+      "args": [
+        "./node_modules/@hivellm/rulebook/dist/mcp/rulebook-server.js"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+**With custom project root:**
+
+If you need to specify a different project root:
+
+```json
+{
+  "mcpServers": {
+    "rulebook": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@hivellm/rulebook@latest",
+        "mcp-server",
+        "--project-root",
+        "/path/to/your/project"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+**Note:** After adding the configuration, restart your MCP client (Cursor or Claude Desktop) for the changes to take effect.
+
+**Automated Setup (CI/CD):**
+
+The MCP configuration can be automatically created during CI builds:
+
+```bash
+# Setup MCP config automatically (detects IDE from environment)
+npm run setup:mcp
+
+# Or specify IDE explicitly
+MCP_IDE=cursor npm run setup:mcp
+MCP_IDE=claude npm run setup:mcp
+```
+
+In GitHub Actions workflows, the MCP configuration is automatically created when the build step runs. Set the `MCP_IDE` environment variable to configure for a specific IDE (defaults to `cursor`).
 
 ## AI Tools Supported (23)
 

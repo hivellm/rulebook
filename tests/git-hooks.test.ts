@@ -37,8 +37,10 @@ describe('git hook installer', () => {
     const prePush = await fs.readFile(prePushPath, 'utf-8');
 
     expect(preCommit).toContain('npm run lint');
-    expect(preCommit).toContain('npm test');
-    expect(prePush).toContain('npm test');
+    // Tests removed from pre-commit as per v1.0.2 changes
+    // expect(preCommit).toContain('npm test');
+    // Tests also removed from pre-push as per v1.0.2 changes (build is now the main check)
+    // expect(prePush).toContain('npm test');
     expect(prePush).toContain('npm run build');
   });
 

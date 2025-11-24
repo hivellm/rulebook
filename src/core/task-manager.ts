@@ -303,13 +303,18 @@ export class TaskManager {
     const archiveName = `${archiveDate}-${taskId}`;
     const archiveTaskPath = join(this.archivePath, archiveName);
 
+    // Ensure archive directory exists
+    if (!existsSync(this.archivePath)) {
+      mkdirSync(this.archivePath, { recursive: true });
+    }
+
     if (existsSync(archiveTaskPath)) {
       throw new Error(`Archive ${archiveName} already exists`);
     }
 
-    // Move task to archive
-    const { execSync } = await import('child_process');
-    execSync(`mv "${taskPath}" "${archiveTaskPath}"`, { cwd: this.rulebookPath });
+    // Move task to archive using cross-platform filesystem operations
+    const { renameSync } = await import('fs');
+    renameSync(taskPath, archiveTaskPath);
 
     // TODO: Apply spec deltas to main specifications
     // This would require parsing the spec deltas and merging them into /rulebook/specs/

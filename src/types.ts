@@ -75,7 +75,8 @@ export interface ModuleDetection {
     | 'atlassian'
     | 'serena'
     | 'figma'
-    | 'grafana';
+    | 'grafana'
+    | 'rulebook_mcp';
   detected: boolean;
   source?: string;
 }

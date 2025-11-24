@@ -4,20 +4,20 @@
 
 echo "🚀 Running TypeScript/JavaScript pre-push checks..."
 
+# Build (MANDATORY before push)
+if grep -q '"build"' package.json 2>/dev/null; then
+  echo "  → Building..."
+  npm run build || {
+    echo "❌ Build failed"
+    exit 1
+  }
+fi
+
 # Full test suite
 if grep -q '"test"' package.json 2>/dev/null; then
   echo "  → Running full test suite..."
   npm test || {
     echo "❌ Tests failed"
-    exit 1
-  }
-fi
-
-# Build
-if grep -q '"build"' package.json 2>/dev/null; then
-  echo "  → Building..."
-  npm run build || {
-    echo "❌ Build failed"
     exit 1
   }
 fi

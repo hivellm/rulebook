@@ -1081,6 +1081,23 @@ export async function taskArchiveCommand(
   }
 }
 
+export async function mcpServerCommand(projectRoot?: string): Promise<void> {
+  try {
+    const { startRulebookMcpServer } = await import('../mcp/rulebook-server.js');
+    const cwd = projectRoot || process.cwd();
+
+    console.log(chalk.bold.blue('\n🚀 Starting Rulebook MCP Server\n'));
+    console.log(chalk.gray(`Project root: ${cwd}`));
+    console.log(chalk.gray('Server will communicate via stdio (standard input/output)\n'));
+
+    await startRulebookMcpServer(cwd);
+  } catch (error: any) {
+    console.error(chalk.red(`\n❌ Failed to start MCP server: ${error.message}`));
+    console.error(error.stack);
+    process.exit(1);
+  }
+}
+
 // Legacy tasks command (deprecated - use task commands instead)
 export async function tasksCommand(options: {
   tree?: boolean;

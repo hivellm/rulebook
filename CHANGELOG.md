@@ -10,6 +10,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2025-11-19
+
+### Changed
+- **Pre-commit Hook Optimization**: Removed tests from pre-commit hook for faster backup commits
+  - Pre-commit now runs only: format check, lint, type-check
+  - Tests moved to pre-push hook for comprehensive validation before push
+  - Faster commits for backup purposes in large projects
+- **Pre-push Hook Enhancement**: Build verification now mandatory before push
+  - Build check moved to first position in pre-push hook
+  - Ensures code compiles before running tests
+  - Better error detection workflow
+
+### Added
+- **MCP Server for Task Management**: New MCP (Model Context Protocol) server for programmatic task management
+  - Exposes 6 MCP functions: `rulebook_task_create`, `rulebook_task_list`, `rulebook_task_show`, `rulebook_task_update`, `rulebook_task_validate`, `rulebook_task_archive`
+  - Allows AI models to manage tasks through MCP instead of terminal commands
+  - Better error handling with structured responses
+  - Available via `npx @hivellm/rulebook@latest mcp-server` or `npx rulebook-mcp`
+  - Communicates via stdio transport for MCP-compatible clients
+  - Full integration with existing TaskManager class
+- **TypeScript Package Management**: Added pnpm recommendation with `.npmrc` configuration
+  - Recommended pnpm as preferred package manager for new projects
+  - Added `legacy-peer-deps=true` configuration guidance
+  - Documented benefits: faster installation, disk efficiency, strict dependency resolution
+- **Rust Build Optimization**: Comprehensive build optimization recommendations
+  - sccache configuration for distributed compilation caching
+  - Cargo.toml optimization: incremental compilation, LTO disabled for dev builds
+  - lld linker recommendation for faster linking in large projects
+  - Avoid `pub use big_crate::*;` anti-pattern documentation
+  - Complete setup guide with `.cargo/config.toml` examples
+
+### Enhanced
+- **Task Management Rules**: Strengthened OpenSpec format compliance directives
+  - Added CRITICAL section in AGENTS.md with mandatory format requirements
+  - Common mistakes section with visual examples
+  - Validation requirements before task creation
+- **Task Archiving**: Enforced use of commands instead of manual archiving
+  - Added MANDATORY section in RULEBOOK.md prohibiting manual archiving
+  - Documented why manual archiving causes problems
+  - Clear workflow using `rulebook task archive <task-id>` command
+- **Markdown File Organization**: Strict rules for markdown file creation
+  - All markdown files MUST be in `/docs` directory (except root-level files)
+  - UPPERCASE naming convention required (e.g., `STATUS.md`, `ROADMAP.md`)
+  - Prohibited creation of markdown files in `/src`, `/tests`, or other code directories
+  - Prevents documentation clutter in code directories
+
 ## [1.0.0] - 2025-11-18
 
 ### Changed
