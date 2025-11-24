@@ -10,6 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.7] - 2025-11-24
+
+### Fixed
+- **MCP Server Schemas**: Fixed MCP server schema format to use proper Zod schemas
+  - Changed from JSON Schema to Zod schemas (ZodRawShape for inputSchema, z.object() for outputSchema)
+  - MCP SDK v1.22.0 requires Zod schemas, not JSON Schema directly
+  - All MCP functions now work correctly: rulebook_task_create, rulebook_task_list, rulebook_task_show, rulebook_task_update, rulebook_task_validate, rulebook_task_archive
+  - Fixed "keyValidator._parse is not a function" error
+
+### Changed
+- **MCP Server**: Updated schema definitions to match MCP SDK requirements
+  - inputSchema now uses ZodRawShape format (object with Zod properties)
+  - outputSchema now uses z.object() for proper type validation
+  - Maintains compatibility with MCP SDK v1.22.0 and Zod v3.25.76
+
 ## [1.0.6] - 2025-11-24
 
 ### Changed

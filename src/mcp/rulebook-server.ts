@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-// Import Zod v3 for MCP SDK compatibility
-// MCP SDK v1.22.0 requires Zod v3 (see: https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1429)
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import express from 'express';
 import { z } from 'zod';
 import { TaskManager } from '../core/task-manager.js';
 
@@ -21,7 +21,7 @@ import { archiveTaskHandler } from './handlers/archive-task.js';
 export function createRulebookMcpServer(projectRoot: string = process.cwd()): McpServer {
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '1.0.6',
+    version: '1.0.7',
   });
 
   // Initialize task manager
@@ -35,28 +35,14 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
       description: 'Create a new Rulebook task with OpenSpec-compatible format',
       inputSchema: {
         taskId: z.string().describe('Task ID in kebab-case (e.g., add-feature-name)'),
-        proposal: z
-          .object({
-            why: z.string().min(20).describe('Why this change is needed (minimum 20 characters)'),
-            whatChanges: z.string().describe('Description of what will change'),
-            impact: z
-              .object({
-                affectedSpecs: z.array(z.string()).optional(),
-                affectedCode: z.array(z.string()).optional(),
-                breakingChange: z.boolean(),
-                userBenefit: z.string(),
-              })
-              .optional(),
-          })
-          .optional()
-          .describe('Proposal content (optional, will use template if not provided)'),
+        proposal: z.string().optional().describe('Proposal content as JSON string (optional)'),
       },
-      outputSchema: {
+      outputSchema: z.object({
         success: z.boolean(),
         taskId: z.string(),
         message: z.string(),
         path: z.string().optional(),
-      },
+      }),
     },
     async (args: any, _extra?: any) => {
       return createTaskHandler(taskManager, args);
@@ -70,25 +56,16 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
       title: 'List Rulebook Tasks',
       description: 'List all Rulebook tasks with optional filters',
       inputSchema: {
-        includeArchived: z.boolean().optional().default(false).describe('Include archived tasks'),
+        includeArchived: z.boolean().optional().describe('Include archived tasks (default: false)'),
         status: z
           .enum(['pending', 'in-progress', 'completed', 'blocked'])
           .optional()
           .describe('Filter by status'),
       },
-      outputSchema: {
-        tasks: z.array(
-          z.object({
-            id: z.string(),
-            title: z.string(),
-            status: z.enum(['pending', 'in-progress', 'completed', 'blocked']),
-            createdAt: z.string(),
-            updatedAt: z.string(),
-            archivedAt: z.string().optional(),
-          })
-        ),
+      outputSchema: z.object({
+        tasks: z.array(z.any()),
         count: z.number(),
-      },
+      }),
     },
     async (args: any, _extra?: any) => {
       return listTasksHandler(taskManager, args);
@@ -104,23 +81,10 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
       inputSchema: {
         taskId: z.string().describe('Task ID to show'),
       },
-      outputSchema: {
-        task: z
-          .object({
-            id: z.string(),
-            title: z.string(),
-            status: z.enum(['pending', 'in-progress', 'completed', 'blocked']),
-            proposal: z.string().optional(),
-            tasks: z.string().optional(),
-            design: z.string().optional(),
-            specs: z.record(z.string(), z.string()).optional(),
-            createdAt: z.string(),
-            updatedAt: z.string(),
-            archivedAt: z.string().optional(),
-          })
-          .nullable(),
+      outputSchema: z.object({
+        task: z.any().nullable(),
         found: z.boolean(),
-      },
+      }),
     },
     async (args: any, _extra?: any) => {
       return showTaskHandler(taskManager, args);
@@ -141,11 +105,11 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
           .describe('New status'),
         progress: z.number().min(0).max(100).optional().describe('Progress percentage (0-100)'),
       },
-      outputSchema: {
+      outputSchema: z.object({
         success: z.boolean(),
         taskId: z.string(),
         message: z.string(),
-      },
+      }),
     },
     async (args: any, _extra?: any) => {
       return updateTaskHandler(taskManager, args);
@@ -161,11 +125,11 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
       inputSchema: {
         taskId: z.string().describe('Task ID to validate'),
       },
-      outputSchema: {
+      outputSchema: z.object({
         valid: z.boolean(),
         errors: z.array(z.string()),
         warnings: z.array(z.string()),
-      },
+      }),
     },
     async (args: any, _extra?: any) => {
       return validateTaskHandler(taskManager, args);
@@ -186,15 +150,132 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
           .default(false)
           .describe('Skip validation before archiving'),
       },
-      outputSchema: {
+      outputSchema: z.object({
         success: z.boolean(),
         taskId: z.string(),
         archivePath: z.string(),
         message: z.string(),
-      },
+      }),
     },
     async (args: any, _extra?: any) => {
       return archiveTaskHandler(taskManager, args);
+    }
+  );
+
+  // Register resources: task files (only active tasks, not archived)
+  server.registerResource(
+    'task-proposal',
+    new ResourceTemplate('rulebook://task/{taskId}/proposal', {
+      list: async () => {
+        const tasks = await taskManager.listTasks(false); // Only active tasks
+        return {
+          resources: tasks.map((task) => ({
+            uri: `rulebook://task/${task.id}/proposal`,
+            name: `${task.id} - Proposal`,
+            description: `Proposal document for task ${task.id}`,
+            mimeType: 'text/markdown',
+          })),
+        };
+      },
+    }),
+    {
+      title: 'Task Proposal',
+      description: 'Proposal document for a Rulebook task',
+      mimeType: 'text/markdown',
+    },
+    async (uri, params) => {
+      const taskId = typeof params.taskId === 'string' ? params.taskId : String(params.taskId);
+      const task = await taskManager.loadTask(taskId);
+      if (!task) {
+        throw new Error(`Task ${taskId} not found`);
+      }
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'text/markdown',
+            text: task.proposal || '',
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerResource(
+    'task-checklist',
+    new ResourceTemplate('rulebook://task/{taskId}/tasks', {
+      list: async () => {
+        const tasks = await taskManager.listTasks(false); // Only active tasks
+        return {
+          resources: tasks.map((task) => ({
+            uri: `rulebook://task/${task.id}/tasks`,
+            name: `${task.id} - Tasks`,
+            description: `Tasks checklist for task ${task.id}`,
+            mimeType: 'text/markdown',
+          })),
+        };
+      },
+    }),
+    {
+      title: 'Task Checklist',
+      description: 'Tasks checklist for a Rulebook task',
+      mimeType: 'text/markdown',
+    },
+    async (uri, params) => {
+      const taskId = typeof params.taskId === 'string' ? params.taskId : String(params.taskId);
+      const task = await taskManager.loadTask(taskId);
+      if (!task) {
+        throw new Error(`Task ${taskId} not found`);
+      }
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'text/markdown',
+            text: task.tasks || '',
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerResource(
+    'task-design',
+    new ResourceTemplate('rulebook://task/{taskId}/design', {
+      list: async () => {
+        const tasks = await taskManager.listTasks(false); // Only active tasks
+        return {
+          resources: tasks
+            .filter((task) => task.design)
+            .map((task) => ({
+              uri: `rulebook://task/${task.id}/design`,
+              name: `${task.id} - Design`,
+              description: `Design document for task ${task.id}`,
+              mimeType: 'text/markdown',
+            })),
+        };
+      },
+    }),
+    {
+      title: 'Task Design',
+      description: 'Design document for a Rulebook task',
+      mimeType: 'text/markdown',
+    },
+    async (uri, params) => {
+      const taskId = typeof params.taskId === 'string' ? params.taskId : String(params.taskId);
+      const task = await taskManager.loadTask(taskId);
+      if (!task) {
+        throw new Error(`Task ${taskId} not found`);
+      }
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'text/markdown',
+            text: task.design || '',
+          },
+        ],
+      };
     }
   );
 
@@ -202,16 +283,71 @@ export function createRulebookMcpServer(projectRoot: string = process.cwd()): Mc
 }
 
 /**
- * Start the MCP server with stdio transport
+ * Start the MCP server with stdio transport (default) or HTTP transport
+ * Following Context7 MCP server patterns: https://github.com/upstash/context7
  */
-export async function startRulebookMcpServer(projectRoot?: string): Promise<void> {
-  const server = createRulebookMcpServer(projectRoot || process.cwd());
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+export async function startRulebookMcpServer(
+  options: {
+    projectRoot?: string;
+    transport?: 'stdio' | 'http';
+    port?: number;
+  } = {}
+): Promise<void> {
+  const projectRoot = options.projectRoot || process.cwd();
+  const transport = options.transport || (process.env.MCP_TRANSPORT as 'stdio' | 'http') || 'stdio';
+  const port = options.port || parseInt(process.env.MCP_PORT || '3000');
+
+  const server = createRulebookMcpServer(projectRoot);
+
+  if (transport === 'http') {
+    // Use HTTP transport (for remote HTTP server)
+    const app = express();
+    app.use(express.json());
+
+    app.post('/mcp', async (req, res) => {
+      // Create a new transport for each request to prevent request ID collisions
+      const httpTransport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true,
+      });
+
+      res.on('close', () => {
+        httpTransport.close();
+      });
+
+      try {
+        await server.connect(httpTransport);
+        await httpTransport.handleRequest(req, res, req.body);
+      } catch (error) {
+        console.error('MCP request error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Internal server error' });
+        }
+      }
+    });
+
+    app
+      .listen(port, () => {
+        console.log(`Rulebook MCP Server running on http://localhost:${port}/mcp`);
+        console.log(`Server ready to accept MCP requests`);
+      })
+      .on('error', (error: Error) => {
+        console.error('Server error:', error);
+        process.exit(1);
+      });
+  } else {
+    // Use stdio transport (default for MCP clients that spawn the process)
+    const stdioTransport = new StdioServerTransport();
+    try {
+      await server.connect(stdioTransport);
+    } catch (error) {
+      console.error('Failed to start MCP server:', error);
+      process.exit(1);
+    }
+  }
 }
 
 // If running directly (via npx or node), start the server
-// Check if this file is being executed directly
 const fileUrl = import.meta.url;
 const isMainModule =
   fileUrl === `file://${process.argv[1]}` ||
@@ -220,9 +356,36 @@ const isMainModule =
   process.argv[1]?.includes('rulebook-mcp');
 
 if (isMainModule) {
-  startRulebookMcpServer().catch(() => {
-    // Don't use console.error - it breaks MCP stdio protocol
-    // Errors will be handled by the transport layer
+  // Parse command line arguments (following Context7 pattern)
+  let transport: 'stdio' | 'http' | undefined;
+  let port: number | undefined;
+  let projectRoot: string | undefined;
+
+  for (let i = 0; i < process.argv.length; i++) {
+    const arg = process.argv[i];
+    if (arg === '--transport' && process.argv[i + 1]) {
+      transport = process.argv[i + 1] as 'stdio' | 'http';
+    } else if (arg === '--port' && process.argv[i + 1]) {
+      port = parseInt(process.argv[i + 1]);
+    } else if (arg === '--project-root' && process.argv[i + 1]) {
+      projectRoot = process.argv[i + 1];
+    }
+  }
+
+  // Environment variables take precedence
+  if (process.env.MCP_TRANSPORT) {
+    transport = process.env.MCP_TRANSPORT as 'stdio' | 'http';
+  }
+  if (process.env.MCP_PORT) {
+    port = parseInt(process.env.MCP_PORT);
+  }
+
+  startRulebookMcpServer({
+    projectRoot,
+    transport,
+    port,
+  }).catch((error) => {
+    console.error('Failed to start MCP server:', error);
     process.exit(1);
   });
 }

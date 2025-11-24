@@ -202,8 +202,12 @@ program
 
 program
   .command('mcp-server')
-  .description('Start Rulebook MCP server for task management via MCP protocol')
+  .description('Start Rulebook MCP server for task management via MCP protocol (HTTP)')
   .option('--project-root <path>', 'Project root directory (default: current directory)')
-  .action((options: { projectRoot?: string }) => mcpServerCommand(options.projectRoot));
+  .option('--port <port>', 'HTTP server port (default: 3000)', '3000')
+  .action((options: { projectRoot?: string; port?: string }) => {
+    const port = options.port ? parseInt(options.port) : undefined;
+    mcpServerCommand(options.projectRoot, port);
+  });
 
 program.parse(process.argv);

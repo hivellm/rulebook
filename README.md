@@ -265,8 +265,11 @@ npx rulebook-mcp
 # Or via npm script (if installed locally)
 npm run mcp-server
 
-# Or via CLI command
-npx @hivellm/rulebook@latest mcp-server --project-root /path/to/project
+# Or via CLI command with custom port
+npx @hivellm/rulebook@latest mcp-server --project-root /path/to/project --port 8080
+
+# Using environment variable for port
+MCP_PORT=8080 npx @hivellm/rulebook@latest mcp-server
 ```
 
 **Available MCP Functions:**
@@ -290,16 +293,49 @@ npx @hivellm/rulebook@latest mcp-server --project-root /path/to/project
   - Input: `taskId` (string), optional `skipValidation`
   - Output: Archive confirmation with archive path
 
-The server communicates via stdio (standard input/output) and can be integrated with any MCP-compatible client (Cursor, Claude Desktop, etc.).
+The server runs as an HTTP server and can be integrated with any MCP-compatible client that supports HTTP transport (Cursor, Claude Desktop, etc.).
+
+**Server Details:**
+- **Transport**: HTTP (StreamableHTTPServerTransport)
+- **Default Port**: 30000 (configurable via `--port` or `MCP_PORT` environment variable)
+- **Endpoint**: `http://localhost:30000/mcp`
+- **Protocol**: MCP over HTTP
+
+**Starting the Server:**
+
+```bash
+# Start server on default port (30000)
+npx @hivellm/rulebook@latest mcp-server
+
+# Start server on custom port
+npx @hivellm/rulebook@latest mcp-server --port 30001
+
+# With custom project root
+npx @hivellm/rulebook@latest mcp-server --project-root /path/to/project --port 30000
+```
 
 **Configuration (mcp.json):**
 
-Add the Rulebook MCP server to your `mcp.json` configuration file. The location depends on your client:
+For HTTP-based MCP clients, configure the server URL. The location depends on your client:
 
 - **Cursor**: `~/.cursor/mcp.json` or `.cursor/mcp.json` in your project
 - **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
 
-**Example configuration:**
+**Example configuration (HTTP transport):**
+
+```json
+{
+  "mcpServers": {
+    "rulebook": {
+      "url": "http://localhost:30000/mcp"
+    }
+  }
+}
+```
+
+**Alternative configuration (using command to start server):**
+
+If your client supports starting the server automatically:
 
 ```json
 {
@@ -309,35 +345,19 @@ Add the Rulebook MCP server to your `mcp.json` configuration file. The location 
       "args": [
         "-y",
         "@hivellm/rulebook@latest",
-        "mcp-server"
+        "mcp-server",
+        "--port",
+        "30000"
       ],
-      "env": {}
-    }
-  }
-}
-```
-
-**Alternative configuration (using local installation):**
-
-If you have Rulebook installed locally in your project:
-
-```json
-{
-  "mcpServers": {
-    "rulebook": {
-      "command": "node",
-      "args": [
-        "./node_modules/@hivellm/rulebook/dist/mcp/rulebook-server.js"
-      ],
-      "env": {}
+      "env": {
+        "MCP_PORT": "30000"
+      }
     }
   }
 }
 ```
 
 **With custom project root:**
-
-If you need to specify a different project root:
 
 ```json
 {
@@ -349,9 +369,13 @@ If you need to specify a different project root:
         "@hivellm/rulebook@latest",
         "mcp-server",
         "--project-root",
-        "/path/to/your/project"
+        "/path/to/your/project",
+        "--port",
+        "30000"
       ],
-      "env": {}
+      "env": {
+        "MCP_PORT": "30000"
+      }
     }
   }
 }
@@ -386,7 +410,10 @@ npm run build
 If you encounter connection errors, verify:
 - Node.js version is 20+ (`node --version`)
 - MCP configuration file exists and is valid JSON
-- Server is accessible: `npx @hivellm/rulebook@latest mcp-server`
+- Server is running: `npx @hivellm/rulebook@latest mcp-server`
+- Server is accessible at `http://localhost:30000/mcp` (or your configured port)
+- Port is not already in use (change with `--port` if needed)
+- Firewall allows connections to the server port
 
 **Automated Setup (CI/CD):**
 

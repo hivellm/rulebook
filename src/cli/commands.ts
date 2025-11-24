@@ -1081,38 +1081,29 @@ export async function taskArchiveCommand(
   }
 }
 
-export async function mcpServerCommand(projectRoot?: string): Promise<void> {
+export async function mcpServerCommand(projectRoot?: string, port?: number): Promise<void> {
   try {
     const { startRulebookMcpServer } = await import('../mcp/rulebook-server.js');
     const cwd = projectRoot || process.cwd();
+    const serverPort = port || parseInt(process.env.MCP_PORT || '3000');
+    const transport = (process.env.MCP_TRANSPORT as 'stdio' | 'http') || 'stdio';
 
-    // Check if running via MCP (stdio mode) - don't print messages in that case
-    // When executed via npx or when stdin is not a TTY, assume MCP mode
-    const isMcpMode =
-      process.stdin.isTTY === false ||
-      process.env.MCP_MODE === 'true' ||
-      process.env.npm_config_user_agent?.includes('npm') ||
-      process.argv[0]?.includes('npx');
-
-    if (!isMcpMode && process.stdout.isTTY) {
-      // Only print messages when running via CLI interactively (not via MCP stdio)
-      console.log(chalk.bold.blue('\n🚀 Starting Rulebook MCP Server\n'));
-      console.log(chalk.gray(`Project root: ${cwd}`));
-      console.log(chalk.gray('Server will communicate via stdio (standard input/output)\n'));
+    console.log(chalk.bold.blue('\n🚀 Starting Rulebook MCP Server\n'));
+    console.log(chalk.gray(`Project root: ${cwd}`));
+    console.log(chalk.gray(`Transport: ${transport}`));
+    if (transport === 'http') {
+      console.log(chalk.gray(`Server will run on http://localhost:${serverPort}/mcp`));
     }
+    console.log();
 
-    await startRulebookMcpServer(cwd);
+    await startRulebookMcpServer({
+      projectRoot: cwd,
+      transport,
+      port: transport === 'http' ? serverPort : undefined,
+    });
   } catch (error: any) {
-    // Don't print errors in MCP mode - it breaks the protocol
-    const isMcpMode =
-      process.stdin.isTTY === false ||
-      process.env.MCP_MODE === 'true' ||
-      process.env.npm_config_user_agent?.includes('npm') ||
-      process.argv[0]?.includes('npx');
-    if (!isMcpMode && process.stdout.isTTY) {
-      console.error(chalk.red(`\n❌ Failed to start MCP server: ${error.message}`));
-      console.error(error.stack);
-    }
+    console.error(chalk.red(`\n❌ Failed to start MCP server: ${error.message}`));
+    console.error(error.stack);
     process.exit(1);
   }
 }

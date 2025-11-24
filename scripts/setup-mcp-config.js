@@ -40,45 +40,54 @@ function detectIDE() {
 }
 
 /**
- * Generate MCP config for Cursor
+ * Generate MCP config for Cursor (HTTP transport)
  */
 function generateCursorConfig() {
+    const port = process.env.MCP_PORT || '30000';
     return {
         mcpServers: {
             rulebook: {
                 command: 'node',
-                args: ['dist/mcp/rulebook-server.js'],
-                env: {},
+                args: ['dist/mcp/rulebook-server.js', '--port', port],
+                env: {
+                    MCP_PORT: port,
+                },
             },
         },
     };
 }
 
 /**
- * Generate MCP config for Claude Desktop
+ * Generate MCP config for Claude Desktop (HTTP transport)
  */
 function generateClaudeConfig() {
+    const port = process.env.MCP_PORT || '30000';
     return {
         mcpServers: {
             rulebook: {
                 command: 'node',
-                args: ['dist/mcp/rulebook-server.js'],
-                env: {},
+                args: ['dist/mcp/rulebook-server.js', '--port', port],
+                env: {
+                    MCP_PORT: port,
+                },
             },
         },
     };
 }
 
 /**
- * Generate MCP config for generic MCP client
+ * Generate MCP config for generic MCP client (HTTP transport)
  */
 function generateGenericConfig() {
+    const port = process.env.MCP_PORT || '30000';
     return {
         mcpServers: {
             rulebook: {
                 command: 'node',
-                args: ['dist/mcp/rulebook-server.js'],
-                env: {},
+                args: ['dist/mcp/rulebook-server.js', '--port', port],
+                env: {
+                    MCP_PORT: port,
+                },
             },
         },
     };
@@ -136,11 +145,15 @@ async function main() {
     // Write config file
     await writeFile(configPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
 
+    const port = process.env.MCP_PORT || '30000';
     console.log(`✅ MCP configuration created successfully!`);
     console.log(`   IDE: ${ide}`);
     console.log(`   Path: ${configPath}`);
     console.log(`   Server: rulebook`);
-    console.log(`   Command: node dist/mcp/rulebook-server.js`);
+    console.log(`   Transport: HTTP`);
+    console.log(`   Port: ${port}`);
+    console.log(`   Endpoint: http://localhost:${port}/mcp`);
+    console.log(`   Command: node dist/mcp/rulebook-server.js --port ${port}`);
 
     // Output config path for CI/CD
     if (process.env.CI) {
