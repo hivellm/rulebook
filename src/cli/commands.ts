@@ -1087,10 +1087,15 @@ export async function mcpServerCommand(projectRoot?: string): Promise<void> {
     const cwd = projectRoot || process.cwd();
 
     // Check if running via MCP (stdio mode) - don't print messages in that case
-    const isMcpMode = process.stdin.isTTY === false || process.env.MCP_MODE === 'true';
+    // When executed via npx or when stdin is not a TTY, assume MCP mode
+    const isMcpMode =
+      process.stdin.isTTY === false ||
+      process.env.MCP_MODE === 'true' ||
+      process.env.npm_config_user_agent?.includes('npm') ||
+      process.argv[0]?.includes('npx');
 
-    if (!isMcpMode) {
-      // Only print messages when running via CLI (not via MCP stdio)
+    if (!isMcpMode && process.stdout.isTTY) {
+      // Only print messages when running via CLI interactively (not via MCP stdio)
       console.log(chalk.bold.blue('\n🚀 Starting Rulebook MCP Server\n'));
       console.log(chalk.gray(`Project root: ${cwd}`));
       console.log(chalk.gray('Server will communicate via stdio (standard input/output)\n'));
@@ -1099,8 +1104,12 @@ export async function mcpServerCommand(projectRoot?: string): Promise<void> {
     await startRulebookMcpServer(cwd);
   } catch (error: any) {
     // Don't print errors in MCP mode - it breaks the protocol
-    const isMcpMode = process.stdin.isTTY === false || process.env.MCP_MODE === 'true';
-    if (!isMcpMode) {
+    const isMcpMode =
+      process.stdin.isTTY === false ||
+      process.env.MCP_MODE === 'true' ||
+      process.env.npm_config_user_agent?.includes('npm') ||
+      process.argv[0]?.includes('npx');
+    if (!isMcpMode && process.stdout.isTTY) {
       console.error(chalk.red(`\n❌ Failed to start MCP server: ${error.message}`));
       console.error(error.stack);
     }
