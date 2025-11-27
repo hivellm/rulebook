@@ -2,23 +2,23 @@
 
 ## Why
 
-Existem discrepâncias entre rodar testes localmente (WSL/PowerShell) e no GitHub Actions. Alguns projetos passam nos testes localmente mas falham no CI, causando frustração e retrabalho. O ACT (Action Container Toolkit) permite simular o ambiente do GitHub Actions localmente, detectando problemas antes do push. Esta feature é totalmente opcional e deve funcionar no Windows, Linux e Mac, com detecção automática de dependências e instruções claras para configuração.
+There are discrepancies between running tests locally (WSL/PowerShell) and on GitHub Actions. Some projects pass tests locally but fail in CI, causing frustration and rework. ACT (Action Container Toolkit) allows simulating the GitHub Actions environment locally, detecting issues before push. This feature is completely optional and must work on Windows, Linux, and Mac, with automatic dependency detection and clear configuration instructions.
 
 ## What Changes
 
-Adicionar suporte opcional para rodar testes usando ACT, que simula o ambiente do GitHub Actions localmente. A implementação deve:
+Add optional support for running tests using ACT, which simulates the GitHub Actions environment locally. The implementation must:
 
-1. Detectar e instalar Docker (se não existir) com instruções claras
-2. Detectar e instalar ACT (se não existir)
-3. Criar scripts para rodar workflows do GitHub Actions localmente
-4. Prever e avisar sobre requisitos (ex: expor daemon TCP do Docker)
-5. Funcionar em Windows, Linux e Mac
-6. Ser totalmente opcional (não quebrar se Docker/ACT não estiverem disponíveis)
-7. Fornecer mensagens de erro claras e instruções de configuração
+1. Detect and install Docker (if not present) with clear instructions
+2. Detect and install ACT (if not present)
+3. Create scripts to run GitHub Actions workflows locally
+4. Anticipate and warn about requirements (e.g., expose Docker daemon TCP)
+5. Work on Windows, Linux, and Mac
+6. Be completely optional (not break if Docker/ACT are not available)
+7. Provide clear error messages and configuration instructions
 
 ## Impact
 
-- Affected specs: `specs/cli/spec.md` (novo comando), `specs/core/spec.md` (nova funcionalidade)
-- Affected code: `src/cli/commands.ts` (novo comando), `src/core/act-runner.ts` (nova classe), scripts de instalação
+- Affected specs: `specs/cli/spec.md` (new command), `specs/core/spec.md` (new functionality)
+- Affected code: `src/cli/commands.ts` (new command), `src/core/act-runner.ts` (new class), installation scripts
 - Breaking change: NO
-- User benefit: Detecta problemas de CI antes do push, reduz retrabalho e frustração
+- User benefit: Detects CI issues before push, reduces rework and frustration
