@@ -10,7 +10,7 @@ import { existsSync } from 'fs';
 import { parseRulesIgnore } from '../utils/rulesignore.js';
 import { RulebookConfig } from '../types.js';
 import { installGitHooks } from '../utils/git-hooks.js';
-import type { LanguageDetection, ProjectConfig, FrameworkId, ModuleDetection } from '../types.js';
+import type { LanguageDetection, ProjectConfig, FrameworkId, ModuleDetection, ServiceId } from '../types.js';
 import { scaffoldMinimalProject } from '../core/minimal-scaffolder.js';
 import path from 'path';
 import { readFileSync } from 'fs';
@@ -158,10 +158,10 @@ export async function initCommand(options: {
       detection.languages.length > 0
         ? detection.languages
         : config.languages.map((language) => ({
-            language: language as LanguageDetection['language'],
-            confidence: 1,
-            indicators: [],
-          }));
+          language: language as LanguageDetection['language'],
+          confidence: 1,
+          indicators: [],
+        }));
 
     let hooksInstalled = false;
     if (config.installGitHooks) {
@@ -207,6 +207,7 @@ export async function initCommand(options: {
       languages: config.languages as LanguageDetection['language'][],
       frameworks: config.frameworks as FrameworkId[],
       modules: config.modules as ModuleDetection['module'][],
+      services: config.services as ServiceId[],
       modular: config.modular ?? true,
       rulebookDir: config.rulebookDir || 'rulebook',
     });
@@ -1283,9 +1284,8 @@ export async function updateCommand(options: {
           {
             type: 'confirm',
             name: 'installHooks',
-            message: `Install Git hooks for automated quality checks? Missing: ${
-              hasPreCommit ? '' : 'pre-commit '
-            }${hasPrePush ? '' : 'pre-push'}`.trim(),
+            message: `Install Git hooks for automated quality checks? Missing: ${hasPreCommit ? '' : 'pre-commit '
+              }${hasPrePush ? '' : 'pre-push'}`.trim(),
             default: true,
           },
         ]);
@@ -1537,6 +1537,7 @@ export async function updateCommand(options: {
       languages: config.languages as LanguageDetection['language'][],
       frameworks: config.frameworks as FrameworkId[],
       modules: config.modules as ModuleDetection['module'][],
+      services: config.services as ServiceId[],
       modular: config.modular ?? true,
       rulebookDir: config.rulebookDir || 'rulebook',
     });
@@ -1553,10 +1554,10 @@ export async function updateCommand(options: {
         detection.languages.length > 0
           ? detection.languages
           : config.languages.map((language) => ({
-              language: language as LanguageDetection['language'],
-              confidence: 1,
-              indicators: [],
-            }));
+            language: language as LanguageDetection['language'],
+            confidence: 1,
+            indicators: [],
+          }));
       const hookSpinner = ora('Installing Git hooks (pre-commit & pre-push)...').start();
       try {
         await installGitHooks({ languages: hookLanguages, cwd });

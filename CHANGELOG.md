@@ -10,6 +10,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.5] - 2025-11-27
+
+### Added
+- **Service Templates Support**: Added comprehensive service integration templates
+  - 20 service templates: PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, SQLite, MongoDB, Cassandra, DynamoDB, Redis, Memcached, Elasticsearch, Neo4j, InfluxDB, RabbitMQ, Kafka, S3, Azure Blob, GCS, MinIO
+  - Automatic service detection from `package.json`, `.env`, and `docker-compose.yml`
+  - Service-specific integration instructions with connection setup, operations, best practices, and configuration
+  - Templates generated in `/rulebook/[SERVICE].md` with references in `AGENTS.md`
+- **Service Detection**: CLI now automatically detects services in projects
+  - Detects database drivers from `package.json` dependencies
+  - Detects service connection strings from `.env` files
+  - Detects services from `docker-compose.yml` configuration
+  - Interactive prompt to select which services to include templates for
+- **Custom Service Templates**: Support for custom service templates in `.rulebook/templates/service/`
+
+### Changed
+- **CLI Prompts**: Enhanced interactive prompts to include service selection
+  - Service selection appears after module selection
+  - Detected services are pre-selected
+  - Descriptive labels for each service type
+- **Project Configuration**: Extended `ProjectConfig` and `RulebookConfig` to include services
+  - Services are saved to `.rulebook` configuration file
+  - Services are merged with existing configuration on updates
+
 ## [1.1.4] - 2025-11-24
 
 ### Fixed

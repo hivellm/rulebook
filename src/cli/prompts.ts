@@ -204,6 +204,43 @@ export async function promptProjectConfig(
         },
       ],
     });
+
+    // Service selection
+    const detectedServices = detection.services.filter((s) => s.detected).map((s) => s.service);
+    const serviceLabels: Record<string, string> = {
+      postgresql: 'PostgreSQL (relational database)',
+      mysql: 'MySQL (relational database)',
+      mariadb: 'MariaDB (relational database)',
+      sqlserver: 'SQL Server (relational database)',
+      oracle: 'Oracle (relational database)',
+      sqlite: 'SQLite (embedded database)',
+      mongodb: 'MongoDB (NoSQL document database)',
+      cassandra: 'Cassandra (NoSQL wide-column database)',
+      dynamodb: 'DynamoDB (NoSQL key-value database)',
+      redis: 'Redis (in-memory data store)',
+      memcached: 'Memcached (distributed memory cache)',
+      elasticsearch: 'Elasticsearch (search & analytics engine)',
+      neo4j: 'Neo4j (graph database)',
+      influxdb: 'InfluxDB (time-series database)',
+      rabbitmq: 'RabbitMQ (message broker)',
+      kafka: 'Kafka (distributed event streaming)',
+      s3: 'AWS S3 (object storage)',
+      azure_blob: 'Azure Blob Storage (object storage)',
+      gcs: 'Google Cloud Storage (object storage)',
+      minio: 'MinIO (S3-compatible object storage)',
+    };
+
+    questions.push({
+      type: 'checkbox',
+      name: 'services',
+      message: 'Select services to include integration instructions for:',
+      choices: detection.services.map((service) => ({
+        name: `${serviceLabels[service.service] || service.service}${service.detected ? ' – detected' : ''}`,
+        value: service.service,
+        checked: detectedServices.includes(service.service),
+      })),
+      pageSize: Math.min(detection.services.length, 15),
+    });
   }
 
   // Framework selection
@@ -329,6 +366,7 @@ export async function promptProjectConfig(
   return {
     languages: answers.languages || detection.languages.map((l) => l.language),
     modules: isMinimal ? [] : answers.modules || [],
+    services: isMinimal ? [] : answers.services || [],
     frameworks:
       answers.frameworks || detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
     ides: answers.ides || ['cursor'],

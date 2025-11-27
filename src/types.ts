@@ -21,6 +21,7 @@ export interface DetectionResult {
   languages: LanguageDetection[];
   modules: ModuleDetection[];
   frameworks: FrameworkDetection[];
+  services: ServiceDetection[];
   existingAgents: ExistingAgentsInfo | null;
   projectType?: 'monorepo' | 'library' | 'application' | 'cli';
   gitHooks?: {
@@ -31,52 +32,52 @@ export interface DetectionResult {
 
 export interface LanguageDetection {
   language:
-    | 'rust'
-    | 'typescript'
-    | 'javascript'
-    | 'python'
-    | 'go'
-    | 'java'
-    | 'elixir'
-    | 'csharp'
-    | 'php'
-    | 'swift'
-    | 'kotlin'
-    | 'cpp'
-    | 'c'
-    | 'solidity'
-    | 'zig'
-    | 'erlang'
-    | 'dart'
-    | 'ruby'
-    | 'scala'
-    | 'r'
-    | 'haskell'
-    | 'julia'
-    | 'lua'
-    | 'ada'
-    | 'sas'
-    | 'lisp'
-    | 'objectivec'
-    | 'sql';
+  | 'rust'
+  | 'typescript'
+  | 'javascript'
+  | 'python'
+  | 'go'
+  | 'java'
+  | 'elixir'
+  | 'csharp'
+  | 'php'
+  | 'swift'
+  | 'kotlin'
+  | 'cpp'
+  | 'c'
+  | 'solidity'
+  | 'zig'
+  | 'erlang'
+  | 'dart'
+  | 'ruby'
+  | 'scala'
+  | 'r'
+  | 'haskell'
+  | 'julia'
+  | 'lua'
+  | 'ada'
+  | 'sas'
+  | 'lisp'
+  | 'objectivec'
+  | 'sql';
   confidence: number;
   indicators: string[];
 }
 
 export interface ModuleDetection {
   module:
-    | 'vectorizer'
-    | 'synap'
-    | 'context7'
-    | 'github'
-    | 'playwright'
-    | 'supabase'
-    | 'notion'
-    | 'atlassian'
-    | 'serena'
-    | 'figma'
-    | 'grafana'
-    | 'rulebook_mcp';
+  | 'vectorizer'
+  | 'synap'
+  | 'context7'
+  | 'github'
+  | 'playwright'
+  | 'supabase'
+  | 'notion'
+  | 'atlassian'
+  | 'serena'
+  | 'figma'
+  | 'grafana'
+  | 'rulebook_mcp';
   detected: boolean;
   source?: string;
 }
@@ -87,6 +88,36 @@ export interface FrameworkDetection {
   languages: LanguageDetection['language'][];
   confidence: number;
   indicators: string[];
+}
+
+export type ServiceId =
+  | 'postgresql'
+  | 'mysql'
+  | 'mariadb'
+  | 'sqlserver'
+  | 'oracle'
+  | 'sqlite'
+  | 'mongodb'
+  | 'cassandra'
+  | 'dynamodb'
+  | 'redis'
+  | 'memcached'
+  | 'elasticsearch'
+  | 'neo4j'
+  | 'influxdb'
+  | 'rabbitmq'
+  | 'kafka'
+  | 's3'
+  | 'azure_blob'
+  | 'gcs'
+  | 'minio';
+
+export interface ServiceDetection {
+  service: ServiceId;
+  detected: boolean;
+  confidence: number;
+  indicators: string[];
+  source?: string;
 }
 
 export interface ExistingAgentsInfo {
@@ -107,6 +138,7 @@ export interface ProjectConfig {
   languages: string[];
   modules: string[];
   frameworks?: FrameworkId[];
+  services?: ServiceId[];
   ides: string[];
   projectType: 'monorepo' | 'library' | 'application' | 'cli';
   coverageThreshold: number;
@@ -173,6 +205,7 @@ export interface RulebookConfig {
   languages?: LanguageDetection['language'][];
   frameworks?: FrameworkId[];
   modules?: ModuleDetection['module'][];
+  services?: ServiceId[];
   modular?: boolean; // Enable modular /rulebook directory structure
   rulebookDir?: string; // Custom rulebook directory (default: 'rulebook')
   // MCP server configuration

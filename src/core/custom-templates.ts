@@ -4,7 +4,7 @@ import { readdir } from 'fs/promises';
 
 export interface CustomTemplate {
   name: string;
-  type: 'language' | 'module' | 'workflow' | 'ide' | 'cli';
+  type: 'language' | 'module' | 'workflow' | 'ide' | 'cli' | 'service';
   path: string;
   content: string;
 }
@@ -27,7 +27,7 @@ export async function loadCustomTemplates(projectDir: string): Promise<CustomTem
   }
 
   const templates: CustomTemplate[] = [];
-  const types = ['language', 'module', 'workflow', 'ide', 'cli'];
+  const types = ['language', 'module', 'workflow', 'ide', 'cli', 'service'];
 
   for (const type of types) {
     const typeDir = path.join(customTemplatesDir, type);
@@ -105,6 +105,7 @@ export async function listCustomTemplates(
     workflow: templates.filter((t) => t.type === 'workflow'),
     ide: templates.filter((t) => t.type === 'ide'),
     cli: templates.filter((t) => t.type === 'cli'),
+    service: templates.filter((t) => t.type === 'service'),
   };
 }
 
@@ -119,6 +120,7 @@ export async function initializeCustomTemplates(projectDir: string): Promise<voi
   await ensureDir(path.join(customTemplatesDir, 'workflow'));
   await ensureDir(path.join(customTemplatesDir, 'ide'));
   await ensureDir(path.join(customTemplatesDir, 'cli'));
+  await ensureDir(path.join(customTemplatesDir, 'service'));
 
   // Create README
   const readmePath = path.join(customTemplatesDir, 'README.md');
@@ -134,7 +136,8 @@ This directory contains custom templates for your project.
 ├── module/     # Custom module templates
 ├── workflow/   # Custom workflow templates
 ├── ide/        # Custom IDE templates
-└── cli/        # Custom CLI tool templates
+├── cli/        # Custom CLI tool templates
+└── service/    # Custom service templates
 \`\`\`
 
 ## Creating Custom Templates

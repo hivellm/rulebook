@@ -7,8 +7,9 @@
 
 [![Languages](https://img.shields.io/badge/languages-28-orange?logo=codefactor&logoColor=white)](#supported-languages--frameworks)
 [![Frameworks](https://img.shields.io/badge/frameworks-17-blueviolet?logo=framework&logoColor=white)](#supported-languages--frameworks)
-[![Templates](https://img.shields.io/badge/templates-86+-green?logo=files&logoColor=white)](templates/)
+[![Templates](https://img.shields.io/badge/templates-106+-green?logo=files&logoColor=white)](templates/)
 [![MCP Modules](https://img.shields.io/badge/MCP%20modules-12-purple?logo=module&logoColor=white)](#mcp-modules-12)
+[![Services](https://img.shields.io/badge/services-20-teal?logo=server&logoColor=white)](#service-integration-templates)
 
 [![AI Tools](https://img.shields.io/badge/AI%20tools-23-yellow?logo=openai&logoColor=white)](#ai-tools-supported-23)
 [![Git Hooks](https://img.shields.io/badge/git%20hooks-automated-success?logo=git&logoColor=white)](#key-features)
@@ -96,7 +97,7 @@ npx @hivellm/rulebook@latest update
 
 ## Key Features
 
-- 🔍 **Auto-Detection**: Detects languages, frameworks (NestJS, React, Spring, etc.), and MCP modules
+- 🔍 **Auto-Detection**: Detects languages, frameworks (NestJS, React, Spring, etc.), MCP modules, and services (databases, caches, message queues, etc.)
 - 📁 **Modular Architecture**: Templates stored in `/rulebook/` directory for better organization
   - Smaller AGENTS.md files (prevents 100k+ character limits)
   - QUALITY_ENFORCEMENT and Git rules moved to `/rulebook/` for cleaner structure
@@ -109,7 +110,7 @@ npx @hivellm/rulebook@latest update
 - 🔗 **Git Hook Automation**: Optional pre-commit/pre-push hooks with language-aware quality checks
 - 🚫 **Automatic .gitignore**: Creates/updates `.gitignore` automatically for 28 languages on `npx @hivellm/rulebook@latest init`
 - 🎯 **Minimal Mode**: Quick setup with just README, LICENSE, tests/, and basic CI
-- 📝 **86+ Templates**: Languages, frameworks, IDEs, workflows pre-configured
+- 📝 **106+ Templates**: Languages, frameworks, IDEs, workflows, and services pre-configured
 - 🤖 **AI-Optimized**: Works with 23 AI assistants (Cursor, Claude, Gemini, etc.)
 - 📦 **Publication Ready**: CI/CD pipelines for npm, crates.io, PyPI, Maven Central, and more
 - 🔄 **Automatic Migration**: Existing projects automatically migrated to modular structure and OpenSpec tasks
@@ -117,10 +118,10 @@ npx @hivellm/rulebook@latest update
 ## What It Does
 
 **For New Projects:**
-1. Detects your language(s), frameworks, and MCP modules
+1. Detects your language(s), frameworks, MCP modules, and services
 2. Asks setup questions (or use `--minimal` for defaults)
 3. Generates AGENTS.md with AI assistant rules (modular structure)
-4. Creates `/rulebook/` directory with language/framework/module templates
+4. Creates `/rulebook/` directory with language/framework/module/service templates
 5. Creates/updates `.gitignore` automatically for detected languages
 6. Optionally installs Git hooks (pre-commit/pre-push)
 7. Creates GitHub Actions workflows
@@ -290,6 +291,46 @@ This command:
 - `rulebook_task_delete` - Delete a task permanently
   - Input: `taskId` (string)
   - Output: Deletion confirmation
+
+## Service Integration Templates (20)
+
+Rulebook provides comprehensive integration templates for popular backend services, including databases, caches, message queues, and object storage.
+
+**Relational Databases**: PostgreSQL • MySQL • MariaDB • SQL Server • Oracle • SQLite
+
+**NoSQL Databases**: MongoDB • Cassandra • DynamoDB
+
+**Caches**: Redis • Memcached
+
+**Search & Analytics**: Elasticsearch
+
+**Graph Databases**: Neo4j
+
+**Time-Series Databases**: InfluxDB
+
+**Message Queues**: RabbitMQ • Kafka
+
+**Object Storage**: AWS S3 • Azure Blob Storage • Google Cloud Storage • MinIO
+
+### Automatic Service Detection
+
+The CLI automatically detects services in your project by analyzing:
+- **`package.json`**: Database drivers and client libraries (e.g., `pg`, `mongoose`, `redis`, `ioredis`)
+- **`.env` files**: Connection strings and environment variables (e.g., `POSTGRES_*`, `REDIS_*`, `MONGODB_*`)
+- **`docker-compose.yml`**: Service definitions in Docker Compose files
+
+### Service Templates Include
+
+Each service template provides:
+- Connection setup and configuration
+- Basic CRUD operations (where applicable)
+- Advanced patterns and best practices
+- Docker Compose examples
+- Environment variable configuration
+- Development and testing integration
+- Common pitfalls and solutions
+
+Templates are generated in `/rulebook/[SERVICE].md` and referenced in `AGENTS.md` for easy access during development.
 
 **Server Details:**
 - **Transport**: stdio only - stdout contains ONLY JSON-RPC 2.0 messages

@@ -6,6 +6,8 @@ import type {
   ModuleDetection,
   FrameworkDetection,
   FrameworkId,
+  ServiceDetection,
+  ServiceId,
   ExistingAgentsInfo,
   AgentBlock,
 } from '../types.js';
@@ -14,6 +16,7 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
   const languages = await detectLanguages(cwd);
   const modules = await detectModules(cwd);
   const frameworks = await detectFrameworks(cwd, languages);
+  const services = await detectServices(cwd);
   const existingAgents = await detectExistingAgents(cwd);
   const gitHooks = await detectGitHooks(cwd);
 
@@ -21,6 +24,7 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
     languages,
     modules,
     frameworks,
+    services,
     existingAgents,
     gitHooks,
   };
@@ -301,38 +305,38 @@ async function detectFrameworks(
   const npmDeps: Record<string, string> = {
     ...(packageJson && typeof packageJson === 'object'
       ? ((
-          packageJson as {
-            dependencies?: Record<string, string>;
-            devDependencies?: Record<string, string>;
-          }
-        ).dependencies ?? {})
+        packageJson as {
+          dependencies?: Record<string, string>;
+          devDependencies?: Record<string, string>;
+        }
+      ).dependencies ?? {})
       : {}),
     ...(packageJson && typeof packageJson === 'object'
       ? ((
-          packageJson as {
-            dependencies?: Record<string, string>;
-            devDependencies?: Record<string, string>;
-          }
-        ).devDependencies ?? {})
+        packageJson as {
+          dependencies?: Record<string, string>;
+          devDependencies?: Record<string, string>;
+        }
+      ).devDependencies ?? {})
       : {}),
   };
 
   const phpDeps: Record<string, string> = {
     ...(composerJson && typeof composerJson === 'object'
       ? ((
-          composerJson as {
-            require?: Record<string, string>;
-            'require-dev'?: Record<string, string>;
-          }
-        ).require ?? {})
+        composerJson as {
+          require?: Record<string, string>;
+          'require-dev'?: Record<string, string>;
+        }
+      ).require ?? {})
       : {}),
     ...(composerJson && typeof composerJson === 'object'
       ? ((
-          composerJson as {
-            require?: Record<string, string>;
-            'require-dev'?: Record<string, string>;
-          }
-        )['require-dev'] ?? {})
+        composerJson as {
+          require?: Record<string, string>;
+          'require-dev'?: Record<string, string>;
+        }
+      )['require-dev'] ?? {})
       : {}),
   };
 
@@ -342,442 +346,442 @@ async function detectFrameworks(
     languages: LanguageDetection['language'][];
     detect: () => Promise<{ detected: boolean; confidence: number; indicators: string[] }>;
   }> = [
-    {
-      id: 'nestjs',
-      label: 'NestJS',
-      languages: ['typescript', 'javascript'],
-      detect: async () => {
-        if (npmDeps['@nestjs/core'] || npmDeps['@nestjs/common']) {
-          return {
-            detected: true,
-            confidence: 0.95,
-            indicators: ['package.json:@nestjs/core'],
-          };
-        }
-
-        const nestCli = path.join(cwd, 'nest-cli.json');
-        if (await fileExists(nestCli)) {
-          return {
-            detected: true,
-            confidence: 0.9,
-            indicators: ['nest-cli.json'],
-          };
-        }
-
-        return { detected: false, confidence: 0, indicators: [] };
-      },
-    },
-    {
-      id: 'spring',
-      label: 'Spring Boot',
-      languages: ['java', 'kotlin'],
-      detect: async () => {
-        const pomPath = path.join(cwd, 'pom.xml');
-        if (await fileExists(pomPath)) {
-          const content = await readFile(pomPath);
-          if (content.includes('spring-boot-starter')) {
+      {
+        id: 'nestjs',
+        label: 'NestJS',
+        languages: ['typescript', 'javascript'],
+        detect: async () => {
+          if (npmDeps['@nestjs/core'] || npmDeps['@nestjs/common']) {
             return {
               detected: true,
               confidence: 0.95,
-              indicators: ['pom.xml:spring-boot-starter'],
+              indicators: ['package.json:@nestjs/core'],
             };
           }
-        }
 
-        const gradlePath = await findFirstExisting([
-          path.join(cwd, 'build.gradle'),
-          path.join(cwd, 'build.gradle.kts'),
-        ]);
-        if (gradlePath) {
-          const content = await readFile(gradlePath);
-          if (content.includes('spring-boot-starter')) {
+          const nestCli = path.join(cwd, 'nest-cli.json');
+          if (await fileExists(nestCli)) {
             return {
               detected: true,
               confidence: 0.9,
-              indicators: [`${path.basename(gradlePath)}:spring-boot-starter`],
+              indicators: ['nest-cli.json'],
             };
           }
-        }
 
-        return { detected: false, confidence: 0, indicators: [] };
+          return { detected: false, confidence: 0, indicators: [] };
+        },
       },
-    },
-    {
-      id: 'laravel',
-      label: 'Laravel',
-      languages: ['php'],
-      detect: async () => {
-        if (phpDeps['laravel/framework']) {
-          return {
-            detected: true,
-            confidence: 0.95,
-            indicators: ['composer.json:laravel/framework'],
-          };
-        }
-
-        const artisanPath = path.join(cwd, 'artisan');
-        if (await fileExists(artisanPath)) {
-          return {
-            detected: true,
-            confidence: 0.9,
-            indicators: ['artisan'],
-          };
-        }
-
-        return { detected: false, confidence: 0, indicators: [] };
-      },
-    },
-    {
-      id: 'angular',
-      label: 'Angular',
-      languages: ['typescript', 'javascript'],
-      detect: async () => {
-        if (npmDeps['@angular/core']) {
-          return {
-            detected: true,
-            confidence: 0.95,
-            indicators: ['package.json:@angular/core'],
-          };
-        }
-
-        const angularConfig = path.join(cwd, 'angular.json');
-        if (await fileExists(angularConfig)) {
-          return {
-            detected: true,
-            confidence: 0.9,
-            indicators: ['angular.json'],
-          };
-        }
-
-        return { detected: false, confidence: 0, indicators: [] };
-      },
-    },
-    {
-      id: 'react',
-      label: 'React',
-      languages: ['typescript', 'javascript'],
-      detect: async () => {
-        if (npmDeps.react && (npmDeps['react-dom'] || npmDeps['react-native'])) {
-          const indicator = npmDeps['react-dom'] ? 'react-dom' : 'react-native';
-          return {
-            detected: true,
-            confidence: 0.9,
-            indicators: [`package.json:react`, `package.json:${indicator}`],
-          };
-        }
-        return { detected: false, confidence: 0, indicators: [] };
-      },
-    },
-    {
-      id: 'vue',
-      label: 'Vue.js',
-      languages: ['typescript', 'javascript'],
-      detect: async () => {
-        if (npmDeps.vue) {
-          return {
-            detected: true,
-            confidence: 0.9,
-            indicators: ['package.json:vue'],
-          };
-        }
-
-        const vueConfig = await findFirstExisting([
-          path.join(cwd, 'vite.config.ts'),
-          path.join(cwd, 'vite.config.js'),
-        ]);
-        if (vueConfig) {
-          const content = await readFile(vueConfig);
-          if (content.includes('@vitejs/plugin-vue') || content.includes('vue()')) {
-            return {
-              detected: true,
-              confidence: 0.8,
-              indicators: [path.basename(vueConfig)],
-            };
+      {
+        id: 'spring',
+        label: 'Spring Boot',
+        languages: ['java', 'kotlin'],
+        detect: async () => {
+          const pomPath = path.join(cwd, 'pom.xml');
+          if (await fileExists(pomPath)) {
+            const content = await readFile(pomPath);
+            if (content.includes('spring-boot-starter')) {
+              return {
+                detected: true,
+                confidence: 0.95,
+                indicators: ['pom.xml:spring-boot-starter'],
+              };
+            }
           }
-        }
 
-        return { detected: false, confidence: 0, indicators: [] };
+          const gradlePath = await findFirstExisting([
+            path.join(cwd, 'build.gradle'),
+            path.join(cwd, 'build.gradle.kts'),
+          ]);
+          if (gradlePath) {
+            const content = await readFile(gradlePath);
+            if (content.includes('spring-boot-starter')) {
+              return {
+                detected: true,
+                confidence: 0.9,
+                indicators: [`${path.basename(gradlePath)}:spring-boot-starter`],
+              };
+            }
+          }
+
+          return { detected: false, confidence: 0, indicators: [] };
+        },
       },
-    },
-    {
-      id: 'nuxt',
-      label: 'Nuxt',
-      languages: ['typescript', 'javascript'],
-      detect: async () => {
-        if (npmDeps.nuxt) {
-          return {
-            detected: true,
-            confidence: 0.9,
-            indicators: ['package.json:nuxt'],
-          };
-        }
-
-        const nuxtConfig = await findFiles('nuxt.config.*', cwd);
-        if (nuxtConfig.length > 0) {
-          return {
-            detected: true,
-            confidence: 0.85,
-            indicators: [path.basename(nuxtConfig[0])],
-          };
-        }
-
-        return { detected: false, confidence: 0, indicators: [] };
-      },
-    },
-    {
-      id: 'django',
-      label: 'Django',
-      languages: ['python'],
-      detect: async () => {
-        const requirementsPath = path.join(cwd, 'requirements.txt');
-        if (await fileExists(requirementsPath)) {
-          const content = await readFile(requirementsPath);
-          if (content.includes('Django')) {
+      {
+        id: 'laravel',
+        label: 'Laravel',
+        languages: ['php'],
+        detect: async () => {
+          if (phpDeps['laravel/framework']) {
             return {
               detected: true,
               confidence: 0.95,
-              indicators: ['requirements.txt:Django'],
+              indicators: ['composer.json:laravel/framework'],
             };
           }
-        }
 
-        const managePy = path.join(cwd, 'manage.py');
-        if (await fileExists(managePy)) {
-          const content = await readFile(managePy);
-          if (content.includes('django')) {
+          const artisanPath = path.join(cwd, 'artisan');
+          if (await fileExists(artisanPath)) {
             return {
               detected: true,
               confidence: 0.9,
-              indicators: ['manage.py'],
+              indicators: ['artisan'],
             };
           }
-        }
 
-        return { detected: false, confidence: 0, indicators: [] };
+          return { detected: false, confidence: 0, indicators: [] };
+        },
       },
-    },
-    {
-      id: 'flask',
-      label: 'Flask',
-      languages: ['python'],
-      detect: async () => {
-        const requirementsPath = path.join(cwd, 'requirements.txt');
-        if (await fileExists(requirementsPath)) {
-          const content = await readFile(requirementsPath);
-          if (content.includes('Flask')) {
+      {
+        id: 'angular',
+        label: 'Angular',
+        languages: ['typescript', 'javascript'],
+        detect: async () => {
+          if (npmDeps['@angular/core']) {
             return {
               detected: true,
               confidence: 0.95,
-              indicators: ['requirements.txt:Flask'],
+              indicators: ['package.json:@angular/core'],
             };
           }
-        }
 
-        return { detected: false, confidence: 0, indicators: [] };
-      },
-    },
-    {
-      id: 'rails',
-      label: 'Ruby on Rails',
-      languages: ['ruby'],
-      detect: async () => {
-        const gemfilePath = path.join(cwd, 'Gemfile');
-        if (await fileExists(gemfilePath)) {
-          const content = await readFile(gemfilePath);
-          if (content.includes('rails')) {
-            return {
-              detected: true,
-              confidence: 0.95,
-              indicators: ['Gemfile:rails'],
-            };
-          }
-        }
-
-        const railsPath = path.join(cwd, 'bin', 'rails');
-        if (await fileExists(railsPath)) {
-          return {
-            detected: true,
-            confidence: 0.9,
-            indicators: ['bin/rails'],
-          };
-        }
-
-        return { detected: false, confidence: 0, indicators: [] };
-      },
-    },
-    {
-      id: 'symfony',
-      label: 'Symfony',
-      languages: ['php'],
-      detect: async () => {
-        if (phpDeps['symfony/framework-bundle']) {
-          return {
-            detected: true,
-            confidence: 0.95,
-            indicators: ['composer.json:symfony/framework-bundle'],
-          };
-        }
-
-        const symfonyConfig = path.join(cwd, 'symfony.lock');
-        if (await fileExists(symfonyConfig)) {
-          return {
-            detected: true,
-            confidence: 0.9,
-            indicators: ['symfony.lock'],
-          };
-        }
-
-        return { detected: false, confidence: 0, indicators: [] };
-      },
-    },
-    {
-      id: 'zend',
-      label: 'Zend Framework',
-      languages: ['php'],
-      detect: async () => {
-        if (phpDeps['zendframework/zendframework'] || phpDeps['laminas/laminas-mvc']) {
-          return {
-            detected: true,
-            confidence: 0.95,
-            indicators: ['composer.json:zendframework or laminas'],
-          };
-        }
-
-        return { detected: false, confidence: 0, indicators: [] };
-      },
-    },
-    {
-      id: 'jquery',
-      label: 'jQuery',
-      languages: ['javascript', 'typescript'],
-      detect: async () => {
-        if (npmDeps['jquery']) {
-          return {
-            detected: true,
-            confidence: 0.95,
-            indicators: ['package.json:jquery'],
-          };
-        }
-
-        // Check for jQuery in HTML files
-        const indexHtml = path.join(cwd, 'index.html');
-        if (await fileExists(indexHtml)) {
-          const content = await readFile(indexHtml);
-          if (content.includes('jquery') || content.includes('jQuery')) {
-            return {
-              detected: true,
-              confidence: 0.8,
-              indicators: ['index.html:jquery'],
-            };
-          }
-        }
-
-        return { detected: false, confidence: 0, indicators: [] };
-      },
-    },
-    {
-      id: 'reactnative',
-      label: 'React Native',
-      languages: ['javascript', 'typescript'],
-      detect: async () => {
-        if (npmDeps['react-native']) {
-          return {
-            detected: true,
-            confidence: 0.95,
-            indicators: ['package.json:react-native'],
-          };
-        }
-
-        const appJson = path.join(cwd, 'app.json');
-        if (await fileExists(appJson)) {
-          const content = await readFile(appJson);
-          if (content.includes('react-native') || content.includes('expo')) {
+          const angularConfig = path.join(cwd, 'angular.json');
+          if (await fileExists(angularConfig)) {
             return {
               detected: true,
               confidence: 0.9,
-              indicators: ['app.json'],
+              indicators: ['angular.json'],
             };
           }
-        }
 
-        return { detected: false, confidence: 0, indicators: [] };
+          return { detected: false, confidence: 0, indicators: [] };
+        },
       },
-    },
-    {
-      id: 'flutter',
-      label: 'Flutter',
-      languages: ['dart'],
-      detect: async () => {
-        const pubspecPath = path.join(cwd, 'pubspec.yaml');
-        if (await fileExists(pubspecPath)) {
-          const content = await readFile(pubspecPath);
-          if (content.includes('flutter:')) {
+      {
+        id: 'react',
+        label: 'React',
+        languages: ['typescript', 'javascript'],
+        detect: async () => {
+          if (npmDeps.react && (npmDeps['react-dom'] || npmDeps['react-native'])) {
+            const indicator = npmDeps['react-dom'] ? 'react-dom' : 'react-native';
+            return {
+              detected: true,
+              confidence: 0.9,
+              indicators: [`package.json:react`, `package.json:${indicator}`],
+            };
+          }
+          return { detected: false, confidence: 0, indicators: [] };
+        },
+      },
+      {
+        id: 'vue',
+        label: 'Vue.js',
+        languages: ['typescript', 'javascript'],
+        detect: async () => {
+          if (npmDeps.vue) {
+            return {
+              detected: true,
+              confidence: 0.9,
+              indicators: ['package.json:vue'],
+            };
+          }
+
+          const vueConfig = await findFirstExisting([
+            path.join(cwd, 'vite.config.ts'),
+            path.join(cwd, 'vite.config.js'),
+          ]);
+          if (vueConfig) {
+            const content = await readFile(vueConfig);
+            if (content.includes('@vitejs/plugin-vue') || content.includes('vue()')) {
+              return {
+                detected: true,
+                confidence: 0.8,
+                indicators: [path.basename(vueConfig)],
+              };
+            }
+          }
+
+          return { detected: false, confidence: 0, indicators: [] };
+        },
+      },
+      {
+        id: 'nuxt',
+        label: 'Nuxt',
+        languages: ['typescript', 'javascript'],
+        detect: async () => {
+          if (npmDeps.nuxt) {
+            return {
+              detected: true,
+              confidence: 0.9,
+              indicators: ['package.json:nuxt'],
+            };
+          }
+
+          const nuxtConfig = await findFiles('nuxt.config.*', cwd);
+          if (nuxtConfig.length > 0) {
+            return {
+              detected: true,
+              confidence: 0.85,
+              indicators: [path.basename(nuxtConfig[0])],
+            };
+          }
+
+          return { detected: false, confidence: 0, indicators: [] };
+        },
+      },
+      {
+        id: 'django',
+        label: 'Django',
+        languages: ['python'],
+        detect: async () => {
+          const requirementsPath = path.join(cwd, 'requirements.txt');
+          if (await fileExists(requirementsPath)) {
+            const content = await readFile(requirementsPath);
+            if (content.includes('Django')) {
+              return {
+                detected: true,
+                confidence: 0.95,
+                indicators: ['requirements.txt:Django'],
+              };
+            }
+          }
+
+          const managePy = path.join(cwd, 'manage.py');
+          if (await fileExists(managePy)) {
+            const content = await readFile(managePy);
+            if (content.includes('django')) {
+              return {
+                detected: true,
+                confidence: 0.9,
+                indicators: ['manage.py'],
+              };
+            }
+          }
+
+          return { detected: false, confidence: 0, indicators: [] };
+        },
+      },
+      {
+        id: 'flask',
+        label: 'Flask',
+        languages: ['python'],
+        detect: async () => {
+          const requirementsPath = path.join(cwd, 'requirements.txt');
+          if (await fileExists(requirementsPath)) {
+            const content = await readFile(requirementsPath);
+            if (content.includes('Flask')) {
+              return {
+                detected: true,
+                confidence: 0.95,
+                indicators: ['requirements.txt:Flask'],
+              };
+            }
+          }
+
+          return { detected: false, confidence: 0, indicators: [] };
+        },
+      },
+      {
+        id: 'rails',
+        label: 'Ruby on Rails',
+        languages: ['ruby'],
+        detect: async () => {
+          const gemfilePath = path.join(cwd, 'Gemfile');
+          if (await fileExists(gemfilePath)) {
+            const content = await readFile(gemfilePath);
+            if (content.includes('rails')) {
+              return {
+                detected: true,
+                confidence: 0.95,
+                indicators: ['Gemfile:rails'],
+              };
+            }
+          }
+
+          const railsPath = path.join(cwd, 'bin', 'rails');
+          if (await fileExists(railsPath)) {
+            return {
+              detected: true,
+              confidence: 0.9,
+              indicators: ['bin/rails'],
+            };
+          }
+
+          return { detected: false, confidence: 0, indicators: [] };
+        },
+      },
+      {
+        id: 'symfony',
+        label: 'Symfony',
+        languages: ['php'],
+        detect: async () => {
+          if (phpDeps['symfony/framework-bundle']) {
             return {
               detected: true,
               confidence: 0.95,
-              indicators: ['pubspec.yaml:flutter'],
+              indicators: ['composer.json:symfony/framework-bundle'],
             };
           }
-        }
 
-        return { detected: false, confidence: 0, indicators: [] };
+          const symfonyConfig = path.join(cwd, 'symfony.lock');
+          if (await fileExists(symfonyConfig)) {
+            return {
+              detected: true,
+              confidence: 0.9,
+              indicators: ['symfony.lock'],
+            };
+          }
+
+          return { detected: false, confidence: 0, indicators: [] };
+        },
       },
-    },
-    {
-      id: 'nextjs',
-      label: 'Next.js',
-      languages: ['typescript', 'javascript'],
-      detect: async () => {
-        if (npmDeps['next']) {
-          return {
-            detected: true,
-            confidence: 0.95,
-            indicators: ['package.json:next'],
-          };
-        }
+      {
+        id: 'zend',
+        label: 'Zend Framework',
+        languages: ['php'],
+        detect: async () => {
+          if (phpDeps['zendframework/zendframework'] || phpDeps['laminas/laminas-mvc']) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['composer.json:zendframework or laminas'],
+            };
+          }
 
-        const nextConfig = await findFirstExisting([
-          path.join(cwd, 'next.config.js'),
-          path.join(cwd, 'next.config.mjs'),
-          path.join(cwd, 'next.config.ts'),
-        ]);
-        if (nextConfig) {
-          return {
-            detected: true,
-            confidence: 0.9,
-            indicators: [path.basename(nextConfig)],
-          };
-        }
-
-        return { detected: false, confidence: 0, indicators: [] };
+          return { detected: false, confidence: 0, indicators: [] };
+        },
       },
-    },
-    {
-      id: 'electron',
-      label: 'Electron',
-      languages: ['typescript', 'javascript'],
-      detect: async () => {
-        if (npmDeps['electron']) {
-          return {
-            detected: true,
-            confidence: 0.95,
-            indicators: ['package.json:electron'],
-          };
-        }
+      {
+        id: 'jquery',
+        label: 'jQuery',
+        languages: ['javascript', 'typescript'],
+        detect: async () => {
+          if (npmDeps['jquery']) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['package.json:jquery'],
+            };
+          }
 
-        // Check for electron-builder or electron-forge
-        if (npmDeps['electron-builder'] || npmDeps['@electron-forge/cli']) {
-          return {
-            detected: true,
-            confidence: 0.9,
-            indicators: ['package.json:electron-builder or electron-forge'],
-          };
-        }
+          // Check for jQuery in HTML files
+          const indexHtml = path.join(cwd, 'index.html');
+          if (await fileExists(indexHtml)) {
+            const content = await readFile(indexHtml);
+            if (content.includes('jquery') || content.includes('jQuery')) {
+              return {
+                detected: true,
+                confidence: 0.8,
+                indicators: ['index.html:jquery'],
+              };
+            }
+          }
 
-        return { detected: false, confidence: 0, indicators: [] };
+          return { detected: false, confidence: 0, indicators: [] };
+        },
       },
-    },
-  ];
+      {
+        id: 'reactnative',
+        label: 'React Native',
+        languages: ['javascript', 'typescript'],
+        detect: async () => {
+          if (npmDeps['react-native']) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['package.json:react-native'],
+            };
+          }
+
+          const appJson = path.join(cwd, 'app.json');
+          if (await fileExists(appJson)) {
+            const content = await readFile(appJson);
+            if (content.includes('react-native') || content.includes('expo')) {
+              return {
+                detected: true,
+                confidence: 0.9,
+                indicators: ['app.json'],
+              };
+            }
+          }
+
+          return { detected: false, confidence: 0, indicators: [] };
+        },
+      },
+      {
+        id: 'flutter',
+        label: 'Flutter',
+        languages: ['dart'],
+        detect: async () => {
+          const pubspecPath = path.join(cwd, 'pubspec.yaml');
+          if (await fileExists(pubspecPath)) {
+            const content = await readFile(pubspecPath);
+            if (content.includes('flutter:')) {
+              return {
+                detected: true,
+                confidence: 0.95,
+                indicators: ['pubspec.yaml:flutter'],
+              };
+            }
+          }
+
+          return { detected: false, confidence: 0, indicators: [] };
+        },
+      },
+      {
+        id: 'nextjs',
+        label: 'Next.js',
+        languages: ['typescript', 'javascript'],
+        detect: async () => {
+          if (npmDeps['next']) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['package.json:next'],
+            };
+          }
+
+          const nextConfig = await findFirstExisting([
+            path.join(cwd, 'next.config.js'),
+            path.join(cwd, 'next.config.mjs'),
+            path.join(cwd, 'next.config.ts'),
+          ]);
+          if (nextConfig) {
+            return {
+              detected: true,
+              confidence: 0.9,
+              indicators: [path.basename(nextConfig)],
+            };
+          }
+
+          return { detected: false, confidence: 0, indicators: [] };
+        },
+      },
+      {
+        id: 'electron',
+        label: 'Electron',
+        languages: ['typescript', 'javascript'],
+        detect: async () => {
+          if (npmDeps['electron']) {
+            return {
+              detected: true,
+              confidence: 0.95,
+              indicators: ['package.json:electron'],
+            };
+          }
+
+          // Check for electron-builder or electron-forge
+          if (npmDeps['electron-builder'] || npmDeps['@electron-forge/cli']) {
+            return {
+              detected: true,
+              confidence: 0.9,
+              indicators: ['package.json:electron-builder or electron-forge'],
+            };
+          }
+
+          return { detected: false, confidence: 0, indicators: [] };
+        },
+      },
+    ];
 
   const detections: FrameworkDetection[] = [];
 
@@ -968,4 +972,647 @@ async function findFirstExisting(pathsToCheck: string[]): Promise<string | null>
     }
   }
   return null;
+}
+
+async function detectServices(cwd: string): Promise<ServiceDetection[]> {
+  const services: ServiceDetection[] = [];
+  const packageJson = path.join(cwd, 'package.json');
+  const envFile = path.join(cwd, '.env');
+  const dockerCompose = path.join(cwd, 'docker-compose.yml');
+  const dockerComposeYaml = path.join(cwd, 'docker-compose.yaml');
+
+  // Check package.json for database drivers
+  if (await fileExists(packageJson)) {
+    try {
+      const pkg = await readJsonFile<{ dependencies?: Record<string, string>; devDependencies?: Record<string, string> }>(packageJson);
+      const allDeps = { ...(pkg?.dependencies || {}), ...(pkg?.devDependencies || {}) };
+
+      // PostgreSQL
+      if (allDeps['pg'] || allDeps['postgres'] || allDeps['@prisma/client']) {
+        services.push({
+          service: 'postgresql',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['pg', 'postgres', '@prisma/client'].filter(dep => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // MySQL/MariaDB
+      if (allDeps['mysql2'] || allDeps['mysql'] || allDeps['mariadb']) {
+        services.push({
+          service: allDeps['mariadb'] ? 'mariadb' : 'mysql',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['mysql2', 'mysql', 'mariadb'].filter(dep => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // MongoDB
+      if (allDeps['mongodb'] || allDeps['mongoose']) {
+        services.push({
+          service: 'mongodb',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['mongodb', 'mongoose'].filter(dep => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Redis
+      if (allDeps['redis'] || allDeps['ioredis'] || allDeps['@redis/client']) {
+        services.push({
+          service: 'redis',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['redis', 'ioredis', '@redis/client'].filter(dep => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Memcached
+      if (allDeps['memcached']) {
+        services.push({
+          service: 'memcached',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['memcached'],
+          source: packageJson,
+        });
+      }
+
+      // Elasticsearch
+      if (allDeps['@elastic/elasticsearch'] || allDeps['elasticsearch']) {
+        services.push({
+          service: 'elasticsearch',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['@elastic/elasticsearch', 'elasticsearch'].filter(dep => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Neo4j
+      if (allDeps['neo4j-driver']) {
+        services.push({
+          service: 'neo4j',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['neo4j-driver'],
+          source: packageJson,
+        });
+      }
+
+      // InfluxDB
+      if (allDeps['@influxdata/influxdb-client']) {
+        services.push({
+          service: 'influxdb',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['@influxdata/influxdb-client'],
+          source: packageJson,
+        });
+      }
+
+      // RabbitMQ
+      if (allDeps['amqplib'] || allDeps['amqp-connection-manager']) {
+        services.push({
+          service: 'rabbitmq',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['amqplib', 'amqp-connection-manager'].filter(dep => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Kafka
+      if (allDeps['kafkajs'] || allDeps['node-rdkafka']) {
+        services.push({
+          service: 'kafka',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['kafkajs', 'node-rdkafka'].filter(dep => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // AWS S3
+      if (allDeps['@aws-sdk/client-s3'] || allDeps['aws-sdk']) {
+        services.push({
+          service: 's3',
+          detected: true,
+          confidence: 0.8,
+          indicators: ['@aws-sdk/client-s3', 'aws-sdk'].filter(dep => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Azure Blob
+      if (allDeps['@azure/storage-blob']) {
+        services.push({
+          service: 'azure_blob',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['@azure/storage-blob'],
+          source: packageJson,
+        });
+      }
+
+      // Google Cloud Storage
+      if (allDeps['@google-cloud/storage']) {
+        services.push({
+          service: 'gcs',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['@google-cloud/storage'],
+          source: packageJson,
+        });
+      }
+
+      // MinIO
+      if (allDeps['minio']) {
+        services.push({
+          service: 'minio',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['minio'],
+          source: packageJson,
+        });
+      }
+
+      // SQLite
+      if (allDeps['better-sqlite3'] || allDeps['sqlite3']) {
+        services.push({
+          service: 'sqlite',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['better-sqlite3', 'sqlite3'].filter(dep => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Cassandra
+      if (allDeps['cassandra-driver']) {
+        services.push({
+          service: 'cassandra',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['cassandra-driver'],
+          source: packageJson,
+        });
+      }
+
+      // DynamoDB
+      if (allDeps['@aws-sdk/client-dynamodb'] || allDeps['aws-sdk']) {
+        services.push({
+          service: 'dynamodb',
+          detected: true,
+          confidence: 0.8,
+          indicators: ['@aws-sdk/client-dynamodb', 'aws-sdk'].filter(dep => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // SQL Server
+      if (allDeps['mssql'] || allDeps['tedious']) {
+        services.push({
+          service: 'sqlserver',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['mssql', 'tedious'].filter(dep => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Oracle
+      if (allDeps['oracledb']) {
+        services.push({
+          service: 'oracle',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['oracledb'],
+          source: packageJson,
+        });
+      }
+    } catch {
+      // Ignore JSON parse errors
+    }
+  }
+
+  // Check .env file for service connection strings
+  if (await fileExists(envFile)) {
+    try {
+      const envContent = await readFile(envFile);
+      const envLines = envContent.split('\n');
+
+      for (const line of envLines) {
+        const upperLine = line.toUpperCase();
+
+        // PostgreSQL
+        if (upperLine.includes('POSTGRES') || (upperLine.includes('DATABASE_URL') && upperLine.includes('POSTGRES'))) {
+          if (!services.find(s => s.service === 'postgresql')) {
+            services.push({
+              service: 'postgresql',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['DATABASE_URL or POSTGRES_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // MySQL
+        if (upperLine.includes('MYSQL') && !upperLine.includes('MARIADB')) {
+          if (!services.find(s => s.service === 'mysql')) {
+            services.push({
+              service: 'mysql',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['MYSQL_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // MariaDB
+        if (upperLine.includes('MARIADB')) {
+          if (!services.find(s => s.service === 'mariadb')) {
+            services.push({
+              service: 'mariadb',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['MARIADB_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // MongoDB
+        if (upperLine.includes('MONGODB')) {
+          if (!services.find(s => s.service === 'mongodb')) {
+            services.push({
+              service: 'mongodb',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['MONGODB_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // Redis
+        if (upperLine.includes('REDIS')) {
+          if (!services.find(s => s.service === 'redis')) {
+            services.push({
+              service: 'redis',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['REDIS_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // Elasticsearch
+        if (upperLine.includes('ELASTICSEARCH')) {
+          if (!services.find(s => s.service === 'elasticsearch')) {
+            services.push({
+              service: 'elasticsearch',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['ELASTICSEARCH_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // RabbitMQ
+        if (upperLine.includes('RABBITMQ') || upperLine.includes('AMQP')) {
+          if (!services.find(s => s.service === 'rabbitmq')) {
+            services.push({
+              service: 'rabbitmq',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['RABBITMQ_* or AMQP_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // Kafka
+        if (upperLine.includes('KAFKA')) {
+          if (!services.find(s => s.service === 'kafka')) {
+            services.push({
+              service: 'kafka',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['KAFKA_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // AWS S3
+        if (upperLine.includes('S3_') || (upperLine.includes('AWS_') && upperLine.includes('S3'))) {
+          if (!services.find(s => s.service === 's3')) {
+            services.push({
+              service: 's3',
+              detected: true,
+              confidence: 0.7,
+              indicators: ['S3_* or AWS_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // Azure Blob
+        if (upperLine.includes('AZURE_STORAGE') || upperLine.includes('AZURE_BLOB')) {
+          if (!services.find(s => s.service === 'azure_blob')) {
+            services.push({
+              service: 'azure_blob',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['AZURE_STORAGE_* or AZURE_BLOB_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // Google Cloud Storage
+        if (upperLine.includes('GCS_') || upperLine.includes('GCP_STORAGE')) {
+          if (!services.find(s => s.service === 'gcs')) {
+            services.push({
+              service: 'gcs',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['GCS_* or GCP_STORAGE_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // MinIO
+        if (upperLine.includes('MINIO')) {
+          if (!services.find(s => s.service === 'minio')) {
+            services.push({
+              service: 'minio',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['MINIO_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // InfluxDB
+        if (upperLine.includes('INFLUXDB')) {
+          if (!services.find(s => s.service === 'influxdb')) {
+            services.push({
+              service: 'influxdb',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['INFLUXDB_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // Neo4j
+        if (upperLine.includes('NEO4J')) {
+          if (!services.find(s => s.service === 'neo4j')) {
+            services.push({
+              service: 'neo4j',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['NEO4J_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // SQL Server
+        if (upperLine.includes('SQL_SERVER') || upperLine.includes('MSSQL')) {
+          if (!services.find(s => s.service === 'sqlserver')) {
+            services.push({
+              service: 'sqlserver',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['SQL_SERVER_* or MSSQL_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+
+        // Oracle
+        if (upperLine.includes('ORACLE')) {
+          if (!services.find(s => s.service === 'oracle')) {
+            services.push({
+              service: 'oracle',
+              detected: true,
+              confidence: 0.8,
+              indicators: ['ORACLE_* env vars'],
+              source: envFile,
+            });
+          }
+        }
+      }
+    } catch {
+      // Ignore file read errors
+    }
+  }
+
+  // Check docker-compose.yml for services
+  const composeFiles = [dockerCompose, dockerComposeYaml];
+  for (const composeFile of composeFiles) {
+    if (await fileExists(composeFile)) {
+      try {
+        const composeContent = await readFile(composeFile);
+        const upperContent = composeContent.toUpperCase();
+
+        // PostgreSQL
+        if (upperContent.includes('POSTGRES') && !services.find(s => s.service === 'postgresql')) {
+          services.push({
+            service: 'postgresql',
+            detected: true,
+            confidence: 0.7,
+            indicators: ['docker-compose.yml postgres service'],
+            source: composeFile,
+          });
+        }
+
+        // MySQL
+        if (upperContent.includes('MYSQL') && !upperContent.includes('MARIADB') && !services.find(s => s.service === 'mysql')) {
+          services.push({
+            service: 'mysql',
+            detected: true,
+            confidence: 0.7,
+            indicators: ['docker-compose.yml mysql service'],
+            source: composeFile,
+          });
+        }
+
+        // MariaDB
+        if (upperContent.includes('MARIADB') && !services.find(s => s.service === 'mariadb')) {
+          services.push({
+            service: 'mariadb',
+            detected: true,
+            confidence: 0.7,
+            indicators: ['docker-compose.yml mariadb service'],
+            source: composeFile,
+          });
+        }
+
+        // MongoDB
+        if (upperContent.includes('MONGO') && !services.find(s => s.service === 'mongodb')) {
+          services.push({
+            service: 'mongodb',
+            detected: true,
+            confidence: 0.7,
+            indicators: ['docker-compose.yml mongo service'],
+            source: composeFile,
+          });
+        }
+
+        // Redis
+        if (upperContent.includes('REDIS') && !services.find(s => s.service === 'redis')) {
+          services.push({
+            service: 'redis',
+            detected: true,
+            confidence: 0.7,
+            indicators: ['docker-compose.yml redis service'],
+            source: composeFile,
+          });
+        }
+
+        // Memcached
+        if (upperContent.includes('MEMCACHED') && !services.find(s => s.service === 'memcached')) {
+          services.push({
+            service: 'memcached',
+            detected: true,
+            confidence: 0.7,
+            indicators: ['docker-compose.yml memcached service'],
+            source: composeFile,
+          });
+        }
+
+        // Elasticsearch
+        if (upperContent.includes('ELASTICSEARCH') && !services.find(s => s.service === 'elasticsearch')) {
+          services.push({
+            service: 'elasticsearch',
+            detected: true,
+            confidence: 0.7,
+            indicators: ['docker-compose.yml elasticsearch service'],
+            source: composeFile,
+          });
+        }
+
+        // Neo4j
+        if (upperContent.includes('NEO4J') && !services.find(s => s.service === 'neo4j')) {
+          services.push({
+            service: 'neo4j',
+            detected: true,
+            confidence: 0.7,
+            indicators: ['docker-compose.yml neo4j service'],
+            source: composeFile,
+          });
+        }
+
+        // InfluxDB
+        if (upperContent.includes('INFLUXDB') && !services.find(s => s.service === 'influxdb')) {
+          services.push({
+            service: 'influxdb',
+            detected: true,
+            confidence: 0.7,
+            indicators: ['docker-compose.yml influxdb service'],
+            source: composeFile,
+          });
+        }
+
+        // RabbitMQ
+        if (upperContent.includes('RABBITMQ') && !services.find(s => s.service === 'rabbitmq')) {
+          services.push({
+            service: 'rabbitmq',
+            detected: true,
+            confidence: 0.7,
+            indicators: ['docker-compose.yml rabbitmq service'],
+            source: composeFile,
+          });
+        }
+
+        // Kafka
+        if (upperContent.includes('KAFKA') && !services.find(s => s.service === 'kafka')) {
+          services.push({
+            service: 'kafka',
+            detected: true,
+            confidence: 0.7,
+            indicators: ['docker-compose.yml kafka service'],
+            source: composeFile,
+          });
+        }
+
+        // MinIO
+        if (upperContent.includes('MINIO') && !services.find(s => s.service === 'minio')) {
+          services.push({
+            service: 'minio',
+            detected: true,
+            confidence: 0.7,
+            indicators: ['docker-compose.yml minio service'],
+            source: composeFile,
+          });
+        }
+
+        // SQL Server
+        if ((upperContent.includes('SQLSERVER') || upperContent.includes('MSSQL')) && !services.find(s => s.service === 'sqlserver')) {
+          services.push({
+            service: 'sqlserver',
+            detected: true,
+            confidence: 0.7,
+            indicators: ['docker-compose.yml sqlserver service'],
+            source: composeFile,
+          });
+        }
+      } catch {
+        // Ignore file read errors
+      }
+    }
+  }
+
+  // Add undetected services (for manual selection)
+  const detectedServices = new Set(services.map((s) => s.service));
+  const allServices: ServiceId[] = [
+    'postgresql',
+    'mysql',
+    'mariadb',
+    'sqlserver',
+    'oracle',
+    'sqlite',
+    'mongodb',
+    'cassandra',
+    'dynamodb',
+    'redis',
+    'memcached',
+    'elasticsearch',
+    'neo4j',
+    'influxdb',
+    'rabbitmq',
+    'kafka',
+    's3',
+    'azure_blob',
+    'gcs',
+    'minio',
+  ];
+
+  for (const service of allServices) {
+    if (!detectedServices.has(service)) {
+      services.push({
+        service,
+        detected: false,
+        confidence: 0,
+        indicators: [],
+      });
+    }
+  }
+
+  return services;
 }

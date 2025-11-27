@@ -248,6 +248,24 @@ export async function generateModuleRules(module: string): Promise<string> {
   return `<!-- ${module.toUpperCase()}:START -->\n# ${module.charAt(0).toUpperCase() + module.slice(1)} Instructions\n\nModule-specific instructions for ${module}.\n<!-- ${module.toUpperCase()}:END -->\n`;
 }
 
+export async function generateServiceRules(service: string): Promise<string> {
+  const templatesDir = path.join(getTemplatesDir(), 'services');
+  // Convert service name to template filename (e.g., 'azure_blob' -> 'AZURE_BLOB.md')
+  const serviceName = service.toUpperCase().replace(/-/g, '_');
+  const templatePath = path.join(templatesDir, `${serviceName}.md`);
+
+  if (await fileExists(templatePath)) {
+    return await readFile(templatePath);
+  }
+
+  const serviceTitle = service
+    .split(/[-_]/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+  return `<!-- ${serviceName}:START -->\n# ${serviceTitle} Instructions\n\nService-specific instructions for ${serviceTitle}.\n<!-- ${serviceName}:END -->\n`;
+}
+
 export async function generateGitRules(pushMode: string): Promise<string> {
   const templatesDir = path.join(getTemplatesDir(), 'git');
   const templatePath = path.join(templatesDir, 'GIT_WORKFLOW.md');
@@ -416,6 +434,25 @@ function generateModuleReference(module: string, rulebookDir: string = 'rulebook
 }
 
 /**
+ * Generate service reference for AGENTS.md
+ */
+function generateServiceReference(service: string, rulebookDir: string = 'rulebook'): string {
+  const serviceName = service
+    .split(/[-_]/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+  const serviceId = service.toUpperCase().replace(/-/g, '_');
+  const quickRef = ['Connection setup', 'Basic operations', 'Best practices', 'Configuration'];
+  return generateReferenceSection(
+    `${serviceName} Instructions`,
+    serviceId,
+    `${serviceName}-specific instructions`,
+    quickRef,
+    rulebookDir
+  );
+}
+
+/**
  * Load project configuration from .rulebook file
  */
 async function loadProjectConfigFromRulebook(
@@ -432,6 +469,7 @@ async function loadProjectConfigFromRulebook(
       languages: rulebookConfig.languages || [],
       frameworks: rulebookConfig.frameworks || [],
       modules: rulebookConfig.modules || [],
+      services: rulebookConfig.services || [],
       modular: rulebookConfig.modular !== false, // Default to true
       rulebookDir: rulebookConfig.rulebookDir || 'rulebook',
     };
@@ -453,13 +491,14 @@ export async function generateModularAgents(
   // Load saved configuration from .rulebook and merge with provided config
   const savedConfig = await loadProjectConfigFromRulebook(projectRoot);
 
-  // Merge: saved config takes precedence for languages/frameworks/modules
+  // Merge: saved config takes precedence for languages/frameworks/modules/services
   // provided config takes precedence for other settings (like rulebookDir when explicitly set)
   const mergedConfig: ProjectConfig = {
     ...config,
     languages: savedConfig.languages?.length ? savedConfig.languages : config.languages,
     frameworks: savedConfig.frameworks?.length ? savedConfig.frameworks : config.frameworks || [],
     modules: savedConfig.modules?.length ? savedConfig.modules : config.modules,
+    services: savedConfig.services?.length ? savedConfig.services : config.services || [],
     modular: savedConfig.modular !== undefined ? savedConfig.modular : config.modular !== false,
     // rulebookDir: provided config takes precedence if explicitly set, otherwise use saved or default
     rulebookDir: config.rulebookDir || savedConfig.rulebookDir || 'rulebook',
@@ -588,6 +627,33 @@ export async function generateModularAgents(
     sections.push('');
   }
 
+  // Write service files and add references
+  if (mergedConfig.services && mergedConfig.services.length > 0) {
+    sections.push('## Service-Specific Instructions');
+    sections.push('');
+    sections.push(
+      'The following services are configured for this project. For detailed instructions, see the corresponding files in `/rulebook/`:'
+    );
+    sections.push('');
+
+    // Write all service files first
+    for (const service of mergedConfig.services) {
+      const serviceRules = await generateServiceRules(service);
+      const serviceId = service.toUpperCase().replace(/-/g, '_');
+      await writeModularFile(projectRoot, serviceId, serviceRules, rulebookDir);
+    }
+
+    // Then add all references together
+    for (const service of mergedConfig.services) {
+      sections.push(generateServiceReference(service, rulebookDir));
+    }
+
+    sections.push(
+      '**Usage**: When working with service-specific features, reference the corresponding `/rulebook/[SERVICE].md` file for detailed instructions.'
+    );
+    sections.push('');
+  }
+
   return sections.join('\n').trim() + '\n';
 }
 
@@ -641,6 +707,15 @@ export async function generateFullAgents(
     const moduleRules = await generateModuleRules(module);
     sections.push(moduleRules);
     sections.push('');
+  }
+
+  // Add service-specific rules
+  if (config.services && config.services.length > 0) {
+    for (const service of config.services) {
+      const serviceRules = await generateServiceRules(service);
+      sections.push(serviceRules);
+      sections.push('');
+    }
   }
 
   // Add Git workflow rules if enabled
