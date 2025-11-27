@@ -933,4 +933,196 @@ describe('detector', () => {
       });
     });
   });
+
+  describe('service detection', () => {
+    it('should detect PostgreSQL from package.json', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'package.json'),
+        JSON.stringify({ dependencies: { pg: '^8.0.0' } })
+      );
+
+      const result = await detectProject(testDir);
+
+      const postgres = result.services.find((s) => s.service === 'postgresql');
+      expect(postgres).toBeDefined();
+      expect(postgres?.detected).toBe(true);
+      expect(postgres?.confidence).toBeGreaterThan(0.8);
+    });
+
+    it('should detect MongoDB from package.json', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'package.json'),
+        JSON.stringify({ dependencies: { mongoose: '^7.0.0' } })
+      );
+
+      const result = await detectProject(testDir);
+
+      const mongodb = result.services.find((s) => s.service === 'mongodb');
+      expect(mongodb).toBeDefined();
+      expect(mongodb?.detected).toBe(true);
+    });
+
+    it('should detect Redis from package.json', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'package.json'),
+        JSON.stringify({ dependencies: { ioredis: '^5.0.0' } })
+      );
+
+      const result = await detectProject(testDir);
+
+      const redis = result.services.find((s) => s.service === 'redis');
+      expect(redis).toBeDefined();
+      expect(redis?.detected).toBe(true);
+    });
+
+    it('should detect PostgreSQL from .env file', async () => {
+      await fs.writeFile(
+        path.join(testDir, '.env'),
+        'POSTGRES_HOST=localhost\nPOSTGRES_PORT=5432\nPOSTGRES_DB=testdb'
+      );
+
+      const result = await detectProject(testDir);
+
+      const postgres = result.services.find((s) => s.service === 'postgresql');
+      expect(postgres).toBeDefined();
+      expect(postgres?.detected).toBe(true);
+    });
+
+    it('should detect MySQL from .env file', async () => {
+      await fs.writeFile(
+        path.join(testDir, '.env'),
+        'MYSQL_HOST=localhost\nMYSQL_PORT=3306\nMYSQL_DATABASE=testdb'
+      );
+
+      const result = await detectProject(testDir);
+
+      const mysql = result.services.find((s) => s.service === 'mysql');
+      expect(mysql).toBeDefined();
+      expect(mysql?.detected).toBe(true);
+    });
+
+    it('should detect Redis from .env file', async () => {
+      await fs.writeFile(
+        path.join(testDir, '.env'),
+        'REDIS_HOST=localhost\nREDIS_PORT=6379'
+      );
+
+      const result = await detectProject(testDir);
+
+      const redis = result.services.find((s) => s.service === 'redis');
+      expect(redis).toBeDefined();
+      expect(redis?.detected).toBe(true);
+    });
+
+    it('should detect services from docker-compose.yml', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'docker-compose.yml'),
+        `version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+  redis:
+    image: redis:7
+  mongodb:
+    image: mongo:7`
+      );
+
+      const result = await detectProject(testDir);
+
+      const postgres = result.services.find((s) => s.service === 'postgresql');
+      const redis = result.services.find((s) => s.service === 'redis');
+      const mongodb = result.services.find((s) => s.service === 'mongodb');
+
+      expect(postgres?.detected).toBe(true);
+      expect(redis?.detected).toBe(true);
+      expect(mongodb?.detected).toBe(true);
+    });
+
+    it('should include all services even if not detected', async () => {
+      const result = await detectProject(testDir);
+
+      // Should have all 20 services
+      expect(result.services.length).toBeGreaterThanOrEqual(20);
+
+      // All should be marked as not detected
+      const undetected = result.services.filter((s) => !s.detected);
+      expect(undetected.length).toBeGreaterThan(0);
+    });
+
+    it('should detect multiple services from package.json', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'package.json'),
+        JSON.stringify({
+          dependencies: {
+            pg: '^8.0.0',
+            mongoose: '^7.0.0',
+            ioredis: '^5.0.0',
+            '@elastic/elasticsearch': '^8.0.0',
+          },
+        })
+      );
+
+      const result = await detectProject(testDir);
+
+      expect(result.services.find((s) => s.service === 'postgresql')?.detected).toBe(true);
+      expect(result.services.find((s) => s.service === 'mongodb')?.detected).toBe(true);
+      expect(result.services.find((s) => s.service === 'redis')?.detected).toBe(true);
+      expect(result.services.find((s) => s.service === 'elasticsearch')?.detected).toBe(true);
+    });
+
+    it('should detect MariaDB specifically (not MySQL)', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'package.json'),
+        JSON.stringify({ dependencies: { mariadb: '^3.0.0' } })
+      );
+
+      const result = await detectProject(testDir);
+
+      const mariadb = result.services.find((s) => s.service === 'mariadb');
+      const mysql = result.services.find((s) => s.service === 'mysql');
+
+      expect(mariadb?.detected).toBe(true);
+      // MySQL should not be detected if mariadb is present
+      expect(mysql?.detected).toBe(false);
+    });
+
+    it('should detect SQLite from package.json', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'package.json'),
+        JSON.stringify({ dependencies: { 'better-sqlite3': '^9.0.0' } })
+      );
+
+      const result = await detectProject(testDir);
+
+      const sqlite = result.services.find((s) => s.service === 'sqlite');
+      expect(sqlite).toBeDefined();
+      expect(sqlite?.detected).toBe(true);
+    });
+
+    it('should detect Kafka from .env file', async () => {
+      await fs.writeFile(
+        path.join(testDir, '.env'),
+        'KAFKA_BROKERS=localhost:9092\nKAFKA_CLIENT_ID=test-client'
+      );
+
+      const result = await detectProject(testDir);
+
+      const kafka = result.services.find((s) => s.service === 'kafka');
+      expect(kafka).toBeDefined();
+      expect(kafka?.detected).toBe(true);
+    });
+
+    it('should detect RabbitMQ from .env file', async () => {
+      await fs.writeFile(
+        path.join(testDir, '.env'),
+        'RABBITMQ_URL=amqp://localhost:5672\nAMQP_EXCHANGE=test'
+      );
+
+      const result = await detectProject(testDir);
+
+      const rabbitmq = result.services.find((s) => s.service === 'rabbitmq');
+      expect(rabbitmq).toBeDefined();
+      expect(rabbitmq?.detected).toBe(true);
+    });
+  });
 });
