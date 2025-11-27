@@ -77,42 +77,82 @@ function parseShellHookToNode(hookContent: string): string[] {
 
     // Extract command before || exit 1 or similar
     const mainCommand = trimmed.split('||')[0].trim().split('{')[0].trim();
+    const options = insideConditional ? ', { allowFailure: true }' : '';
 
-    // Parse npm/npx commands (even if inside conditionals, we'll add them with allowFailure)
+    // Skip shell-specific commands and conditionals, but try to extract commands from them
+    if (mainCommand.startsWith('if ') || mainCommand.startsWith('$(')) {
+      // Try to extract commands from complex conditionals (e.g., "if [ "$(gofmt -l . | wc -l)" -gt 0 ]")
+      if (mainCommand.includes('gofmt')) {
+        // Extract gofmt command from conditional
+        const gofmtMatch = mainCommand.match(/gofmt\s+(-l|-w)?\s*\.?/);
+        if (gofmtMatch) {
+          commands.push(`await runCommand('gofmt', ['-l', '.']${options});`);
+        }
+      }
+      continue;
+    }
+    if (mainCommand.startsWith('[') && !mainCommand.includes('gofmt')) {
+      continue;
+    }
+
+    // Parse npm/npx commands
     if (mainCommand.startsWith('npm run ')) {
       const script = mainCommand.replace('npm run ', '').trim();
-      // If inside conditional, add allowFailure option
-      const options = insideConditional ? ', { allowFailure: true }' : '';
       commands.push(`await runCommand('npm', ['run', '${script}']${options});`);
     } else if (mainCommand.startsWith('npx ')) {
       const parts = mainCommand.replace('npx ', '').trim();
-      // Handle npx with arguments (e.g., "npx prettier --check ...")
-      // Remove quotes from file patterns
       const partsArray = parts.split(/\s+/).filter((p) => p && !p.startsWith('2>'));
       const cmd = partsArray[0];
-      const args = partsArray
-        .slice(1)
-        .filter((arg) => (arg && !arg.startsWith('"')) || arg.endsWith('"'));
-      const options = insideConditional ? ', { allowFailure: true }' : '';
+      const args = partsArray.slice(1).filter((arg) => arg && !arg.match(/^["'].*["']$/));
       if (args.length > 0) {
-        // Filter out file patterns with quotes for now - they'll be handled at runtime
-        const cleanArgs = args.filter((a) => !a.match(/^["'].*["']$/));
-        if (cleanArgs.length > 0) {
-          commands.push(
-            `await runCommand('npx', ['${cmd}', ...${JSON.stringify(cleanArgs)}]${options});`
-          );
-        } else {
-          commands.push(`await runCommand('npx', ['${cmd}']${options});`);
-        }
+        commands.push(`await runCommand('npx', ['${cmd}', ...${JSON.stringify(args)}]${options});`);
       } else {
         commands.push(`await runCommand('npx', ['${cmd}']${options});`);
       }
     } else if (mainCommand === 'npm test' || mainCommand.startsWith('npm test ')) {
-      const options = insideConditional ? ', { allowFailure: true }' : '';
       commands.push(`await runCommand('npm', ['test']${options});`);
     } else if (mainCommand === 'npm run build' || mainCommand.startsWith('npm run build ')) {
-      const options = insideConditional ? ', { allowFailure: true }' : '';
       commands.push(`await runCommand('npm', ['run', 'build']${options});`);
+    } else {
+      // Parse other commands (cargo, go, python tools, etc.)
+      // Split command and arguments
+      const parts = mainCommand.split(/\s+/).filter((p) => p && !p.startsWith('2>'));
+      if (parts.length > 0) {
+        const cmd = parts[0];
+        const args = parts.slice(1).filter((arg) => {
+          // Filter out shell-specific syntax
+          return (
+            arg &&
+            !arg.match(/^["'].*["']$/) &&
+            !arg.startsWith('$') &&
+            !arg.includes('|') &&
+            !arg.includes('&&')
+          );
+        });
+
+        // Only add if it's a recognized command (not a shell builtin)
+        const recognizedCommands = [
+          'cargo',
+          'go',
+          'gofmt',
+          'black',
+          'ruff',
+          'flake8',
+          'mypy',
+          'pytest',
+          'python',
+          'python3',
+          'golangci-lint',
+          'make',
+        ];
+        if (recognizedCommands.includes(cmd) || cmd.startsWith('./')) {
+          if (args.length > 0) {
+            commands.push(`await runCommand('${cmd}', ${JSON.stringify(args)}${options});`);
+          } else {
+            commands.push(`await runCommand('${cmd}', []${options});`);
+          }
+        }
+      }
     }
   }
 
