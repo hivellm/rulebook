@@ -305,38 +305,38 @@ async function detectFrameworks(
   const npmDeps: Record<string, string> = {
     ...(packageJson && typeof packageJson === 'object'
       ? ((
-        packageJson as {
-          dependencies?: Record<string, string>;
-          devDependencies?: Record<string, string>;
-        }
-      ).dependencies ?? {})
+          packageJson as {
+            dependencies?: Record<string, string>;
+            devDependencies?: Record<string, string>;
+          }
+        ).dependencies ?? {})
       : {}),
     ...(packageJson && typeof packageJson === 'object'
       ? ((
-        packageJson as {
-          dependencies?: Record<string, string>;
-          devDependencies?: Record<string, string>;
-        }
-      ).devDependencies ?? {})
+          packageJson as {
+            dependencies?: Record<string, string>;
+            devDependencies?: Record<string, string>;
+          }
+        ).devDependencies ?? {})
       : {}),
   };
 
   const phpDeps: Record<string, string> = {
     ...(composerJson && typeof composerJson === 'object'
       ? ((
-        composerJson as {
-          require?: Record<string, string>;
-          'require-dev'?: Record<string, string>;
-        }
-      ).require ?? {})
+          composerJson as {
+            require?: Record<string, string>;
+            'require-dev'?: Record<string, string>;
+          }
+        ).require ?? {})
       : {}),
     ...(composerJson && typeof composerJson === 'object'
       ? ((
-        composerJson as {
-          require?: Record<string, string>;
-          'require-dev'?: Record<string, string>;
-        }
-      )['require-dev'] ?? {})
+          composerJson as {
+            require?: Record<string, string>;
+            'require-dev'?: Record<string, string>;
+          }
+        )['require-dev'] ?? {})
       : {}),
   };
 
@@ -346,442 +346,442 @@ async function detectFrameworks(
     languages: LanguageDetection['language'][];
     detect: () => Promise<{ detected: boolean; confidence: number; indicators: string[] }>;
   }> = [
-      {
-        id: 'nestjs',
-        label: 'NestJS',
-        languages: ['typescript', 'javascript'],
-        detect: async () => {
-          if (npmDeps['@nestjs/core'] || npmDeps['@nestjs/common']) {
+    {
+      id: 'nestjs',
+      label: 'NestJS',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps['@nestjs/core'] || npmDeps['@nestjs/common']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:@nestjs/core'],
+          };
+        }
+
+        const nestCli = path.join(cwd, 'nest-cli.json');
+        if (await fileExists(nestCli)) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['nest-cli.json'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'spring',
+      label: 'Spring Boot',
+      languages: ['java', 'kotlin'],
+      detect: async () => {
+        const pomPath = path.join(cwd, 'pom.xml');
+        if (await fileExists(pomPath)) {
+          const content = await readFile(pomPath);
+          if (content.includes('spring-boot-starter')) {
             return {
               detected: true,
               confidence: 0.95,
-              indicators: ['package.json:@nestjs/core'],
+              indicators: ['pom.xml:spring-boot-starter'],
             };
           }
+        }
 
-          const nestCli = path.join(cwd, 'nest-cli.json');
-          if (await fileExists(nestCli)) {
+        const gradlePath = await findFirstExisting([
+          path.join(cwd, 'build.gradle'),
+          path.join(cwd, 'build.gradle.kts'),
+        ]);
+        if (gradlePath) {
+          const content = await readFile(gradlePath);
+          if (content.includes('spring-boot-starter')) {
             return {
               detected: true,
               confidence: 0.9,
-              indicators: ['nest-cli.json'],
+              indicators: [`${path.basename(gradlePath)}:spring-boot-starter`],
             };
           }
+        }
 
-          return { detected: false, confidence: 0, indicators: [] };
-        },
+        return { detected: false, confidence: 0, indicators: [] };
       },
-      {
-        id: 'spring',
-        label: 'Spring Boot',
-        languages: ['java', 'kotlin'],
-        detect: async () => {
-          const pomPath = path.join(cwd, 'pom.xml');
-          if (await fileExists(pomPath)) {
-            const content = await readFile(pomPath);
-            if (content.includes('spring-boot-starter')) {
-              return {
-                detected: true,
-                confidence: 0.95,
-                indicators: ['pom.xml:spring-boot-starter'],
-              };
-            }
-          }
+    },
+    {
+      id: 'laravel',
+      label: 'Laravel',
+      languages: ['php'],
+      detect: async () => {
+        if (phpDeps['laravel/framework']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['composer.json:laravel/framework'],
+          };
+        }
 
-          const gradlePath = await findFirstExisting([
-            path.join(cwd, 'build.gradle'),
-            path.join(cwd, 'build.gradle.kts'),
-          ]);
-          if (gradlePath) {
-            const content = await readFile(gradlePath);
-            if (content.includes('spring-boot-starter')) {
-              return {
-                detected: true,
-                confidence: 0.9,
-                indicators: [`${path.basename(gradlePath)}:spring-boot-starter`],
-              };
-            }
-          }
+        const artisanPath = path.join(cwd, 'artisan');
+        if (await fileExists(artisanPath)) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['artisan'],
+          };
+        }
 
-          return { detected: false, confidence: 0, indicators: [] };
-        },
+        return { detected: false, confidence: 0, indicators: [] };
       },
-      {
-        id: 'laravel',
-        label: 'Laravel',
-        languages: ['php'],
-        detect: async () => {
-          if (phpDeps['laravel/framework']) {
+    },
+    {
+      id: 'angular',
+      label: 'Angular',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps['@angular/core']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:@angular/core'],
+          };
+        }
+
+        const angularConfig = path.join(cwd, 'angular.json');
+        if (await fileExists(angularConfig)) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['angular.json'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'react',
+      label: 'React',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps.react && (npmDeps['react-dom'] || npmDeps['react-native'])) {
+          const indicator = npmDeps['react-dom'] ? 'react-dom' : 'react-native';
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: [`package.json:react`, `package.json:${indicator}`],
+          };
+        }
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'vue',
+      label: 'Vue.js',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps.vue) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['package.json:vue'],
+          };
+        }
+
+        const vueConfig = await findFirstExisting([
+          path.join(cwd, 'vite.config.ts'),
+          path.join(cwd, 'vite.config.js'),
+        ]);
+        if (vueConfig) {
+          const content = await readFile(vueConfig);
+          if (content.includes('@vitejs/plugin-vue') || content.includes('vue()')) {
+            return {
+              detected: true,
+              confidence: 0.8,
+              indicators: [path.basename(vueConfig)],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'nuxt',
+      label: 'Nuxt',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps.nuxt) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['package.json:nuxt'],
+          };
+        }
+
+        const nuxtConfig = await findFiles('nuxt.config.*', cwd);
+        if (nuxtConfig.length > 0) {
+          return {
+            detected: true,
+            confidence: 0.85,
+            indicators: [path.basename(nuxtConfig[0])],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'django',
+      label: 'Django',
+      languages: ['python'],
+      detect: async () => {
+        const requirementsPath = path.join(cwd, 'requirements.txt');
+        if (await fileExists(requirementsPath)) {
+          const content = await readFile(requirementsPath);
+          if (content.includes('Django')) {
             return {
               detected: true,
               confidence: 0.95,
-              indicators: ['composer.json:laravel/framework'],
+              indicators: ['requirements.txt:Django'],
             };
           }
+        }
 
-          const artisanPath = path.join(cwd, 'artisan');
-          if (await fileExists(artisanPath)) {
+        const managePy = path.join(cwd, 'manage.py');
+        if (await fileExists(managePy)) {
+          const content = await readFile(managePy);
+          if (content.includes('django')) {
             return {
               detected: true,
               confidence: 0.9,
-              indicators: ['artisan'],
+              indicators: ['manage.py'],
             };
           }
+        }
 
-          return { detected: false, confidence: 0, indicators: [] };
-        },
+        return { detected: false, confidence: 0, indicators: [] };
       },
-      {
-        id: 'angular',
-        label: 'Angular',
-        languages: ['typescript', 'javascript'],
-        detect: async () => {
-          if (npmDeps['@angular/core']) {
+    },
+    {
+      id: 'flask',
+      label: 'Flask',
+      languages: ['python'],
+      detect: async () => {
+        const requirementsPath = path.join(cwd, 'requirements.txt');
+        if (await fileExists(requirementsPath)) {
+          const content = await readFile(requirementsPath);
+          if (content.includes('Flask')) {
             return {
               detected: true,
               confidence: 0.95,
-              indicators: ['package.json:@angular/core'],
+              indicators: ['requirements.txt:Flask'],
             };
           }
+        }
 
-          const angularConfig = path.join(cwd, 'angular.json');
-          if (await fileExists(angularConfig)) {
-            return {
-              detected: true,
-              confidence: 0.9,
-              indicators: ['angular.json'],
-            };
-          }
-
-          return { detected: false, confidence: 0, indicators: [] };
-        },
+        return { detected: false, confidence: 0, indicators: [] };
       },
-      {
-        id: 'react',
-        label: 'React',
-        languages: ['typescript', 'javascript'],
-        detect: async () => {
-          if (npmDeps.react && (npmDeps['react-dom'] || npmDeps['react-native'])) {
-            const indicator = npmDeps['react-dom'] ? 'react-dom' : 'react-native';
-            return {
-              detected: true,
-              confidence: 0.9,
-              indicators: [`package.json:react`, `package.json:${indicator}`],
-            };
-          }
-          return { detected: false, confidence: 0, indicators: [] };
-        },
-      },
-      {
-        id: 'vue',
-        label: 'Vue.js',
-        languages: ['typescript', 'javascript'],
-        detect: async () => {
-          if (npmDeps.vue) {
-            return {
-              detected: true,
-              confidence: 0.9,
-              indicators: ['package.json:vue'],
-            };
-          }
-
-          const vueConfig = await findFirstExisting([
-            path.join(cwd, 'vite.config.ts'),
-            path.join(cwd, 'vite.config.js'),
-          ]);
-          if (vueConfig) {
-            const content = await readFile(vueConfig);
-            if (content.includes('@vitejs/plugin-vue') || content.includes('vue()')) {
-              return {
-                detected: true,
-                confidence: 0.8,
-                indicators: [path.basename(vueConfig)],
-              };
-            }
-          }
-
-          return { detected: false, confidence: 0, indicators: [] };
-        },
-      },
-      {
-        id: 'nuxt',
-        label: 'Nuxt',
-        languages: ['typescript', 'javascript'],
-        detect: async () => {
-          if (npmDeps.nuxt) {
-            return {
-              detected: true,
-              confidence: 0.9,
-              indicators: ['package.json:nuxt'],
-            };
-          }
-
-          const nuxtConfig = await findFiles('nuxt.config.*', cwd);
-          if (nuxtConfig.length > 0) {
-            return {
-              detected: true,
-              confidence: 0.85,
-              indicators: [path.basename(nuxtConfig[0])],
-            };
-          }
-
-          return { detected: false, confidence: 0, indicators: [] };
-        },
-      },
-      {
-        id: 'django',
-        label: 'Django',
-        languages: ['python'],
-        detect: async () => {
-          const requirementsPath = path.join(cwd, 'requirements.txt');
-          if (await fileExists(requirementsPath)) {
-            const content = await readFile(requirementsPath);
-            if (content.includes('Django')) {
-              return {
-                detected: true,
-                confidence: 0.95,
-                indicators: ['requirements.txt:Django'],
-              };
-            }
-          }
-
-          const managePy = path.join(cwd, 'manage.py');
-          if (await fileExists(managePy)) {
-            const content = await readFile(managePy);
-            if (content.includes('django')) {
-              return {
-                detected: true,
-                confidence: 0.9,
-                indicators: ['manage.py'],
-              };
-            }
-          }
-
-          return { detected: false, confidence: 0, indicators: [] };
-        },
-      },
-      {
-        id: 'flask',
-        label: 'Flask',
-        languages: ['python'],
-        detect: async () => {
-          const requirementsPath = path.join(cwd, 'requirements.txt');
-          if (await fileExists(requirementsPath)) {
-            const content = await readFile(requirementsPath);
-            if (content.includes('Flask')) {
-              return {
-                detected: true,
-                confidence: 0.95,
-                indicators: ['requirements.txt:Flask'],
-              };
-            }
-          }
-
-          return { detected: false, confidence: 0, indicators: [] };
-        },
-      },
-      {
-        id: 'rails',
-        label: 'Ruby on Rails',
-        languages: ['ruby'],
-        detect: async () => {
-          const gemfilePath = path.join(cwd, 'Gemfile');
-          if (await fileExists(gemfilePath)) {
-            const content = await readFile(gemfilePath);
-            if (content.includes('rails')) {
-              return {
-                detected: true,
-                confidence: 0.95,
-                indicators: ['Gemfile:rails'],
-              };
-            }
-          }
-
-          const railsPath = path.join(cwd, 'bin', 'rails');
-          if (await fileExists(railsPath)) {
-            return {
-              detected: true,
-              confidence: 0.9,
-              indicators: ['bin/rails'],
-            };
-          }
-
-          return { detected: false, confidence: 0, indicators: [] };
-        },
-      },
-      {
-        id: 'symfony',
-        label: 'Symfony',
-        languages: ['php'],
-        detect: async () => {
-          if (phpDeps['symfony/framework-bundle']) {
+    },
+    {
+      id: 'rails',
+      label: 'Ruby on Rails',
+      languages: ['ruby'],
+      detect: async () => {
+        const gemfilePath = path.join(cwd, 'Gemfile');
+        if (await fileExists(gemfilePath)) {
+          const content = await readFile(gemfilePath);
+          if (content.includes('rails')) {
             return {
               detected: true,
               confidence: 0.95,
-              indicators: ['composer.json:symfony/framework-bundle'],
+              indicators: ['Gemfile:rails'],
             };
           }
+        }
 
-          const symfonyConfig = path.join(cwd, 'symfony.lock');
-          if (await fileExists(symfonyConfig)) {
+        const railsPath = path.join(cwd, 'bin', 'rails');
+        if (await fileExists(railsPath)) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['bin/rails'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'symfony',
+      label: 'Symfony',
+      languages: ['php'],
+      detect: async () => {
+        if (phpDeps['symfony/framework-bundle']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['composer.json:symfony/framework-bundle'],
+          };
+        }
+
+        const symfonyConfig = path.join(cwd, 'symfony.lock');
+        if (await fileExists(symfonyConfig)) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['symfony.lock'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'zend',
+      label: 'Zend Framework',
+      languages: ['php'],
+      detect: async () => {
+        if (phpDeps['zendframework/zendframework'] || phpDeps['laminas/laminas-mvc']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['composer.json:zendframework or laminas'],
+          };
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'jquery',
+      label: 'jQuery',
+      languages: ['javascript', 'typescript'],
+      detect: async () => {
+        if (npmDeps['jquery']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:jquery'],
+          };
+        }
+
+        // Check for jQuery in HTML files
+        const indexHtml = path.join(cwd, 'index.html');
+        if (await fileExists(indexHtml)) {
+          const content = await readFile(indexHtml);
+          if (content.includes('jquery') || content.includes('jQuery')) {
+            return {
+              detected: true,
+              confidence: 0.8,
+              indicators: ['index.html:jquery'],
+            };
+          }
+        }
+
+        return { detected: false, confidence: 0, indicators: [] };
+      },
+    },
+    {
+      id: 'reactnative',
+      label: 'React Native',
+      languages: ['javascript', 'typescript'],
+      detect: async () => {
+        if (npmDeps['react-native']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:react-native'],
+          };
+        }
+
+        const appJson = path.join(cwd, 'app.json');
+        if (await fileExists(appJson)) {
+          const content = await readFile(appJson);
+          if (content.includes('react-native') || content.includes('expo')) {
             return {
               detected: true,
               confidence: 0.9,
-              indicators: ['symfony.lock'],
+              indicators: ['app.json'],
             };
           }
+        }
 
-          return { detected: false, confidence: 0, indicators: [] };
-        },
+        return { detected: false, confidence: 0, indicators: [] };
       },
-      {
-        id: 'zend',
-        label: 'Zend Framework',
-        languages: ['php'],
-        detect: async () => {
-          if (phpDeps['zendframework/zendframework'] || phpDeps['laminas/laminas-mvc']) {
+    },
+    {
+      id: 'flutter',
+      label: 'Flutter',
+      languages: ['dart'],
+      detect: async () => {
+        const pubspecPath = path.join(cwd, 'pubspec.yaml');
+        if (await fileExists(pubspecPath)) {
+          const content = await readFile(pubspecPath);
+          if (content.includes('flutter:')) {
             return {
               detected: true,
               confidence: 0.95,
-              indicators: ['composer.json:zendframework or laminas'],
+              indicators: ['pubspec.yaml:flutter'],
             };
           }
+        }
 
-          return { detected: false, confidence: 0, indicators: [] };
-        },
+        return { detected: false, confidence: 0, indicators: [] };
       },
-      {
-        id: 'jquery',
-        label: 'jQuery',
-        languages: ['javascript', 'typescript'],
-        detect: async () => {
-          if (npmDeps['jquery']) {
-            return {
-              detected: true,
-              confidence: 0.95,
-              indicators: ['package.json:jquery'],
-            };
-          }
+    },
+    {
+      id: 'nextjs',
+      label: 'Next.js',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps['next']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:next'],
+          };
+        }
 
-          // Check for jQuery in HTML files
-          const indexHtml = path.join(cwd, 'index.html');
-          if (await fileExists(indexHtml)) {
-            const content = await readFile(indexHtml);
-            if (content.includes('jquery') || content.includes('jQuery')) {
-              return {
-                detected: true,
-                confidence: 0.8,
-                indicators: ['index.html:jquery'],
-              };
-            }
-          }
+        const nextConfig = await findFirstExisting([
+          path.join(cwd, 'next.config.js'),
+          path.join(cwd, 'next.config.mjs'),
+          path.join(cwd, 'next.config.ts'),
+        ]);
+        if (nextConfig) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: [path.basename(nextConfig)],
+          };
+        }
 
-          return { detected: false, confidence: 0, indicators: [] };
-        },
+        return { detected: false, confidence: 0, indicators: [] };
       },
-      {
-        id: 'reactnative',
-        label: 'React Native',
-        languages: ['javascript', 'typescript'],
-        detect: async () => {
-          if (npmDeps['react-native']) {
-            return {
-              detected: true,
-              confidence: 0.95,
-              indicators: ['package.json:react-native'],
-            };
-          }
+    },
+    {
+      id: 'electron',
+      label: 'Electron',
+      languages: ['typescript', 'javascript'],
+      detect: async () => {
+        if (npmDeps['electron']) {
+          return {
+            detected: true,
+            confidence: 0.95,
+            indicators: ['package.json:electron'],
+          };
+        }
 
-          const appJson = path.join(cwd, 'app.json');
-          if (await fileExists(appJson)) {
-            const content = await readFile(appJson);
-            if (content.includes('react-native') || content.includes('expo')) {
-              return {
-                detected: true,
-                confidence: 0.9,
-                indicators: ['app.json'],
-              };
-            }
-          }
+        // Check for electron-builder or electron-forge
+        if (npmDeps['electron-builder'] || npmDeps['@electron-forge/cli']) {
+          return {
+            detected: true,
+            confidence: 0.9,
+            indicators: ['package.json:electron-builder or electron-forge'],
+          };
+        }
 
-          return { detected: false, confidence: 0, indicators: [] };
-        },
+        return { detected: false, confidence: 0, indicators: [] };
       },
-      {
-        id: 'flutter',
-        label: 'Flutter',
-        languages: ['dart'],
-        detect: async () => {
-          const pubspecPath = path.join(cwd, 'pubspec.yaml');
-          if (await fileExists(pubspecPath)) {
-            const content = await readFile(pubspecPath);
-            if (content.includes('flutter:')) {
-              return {
-                detected: true,
-                confidence: 0.95,
-                indicators: ['pubspec.yaml:flutter'],
-              };
-            }
-          }
-
-          return { detected: false, confidence: 0, indicators: [] };
-        },
-      },
-      {
-        id: 'nextjs',
-        label: 'Next.js',
-        languages: ['typescript', 'javascript'],
-        detect: async () => {
-          if (npmDeps['next']) {
-            return {
-              detected: true,
-              confidence: 0.95,
-              indicators: ['package.json:next'],
-            };
-          }
-
-          const nextConfig = await findFirstExisting([
-            path.join(cwd, 'next.config.js'),
-            path.join(cwd, 'next.config.mjs'),
-            path.join(cwd, 'next.config.ts'),
-          ]);
-          if (nextConfig) {
-            return {
-              detected: true,
-              confidence: 0.9,
-              indicators: [path.basename(nextConfig)],
-            };
-          }
-
-          return { detected: false, confidence: 0, indicators: [] };
-        },
-      },
-      {
-        id: 'electron',
-        label: 'Electron',
-        languages: ['typescript', 'javascript'],
-        detect: async () => {
-          if (npmDeps['electron']) {
-            return {
-              detected: true,
-              confidence: 0.95,
-              indicators: ['package.json:electron'],
-            };
-          }
-
-          // Check for electron-builder or electron-forge
-          if (npmDeps['electron-builder'] || npmDeps['@electron-forge/cli']) {
-            return {
-              detected: true,
-              confidence: 0.9,
-              indicators: ['package.json:electron-builder or electron-forge'],
-            };
-          }
-
-          return { detected: false, confidence: 0, indicators: [] };
-        },
-      },
-    ];
+    },
+  ];
 
   const detections: FrameworkDetection[] = [];
 
@@ -984,7 +984,10 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
   // Check package.json for database drivers
   if (await fileExists(packageJson)) {
     try {
-      const pkg = await readJsonFile<{ dependencies?: Record<string, string>; devDependencies?: Record<string, string> }>(packageJson);
+      const pkg = await readJsonFile<{
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      }>(packageJson);
       const allDeps = { ...(pkg?.dependencies || {}), ...(pkg?.devDependencies || {}) };
 
       // PostgreSQL
@@ -993,7 +996,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
           service: 'postgresql',
           detected: true,
           confidence: 0.9,
-          indicators: ['pg', 'postgres', '@prisma/client'].filter(dep => allDeps[dep]),
+          indicators: ['pg', 'postgres', '@prisma/client'].filter((dep) => allDeps[dep]),
           source: packageJson,
         });
       }
@@ -1004,7 +1007,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
           service: allDeps['mariadb'] ? 'mariadb' : 'mysql',
           detected: true,
           confidence: 0.9,
-          indicators: ['mysql2', 'mysql', 'mariadb'].filter(dep => allDeps[dep]),
+          indicators: ['mysql2', 'mysql', 'mariadb'].filter((dep) => allDeps[dep]),
           source: packageJson,
         });
       }
@@ -1015,7 +1018,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
           service: 'mongodb',
           detected: true,
           confidence: 0.9,
-          indicators: ['mongodb', 'mongoose'].filter(dep => allDeps[dep]),
+          indicators: ['mongodb', 'mongoose'].filter((dep) => allDeps[dep]),
           source: packageJson,
         });
       }
@@ -1026,7 +1029,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
           service: 'redis',
           detected: true,
           confidence: 0.9,
-          indicators: ['redis', 'ioredis', '@redis/client'].filter(dep => allDeps[dep]),
+          indicators: ['redis', 'ioredis', '@redis/client'].filter((dep) => allDeps[dep]),
           source: packageJson,
         });
       }
@@ -1048,7 +1051,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
           service: 'elasticsearch',
           detected: true,
           confidence: 0.9,
-          indicators: ['@elastic/elasticsearch', 'elasticsearch'].filter(dep => allDeps[dep]),
+          indicators: ['@elastic/elasticsearch', 'elasticsearch'].filter((dep) => allDeps[dep]),
           source: packageJson,
         });
       }
@@ -1081,7 +1084,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
           service: 'rabbitmq',
           detected: true,
           confidence: 0.9,
-          indicators: ['amqplib', 'amqp-connection-manager'].filter(dep => allDeps[dep]),
+          indicators: ['amqplib', 'amqp-connection-manager'].filter((dep) => allDeps[dep]),
           source: packageJson,
         });
       }
@@ -1092,7 +1095,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
           service: 'kafka',
           detected: true,
           confidence: 0.9,
-          indicators: ['kafkajs', 'node-rdkafka'].filter(dep => allDeps[dep]),
+          indicators: ['kafkajs', 'node-rdkafka'].filter((dep) => allDeps[dep]),
           source: packageJson,
         });
       }
@@ -1103,7 +1106,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
           service: 's3',
           detected: true,
           confidence: 0.8,
-          indicators: ['@aws-sdk/client-s3', 'aws-sdk'].filter(dep => allDeps[dep]),
+          indicators: ['@aws-sdk/client-s3', 'aws-sdk'].filter((dep) => allDeps[dep]),
           source: packageJson,
         });
       }
@@ -1147,7 +1150,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
           service: 'sqlite',
           detected: true,
           confidence: 0.9,
-          indicators: ['better-sqlite3', 'sqlite3'].filter(dep => allDeps[dep]),
+          indicators: ['better-sqlite3', 'sqlite3'].filter((dep) => allDeps[dep]),
           source: packageJson,
         });
       }
@@ -1169,7 +1172,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
           service: 'dynamodb',
           detected: true,
           confidence: 0.8,
-          indicators: ['@aws-sdk/client-dynamodb', 'aws-sdk'].filter(dep => allDeps[dep]),
+          indicators: ['@aws-sdk/client-dynamodb', 'aws-sdk'].filter((dep) => allDeps[dep]),
           source: packageJson,
         });
       }
@@ -1180,7 +1183,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
           service: 'sqlserver',
           detected: true,
           confidence: 0.9,
-          indicators: ['mssql', 'tedious'].filter(dep => allDeps[dep]),
+          indicators: ['mssql', 'tedious'].filter((dep) => allDeps[dep]),
           source: packageJson,
         });
       }
@@ -1210,8 +1213,11 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         const upperLine = line.toUpperCase();
 
         // PostgreSQL
-        if (upperLine.includes('POSTGRES') || (upperLine.includes('DATABASE_URL') && upperLine.includes('POSTGRES'))) {
-          if (!services.find(s => s.service === 'postgresql')) {
+        if (
+          upperLine.includes('POSTGRES') ||
+          (upperLine.includes('DATABASE_URL') && upperLine.includes('POSTGRES'))
+        ) {
+          if (!services.find((s) => s.service === 'postgresql')) {
             services.push({
               service: 'postgresql',
               detected: true,
@@ -1224,7 +1230,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // MySQL
         if (upperLine.includes('MYSQL') && !upperLine.includes('MARIADB')) {
-          if (!services.find(s => s.service === 'mysql')) {
+          if (!services.find((s) => s.service === 'mysql')) {
             services.push({
               service: 'mysql',
               detected: true,
@@ -1237,7 +1243,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // MariaDB
         if (upperLine.includes('MARIADB')) {
-          if (!services.find(s => s.service === 'mariadb')) {
+          if (!services.find((s) => s.service === 'mariadb')) {
             services.push({
               service: 'mariadb',
               detected: true,
@@ -1250,7 +1256,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // MongoDB
         if (upperLine.includes('MONGODB')) {
-          if (!services.find(s => s.service === 'mongodb')) {
+          if (!services.find((s) => s.service === 'mongodb')) {
             services.push({
               service: 'mongodb',
               detected: true,
@@ -1263,7 +1269,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // Redis
         if (upperLine.includes('REDIS')) {
-          if (!services.find(s => s.service === 'redis')) {
+          if (!services.find((s) => s.service === 'redis')) {
             services.push({
               service: 'redis',
               detected: true,
@@ -1276,7 +1282,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // Elasticsearch
         if (upperLine.includes('ELASTICSEARCH')) {
-          if (!services.find(s => s.service === 'elasticsearch')) {
+          if (!services.find((s) => s.service === 'elasticsearch')) {
             services.push({
               service: 'elasticsearch',
               detected: true,
@@ -1289,7 +1295,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // RabbitMQ
         if (upperLine.includes('RABBITMQ') || upperLine.includes('AMQP')) {
-          if (!services.find(s => s.service === 'rabbitmq')) {
+          if (!services.find((s) => s.service === 'rabbitmq')) {
             services.push({
               service: 'rabbitmq',
               detected: true,
@@ -1302,7 +1308,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // Kafka
         if (upperLine.includes('KAFKA')) {
-          if (!services.find(s => s.service === 'kafka')) {
+          if (!services.find((s) => s.service === 'kafka')) {
             services.push({
               service: 'kafka',
               detected: true,
@@ -1315,7 +1321,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // AWS S3
         if (upperLine.includes('S3_') || (upperLine.includes('AWS_') && upperLine.includes('S3'))) {
-          if (!services.find(s => s.service === 's3')) {
+          if (!services.find((s) => s.service === 's3')) {
             services.push({
               service: 's3',
               detected: true,
@@ -1328,7 +1334,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // Azure Blob
         if (upperLine.includes('AZURE_STORAGE') || upperLine.includes('AZURE_BLOB')) {
-          if (!services.find(s => s.service === 'azure_blob')) {
+          if (!services.find((s) => s.service === 'azure_blob')) {
             services.push({
               service: 'azure_blob',
               detected: true,
@@ -1341,7 +1347,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // Google Cloud Storage
         if (upperLine.includes('GCS_') || upperLine.includes('GCP_STORAGE')) {
-          if (!services.find(s => s.service === 'gcs')) {
+          if (!services.find((s) => s.service === 'gcs')) {
             services.push({
               service: 'gcs',
               detected: true,
@@ -1354,7 +1360,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // MinIO
         if (upperLine.includes('MINIO')) {
-          if (!services.find(s => s.service === 'minio')) {
+          if (!services.find((s) => s.service === 'minio')) {
             services.push({
               service: 'minio',
               detected: true,
@@ -1367,7 +1373,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // InfluxDB
         if (upperLine.includes('INFLUXDB')) {
-          if (!services.find(s => s.service === 'influxdb')) {
+          if (!services.find((s) => s.service === 'influxdb')) {
             services.push({
               service: 'influxdb',
               detected: true,
@@ -1380,7 +1386,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // Neo4j
         if (upperLine.includes('NEO4J')) {
-          if (!services.find(s => s.service === 'neo4j')) {
+          if (!services.find((s) => s.service === 'neo4j')) {
             services.push({
               service: 'neo4j',
               detected: true,
@@ -1393,7 +1399,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // SQL Server
         if (upperLine.includes('SQL_SERVER') || upperLine.includes('MSSQL')) {
-          if (!services.find(s => s.service === 'sqlserver')) {
+          if (!services.find((s) => s.service === 'sqlserver')) {
             services.push({
               service: 'sqlserver',
               detected: true,
@@ -1406,7 +1412,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
 
         // Oracle
         if (upperLine.includes('ORACLE')) {
-          if (!services.find(s => s.service === 'oracle')) {
+          if (!services.find((s) => s.service === 'oracle')) {
             services.push({
               service: 'oracle',
               detected: true,
@@ -1431,7 +1437,10 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         const upperContent = composeContent.toUpperCase();
 
         // PostgreSQL
-        if (upperContent.includes('POSTGRES') && !services.find(s => s.service === 'postgresql')) {
+        if (
+          upperContent.includes('POSTGRES') &&
+          !services.find((s) => s.service === 'postgresql')
+        ) {
           services.push({
             service: 'postgresql',
             detected: true,
@@ -1442,7 +1451,11 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         }
 
         // MySQL
-        if (upperContent.includes('MYSQL') && !upperContent.includes('MARIADB') && !services.find(s => s.service === 'mysql')) {
+        if (
+          upperContent.includes('MYSQL') &&
+          !upperContent.includes('MARIADB') &&
+          !services.find((s) => s.service === 'mysql')
+        ) {
           services.push({
             service: 'mysql',
             detected: true,
@@ -1453,7 +1466,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         }
 
         // MariaDB
-        if (upperContent.includes('MARIADB') && !services.find(s => s.service === 'mariadb')) {
+        if (upperContent.includes('MARIADB') && !services.find((s) => s.service === 'mariadb')) {
           services.push({
             service: 'mariadb',
             detected: true,
@@ -1464,7 +1477,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         }
 
         // MongoDB
-        if (upperContent.includes('MONGO') && !services.find(s => s.service === 'mongodb')) {
+        if (upperContent.includes('MONGO') && !services.find((s) => s.service === 'mongodb')) {
           services.push({
             service: 'mongodb',
             detected: true,
@@ -1475,7 +1488,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         }
 
         // Redis
-        if (upperContent.includes('REDIS') && !services.find(s => s.service === 'redis')) {
+        if (upperContent.includes('REDIS') && !services.find((s) => s.service === 'redis')) {
           services.push({
             service: 'redis',
             detected: true,
@@ -1486,7 +1499,10 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         }
 
         // Memcached
-        if (upperContent.includes('MEMCACHED') && !services.find(s => s.service === 'memcached')) {
+        if (
+          upperContent.includes('MEMCACHED') &&
+          !services.find((s) => s.service === 'memcached')
+        ) {
           services.push({
             service: 'memcached',
             detected: true,
@@ -1497,7 +1513,10 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         }
 
         // Elasticsearch
-        if (upperContent.includes('ELASTICSEARCH') && !services.find(s => s.service === 'elasticsearch')) {
+        if (
+          upperContent.includes('ELASTICSEARCH') &&
+          !services.find((s) => s.service === 'elasticsearch')
+        ) {
           services.push({
             service: 'elasticsearch',
             detected: true,
@@ -1508,7 +1527,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         }
 
         // Neo4j
-        if (upperContent.includes('NEO4J') && !services.find(s => s.service === 'neo4j')) {
+        if (upperContent.includes('NEO4J') && !services.find((s) => s.service === 'neo4j')) {
           services.push({
             service: 'neo4j',
             detected: true,
@@ -1519,7 +1538,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         }
 
         // InfluxDB
-        if (upperContent.includes('INFLUXDB') && !services.find(s => s.service === 'influxdb')) {
+        if (upperContent.includes('INFLUXDB') && !services.find((s) => s.service === 'influxdb')) {
           services.push({
             service: 'influxdb',
             detected: true,
@@ -1530,7 +1549,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         }
 
         // RabbitMQ
-        if (upperContent.includes('RABBITMQ') && !services.find(s => s.service === 'rabbitmq')) {
+        if (upperContent.includes('RABBITMQ') && !services.find((s) => s.service === 'rabbitmq')) {
           services.push({
             service: 'rabbitmq',
             detected: true,
@@ -1541,7 +1560,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         }
 
         // Kafka
-        if (upperContent.includes('KAFKA') && !services.find(s => s.service === 'kafka')) {
+        if (upperContent.includes('KAFKA') && !services.find((s) => s.service === 'kafka')) {
           services.push({
             service: 'kafka',
             detected: true,
@@ -1552,7 +1571,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         }
 
         // MinIO
-        if (upperContent.includes('MINIO') && !services.find(s => s.service === 'minio')) {
+        if (upperContent.includes('MINIO') && !services.find((s) => s.service === 'minio')) {
           services.push({
             service: 'minio',
             detected: true,
@@ -1563,7 +1582,10 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
         }
 
         // SQL Server
-        if ((upperContent.includes('SQLSERVER') || upperContent.includes('MSSQL')) && !services.find(s => s.service === 'sqlserver')) {
+        if (
+          (upperContent.includes('SQLSERVER') || upperContent.includes('MSSQL')) &&
+          !services.find((s) => s.service === 'sqlserver')
+        ) {
           services.push({
             service: 'sqlserver',
             detected: true,

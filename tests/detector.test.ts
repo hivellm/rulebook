@@ -1002,10 +1002,7 @@ describe('detector', () => {
     });
 
     it('should detect Redis from .env file', async () => {
-      await fs.writeFile(
-        path.join(testDir, '.env'),
-        'REDIS_HOST=localhost\nREDIS_PORT=6379'
-      );
+      await fs.writeFile(path.join(testDir, '.env'), 'REDIS_HOST=localhost\nREDIS_PORT=6379');
 
       const result = await detectProject(testDir);
 

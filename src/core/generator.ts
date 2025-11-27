@@ -260,7 +260,7 @@ export async function generateServiceRules(service: string): Promise<string> {
 
   const serviceTitle = service
     .split(/[-_]/)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 
   return `<!-- ${serviceName}:START -->\n# ${serviceTitle} Instructions\n\nService-specific instructions for ${serviceTitle}.\n<!-- ${serviceName}:END -->\n`;
@@ -439,7 +439,7 @@ function generateModuleReference(module: string, rulebookDir: string = 'rulebook
 function generateServiceReference(service: string, rulebookDir: string = 'rulebook'): string {
   const serviceName = service
     .split(/[-_]/)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
   const serviceId = service.toUpperCase().replace(/-/g, '_');
   const quickRef = ['Connection setup', 'Basic operations', 'Best practices', 'Configuration'];
