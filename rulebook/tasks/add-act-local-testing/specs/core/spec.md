@@ -120,3 +120,30 @@ And the system SHALL parse ACT error messages
 And the system SHALL provide troubleshooting suggestions
 And the system SHALL suggest common fixes (Docker issues, workflow syntax, etc)
 
+### Requirement: ACT Test Script
+
+The system SHALL provide a test script that runs tests via ACT.
+
+#### Scenario: Script runs tests via ACT
+Given Docker and ACT are available
+When `scripts/test-act.sh` (or `.js`) is executed
+Then the script SHALL detect available test workflows
+And the script SHALL run workflows using ACT
+And the script SHALL display output similar to GitHub Actions
+And the script SHALL exit with code 0 on success or non-zero on failure
+
+#### Scenario: Script handles missing dependencies
+Given Docker or ACT are not available
+When `scripts/test-act.sh` (or `.js`) is executed
+Then the script SHALL detect missing dependencies
+And the script SHALL provide clear error messages
+And the script SHALL suggest installation steps
+And the script SHALL exit with non-zero code
+
+#### Scenario: Script is cross-platform
+Given the script needs to run on Windows, Linux, or Mac
+When the script is executed
+Then the script SHALL detect the platform
+And the script SHALL use platform-appropriate commands
+And the script SHALL handle path separators correctly
+

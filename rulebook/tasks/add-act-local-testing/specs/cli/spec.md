@@ -90,3 +90,29 @@ Then the system SHALL detect permission issues
 And the system SHALL provide instructions to add user to docker group (Linux)
 Or suggest running with appropriate permissions
 
+### Requirement: Pre-Push Hook Integration
+
+The system SHALL integrate ACT testing into pre-push hooks when enabled.
+
+#### Scenario: ACT enabled in pre-push hook
+Given ACT is enabled in project configuration
+And `scripts/test-act.sh` (or `.js`) exists
+When the user attempts to push changes
+Then the pre-push hook SHALL execute the ACT test script instead of direct `npm test`
+And the hook SHALL use ACT to run GitHub Actions workflows
+And the hook SHALL block push if ACT tests fail
+
+#### Scenario: ACT script not available
+Given ACT is enabled but script is missing
+When the user attempts to push changes
+Then the pre-push hook SHALL fallback to regular `npm test`
+And the hook SHALL warn that ACT script is not available
+And the hook SHALL suggest running `rulebook test:act --setup`
+
+#### Scenario: ACT disabled in configuration
+Given ACT is not enabled in project configuration
+When the user attempts to push changes
+Then the pre-push hook SHALL use regular test commands
+And the hook SHALL NOT attempt to use ACT
+And the hook SHALL behave as if ACT feature doesn't exist
+
