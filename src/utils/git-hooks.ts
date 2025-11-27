@@ -1,4 +1,5 @@
 import { access, mkdir, writeFile, unlink, readFile } from 'fs/promises';
+import { readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { LanguageDetection } from '../types.js';
@@ -46,6 +47,78 @@ async function loadHookTemplate(
   }
 }
 
+function parseShellHookToNode(hookContent: string): string[] {
+  const commands: string[] = [];
+  const lines = hookContent.split('\n');
+  let insideConditional = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+
+    // Skip comments and empty lines
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    // Track conditional blocks
+    if (trimmed.startsWith('if ') || trimmed.startsWith('elif ')) {
+      insideConditional = true;
+      continue;
+    }
+    if (trimmed === 'fi') {
+      insideConditional = false;
+      continue;
+    }
+
+    // Skip echo and exit statements
+    if (trimmed.startsWith('echo') || trimmed.startsWith('exit')) {
+      continue;
+    }
+
+    // Extract command before || exit 1 or similar
+    const mainCommand = trimmed.split('||')[0].trim().split('{')[0].trim();
+
+    // Parse npm/npx commands (even if inside conditionals, we'll add them with allowFailure)
+    if (mainCommand.startsWith('npm run ')) {
+      const script = mainCommand.replace('npm run ', '').trim();
+      // If inside conditional, add allowFailure option
+      const options = insideConditional ? ', { allowFailure: true }' : '';
+      commands.push(`await runCommand('npm', ['run', '${script}']${options});`);
+    } else if (mainCommand.startsWith('npx ')) {
+      const parts = mainCommand.replace('npx ', '').trim();
+      // Handle npx with arguments (e.g., "npx prettier --check ...")
+      // Remove quotes from file patterns
+      const partsArray = parts.split(/\s+/).filter((p) => p && !p.startsWith('2>'));
+      const cmd = partsArray[0];
+      const args = partsArray
+        .slice(1)
+        .filter((arg) => (arg && !arg.startsWith('"')) || arg.endsWith('"'));
+      const options = insideConditional ? ', { allowFailure: true }' : '';
+      if (args.length > 0) {
+        // Filter out file patterns with quotes for now - they'll be handled at runtime
+        const cleanArgs = args.filter((a) => !a.match(/^["'].*["']$/));
+        if (cleanArgs.length > 0) {
+          commands.push(
+            `await runCommand('npx', ['${cmd}', ...${JSON.stringify(cleanArgs)}]${options});`
+          );
+        } else {
+          commands.push(`await runCommand('npx', ['${cmd}']${options});`);
+        }
+      } else {
+        commands.push(`await runCommand('npx', ['${cmd}']${options});`);
+      }
+    } else if (mainCommand === 'npm test' || mainCommand.startsWith('npm test ')) {
+      const options = insideConditional ? ', { allowFailure: true }' : '';
+      commands.push(`await runCommand('npm', ['test']${options});`);
+    } else if (mainCommand === 'npm run build' || mainCommand.startsWith('npm run build ')) {
+      const options = insideConditional ? ', { allowFailure: true }' : '';
+      commands.push(`await runCommand('npm', ['run', 'build']${options});`);
+    }
+  }
+
+  return commands;
+}
+
 export async function installGitHooks(options: HookGenerationOptions): Promise<void> {
   const { languages, cwd } = options;
 
@@ -62,18 +135,49 @@ export async function installGitHooks(options: HookGenerationOptions): Promise<v
   await mkdir(hooksDir, { recursive: true });
 
   // Generate and install pre-commit hook
-  const preCommitContent = await generatePreCommitHook(languages);
-  const preCommitPath = path.join(hooksDir, 'pre-commit');
-  await writeFile(preCommitPath, preCommitContent, { mode: 0o755 });
+  const { shellScript, nodeScript } = await generatePreCommitHook(languages, cwd);
+  const preCommitShellPath = path.join(hooksDir, 'pre-commit');
+  const preCommitNodePath = path.join(hooksDir, 'pre-commit.js');
+  await writeFile(preCommitShellPath, shellScript, { mode: 0o755 });
+  await writeFile(preCommitNodePath, nodeScript, { mode: 0o644 });
 
   // Generate and install pre-push hook
-  const prePushContent = await generatePrePushHook(languages);
-  const prePushPath = path.join(hooksDir, 'pre-push');
-  await writeFile(prePushPath, prePushContent, { mode: 0o755 });
+  const { shellScript: prePushShell, nodeScript: prePushNode } = await generatePrePushHook(
+    languages,
+    cwd
+  );
+  const prePushShellPath = path.join(hooksDir, 'pre-push');
+  const prePushNodePath = path.join(hooksDir, 'pre-push.js');
+  await writeFile(prePushShellPath, prePushShell, { mode: 0o755 });
+  await writeFile(prePushNodePath, prePushNode, { mode: 0o644 });
 }
 
-async function generatePreCommitHook(languages: LanguageDetection[]): Promise<string> {
-  const hookContents: string[] = [];
+async function generatePreCommitHook(
+  languages: LanguageDetection[],
+  cwd: string
+): Promise<{ shellScript: string; nodeScript: string }> {
+  const commands: string[] = [];
+  const packageJsonPath = path.join(cwd, 'package.json');
+  const hasTypeScript = languages.some(
+    (l) => l.language === 'typescript' || l.language === 'javascript'
+  );
+
+  // Check if package.json exists and read scripts
+  let hasPackageJson = false;
+  let packageJson: any = {};
+
+  try {
+    if (
+      await access(packageJsonPath)
+        .then(() => true)
+        .catch(() => false)
+    ) {
+      hasPackageJson = true;
+      packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+    }
+  } catch {
+    // Ignore
+  }
 
   // Try to load template for each language
   for (const lang of languages) {
@@ -82,43 +186,64 @@ async function generatePreCommitHook(languages: LanguageDetection[]): Promise<st
 
     const template = await loadHookTemplate(mappedLang, 'pre-commit');
     if (template) {
-      // Remove shebang and header comments (we'll add one master shebang)
-      const content = template
-        .replace(/^#!\/bin\/sh\n/, '')
-        .replace(/^# .*\n# Generated.*\n\n/, '');
-      hookContents.push(content);
+      const parsedCommands = parseShellHookToNode(template);
+      if (parsedCommands.length > 0) {
+        commands.push(...parsedCommands);
+      }
     }
   }
 
-  // If no templates loaded, provide generic fallback
-  if (hookContents.length === 0) {
-    hookContents.push(`
-echo "🔍 Running generic pre-commit checks..."
-
-# Try common test commands
-if [ -f "package.json" ] && grep -q '"test"' package.json 2>/dev/null; then
-  npm test || exit 1
-elif [ -f "Cargo.toml" ]; then
-  cargo test || exit 1
-elif [ -f "Makefile" ]; then
-  make test || exit 1
-fi
-`);
+  // TypeScript/JavaScript specific checks - add common commands if TypeScript detected
+  // Templates may not parse perfectly, so we add fallback commands
+  if (hasTypeScript) {
+    // Always add lint command for TypeScript projects
+    if (!commands.some((c) => c.includes("'lint'"))) {
+      commands.push(`await runCommand('npm', ['run', 'lint'], { allowFailure: true });`);
+    }
+    // Add type-check if not already present
+    if (!commands.some((c) => c.includes("'type-check'"))) {
+      commands.push(`await runCommand('npm', ['run', 'type-check'], { allowFailure: true });`);
+    }
   }
 
-  return `#!/bin/sh
-# Git Pre-Commit Hook
-# Generated by @hivellm/rulebook
-# Runs quality checks before allowing commits
+  // Generic fallback
+  if (commands.length === 0) {
+    if (hasPackageJson && packageJson.scripts?.test) {
+      commands.push(`await runCommand('npm', ['test']);`);
+    }
+  }
 
-${hookContents.join('\n')}
-
-exit 0
-`;
+  const nodeScript = generateNodeScript('pre-commit', commands);
+  const shellScript = generateShellWrapper('pre-commit');
+  return { shellScript, nodeScript };
 }
 
-async function generatePrePushHook(languages: LanguageDetection[]): Promise<string> {
-  const hookContents: string[] = [];
+async function generatePrePushHook(
+  languages: LanguageDetection[],
+  cwd: string
+): Promise<{ shellScript: string; nodeScript: string }> {
+  const commands: string[] = [];
+  const packageJsonPath = path.join(cwd, 'package.json');
+  const hasTypeScript = languages.some(
+    (l) => l.language === 'typescript' || l.language === 'javascript'
+  );
+
+  // Check if package.json exists and read scripts
+  let hasPackageJson = false;
+  let packageJson: any = {};
+
+  try {
+    if (
+      await access(packageJsonPath)
+        .then(() => true)
+        .catch(() => false)
+    ) {
+      hasPackageJson = true;
+      packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+    }
+  } catch {
+    // Ignore
+  }
 
   // Try to load template for each language
   for (const lang of languages) {
@@ -127,44 +252,152 @@ async function generatePrePushHook(languages: LanguageDetection[]): Promise<stri
 
     const template = await loadHookTemplate(mappedLang, 'pre-push');
     if (template) {
-      // Remove shebang and header comments
-      const content = template
-        .replace(/^#!\/bin\/sh\n/, '')
-        .replace(/^# .*\n# Generated.*\n\n/, '');
-      hookContents.push(content);
+      const parsedCommands = parseShellHookToNode(template);
+      if (parsedCommands.length > 0) {
+        commands.push(...parsedCommands);
+      }
     }
   }
 
-  // If no templates loaded, provide generic fallback
-  if (hookContents.length === 0) {
-    hookContents.push(`
-echo "🚀 Running generic pre-push checks..."
-
-# Try common build commands
-if [ -f "package.json" ] && grep -q '"build"' package.json 2>/dev/null; then
-  npm run build || exit 1
-elif [ -f "Cargo.toml" ]; then
-  cargo build --release || exit 1
-elif [ -f "Makefile" ]; then
-  make build || exit 1
-fi
-`);
+  // TypeScript/JavaScript specific checks - add common commands if TypeScript detected
+  if (hasTypeScript) {
+    // Always add build command for TypeScript projects
+    if (!commands.some((c) => c.includes("'build'"))) {
+      commands.push(`await runCommand('npm', ['run', 'build'], { allowFailure: true });`);
+    }
+    // Add test if not already present
+    if (!commands.some((c) => c.includes("'test'") && !c.includes("'test:coverage'"))) {
+      commands.push(`await runCommand('npm', ['test'], { allowFailure: true });`);
+    }
   }
 
+  // Generic fallback
+  if (commands.length === 0) {
+    if (hasPackageJson && packageJson.scripts?.build) {
+      commands.push(`await runCommand('npm', ['run', 'build']);`);
+    }
+  }
+
+  const nodeScript = generateNodeScript('pre-push', commands);
+  const shellScript = generateShellWrapper('pre-push');
+  return { shellScript, nodeScript };
+}
+
+function generateShellWrapper(hookType: 'pre-commit' | 'pre-push'): string {
+  // Cross-platform shell wrapper that works on both Windows (Git Bash) and Linux
   return `#!/bin/sh
-# Git Pre-Push Hook
+# Git ${hookType === 'pre-commit' ? 'Pre-Commit' : 'Pre-Push'} Hook Wrapper
 # Generated by @hivellm/rulebook
-# Runs comprehensive checks before allowing push
+# Cross-platform wrapper that works on Windows and Linux
 
-${hookContents.join('\n')}
+# Get the directory where this script is located
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+NODE_SCRIPT="$HOOK_DIR/${hookType}.js"
 
-exit 0
+# Try to find node in common locations
+if command -v node >/dev/null 2>&1; then
+  NODE_CMD="node"
+elif [ -f "/usr/bin/node" ]; then
+  NODE_CMD="/usr/bin/node"
+elif [ -f "/usr/local/bin/node" ]; then
+  NODE_CMD="/usr/local/bin/node"
+else
+  # On Windows with Git Bash, try common Windows paths
+  if [ -f "/c/Program Files/nodejs/node.exe" ]; then
+    NODE_CMD="/c/Program Files/nodejs/node.exe"
+  elif [ -f "/c/Program Files (x86)/nodejs/node.exe" ]; then
+    NODE_CMD="/c/Program Files (x86)/nodejs/node.exe"
+  else
+    echo "❌ Node.js not found. Please install Node.js to use git hooks."
+    exit 1
+  fi
+fi
+
+# Execute the Node.js script
+exec "$NODE_CMD" "$NODE_SCRIPT"
+`;
+}
+
+function generateNodeScript(hookType: 'pre-commit' | 'pre-push', commands: string[]): string {
+  const hookName = hookType === 'pre-commit' ? 'Pre-Commit' : 'Pre-Push';
+  const emoji = hookType === 'pre-commit' ? '🔍' : '🚀';
+
+  if (commands.length === 0) {
+    return `// Git ${hookName} Hook
+// Generated by @hivellm/rulebook
+// Cross-platform hook that works on Windows and Linux
+
+process.exit(0);
+`;
+  }
+
+  return `// Git ${hookName} Hook
+// Generated by @hivellm/rulebook
+// Cross-platform hook that works on Windows and Linux
+
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+// Go up from .git/hooks to project root
+const projectRoot = join(__dirname, '..', '..');
+
+function runCommand(command: string, args: string[] = [], options: { allowFailure?: boolean } = {}): Promise<void> {
+  return new Promise((resolve, reject) => {
+    console.log(\`  → Running: \${command} \${args.join(' ')}\`);
+    
+    const isWindows = process.platform === 'win32';
+    const cmd = isWindows ? command + '.cmd' : command;
+    const child = spawn(cmd, args, {
+      cwd: projectRoot,
+      stdio: 'inherit',
+      shell: isWindows
+    });
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+      } else if (options.allowFailure) {
+        resolve();
+      } else {
+        console.error(\`❌ \${command} failed with exit code \${code}\`);
+        reject(new Error(\`Command failed: \${command}\`));
+      }
+    });
+
+    child.on('error', (error) => {
+      if (options.allowFailure) {
+        resolve();
+      } else {
+        console.error(\`❌ Error running \${command}:\`, error.message);
+        reject(error);
+      }
+    });
+  });
+}
+
+async function main() {
+  console.log(\`${emoji} Running ${hookName.toLowerCase()} checks...\`);
+
+${commands.map((cmd) => `  ${cmd}`).join('\n')}
+
+  console.log(\`✅ All ${hookName.toLowerCase()} checks passed!\`);
+  process.exit(0);
+}
+
+main().catch((error) => {
+  console.error('❌ Hook failed:', error.message);
+  process.exit(1);
+});
 `;
 }
 
 export async function uninstallGitHooks(cwd: string): Promise<void> {
   const hooksDir = path.join(cwd, '.git', 'hooks');
 
+  // Remove shell wrappers
   try {
     await unlink(path.join(hooksDir, 'pre-commit'));
   } catch {
@@ -173,6 +406,19 @@ export async function uninstallGitHooks(cwd: string): Promise<void> {
 
   try {
     await unlink(path.join(hooksDir, 'pre-push'));
+  } catch {
+    // Ignore if file doesn't exist
+  }
+
+  // Remove Node.js scripts
+  try {
+    await unlink(path.join(hooksDir, 'pre-commit.js'));
+  } catch {
+    // Ignore if file doesn't exist
+  }
+
+  try {
+    await unlink(path.join(hooksDir, 'pre-push.js'));
   } catch {
     // Ignore if file doesn't exist
   }

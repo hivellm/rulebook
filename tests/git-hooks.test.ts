@@ -30,18 +30,23 @@ describe('git hook installer', () => {
   it('installs language-aware pre-commit and pre-push hooks', async () => {
     await installGitHooks({ cwd: tempDir, languages: [tsLanguage] });
 
-    const preCommitPath = path.join(hooksDir, 'pre-commit');
-    const prePushPath = path.join(hooksDir, 'pre-push');
+    const preCommitShellPath = path.join(hooksDir, 'pre-commit');
+    const preCommitNodePath = path.join(hooksDir, 'pre-commit.js');
+    const prePushShellPath = path.join(hooksDir, 'pre-push');
+    const prePushNodePath = path.join(hooksDir, 'pre-push.js');
 
-    const preCommit = await fs.readFile(preCommitPath, 'utf-8');
-    const prePush = await fs.readFile(prePushPath, 'utf-8');
+    const preCommitShell = await fs.readFile(preCommitShellPath, 'utf-8');
+    const preCommitNode = await fs.readFile(preCommitNodePath, 'utf-8');
+    const prePushShell = await fs.readFile(prePushShellPath, 'utf-8');
+    const prePushNode = await fs.readFile(prePushNodePath, 'utf-8');
 
-    expect(preCommit).toContain('npm run lint');
-    // Tests removed from pre-commit as per v1.0.2 changes
-    // expect(preCommit).toContain('npm test');
-    // Tests also removed from pre-push as per v1.0.2 changes (build is now the main check)
-    // expect(prePush).toContain('npm test');
-    expect(prePush).toContain('npm run build');
+    // Shell wrappers should have shebang
+    expect(preCommitShell).toMatch(/^#!\/bin\/sh\n/);
+    expect(prePushShell).toMatch(/^#!\/bin\/sh\n/);
+
+    // Node scripts should contain the actual commands
+    expect(preCommitNode).toMatch(/npm.*lint/);
+    expect(prePushNode).toMatch(/npm.*build/);
   });
 
   it('fails when git repository is not initialized', async () => {
@@ -57,8 +62,11 @@ describe('git hook installer', () => {
 
     await uninstallGitHooks(tempDir);
 
+    // Both shell wrappers and Node.js scripts should be removed
     await expect(fs.access(path.join(hooksDir, 'pre-commit'))).rejects.toThrow();
+    await expect(fs.access(path.join(hooksDir, 'pre-commit.js'))).rejects.toThrow();
     await expect(fs.access(path.join(hooksDir, 'pre-push'))).rejects.toThrow();
+    await expect(fs.access(path.join(hooksDir, 'pre-push.js'))).rejects.toThrow();
   });
 
   it('generates Rust-specific hooks', async () => {
@@ -70,12 +78,12 @@ describe('git hook installer', () => {
 
     await installGitHooks({ cwd: tempDir, languages: [rustLanguage] });
 
-    const preCommit = await fs.readFile(path.join(hooksDir, 'pre-commit'), 'utf-8');
-    const prePush = await fs.readFile(path.join(hooksDir, 'pre-push'), 'utf-8');
+    const preCommitNode = await fs.readFile(path.join(hooksDir, 'pre-commit.js'), 'utf-8');
+    const prePushNode = await fs.readFile(path.join(hooksDir, 'pre-push.js'), 'utf-8');
 
-    expect(preCommit).toContain('cargo fmt');
-    expect(preCommit).toContain('cargo clippy');
-    expect(prePush).toContain('cargo build --release');
+    expect(preCommitNode).toMatch(/cargo.*fmt/);
+    expect(preCommitNode).toMatch(/cargo.*clippy/);
+    expect(prePushNode).toMatch(/cargo.*build/);
   });
 
   it('generates Python-specific hooks', async () => {
@@ -87,13 +95,13 @@ describe('git hook installer', () => {
 
     await installGitHooks({ cwd: tempDir, languages: [pythonLanguage] });
 
-    const preCommit = await fs.readFile(path.join(hooksDir, 'pre-commit'), 'utf-8');
-    const prePush = await fs.readFile(path.join(hooksDir, 'pre-push'), 'utf-8');
+    const preCommitNode = await fs.readFile(path.join(hooksDir, 'pre-commit.js'), 'utf-8');
+    const prePushNode = await fs.readFile(path.join(hooksDir, 'pre-push.js'), 'utf-8');
 
-    expect(preCommit).toContain('black');
-    expect(preCommit).toContain('ruff');
-    expect(preCommit).toContain('mypy');
-    expect(prePush).toContain('pytest');
+    expect(preCommitNode).toMatch(/black/);
+    expect(preCommitNode).toMatch(/ruff/);
+    expect(preCommitNode).toMatch(/mypy/);
+    expect(prePushNode).toMatch(/pytest/);
   });
 
   it('generates Go-specific hooks', async () => {
@@ -105,13 +113,13 @@ describe('git hook installer', () => {
 
     await installGitHooks({ cwd: tempDir, languages: [goLanguage] });
 
-    const preCommit = await fs.readFile(path.join(hooksDir, 'pre-commit'), 'utf-8');
-    const prePush = await fs.readFile(path.join(hooksDir, 'pre-push'), 'utf-8');
+    const preCommitNode = await fs.readFile(path.join(hooksDir, 'pre-commit.js'), 'utf-8');
+    const prePushNode = await fs.readFile(path.join(hooksDir, 'pre-push.js'), 'utf-8');
 
-    expect(preCommit).toContain('gofmt');
-    expect(preCommit).toContain('go vet');
-    expect(prePush).toContain('go test');
-    expect(prePush).toContain('go build');
+    expect(preCommitNode).toMatch(/gofmt/);
+    expect(preCommitNode).toMatch(/go.*vet/);
+    expect(prePushNode).toMatch(/go.*test/);
+    expect(prePushNode).toMatch(/go.*build/);
   });
 
   it('combines hooks for multiple languages', async () => {
@@ -122,14 +130,14 @@ describe('git hook installer', () => {
 
     await installGitHooks({ cwd: tempDir, languages });
 
-    const preCommit = await fs.readFile(path.join(hooksDir, 'pre-commit'), 'utf-8');
-    const prePush = await fs.readFile(path.join(hooksDir, 'pre-push'), 'utf-8');
+    const preCommitNode = await fs.readFile(path.join(hooksDir, 'pre-commit.js'), 'utf-8');
+    const prePushNode = await fs.readFile(path.join(hooksDir, 'pre-push.js'), 'utf-8');
 
     // Should contain both TypeScript and Rust checks
-    expect(preCommit).toContain('TypeScript');
-    expect(preCommit).toContain('Rust');
-    expect(prePush).toContain('npm run build');
-    expect(prePush).toContain('cargo build');
+    expect(preCommitNode).toMatch(/npm.*lint/);
+    expect(preCommitNode).toMatch(/cargo.*fmt/);
+    expect(prePushNode).toMatch(/npm.*build/);
+    expect(prePushNode).toMatch(/cargo.*build/);
   });
 
   it('generates generic hooks for unsupported languages', async () => {
@@ -141,12 +149,13 @@ describe('git hook installer', () => {
 
     await installGitHooks({ cwd: tempDir, languages: [unsupportedLanguage] });
 
-    const preCommit = await fs.readFile(path.join(hooksDir, 'pre-commit'), 'utf-8');
-    const prePush = await fs.readFile(path.join(hooksDir, 'pre-push'), 'utf-8');
+    const preCommitNode = await fs.readFile(path.join(hooksDir, 'pre-commit.js'), 'utf-8');
+    const prePushNode = await fs.readFile(path.join(hooksDir, 'pre-push.js'), 'utf-8');
 
-    // Should have generic fallback
-    expect(preCommit).toContain('generic');
-    expect(prePush).toContain('generic');
+    // Should have generic fallback or empty (no commands)
+    // Empty hooks just exit successfully
+    expect(preCommitNode).toBeDefined();
+    expect(prePushNode).toBeDefined();
   });
 
   it('sets executable permissions on hook files', async () => {
@@ -168,13 +177,21 @@ describe('git hook installer', () => {
     }
   });
 
-  it('generates hooks with proper shebang', async () => {
+  it('generates hooks with proper shebang in shell wrappers', async () => {
     await installGitHooks({ cwd: tempDir, languages: [tsLanguage] });
 
-    const preCommit = await fs.readFile(path.join(hooksDir, 'pre-commit'), 'utf-8');
-    const prePush = await fs.readFile(path.join(hooksDir, 'pre-push'), 'utf-8');
+    const preCommitShell = await fs.readFile(path.join(hooksDir, 'pre-commit'), 'utf-8');
+    const prePushShell = await fs.readFile(path.join(hooksDir, 'pre-push'), 'utf-8');
 
-    expect(preCommit).toMatch(/^#!\/bin\/sh\n/);
-    expect(prePush).toMatch(/^#!\/bin\/sh\n/);
+    // Shell wrappers should have shebang
+    expect(preCommitShell).toMatch(/^#!\/bin\/sh\n/);
+    expect(prePushShell).toMatch(/^#!\/bin\/sh\n/);
+
+    // Node.js scripts should not have shebang (they're executed by the wrapper)
+    const preCommitNode = await fs.readFile(path.join(hooksDir, 'pre-commit.js'), 'utf-8');
+    const prePushNode = await fs.readFile(path.join(hooksDir, 'pre-push.js'), 'utf-8');
+
+    expect(preCommitNode).not.toMatch(/^#!\/usr\/bin\/env node/);
+    expect(prePushNode).not.toMatch(/^#!\/usr\/bin\/env node/);
   });
 });

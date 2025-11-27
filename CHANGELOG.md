@@ -10,6 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.4] - 2025-11-24
+
+### Fixed
+- **Cross-platform Git Hooks**: Git hooks now work on both Windows and Linux
+  - Hooks are now generated as Node.js scripts with shell wrappers
+  - Shell wrapper detects Node.js in common locations (Windows and Linux)
+  - Node.js scripts use native `child_process.spawn` for cross-platform command execution
+  - Automatically detects Windows vs Linux and adjusts command execution accordingly
+  - Pre-commit and pre-push hooks now function correctly on Windows (Git Bash) and Linux
+
+### Changed
+- **Git Hooks Architecture**: Refactored hook generation system
+  - Hooks are now generated as two files: shell wrapper + Node.js script
+  - Shell templates (`.sh`) are automatically converted to Node.js scripts
+  - Improved command parsing from shell templates to Node.js
+  - Better error handling and cross-platform compatibility
+
 ## [1.1.3] - 2025-11-24
 
 ### Added
