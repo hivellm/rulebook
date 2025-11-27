@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.4] - 2025-11-24
 
 ### Fixed
+- **Git Hooks Shell Script Errors**: Fixed "Bad fd number" and file descriptor issues
+  - Improved shell wrapper script with explicit file descriptor handling
+  - Added `set -e` for better error handling
+  - Fixed redirection issues that caused "Bad fd number" errors on Windows/WSL
+  - Added validation to check if Node.js script exists before execution
+  - Improved Node.js script error handling with proper stdio configuration
+  - Added automatic cleanup of old hook files (`pre-push-internal`, etc.) to prevent conflicts
+
+## [1.1.4] - 2025-11-24
+
+### Fixed
 - **Cross-platform Git Hooks**: Git hooks now work on both Windows and Linux
   - Hooks are now generated as Node.js scripts with shell wrappers
   - Shell wrapper detects Node.js in common locations (Windows and Linux)
