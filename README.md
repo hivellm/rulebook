@@ -15,7 +15,7 @@
 [![Git Hooks](https://img.shields.io/badge/git%20hooks-automated-success?logo=git&logoColor=white)](#key-features)
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-ready-informational?logo=githubactions&logoColor=white)](#what-it-does)
 
-> Standardize AI-generated projects with automated templates, quality gates, and framework detection for 28 languages.
+> Standardize AI-generated projects with automated templates, quality gates, and framework detection for 28 languages, 17 frameworks, 12 MCP modules, and 20 services.
 
 ---
 
@@ -52,7 +52,45 @@ npx @hivellm/rulebook@latest update
 
 ## What's New
 
-### v1.0.3 (Latest)
+### v1.1.5 (Latest)
+
+- 🗄️ **Service Integration Templates**: Added comprehensive service integration templates
+  - 20 service templates: PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, SQLite, MongoDB, Cassandra, DynamoDB, Redis, Memcached, Elasticsearch, Neo4j, InfluxDB, RabbitMQ, Kafka, S3, Azure Blob, GCS, MinIO
+  - Automatic service detection from `package.json`, `.env`, and `docker-compose.yml`
+  - Service-specific integration instructions with connection setup, operations, best practices, and configuration
+  - Templates generated in `/rulebook/[SERVICE].md` with references in `AGENTS.md`
+  - Interactive CLI prompt to select which services to include templates for
+
+### v1.1.4
+
+- 🔧 **Cross-platform Git Hooks**: Git hooks now work on both Windows and Linux
+  - Hooks are now generated as Node.js scripts with shell wrappers
+  - Shell wrapper detects Node.js in common locations (Windows and Linux)
+  - Node.js scripts use native `child_process.spawn` for cross-platform command execution
+  - Pre-commit and pre-push hooks now function correctly on Windows (Git Bash) and Linux
+- 🔄 **Git Hooks Architecture**: Refactored hook generation system
+  - Hooks are now generated as two files: shell wrapper + Node.js script
+  - Shell templates (`.sh`) are automatically converted to Node.js scripts
+  - Improved command parsing from shell templates to Node.js
+  - Better error handling and cross-platform compatibility
+
+### v1.1.3
+
+- 🗑️ **MCP Tool: `rulebook_task_delete`**: Delete tasks permanently
+  - New tool to permanently delete tasks from the filesystem
+  - Removes task directory recursively
+  - Useful for cleaning up test tasks or removing unwanted tasks
+  - Total of 7 MCP functions now available
+
+### v1.1.2
+
+- 🔧 **ESLint v9 Migration**: Updated to ESLint flat config format
+  - Migrated from `.eslintrc.json` to `eslint.config.js`
+  - Updated to ESLint 9.37.0 with TypeScript ESLint 8.47.0
+  - Added proper Node.js global type definitions
+  - Linting now shows only errors (warnings suppressed with `--quiet`)
+
+### v1.0.3
 
 - 🔧 **Zod v3 Compatibility**: Using Zod v3.25.76 for full MCP SDK compatibility
   - MCP SDK v1.22.0 requires Zod v3 (see [Issue #1429](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1429))
@@ -291,6 +329,8 @@ This command:
 - `rulebook_task_delete` - Delete a task permanently
   - Input: `taskId` (string)
   - Output: Deletion confirmation
+
+**Total: 7 MCP functions** for complete task lifecycle management.
 
 ## Service Integration Templates (20)
 
