@@ -1,19 +1,21 @@
-# @hivellm/rulebook
+# @hivehub/rulebook
 
-[![npm version](https://img.shields.io/npm/v/@hivellm/rulebook?logo=npm&logoColor=white)](https://www.npmjs.com/package/@hivellm/rulebook)
+[![npm version](https://img.shields.io/npm/v/@hivehub/rulebook?logo=npm&logoColor=white)](https://www.npmjs.com/package/@hivehub/rulebook)
+[![npm downloads](https://img.shields.io/npm/dm/@hivehub/rulebook?logo=npm&logoColor=white)](https://www.npmjs.com/package/@hivehub/rulebook)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+
+[![Tests](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/test.yml?label=tests&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/test.yml)
+[![Coverage](https://img.shields.io/codecov/c/github/hivellm/rulebook?logo=codecov&logoColor=white)](https://codecov.io/gh/hivellm/rulebook)
+[![Build](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/build.yml?label=build&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/build.yml)
+[![Lint](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/lint.yml?label=lint&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/lint.yml)
 
 [![Languages](https://img.shields.io/badge/languages-28-orange?logo=codefactor&logoColor=white)](#supported-languages--frameworks)
 [![Frameworks](https://img.shields.io/badge/frameworks-17-blueviolet?logo=framework&logoColor=white)](#supported-languages--frameworks)
 [![Templates](https://img.shields.io/badge/templates-106+-green?logo=files&logoColor=white)](templates/)
 [![MCP Modules](https://img.shields.io/badge/MCP%20modules-12-purple?logo=module&logoColor=white)](#mcp-modules-12)
 [![Services](https://img.shields.io/badge/services-20-teal?logo=server&logoColor=white)](#service-integration-templates)
-
-[![AI Tools](https://img.shields.io/badge/AI%20tools-23-yellow?logo=openai&logoColor=white)](#ai-tools-supported-23)
-[![Git Hooks](https://img.shields.io/badge/git%20hooks-automated-success?logo=git&logoColor=white)](#key-features)
-[![CI/CD](https://img.shields.io/badge/CI%2FCD-ready-informational?logo=githubactions&logoColor=white)](#what-it-does)
 
 > Standardize AI-generated projects with automated templates, quality gates, and framework detection for 28 languages, 17 frameworks, 12 MCP modules, and 20 services.
 
@@ -38,16 +40,16 @@ By giving LLMs a clear "rulebook" to follow, you ensure that every piece of gene
 
 ```bash
 # New project (interactive)
-npx @hivellm/rulebook@latest init
+npx @hivehub/rulebook@latest init
 
 # Minimal setup (essentials only)
-npx @hivellm/rulebook@latest init --minimal
+npx @hivehub/rulebook@latest init --minimal
 
 # Light mode (prototypes without strict rules)
-npx @hivellm/rulebook@latest init --light
+npx @hivehub/rulebook@latest init --light
 
 # Update existing project
-npx @hivellm/rulebook@latest update
+npx @hivehub/rulebook@latest update
 ```
 
 ## What's New
@@ -167,7 +169,7 @@ npx @hivellm/rulebook@latest update
 
 **For Existing Projects:**
 ```bash
-npx @hivellm/rulebook update
+npx @hivehub/rulebook update
 ```
 - Automatically migrates embedded templates to modular `/rulebook/` structure
 - Automatically migrates OpenSpec tasks to Rulebook format (if OpenSpec exists)
@@ -181,71 +183,71 @@ npx @hivellm/rulebook update
 
 ```bash
 # Project Initialization & Updates
-npx @hivellm/rulebook@latest init              # Initialize new project (interactive)
-npx @hivellm/rulebook@latest init --minimal    # Minimal setup (essentials only)
-npx @hivellm/rulebook@latest init --light       # Light mode (no quality enforcement)
-npx @hivellm/rulebook@latest init --yes         # Skip prompts, use defaults
-npx @hivellm/rulebook@latest update             # Update AGENTS.md to latest version
-npx @hivellm/rulebook@latest update --yes      # Update without confirmation
-npx @hivellm/rulebook@latest update --light    # Update in light mode
+npx @hivehub/rulebook@latest init              # Initialize new project (interactive)
+npx @hivehub/rulebook@latest init --minimal    # Minimal setup (essentials only)
+npx @hivehub/rulebook@latest init --light       # Light mode (no quality enforcement)
+npx @hivehub/rulebook@latest init --yes         # Skip prompts, use defaults
+npx @hivehub/rulebook@latest update             # Update AGENTS.md to latest version
+npx @hivehub/rulebook@latest update --yes      # Update without confirmation
+npx @hivehub/rulebook@latest update --light    # Update in light mode
 
 # Workflow & CI/CD
-npx @hivellm/rulebook@latest workflows         # Generate GitHub Actions workflows
+npx @hivehub/rulebook@latest workflows         # Generate GitHub Actions workflows
 
 # Validation & Health
-npx @hivellm/rulebook@latest validate          # Check project standards
-npx @hivellm/rulebook@latest health            # Project health score (0-100)
-npx @hivellm/rulebook@latest fix               # Auto-fix common issues
+npx @hivehub/rulebook@latest validate          # Check project standards
+npx @hivehub/rulebook@latest health            # Project health score (0-100)
+npx @hivehub/rulebook@latest fix               # Auto-fix common issues
 
 # Documentation
-npx @hivellm/rulebook@latest generate-docs      # Create /docs structure
-npx @hivellm/rulebook@latest generate-docs --yes  # Skip prompts, use defaults
+npx @hivehub/rulebook@latest generate-docs      # Create /docs structure
+npx @hivehub/rulebook@latest generate-docs --yes  # Skip prompts, use defaults
 
 # Dependencies & Coverage
-npx @hivellm/rulebook@latest check-deps       # Check outdated/vulnerable dependencies
-npx @hivellm/rulebook@latest check-coverage   # Check test coverage (default: 95%)
-npx @hivellm/rulebook@latest check-coverage -t 80  # Custom threshold
+npx @hivehub/rulebook@latest check-deps       # Check outdated/vulnerable dependencies
+npx @hivehub/rulebook@latest check-coverage   # Check test coverage (default: 95%)
+npx @hivehub/rulebook@latest check-coverage -t 80  # Custom threshold
 
 # Versioning
-npx @hivellm/rulebook@latest version <type>   # Bump version (major|minor|patch)
-npx @hivellm/rulebook@latest changelog        # Generate changelog from git commits
-npx @hivellm/rulebook@latest changelog -v 1.0.0  # Specify version
+npx @hivehub/rulebook@latest version <type>   # Bump version (major|minor|patch)
+npx @hivehub/rulebook@latest changelog        # Generate changelog from git commits
+npx @hivehub/rulebook@latest changelog -v 1.0.0  # Specify version
 ```
 
-> **Note**: If installed globally (`npm install -g @hivellm/rulebook`), you can use `rulebook` directly instead of `npx @hivellm/rulebook@latest`.
+> **Note**: If installed globally (`npm install -g @hivehub/rulebook`), you can use `rulebook` directly instead of `npx @hivehub/rulebook@latest`.
 
 ### Advanced Commands (Beta)
 
 ```bash
 # Real-time Monitoring
-npx @hivellm/rulebook@latest watcher           # Full-screen task monitoring UI
+npx @hivehub/rulebook@latest watcher           # Full-screen task monitoring UI
                                                 # - Live task progress tracking
                                                 # - Activity log with timestamps
                                                 # - System status monitoring
                                                 # - Auto-refresh every 2 seconds
 
 # Autonomous Agent
-npx @hivellm/rulebook@latest agent             # Start AI CLI workflow automation
-npx @hivellm/rulebook@latest agent --dry-run   # Simulate without changes
-npx @hivellm/rulebook@latest agent --tool cursor-agent  # Specify CLI tool
-npx @hivellm/rulebook@latest agent --iterations 10      # Max iterations
-npx @hivellm/rulebook@latest agent --watch     # Enable watcher mode
+npx @hivehub/rulebook@latest agent             # Start AI CLI workflow automation
+npx @hivehub/rulebook@latest agent --dry-run   # Simulate without changes
+npx @hivehub/rulebook@latest agent --tool cursor-agent  # Specify CLI tool
+npx @hivehub/rulebook@latest agent --iterations 10      # Max iterations
+npx @hivehub/rulebook@latest agent --watch     # Enable watcher mode
 
 # Task Management
-npx @hivellm/rulebook@latest task create <task-id>     # Create new task
-npx @hivellm/rulebook@latest task list                 # List all tasks
-npx @hivellm/rulebook@latest task list --archived      # List including archived tasks
-npx @hivellm/rulebook@latest task show <task-id>       # Show task details
-npx @hivellm/rulebook@latest task validate <task-id>    # Validate task format
-npx @hivellm/rulebook@latest task archive <task-id>    # Archive completed task
-npx @hivellm/rulebook@latest task archive --skip-validation <task-id>  # Archive without validation
-npx @hivellm/rulebook@latest tasks [options]           # Legacy command (DEPRECATED - use 'task' commands)
+npx @hivehub/rulebook@latest task create <task-id>     # Create new task
+npx @hivehub/rulebook@latest task list                 # List all tasks
+npx @hivehub/rulebook@latest task list --archived      # List including archived tasks
+npx @hivehub/rulebook@latest task show <task-id>       # Show task details
+npx @hivehub/rulebook@latest task validate <task-id>    # Validate task format
+npx @hivehub/rulebook@latest task archive <task-id>    # Archive completed task
+npx @hivehub/rulebook@latest task archive --skip-validation <task-id>  # Archive without validation
+npx @hivehub/rulebook@latest tasks [options]           # Legacy command (DEPRECATED - use 'task' commands)
 
 # Configuration
-npx @hivellm/rulebook@latest config --show     # Show current config
-npx @hivellm/rulebook@latest config --set key=value  # Set config value
-npx @hivellm/rulebook@latest config --feature watcher --enable   # Enable feature
-npx @hivellm/rulebook@latest config --feature agent --disable    # Disable feature
+npx @hivehub/rulebook@latest config --show     # Show current config
+npx @hivehub/rulebook@latest config --set key=value  # Set config value
+npx @hivehub/rulebook@latest config --feature watcher --enable   # Enable feature
+npx @hivehub/rulebook@latest config --feature agent --disable    # Disable feature
 ```
 
 ## Setup Modes
@@ -255,13 +257,13 @@ Complete setup with all features: Task management, Watcher, MCP modules, compreh
 
 ### Minimal Mode
 ```bash
-npx @hivellm/rulebook@latest init --minimal
+npx @hivehub/rulebook@latest init --minimal
 ```
 Essentials only: README, LICENSE, tests/, basic CI. Perfect for small teams or initial adoption.
 
 ### Light Mode
 ```bash
-npx @hivellm/rulebook@latest init --light
+npx @hivehub/rulebook@latest init --light
 ```
 Bare minimum rules: no quality enforcement, no testing requirements, no linting. Use for quick prototypes or non-production projects.
 
@@ -298,7 +300,7 @@ Rulebook provides an MCP (Model Context Protocol) server that exposes task manag
 
 ```bash
 # Initialize MCP configuration in your project (one-time setup)
-npx @hivellm/rulebook@latest mcp init
+npx @hivehub/rulebook@latest mcp init
 ```
 
 This command:
@@ -403,7 +405,7 @@ After running `rulebook mcp init`, your `.cursor/mcp.json` will be automatically
   "mcpServers": {
     "rulebook": {
       "command": "npx",
-      "args": ["-y", "@hivellm/rulebook@latest", "mcp-server"]
+      "args": ["-y", "@hivehub/rulebook@latest", "mcp-server"]
     }
   }
 }
@@ -423,7 +425,7 @@ If you need to override the `.rulebook` location:
   "mcpServers": {
     "rulebook": {
       "command": "npx",
-      "args": ["-y", "@hivellm/rulebook@latest", "mcp-server"],
+      "args": ["-y", "@hivehub/rulebook@latest", "mcp-server"],
       "env": {
         "RULEBOOK_CONFIG": "/path/to/.rulebook"
       }
@@ -445,7 +447,7 @@ If the MCP server fails to start:
 3. **Verify MCP configuration**: Check that `.cursor/mcp.json` exists and is valid JSON
 4. **Debug mode**: Set `RULEBOOK_MCP_DEBUG=1` to see debug logs in stderr:
    ```bash
-   RULEBOOK_MCP_DEBUG=1 npx @hivellm/rulebook@latest mcp-server
+   RULEBOOK_MCP_DEBUG=1 npx @hivehub/rulebook@latest mcp-server
    ```
 
 ### Empty Schemas or Missing Parameters
@@ -471,7 +473,7 @@ npm run build
 ### "Unexpected token" or "Invalid JSON" Errors
 
 These errors occur when the server outputs non-JSON to stdout. This is fixed in v1.0.9+:
-- Ensure you're using `@hivellm/rulebook@latest` (v1.0.9 or newer)
+- Ensure you're using `@hivehub/rulebook@latest` (v1.0.9 or newer)
 - stdout now contains ONLY JSON-RPC 2.0 messages
 - All logs go to stderr (use `RULEBOOK_MCP_DEBUG=1` to see them)
 
@@ -503,7 +505,7 @@ If you see this warning in the logs:
 
 ```bash
 # Initialize MCP in your project (recommended)
-npx @hivellm/rulebook@latest mcp init
+npx @hivehub/rulebook@latest mcp init
 
 # Or use the setup script (for CI/CD)
 npm run setup:mcp

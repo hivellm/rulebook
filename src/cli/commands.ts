@@ -1142,7 +1142,7 @@ export async function mcpInitCommand(): Promise<void> {
       mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
       mcpConfig.mcpServers.rulebook = {
         command: 'npx',
-        args: ['-y', '@hivellm/rulebook@latest', 'mcp-server'],
+        args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
       };
 
       writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
