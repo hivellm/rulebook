@@ -198,6 +198,199 @@ describe('myFunction', () => {
 });
 ```
 
+### S2S (Server-to-Server) and Slow Tests
+
+**CRITICAL**: Separate fast tests from slow/S2S tests.
+
+**Problem**: Mixing fast unit tests with slow integration tests or tests requiring external servers causes:
+- ❌ Slow CI/CD pipelines (10+ minutes instead of < 2 minutes)
+- ❌ Flaky tests (external services unreliable)
+- ❌ Developer frustration (slow test feedback)
+- ❌ Blocked commits (waiting for slow tests)
+
+**Solution**: Isolate S2S and slow tests using environment variables and tags.
+
+#### What are S2S/Slow Tests?
+
+**S2S (Server-to-Server) Tests**:
+- Require external running servers (databases, APIs, message queues)
+- Network I/O heavy
+- Typically 5-30 seconds per test
+- Examples: Database integration tests, API endpoint tests, message queue tests
+
+**Slow Tests**:
+- Long-running operations (processing large files, complex calculations)
+- Typically > 5 seconds per test
+- Examples: File processing tests, image manipulation, encryption tests
+
+**Fast Tests** (Regular Unit Tests):
+- No external dependencies
+- In-memory only
+- < 100ms per test
+- Should be 95%+ of your test suite
+
+#### Implementation Pattern
+
+**1. Mark S2S/slow tests with conditional execution**:
+
+```javascript
+// tests/integration/database.test.js
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { setupDatabase, teardownDatabase } from './test-helpers.js';
+
+// Only run if RUN_S2S_TESTS environment variable is set
+const runS2STests = process.env.RUN_S2S_TESTS === '1';
+const describeS2S = runS2STests ? describe : describe.skip;
+
+describeS2S('Database Integration', () => {
+  beforeAll(async () => {
+    await setupDatabase();
+  });
+
+  afterAll(async () => {
+    await teardownDatabase();
+  });
+
+  it('should connect to database', async () => {
+    const result = await query('SELECT 1');
+    expect(result).toBeDefined();
+  }, { timeout: 30000 }); // 30 second timeout for S2S tests
+});
+```
+
+**2. Mark slow tests similarly**:
+
+```javascript
+// tests/slow/file-processing.test.js
+const runSlowTests = process.env.RUN_SLOW_TESTS === '1';
+const describeSlow = runSlowTests ? describe : describe.skip;
+
+describeSlow('Large File Processing', () => {
+  it('should process 1GB file', async () => {
+    const result = await processLargeFile('large-file.dat');
+    expect(result).toBeDefined();
+  }, { timeout: 60000 }); // 60 second timeout
+});
+```
+
+**3. Organize tests by speed**:
+
+```
+tests/
+├── unit/           # Fast tests (< 100ms) - DEFAULT
+│   ├── parser.test.js
+│   └── validator.test.js
+├── integration/    # S2S tests (require servers)
+│   ├── database.test.js
+│   └── api.test.js
+└── slow/           # Slow tests (> 5 seconds)
+    └── file-processing.test.js
+```
+
+**4. Add npm scripts in `package.json`**:
+
+```json
+{
+  "scripts": {
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:s2s": "RUN_S2S_TESTS=1 vitest --run",
+    "test:slow": "RUN_SLOW_TESTS=1 vitest --run",
+    "test:all": "RUN_S2S_TESTS=1 RUN_SLOW_TESTS=1 vitest --run"
+  }
+}
+```
+
+**Windows users**: Use `cross-env` for environment variables:
+
+```bash
+npm install --save-dev cross-env
+```
+
+```json
+{
+  "scripts": {
+    "test:s2s": "cross-env RUN_S2S_TESTS=1 vitest --run",
+    "test:slow": "cross-env RUN_SLOW_TESTS=1 vitest --run"
+  }
+}
+```
+
+#### Best Practices
+
+- ✅ **Always run fast tests** in CI/CD by default
+- ✅ **Isolate S2S tests** - never run them in standard test suite
+- ✅ **Mark slow tests** - prevent CI/CD timeouts
+- ✅ **Document requirements** - specify which servers/services are needed for S2S tests
+- ✅ **Use timeouts** - Set appropriate timeouts: `{ timeout: 30000 }` for S2S tests
+- ✅ **Use environment variables** - Control test execution with `RUN_S2S_TESTS` and `RUN_SLOW_TESTS`
+- ❌ **Never mix** fast and slow/S2S tests in same test run
+- ❌ **Never require** external services for standard test suite
+- ❌ **Never exceed** 10-20 seconds for regular tests
+
+#### Example: Complete Test Setup
+
+**Fast test** (runs by default):
+```javascript
+// tests/unit/calculator.test.js
+import { describe, it, expect } from 'vitest';
+import { add, multiply } from '../src/calculator.js';
+
+describe('Calculator', () => {
+  it('should add numbers', () => {
+    expect(add(2, 3)).toBe(5);
+  });
+
+  it('should multiply numbers', () => {
+    expect(multiply(2, 3)).toBe(6);
+  });
+});
+```
+
+**S2S test** (skipped by default):
+```javascript
+// tests/integration/api.test.js
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+
+const runS2STests = process.env.RUN_S2S_TESTS === '1';
+const describeS2S = runS2STests ? describe : describe.skip;
+
+describeS2S('API Integration', () => {
+  let server;
+
+  beforeAll(async () => {
+    // Start server on port 3001
+    server = await startTestServer(3001);
+  });
+
+  afterAll(async () => {
+    await server.close();
+  });
+
+  it('should fetch users from API', async () => {
+    const response = await fetch('http://localhost:3001/users');
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(Array.isArray(data)).toBe(true);
+  }, { timeout: 30000 });
+});
+```
+
+**Running tests**:
+```bash
+# Fast tests only (default - for development and CI)
+npm test
+
+# Include S2S tests (manual or scheduled CI)
+npm run test:s2s
+
+# Include slow tests
+npm run test:slow
+
+# All tests (nightly builds)
+npm run test:all
+```
+
 ## Module System
 
 - Use ES modules (`import`/`export`)
