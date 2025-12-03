@@ -48,7 +48,7 @@ function generateCursorConfig() {
         mcpServers: {
             rulebook: {
                 command: 'npx',
-                args: ['-y', '@hivellm/rulebook@latest', 'mcp-server'],
+                args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
             },
         },
     };
@@ -63,7 +63,7 @@ function generateClaudeConfig() {
         mcpServers: {
             rulebook: {
                 command: 'npx',
-                args: ['-y', '@hivellm/rulebook@latest', 'mcp-server'],
+                args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
             },
         },
     };
@@ -78,7 +78,7 @@ function generateGenericConfig() {
         mcpServers: {
             rulebook: {
                 command: 'npx',
-                args: ['-y', '@hivellm/rulebook@latest', 'mcp-server'],
+                args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
             },
         },
     };
@@ -141,7 +141,7 @@ async function main() {
     console.log(`   Path: ${configPath}`);
     console.log(`   Server: rulebook`);
     console.log(`   Transport: stdio (automatic)`);
-    console.log(`   Command: npx -y @hivellm/rulebook@latest mcp-server`);
+    console.log(`   Command: npx -y @hivehub/rulebook@latest mcp-server`);
     console.log(`   Note: Server will find .rulebook automatically by walking up directories`);
 
     // Output config path for CI/CD
