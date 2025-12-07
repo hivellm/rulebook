@@ -48,7 +48,24 @@ npx @hivehub/rulebook@latest update
 
 ## What's New
 
-### v1.1.5 (Latest)
+### v2.0.0 (Latest)
+
+- 🧩 **Skills System**: New modular skills architecture for AI-assisted development
+  - Skills are YAML-frontmatter Markdown files with enable/disable functionality
+  - 10 skill categories: languages, frameworks, modules, services, workflows, ides, core, cli, git, hooks
+  - Auto-detection of skills based on project configuration
+  - CLI commands: `rulebook skill list|add|remove|show|search`
+  - MCP functions: `rulebook_skill_list|show|enable|disable|search|validate`
+- 🤖 **AI CLI Configuration Files**: Auto-generated files for AI CLI tools
+  - `CLAUDE.md` - Claude Code CLI configuration
+  - `CODEX.md` - OpenAI Codex CLI configuration
+  - `GEMINI.md` - Google Gemini CLI configuration
+  - `gemini-extension.json` - Gemini CLI extension manifest
+- 🔌 **Claude Code Plugin**: `marketplace.json` + `.claude-plugin/` structure for marketplace distribution
+  - `marketplace.json` - Marketplace manifest for plugin discovery
+  - Plugin manifest, MCP configuration, slash commands, and skills
+
+### v1.1.5
 
 - 🗄️ **Service Integration Templates**: Added comprehensive service integration templates
   - 20 service templates: PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, SQLite, MongoDB, Cassandra, DynamoDB, Redis, Memcached, Elasticsearch, Neo4j, InfluxDB, RabbitMQ, Kafka, S3, Azure Blob, GCS, MinIO
@@ -237,6 +254,15 @@ npx @hivehub/rulebook@latest task archive <task-id>    # Archive completed task
 npx @hivehub/rulebook@latest task archive --skip-validation <task-id>  # Archive without validation
 npx @hivehub/rulebook@latest tasks [options]           # Legacy command (DEPRECATED - use 'task' commands)
 
+# Skills Management (v2.0)
+npx @hivehub/rulebook@latest skill list                 # List all available skills
+npx @hivehub/rulebook@latest skill list --category languages  # Filter by category
+npx @hivehub/rulebook@latest skill list --enabled       # Show only enabled skills
+npx @hivehub/rulebook@latest skill add <skill-id>       # Enable a skill
+npx @hivehub/rulebook@latest skill remove <skill-id>    # Disable a skill
+npx @hivehub/rulebook@latest skill show <skill-id>      # Show skill details
+npx @hivehub/rulebook@latest skill search <query>       # Search for skills
+
 # Configuration
 npx @hivehub/rulebook@latest config --show     # Show current config
 npx @hivehub/rulebook@latest config --set key=value  # Set config value
@@ -327,6 +353,94 @@ This command:
   - Output: Deletion confirmation
 
 **Total: 7 MCP functions** for complete task lifecycle management.
+
+**Skills MCP Functions (v2.0):**
+
+- `rulebook_skill_list` - List available skills with optional category filter
+- `rulebook_skill_show` - Show detailed skill information
+- `rulebook_skill_enable` - Enable a skill for the project
+- `rulebook_skill_disable` - Disable a skill
+- `rulebook_skill_search` - Search skills by name, description, or tags
+- `rulebook_skill_validate` - Validate skills configuration
+
+**Total: 13 MCP functions** (7 task + 6 skills).
+
+## Skills System (v2.0)
+
+Rulebook v2.0 introduces a modular skills system for AI-assisted development. Skills are pluggable capabilities that can be enabled or disabled per project.
+
+### What are Skills?
+
+Skills are YAML-frontmatter Markdown files that define specific capabilities or rules for AI assistants. Each skill has:
+
+- **Metadata**: Name, description, version, category, tags, dependencies
+- **Content**: Markdown content with rules, patterns, and examples
+
+### Skill Categories
+
+Skills are organized into 10 categories:
+
+| Category | Description | Examples |
+|----------|-------------|----------|
+| `languages` | Language-specific rules | TypeScript, Rust, Python |
+| `frameworks` | Framework conventions | NestJS, React, Django |
+| `modules` | MCP module integration | Vectorizer, Context7 |
+| `services` | Service integration | PostgreSQL, Redis |
+| `workflows` | CI/CD patterns | GitHub Actions |
+| `ides` | IDE configuration | Cursor, VS Code |
+| `core` | Core rulebook standards | Quality gates |
+| `cli` | AI CLI configuration | Claude Code, Codex |
+| `git` | Git workflow rules | Branching, commits |
+| `hooks` | Git hooks configuration | Pre-commit, pre-push |
+
+### Using Skills
+
+```bash
+# List all available skills
+rulebook skill list
+
+# Filter by category
+rulebook skill list --category languages
+
+# Enable a skill
+rulebook skill add languages/typescript
+
+# Disable a skill
+rulebook skill remove languages/typescript
+
+# Show skill details
+rulebook skill show languages/typescript
+
+# Search for skills
+rulebook skill search "testing"
+```
+
+### Auto-Detection
+
+During `rulebook init` and `rulebook update`, skills are automatically detected and enabled based on your project's:
+
+- Detected languages (e.g., TypeScript → `languages/typescript`)
+- Detected frameworks (e.g., NestJS → `frameworks/nestjs`)
+- Detected modules (e.g., Vectorizer → `modules/vectorizer`)
+- Detected services (e.g., PostgreSQL → `services/postgresql`)
+
+### Creating Custom Skills
+
+Create a `SKILL.md` file in `templates/skills/<category>/<skill-name>/`:
+
+```markdown
+---
+name: My Custom Skill
+description: Description of what this skill does
+version: 1.0.0
+category: core
+tags: ["custom", "example"]
+---
+
+# My Custom Skill
+
+Add your rules and patterns here.
+```
 
 ## Service Integration Templates (20)
 

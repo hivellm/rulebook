@@ -1,6 +1,3 @@
-## [0.18.0] - 2025-11-18
-
-
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -9,6 +6,57 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [2.0.0] - 2025-12-07
+
+### Added
+- **Skills System (v2.0)**: New modular skills architecture for AI-assisted development
+  - Skills are YAML-frontmatter Markdown files in `templates/skills/` directory
+  - 10 skill categories: languages, frameworks, modules, services, workflows, ides, core, cli, git, hooks
+  - Skills can be enabled/disabled per project via `.rulebook` configuration
+  - Auto-detection of skills based on project languages, frameworks, modules, and services
+
+- **CLI Skill Commands**: New commands to manage skills
+  - `rulebook skill list` - List all available skills (with `--category` and `--enabled` filters)
+  - `rulebook skill add <skill-id>` - Enable a skill for the project
+  - `rulebook skill remove <skill-id>` - Disable a skill
+  - `rulebook skill show <skill-id>` - Show detailed skill information
+  - `rulebook skill search <query>` - Search skills by name, description, or tags
+
+- **MCP Skills Functions**: Skills management via Model Context Protocol
+  - `rulebook_skill_list` - List available skills
+  - `rulebook_skill_show` - Show skill details
+  - `rulebook_skill_enable` - Enable a skill
+  - `rulebook_skill_disable` - Disable a skill
+  - `rulebook_skill_search` - Search for skills
+  - `rulebook_skill_validate` - Validate skills configuration
+
+- **AI CLI Configuration Files**: Auto-generated files for AI CLI tools
+  - `CLAUDE.md` - Claude Code CLI configuration
+  - `CODEX.md` - OpenAI Codex CLI configuration
+  - `GEMINI.md` - Google Gemini CLI configuration
+  - `gemini-extension.json` - Gemini CLI extension manifest
+
+- **Claude Code Plugin**: `.claude-plugin/` directory structure for Claude marketplace
+  - `plugin.json` - Plugin manifest
+  - `.mcp.json` - MCP server configuration
+  - `commands/` - Slash commands (rulebook-init, rulebook-skill, rulebook-task)
+  - `skills/rulebook-standards/` - Example skill
+
+- **AGENTS.md Enhancements**
+  - Project Capabilities section showing enabled skills grouped by category
+  - Skills index table with name, category, and description
+  - Skill content merged from enabled skills
+
+### Changed
+- **Init Command**: Auto-enables skills based on project detection
+- **Update Command**: Preserves existing skills while detecting new ones
+- **Type System**: Made `SkillsConfig.disabled` and `SkillsConfig.order` optional
+
+### Internal
+- Added `src/core/skills-manager.ts` (~750 lines) for skills management
+- Added `generateAICLIFiles()` function in workflow-generator
+- 622 tests passing (48 new skill-related tests)
 
 ## [1.1.5] - 2025-11-27
 

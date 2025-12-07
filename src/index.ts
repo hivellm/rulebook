@@ -24,6 +24,12 @@ import {
   updateCommand,
   mcpServerCommand,
   mcpInitCommand,
+  // Skills commands (v2.0)
+  skillListCommand,
+  skillAddCommand,
+  skillRemoveCommand,
+  skillShowCommand,
+  skillSearchCommand,
 } from './cli/commands.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -52,6 +58,7 @@ program
   .command('init')
   .description('Initialize rulebook for current project')
   .option('-y, --yes', 'Skip prompts and use detected defaults')
+  .option('-q, --quick', 'Quick setup with minimal prompts (language, MCP, hooks only)')
   .option('--minimal', 'Enable essentials-only setup mode')
   .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
   .action(initCommand);
@@ -215,5 +222,37 @@ program
   .action(() => {
     mcpServerCommand();
   });
+
+// Skills commands (v2.0)
+const skillCommand = program.command('skill').description('Manage Rulebook skills (v2.0)');
+
+skillCommand
+  .command('list')
+  .description('List all available skills')
+  .option('-c, --category <category>', 'Filter by category')
+  .option('-e, --enabled', 'Show only enabled skills')
+  .action((options: { category?: string; enabled?: boolean }) =>
+    skillListCommand({ category: options.category, enabled: options.enabled })
+  );
+
+skillCommand
+  .command('add <skill-id>')
+  .description('Add (enable) a skill')
+  .action((skillId: string) => skillAddCommand(skillId));
+
+skillCommand
+  .command('remove <skill-id>')
+  .description('Remove (disable) a skill')
+  .action((skillId: string) => skillRemoveCommand(skillId));
+
+skillCommand
+  .command('show <skill-id>')
+  .description('Show skill details')
+  .action((skillId: string) => skillShowCommand(skillId));
+
+skillCommand
+  .command('search <query>')
+  .description('Search for skills by name, description, or tags')
+  .action((query: string) => skillSearchCommand(query));
 
 program.parse(process.argv);
