@@ -184,9 +184,18 @@ export class TaskManager {
     const specsPath = join(taskPath, SPECS_DIR);
     const metadataPath = join(taskPath, '.metadata.json');
 
+    // Extract original task ID from archive name if archived (YYYY-MM-DD-task-id format)
+    let originalTaskId = taskId;
+    if (archived) {
+      const dateMatch = taskId.match(/^(\d{4}-\d{2}-\d{2})-(.+)$/);
+      if (dateMatch) {
+        originalTaskId = dateMatch[2];
+      }
+    }
+
     const task: RulebookTask = {
-      id: taskId,
-      title: taskId,
+      id: originalTaskId,
+      title: originalTaskId,
       status: 'pending',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

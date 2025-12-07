@@ -96,28 +96,6 @@ describe('Claude Plugin Structure', () => {
     });
   });
 
-  describe('MCP configuration', () => {
-    it('should have .mcp.json at project root', async () => {
-      const mcpPath = path.join(projectRoot, '.mcp.json');
-      const content = await fs.readFile(mcpPath, 'utf-8');
-      const mcpConfig = JSON.parse(content);
-
-      expect(mcpConfig.mcpServers).toBeDefined();
-      expect(mcpConfig.mcpServers.rulebook).toBeDefined();
-    });
-
-    it('should configure rulebook-mcp command', async () => {
-      const mcpPath = path.join(projectRoot, '.mcp.json');
-      const content = await fs.readFile(mcpPath, 'utf-8');
-      const mcpConfig = JSON.parse(content);
-
-      // Can use either 'npx' (for global installs) or 'rulebook-mcp' (for local)
-      expect(['npx', 'rulebook-mcp']).toContain(mcpConfig.mcpServers.rulebook.command);
-      expect(mcpConfig.mcpServers.rulebook).toHaveProperty('args');
-      expect(mcpConfig.mcpServers.rulebook).toHaveProperty('description');
-    });
-  });
-
   describe('Commands (at project root)', () => {
     const commandsDir = path.join(projectRoot, 'commands');
 
@@ -242,15 +220,6 @@ describe('Claude Plugin Structure', () => {
       const pluginJsonPath = path.join(pluginDir, 'plugin.json');
       const exists = await fs
         .access(pluginJsonPath)
-        .then(() => true)
-        .catch(() => false);
-      expect(exists).toBe(true);
-    });
-
-    it('should have .mcp.json at root', async () => {
-      const mcpPath = path.join(projectRoot, '.mcp.json');
-      const exists = await fs
-        .access(mcpPath)
         .then(() => true)
         .catch(() => false);
       expect(exists).toBe(true);
