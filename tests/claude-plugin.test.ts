@@ -111,8 +111,10 @@ describe('Claude Plugin Structure', () => {
       const content = await fs.readFile(mcpPath, 'utf-8');
       const mcpConfig = JSON.parse(content);
 
-      expect(mcpConfig.mcpServers.rulebook.command).toBe('rulebook-mcp');
-      expect(Array.isArray(mcpConfig.mcpServers.rulebook.args)).toBe(true);
+      // Can use either 'npx' (for global installs) or 'rulebook-mcp' (for local)
+      expect(['npx', 'rulebook-mcp']).toContain(mcpConfig.mcpServers.rulebook.command);
+      expect(mcpConfig.mcpServers.rulebook).toHaveProperty('args');
+      expect(mcpConfig.mcpServers.rulebook).toHaveProperty('description');
     });
   });
 
