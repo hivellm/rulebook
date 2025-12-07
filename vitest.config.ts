@@ -6,6 +6,14 @@ export default defineConfig({
     environment: 'node',
     testTimeout: 30000, // 30 seconds timeout for each test
     hookTimeout: 30000, // 30 seconds timeout for hooks
+    pool: 'forks', // Use forks instead of threads (more reliable on Windows)
+    poolOptions: {
+      forks: {
+        singleFork: false, // Use multiple forks for speed
+        maxForks: 4, // Limit concurrent forks to prevent hangs
+        minForks: 1,
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],

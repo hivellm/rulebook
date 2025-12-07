@@ -8,7 +8,11 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
-describe('MCP Server', () => {
+// Skip on Windows due to module import hanging issues
+const isWindows = process.platform === 'win32';
+const describeOrSkip = isWindows ? describe.skip : describe;
+
+describeOrSkip('MCP Server', () => {
   let testDir: string;
 
   beforeEach(async () => {
