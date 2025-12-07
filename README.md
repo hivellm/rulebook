@@ -64,6 +64,7 @@ npx @hivehub/rulebook@latest update
 - 🔌 **Claude Code Plugin**: `marketplace.json` + `.claude-plugin/` structure for marketplace distribution
   - `marketplace.json` - Marketplace manifest for plugin discovery
   - Plugin manifest, MCP configuration, slash commands, and skills
+- 🪟 **Windows Test Suite Fix**: Tests no longer hang on Windows (705 tests passing, 11x faster)
 
 ### v1.1.5
 
