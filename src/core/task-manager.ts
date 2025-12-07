@@ -1,9 +1,13 @@
-import { writeFile, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
+import { writeFile as fsWriteFile, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
 import { promisify } from 'util';
 import { join } from 'path';
-import { fileExists, readFile as readFileUtil } from '../utils/file-system.js';
+import {
+  fileExists,
+  readFile as readFileUtil,
+  writeFile as writeFileUtil,
+} from '../utils/file-system.js';
 
-const writeFileAsync = promisify(writeFile);
+const writeFileAsync = promisify(fsWriteFile);
 
 const TASKS_DIR = 'tasks';
 const ARCHIVE_DIR = 'archive';
@@ -108,6 +112,15 @@ export class TaskManager {
 `;
 
     await writeFileAsync(join(taskPath, 'tasks.md'), tasksContent);
+
+    // Create .metadata.json with initial status
+    const now = new Date().toISOString();
+    const metadata = {
+      status: 'pending' as const,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await writeFileAsync(join(taskPath, '.metadata.json'), JSON.stringify(metadata, null, 2));
   }
 
   /**
@@ -169,6 +182,7 @@ export class TaskManager {
     const tasksPath = join(taskPath, 'tasks.md');
     const designPath = join(taskPath, 'design.md');
     const specsPath = join(taskPath, SPECS_DIR);
+    const metadataPath = join(taskPath, '.metadata.json');
 
     const task: RulebookTask = {
       id: taskId,
@@ -178,6 +192,18 @@ export class TaskManager {
       updatedAt: new Date().toISOString(),
       specs: {},
     };
+
+    // Load metadata (status, dates, etc.)
+    if (await fileExists(metadataPath)) {
+      try {
+        const metadata = JSON.parse(await readFileUtil(metadataPath));
+        if (metadata.status) task.status = metadata.status;
+        if (metadata.createdAt) task.createdAt = metadata.createdAt;
+        if (metadata.updatedAt) task.updatedAt = metadata.updatedAt;
+      } catch {
+        // Ignore invalid metadata
+      }
+    }
 
     // Load proposal
     if (await fileExists(proposalPath)) {
@@ -207,13 +233,15 @@ export class TaskManager {
       }
     }
 
-    // Get file stats for dates
-    try {
-      const stats = statSync(taskPath);
-      task.createdAt = stats.birthtime.toISOString();
-      task.updatedAt = stats.mtime.toISOString();
-    } catch {
-      // Use defaults if stats fail
+    // Fallback to file stats for dates if metadata doesn't exist
+    if (!(await fileExists(metadataPath))) {
+      try {
+        const stats = statSync(taskPath);
+        task.createdAt = stats.birthtime.toISOString();
+        task.updatedAt = stats.mtime.toISOString();
+      } catch {
+        // Use defaults if stats fail
+      }
     }
 
     return task;
@@ -339,8 +367,17 @@ export class TaskManager {
     task.status = status;
     task.updatedAt = new Date().toISOString();
 
-    // Status is updated in memory only
-    // In the future, we could persist this to a status.md file or update tasks.md
+    // Persist status to .metadata.json
+    const taskPath = join(this.tasksPath, taskId);
+    const metadataPath = join(taskPath, '.metadata.json');
+
+    const metadata = {
+      status: task.status,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+    };
+
+    await writeFileUtil(metadataPath, JSON.stringify(metadata, null, 2));
   }
 
   /**
