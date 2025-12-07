@@ -1,5 +1,8 @@
 import inquirer from 'inquirer';
-import type { DetectionResult, ProjectConfig, FrameworkId } from '../types.js';
+import chalk from 'chalk';
+import type { DetectionResult, ProjectConfig, FrameworkId, LanguageDetection } from '../types.js';
+
+type LanguageId = LanguageDetection['language'];
 
 const FRAMEWORK_LABELS: Record<FrameworkId, string> = {
   nestjs: 'NestJS',
@@ -378,6 +381,111 @@ export async function promptProjectConfig(
     gitPushMode: gitWorkflowAnswer.gitPushMode || 'manual',
     installGitHooks,
     minimal: isMinimal,
+  };
+}
+
+/**
+ * Simplified project configuration prompt (v2.0)
+ * Reduces prompts to essential choices only:
+ * - Confirm detected languages
+ * - MCP activation
+ * - Git hooks installation (optional)
+ */
+export async function promptSimplifiedConfig(detection: DetectionResult): Promise<ProjectConfig> {
+  console.log(chalk.bold.cyan('\n📦 Quick Setup\n'));
+
+  // 1. Confirm languages (single prompt if detection succeeded)
+  let languages: LanguageId[] = detection.languages.map((l) => l.language);
+
+  if (detection.languages.length > 0) {
+    const { confirmLanguages } = await inquirer.prompt<{ confirmLanguages: boolean }>([
+      {
+        type: 'confirm',
+        name: 'confirmLanguages',
+        message: `Detected: ${detection.languages.map((l) => l.language).join(', ')}. Use these languages?`,
+        default: true,
+      },
+    ]);
+
+    if (!confirmLanguages) {
+      const { selectedLanguages } = await inquirer.prompt<{ selectedLanguages: LanguageId[] }>([
+        {
+          type: 'checkbox',
+          name: 'selectedLanguages',
+          message: 'Select languages:',
+          choices: LANGUAGE_CHOICES,
+          default: languages,
+          validate: (answer: string[]) => answer.length >= 1 || 'Select at least one language.',
+        },
+      ]);
+      languages = selectedLanguages;
+    }
+  } else {
+    const { selectedLanguages } = await inquirer.prompt<{ selectedLanguages: LanguageId[] }>([
+      {
+        type: 'checkbox',
+        name: 'selectedLanguages',
+        message: 'Select project languages:',
+        choices: LANGUAGE_CHOICES,
+        validate: (answer: string[]) => answer.length >= 1 || 'Select at least one language.',
+      },
+    ]);
+    languages = selectedLanguages;
+  }
+
+  // 2. MCP activation (only if modules detected or available)
+  let modules: string[] = [];
+  const detectedModules = detection.modules.filter((m) => m.detected).map((m) => m.module);
+
+  if (detectedModules.length > 0) {
+    const { activateMcp } = await inquirer.prompt<{ activateMcp: boolean }>([
+      {
+        type: 'confirm',
+        name: 'activateMcp',
+        message: `Activate MCP modules? (${detectedModules.join(', ')})`,
+        default: true,
+      },
+    ]);
+    if (activateMcp) {
+      modules = detectedModules;
+    }
+  }
+
+  // 3. Git hooks (optional)
+  const hasHooks = detection.gitHooks?.preCommitExists && detection.gitHooks?.prePushExists;
+  let installGitHooks = false;
+
+  if (!hasHooks) {
+    const { installHooks } = await inquirer.prompt<{ installHooks: boolean }>([
+      {
+        type: 'confirm',
+        name: 'installHooks',
+        message: 'Install Git hooks for quality checks?',
+        default: false, // Default to false to be less intrusive
+      },
+    ]);
+    installGitHooks = installHooks;
+  }
+
+  // Use smart defaults for everything else
+  const detectedFrameworks = detection.frameworks.filter((f) => f.detected).map((f) => f.framework);
+  const detectedServices = detection.services.filter((s) => s.detected).map((s) => s.service);
+
+  return {
+    languages,
+    modules,
+    services: detectedServices,
+    frameworks: detectedFrameworks,
+    ides: ['cursor'], // Default to Cursor
+    projectType: 'application',
+    coverageThreshold: 95,
+    strictDocs: true,
+    generateWorkflows: true,
+    includeGitWorkflow: true,
+    gitPushMode: 'manual',
+    installGitHooks,
+    minimal: false,
+    modular: true,
   };
 }
 

@@ -1,8 +1,28 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { calculateHealthScore, getHealthGrade } from '../src/core/health-scorer';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
+import { exec } from 'child_process';
+
+// Mock child_process to prevent actual command execution
+vi.mock('child_process', () => ({
+  exec: vi.fn((cmd, options, callback) => {
+    // Return safe default for npm audit
+    if (cmd.includes('npm audit')) {
+      const result = {
+        stdout: JSON.stringify({ metadata: { vulnerabilities: { total: 0 } } }),
+        stderr: '',
+      };
+      if (callback) callback(null, result.stdout, result.stderr);
+      return result;
+    }
+    // Return empty for git commands
+    const result = { stdout: '', stderr: '' };
+    if (callback) callback(null, result.stdout, result.stderr);
+    return result;
+  }),
+}));
 
 describe('health-scorer', () => {
   let testDir: string;

@@ -1,6 +1,6 @@
 {
   "name": "@hivehub/rulebook",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "Standardize AI-generated projects with automated templates, quality gates, and framework detection for 28 languages, 17 frameworks, 12 MCP modules, and 20 services",
   "type": "module",
   "main": "dist/index.js",
@@ -11,9 +11,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
-    "test": "vitest --run",
+    "test": "vitest run --no-watch",
     "test:watch": "vitest",
-    "test:coverage": "vitest --coverage --run",
+    "test:coverage": "vitest run --coverage --no-watch",
     "test:agent": "node scripts/test-agent-simple.mjs",
     "test:agent:quick": "node scripts/test-agent-simple.mjs",
     "test:agent:full": "node scripts/test-agent-manager.js all",

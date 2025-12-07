@@ -328,3 +328,185 @@ export async function generateCursorCommands(targetDir: string): Promise<string[
 
   return generatedFiles;
 }
+
+/**
+ * Generate AI CLI configuration files (CLAUDE.md, CODEX.md, GEMINI.md, gemini-extension.json)
+ * These files help AI CLI tools understand project standards
+ */
+export async function generateAICLIFiles(
+  config: ProjectConfig,
+  targetDir: string = process.cwd()
+): Promise<string[]> {
+  const generatedFiles: string[] = [];
+
+  // Generate CLAUDE.md for Claude Code CLI
+  const claudePath = path.join(targetDir, 'CLAUDE.md');
+  if (!(await fileExists(claudePath))) {
+    const claudeContent = generateClaudeMdContent(config);
+    await writeFile(claudePath, claudeContent);
+    generatedFiles.push(claudePath);
+  }
+
+  // Generate CODEX.md for Codex CLI
+  const codexPath = path.join(targetDir, 'CODEX.md');
+  if (!(await fileExists(codexPath))) {
+    const codexContent = generateCodexMdContent(config);
+    await writeFile(codexPath, codexContent);
+    generatedFiles.push(codexPath);
+  }
+
+  // Generate GEMINI.md for Gemini CLI
+  const geminiPath = path.join(targetDir, 'GEMINI.md');
+  if (!(await fileExists(geminiPath))) {
+    const geminiContent = generateGeminiMdContent(config);
+    await writeFile(geminiPath, geminiContent);
+    generatedFiles.push(geminiPath);
+  }
+
+  // Generate gemini-extension.json for Gemini CLI extension
+  const geminiExtPath = path.join(targetDir, 'gemini-extension.json');
+  if (!(await fileExists(geminiExtPath))) {
+    const geminiExtContent = generateGeminiExtensionContent(config, targetDir);
+    await writeFile(geminiExtPath, JSON.stringify(geminiExtContent, null, 2));
+    generatedFiles.push(geminiExtPath);
+  }
+
+  return generatedFiles;
+}
+
+function generateClaudeMdContent(config: ProjectConfig): string {
+  const languages = config.languages.map((l) => l.charAt(0).toUpperCase() + l.slice(1)).join(', ');
+  return `# CLAUDE.md
+
+This file provides guidance to Claude Code when working with this repository.
+
+## Project Overview
+
+This project uses @hivehub/rulebook standards. All code generation should follow the rules defined in AGENTS.md.
+
+**Languages**: ${languages || 'Not specified'}
+**Coverage Threshold**: ${config.coverageThreshold}%
+
+## Critical Rules
+
+1. **ALWAYS read AGENTS.md first** - Contains all project standards and patterns
+2. **Tests required** - Minimum ${config.coverageThreshold}% coverage for all new code
+3. **Quality checks before committing**:
+   - Type check / Compiler check
+   - Lint (zero warnings)
+   - All tests passing
+   - Coverage threshold met
+4. **Documentation** - Update /docs/ when implementing features
+
+## Commands
+
+\`\`\`bash
+# Quality checks
+npm run type-check    # TypeScript type checking
+npm run lint          # Run linter
+npm test              # Run tests
+npm run build         # Build project
+
+# Task management (if using Rulebook)
+rulebook task list    # List tasks
+rulebook task show    # Show task details
+rulebook validate     # Validate project structure
+\`\`\`
+
+## File Structure
+
+- \`AGENTS.md\` - Main project standards and AI directives
+- \`/rulebook/\` - Modular rule definitions
+- \`/docs/\` - Project documentation
+- \`/tests/\` - Test files
+
+When in doubt, check AGENTS.md for guidance.
+`;
+}
+
+function generateCodexMdContent(config: ProjectConfig): string {
+  const languages = config.languages.map((l) => l.charAt(0).toUpperCase() + l.slice(1)).join(', ');
+  return `# CODEX.md
+
+Instructions for OpenAI Codex and compatible tools.
+
+## Project Standards
+
+This project uses @hivehub/rulebook. Follow AGENTS.md for all code generation.
+
+**Languages**: ${languages || 'Not specified'}
+**Test Coverage**: ${config.coverageThreshold}%+
+
+## Rules
+
+1. Read AGENTS.md before generating code
+2. Write tests first (TDD approach)
+3. Maintain ${config.coverageThreshold}%+ test coverage
+4. Run quality checks before committing
+5. Follow language-specific patterns from AGENTS.md
+
+## Quick Reference
+
+- Standards: See AGENTS.md
+- Modular rules: See /rulebook/ directory
+- Documentation: See /docs/ directory
+- Tests: See /tests/ directory
+
+Always reference AGENTS.md for consistent code generation.
+`;
+}
+
+function generateGeminiMdContent(config: ProjectConfig): string {
+  const languages = config.languages.map((l) => l.charAt(0).toUpperCase() + l.slice(1)).join(', ');
+  return `# GEMINI.md
+
+Instructions for Google Gemini CLI and API.
+
+## Project Configuration
+
+This project uses @hivehub/rulebook standards defined in AGENTS.md.
+
+**Languages**: ${languages || 'Not specified'}
+**Coverage Requirement**: ${config.coverageThreshold}%
+
+## Development Guidelines
+
+1. **Check AGENTS.md first** - Contains all project standards
+2. **Test-driven development** - Write tests before implementation
+3. **Quality gates** - All code must pass:
+   - Type checking
+   - Linting (zero warnings)
+   - Tests (100% pass rate)
+   - Coverage (${config.coverageThreshold}%+)
+4. **Documentation** - Update /docs/ for all features
+
+## Project Structure
+
+- \`AGENTS.md\` - AI agent directives and standards
+- \`/rulebook/\` - Modular rule definitions
+- \`/docs/\` - Documentation
+- \`/tests/\` - Test files
+
+For detailed standards, see AGENTS.md.
+`;
+}
+
+function generateGeminiExtensionContent(
+  config: ProjectConfig,
+  targetDir: string
+): Record<string, unknown> {
+  return {
+    name: path.basename(targetDir),
+    version: '1.0.0',
+    description: 'Gemini CLI extension for project standards',
+    main: 'GEMINI.md',
+    includes: ['AGENTS.md', 'rulebook/**/*.md', 'docs/**/*.md'],
+    excludes: ['node_modules/**', 'dist/**', '.git/**'],
+    settings: {
+      coverageThreshold: config.coverageThreshold,
+      languages: config.languages,
+      frameworks: config.frameworks || [],
+      strictMode: true,
+    },
+  };
+}

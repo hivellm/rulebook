@@ -4,8 +4,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { TaskManager } from '../core/task-manager.js';
+import { SkillsManager, getDefaultTemplatesPath } from '../core/skills-manager.js';
+import { ConfigManager } from '../core/config-manager.js';
 import { join, dirname, resolve } from 'path';
 import { readFileSync, existsSync } from 'fs';
+import type { SkillCategory } from '../types.js';
 
 // Find .rulebook file by walking up directories
 export function findRulebookFile(startDir: string): string | null {
@@ -52,10 +55,12 @@ function loadConfig() {
 export async function startRulebookMcpServer(): Promise<void> {
   const config = loadConfig();
   const taskManager = new TaskManager(config.projectRoot, 'rulebook');
+  const skillsManager = new SkillsManager(getDefaultTemplatesPath(), config.projectRoot);
+  const configManager = new ConfigManager(config.projectRoot);
 
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '1.1.3',
+    version: '2.0.0',
   });
 
   // Register tool: rulebook_task_create
@@ -275,6 +280,367 @@ export async function startRulebookMcpServer(): Promise<void> {
           },
         ],
       };
+    }
+  );
+
+  // ============================================
+  // Skills Management Functions (v2.0)
+  // ============================================
+
+  // Register tool: rulebook_skill_list
+  server.registerTool(
+    'rulebook_skill_list',
+    {
+      title: 'List Available Skills',
+      description: 'List all available skills, optionally filtered by category',
+      inputSchema: {
+        category: z
+          .enum([
+            'languages',
+            'frameworks',
+            'modules',
+            'services',
+            'workflows',
+            'ides',
+            'core',
+            'cli',
+            'git',
+            'hooks',
+          ])
+          .optional()
+          .describe('Filter by category'),
+        enabledOnly: z.boolean().optional().describe('Show only enabled skills'),
+      },
+    },
+    async (args) => {
+      try {
+        let skills;
+        if (args.category) {
+          skills = await skillsManager.getSkillsByCategory(args.category as SkillCategory);
+        } else {
+          skills = await skillsManager.getSkills();
+        }
+
+        // Check enabled status from config
+        const rulebookConfig = await configManager.loadConfig();
+        const enabledIds = new Set(rulebookConfig.skills?.enabled || []);
+
+        let filteredSkills = skills.map((s) => ({
+          id: s.id,
+          name: s.metadata.name,
+          description: s.metadata.description,
+          category: s.category,
+          enabled: enabledIds.has(s.id),
+          version: s.metadata.version,
+          tags: s.metadata.tags,
+        }));
+
+        if (args.enabledOnly) {
+          filteredSkills = filteredSkills.filter((s) => s.enabled);
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                skills: filteredSkills,
+                count: filteredSkills.length,
+                category: args.category || 'all',
+              }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error',
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_skill_show
+  server.registerTool(
+    'rulebook_skill_show',
+    {
+      title: 'Show Skill Details',
+      description: 'Show detailed information about a specific skill',
+      inputSchema: {
+        skillId: z.string().describe('Skill ID (e.g., languages/typescript)'),
+      },
+    },
+    async (args) => {
+      try {
+        const skill = await skillsManager.getSkillById(args.skillId);
+
+        if (!skill) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: false,
+                  error: `Skill not found: ${args.skillId}`,
+                  suggestion: 'Use rulebook_skill_list to see available skills',
+                }),
+              },
+            ],
+          };
+        }
+
+        const rulebookConfig = await configManager.loadConfig();
+        const enabled = rulebookConfig.skills?.enabled?.includes(args.skillId) || false;
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                skill: {
+                  id: skill.id,
+                  name: skill.metadata.name,
+                  description: skill.metadata.description,
+                  category: skill.category,
+                  enabled,
+                  version: skill.metadata.version,
+                  author: skill.metadata.author,
+                  tags: skill.metadata.tags,
+                  dependencies: skill.metadata.dependencies,
+                  conflicts: skill.metadata.conflicts,
+                  content:
+                    skill.content.slice(0, 2000) + (skill.content.length > 2000 ? '...' : ''),
+                },
+              }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error',
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_skill_enable
+  server.registerTool(
+    'rulebook_skill_enable',
+    {
+      title: 'Enable Skill',
+      description: 'Enable a skill in the project configuration',
+      inputSchema: {
+        skillId: z.string().describe('Skill ID to enable (e.g., languages/typescript)'),
+      },
+    },
+    async (args) => {
+      try {
+        let rulebookConfig = await configManager.loadConfig();
+        rulebookConfig = await skillsManager.enableSkill(args.skillId, rulebookConfig);
+        await configManager.saveConfig(rulebookConfig);
+
+        // Validate to check for conflicts
+        const validation = await skillsManager.validateSkills(rulebookConfig);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                skillId: args.skillId,
+                message: `Skill ${args.skillId} enabled successfully`,
+                warnings: validation.warnings,
+                conflicts: validation.conflicts,
+              }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error',
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_skill_disable
+  server.registerTool(
+    'rulebook_skill_disable',
+    {
+      title: 'Disable Skill',
+      description: 'Disable a skill in the project configuration',
+      inputSchema: {
+        skillId: z.string().describe('Skill ID to disable (e.g., languages/typescript)'),
+      },
+    },
+    async (args) => {
+      try {
+        let rulebookConfig = await configManager.loadConfig();
+
+        // Check if skill is enabled
+        if (!rulebookConfig.skills?.enabled?.includes(args.skillId)) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: false,
+                  error: `Skill ${args.skillId} is not currently enabled`,
+                }),
+              },
+            ],
+          };
+        }
+
+        rulebookConfig = await skillsManager.disableSkill(args.skillId, rulebookConfig);
+        await configManager.saveConfig(rulebookConfig);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                skillId: args.skillId,
+                message: `Skill ${args.skillId} disabled successfully`,
+              }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error',
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_skill_search
+  server.registerTool(
+    'rulebook_skill_search',
+    {
+      title: 'Search Skills',
+      description: 'Search for skills by name, description, or tags',
+      inputSchema: {
+        query: z.string().describe('Search query'),
+      },
+    },
+    async (args) => {
+      try {
+        const skills = await skillsManager.searchSkills(args.query);
+        const rulebookConfig = await configManager.loadConfig();
+        const enabledIds = new Set(rulebookConfig.skills?.enabled || []);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                query: args.query,
+                skills: skills.map((s) => ({
+                  id: s.id,
+                  name: s.metadata.name,
+                  description: s.metadata.description,
+                  category: s.category,
+                  enabled: enabledIds.has(s.id),
+                })),
+                count: skills.length,
+              }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error',
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_skill_validate
+  server.registerTool(
+    'rulebook_skill_validate',
+    {
+      title: 'Validate Skills Configuration',
+      description: 'Validate the current skills configuration for conflicts and dependencies',
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        const rulebookConfig = await configManager.loadConfig();
+        const validation = await skillsManager.validateSkills(rulebookConfig);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                valid: validation.valid,
+                errors: validation.errors,
+                warnings: validation.warnings,
+                conflicts: validation.conflicts,
+                enabledCount: rulebookConfig.skills?.enabled?.length || 0,
+              }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error',
+              }),
+            },
+          ],
+        };
+      }
     }
   );
 

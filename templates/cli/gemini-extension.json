@@ -1,0 +1,77 @@
+{
+  "$schema": "https://ai.google.dev/schemas/gemini-extension.json",
+  "name": "rulebook",
+  "displayName": "Rulebook Project Standards",
+  "version": "2.0.0",
+  "description": "Standardize AI-generated projects with skills, templates, and quality gates",
+  "author": "HiveLLM",
+  "license": "Apache-2.0",
+  "capabilities": {
+    "codeGeneration": true,
+    "taskManagement": true,
+    "projectValidation": true,
+    "skillsSystem": true
+  },
+  "commands": {
+    "init": {
+      "description": "Initialize rulebook for current project",
+      "command": "rulebook init --yes"
+    },
+    "update": {
+      "description": "Update project rules to latest version",
+      "command": "rulebook update --yes"
+    },
+    "validate": {
+      "description": "Validate project structure",
+      "command": "rulebook validate"
+    },
+    "health": {
+      "description": "Check project health score",
+      "command": "rulebook health"
+    },
+    "fix": {
+      "description": "Auto-fix common issues",
+      "command": "rulebook fix"
+    },
+    "skill-list": {
+      "description": "List available skills",
+      "command": "rulebook skill list"
+    },
+    "skill-add": {
+      "description": "Add a skill",
+      "command": "rulebook skill add"
+    },
+    "task-create": {
+      "description": "Create a new task",
+      "command": "rulebook task create"
+    },
+    "task-list": {
+      "description": "List all tasks",
+      "command": "rulebook task list"
+    }
+  },
+  "files": {
+    "instructions": "GEMINI.md",
+    "agents": "AGENTS.md",
+    "config": ".rulebook",
+    "rules": "rulebook/"
+  },
+  "integration": {
+    "type": "cli",
+    "install": "npm install -g @hivehub/rulebook",
+    "mcp": {
+      "enabled": true,
+      "server": "rulebook-mcp"
+    }
+  },
+  "skills": {
+    "enabled": true,
+    "categories": [
+      "languages",
+      "frameworks",
+      "modules",
+      "services",
+      "core"
+    ]
+  }
+}

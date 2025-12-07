@@ -654,6 +654,56 @@ export async function generateModularAgents(
     sections.push('');
   }
 
+  // Add enabled skills section (v2.0)
+  try {
+    const { SkillsManager, getDefaultTemplatesPath } = await import('./skills-manager.js');
+    const { createConfigManager } = await import('./config-manager.js');
+
+    const configManager = createConfigManager(projectRoot);
+    const rulebookConfig = await configManager.loadConfig();
+
+    if (rulebookConfig.skills?.enabled && rulebookConfig.skills.enabled.length > 0) {
+      const skillsManager = new SkillsManager(getDefaultTemplatesPath(), projectRoot);
+      const enabledSkills = await skillsManager.getEnabledSkills(rulebookConfig);
+
+      // Add capabilities summary
+      if (enabledSkills.length > 0) {
+        sections.push('## Project Capabilities');
+        sections.push('');
+        sections.push('This project has the following AI-assisted capabilities enabled:');
+        sections.push('');
+
+        // Group skills by category for summary
+        const categorySummary = new Map<string, string[]>();
+        for (const skill of enabledSkills) {
+          const category = skill.category;
+          if (!categorySummary.has(category)) {
+            categorySummary.set(category, []);
+          }
+          categorySummary.get(category)?.push(skill.metadata.name);
+        }
+
+        for (const [category, skills] of categorySummary.entries()) {
+          const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
+          sections.push(`- **${categoryLabel}**: ${skills.join(', ')}`);
+        }
+
+        sections.push('');
+        sections.push('Use `rulebook skill list` to see all available skills.');
+        sections.push('Use `rulebook skill add <skill-id>` to enable additional skills.');
+        sections.push('');
+      }
+
+      // Add skills content (includes index and detailed rules)
+      const skillsContent = await skillsManager.mergeSkillsContent(rulebookConfig);
+      if (skillsContent) {
+        sections.push(skillsContent);
+      }
+    }
+  } catch {
+    // Skills not configured or error loading - skip silently
+  }
+
   return sections.join('\n').trim() + '\n';
 }
 

@@ -214,6 +214,14 @@ export interface RulebookConfig {
     tasksDir?: string; // Relative to project root
     archiveDir?: string; // Relative to project root
   };
+  // Skills configuration (v2.0)
+  skills?: {
+    enabled: string[]; // List of enabled skill IDs
+    disabled?: string[]; // List of explicitly disabled skill IDs
+    order?: string[]; // Order for merging skills into AGENTS.md
+    customSkillsPath?: string; // Path to custom skills directory
+    autoDetect?: boolean; // Auto-enable skills based on detection
+  };
 }
 
 export interface OpenSpecTask {
@@ -281,4 +289,66 @@ export interface TelemetryData {
     };
   };
   lastUpdated: string;
+}
+
+// Skills System Types (v2.0)
+
+export type SkillCategory =
+  | 'languages'
+  | 'frameworks'
+  | 'modules'
+  | 'services'
+  | 'workflows'
+  | 'ides'
+  | 'core'
+  | 'cli'
+  | 'git'
+  | 'hooks';
+
+export interface SkillMetadata {
+  name: string;
+  description: string;
+  version?: string;
+  category?: SkillCategory;
+  author?: string;
+  tags?: string[];
+  dependencies?: string[];
+  conflicts?: string[];
+}
+
+export interface Skill {
+  id: string;
+  path: string;
+  metadata: SkillMetadata;
+  content: string;
+  category: SkillCategory;
+  enabled: boolean;
+}
+
+export interface SkillsIndex {
+  skills: Skill[];
+  categories: Record<SkillCategory, Skill[]>;
+  lastUpdated: string;
+}
+
+export interface SkillsConfig {
+  enabled: string[];
+  disabled?: string[];
+  order?: string[];
+  customSkillsPath?: string;
+  autoDetect?: boolean;
+}
+
+export interface SkillConflict {
+  skillA: string;
+  skillB: string;
+  reason: string;
+  resolution?: 'choose_a' | 'choose_b' | 'manual';
+}
+
+export interface SkillValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  conflicts: SkillConflict[];
 }
