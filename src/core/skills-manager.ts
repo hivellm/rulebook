@@ -319,7 +319,9 @@ export class SkillsManager {
       // Determine category from directory structure
       const relPath = relative(this.skillsPath, dirname(filePath));
       const pathParts = relPath.split(/[/\\]/);
-      const category = (CATEGORY_MAPPINGS[pathParts[0]] || metadata.category || 'core') as SkillCategory;
+      const category = (CATEGORY_MAPPINGS[pathParts[0]] ||
+        metadata.category ||
+        'core') as SkillCategory;
 
       const skillId = this.generateSkillId(metadata.name || dirName, category);
 

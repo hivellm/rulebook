@@ -4,10 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { TaskManager } from '../core/task-manager.js';
-import {
-  SkillsManager,
-  getDefaultTemplatesPath,
-} from '../core/skills-manager.js';
+import { SkillsManager, getDefaultTemplatesPath } from '../core/skills-manager.js';
 import { ConfigManager } from '../core/config-manager.js';
 import { join, dirname, resolve } from 'path';
 import { readFileSync, existsSync } from 'fs';
@@ -420,7 +417,8 @@ export async function startRulebookMcpServer(): Promise<void> {
                   tags: skill.metadata.tags,
                   dependencies: skill.metadata.dependencies,
                   conflicts: skill.metadata.conflicts,
-                  content: skill.content.slice(0, 2000) + (skill.content.length > 2000 ? '...' : ''),
+                  content:
+                    skill.content.slice(0, 2000) + (skill.content.length > 2000 ? '...' : ''),
                 },
               }),
             },

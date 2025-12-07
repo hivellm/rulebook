@@ -26,10 +26,7 @@ import { scaffoldMinimalProject } from '../core/minimal-scaffolder.js';
 import path from 'path';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
-import {
-  SkillsManager,
-  getDefaultTemplatesPath,
-} from '../core/skills-manager.js';
+import { SkillsManager, getDefaultTemplatesPath } from '../core/skills-manager.js';
 
 const FRAMEWORK_LABELS: Record<FrameworkId, string> = {
   nestjs: 'NestJS',
@@ -2012,7 +2009,9 @@ export async function skillShowCommand(skillId: string): Promise<void> {
     console.log(chalk.bold.blue(`\n📦 ${skill.metadata.name}\n`));
     console.log(chalk.white(`ID: ${skill.id}`));
     console.log(chalk.white(`Category: ${skill.category}`));
-    console.log(chalk.white(`Status: ${enabled ? chalk.green('Enabled') : chalk.gray('Disabled')}`));
+    console.log(
+      chalk.white(`Status: ${enabled ? chalk.green('Enabled') : chalk.gray('Disabled')}`)
+    );
 
     if (skill.metadata.version) {
       console.log(chalk.white(`Version: ${skill.metadata.version}`));

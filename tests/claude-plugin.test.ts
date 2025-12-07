@@ -24,7 +24,10 @@ describe('Claude Plugin Structure', () => {
 
   describe('marketplace.json manifest', () => {
     it('should have marketplace.json at repository root', async () => {
-      const exists = await fs.access(marketplaceJsonPath).then(() => true).catch(() => false);
+      const exists = await fs
+        .access(marketplaceJsonPath)
+        .then(() => true)
+        .catch(() => false);
       expect(exists).toBe(true);
     });
 
@@ -117,7 +120,10 @@ describe('Claude Plugin Structure', () => {
     const commandsDir = path.join(projectRoot, 'commands');
 
     it('should have commands/ directory at project root', async () => {
-      const exists = await fs.access(commandsDir).then(() => true).catch(() => false);
+      const exists = await fs
+        .access(commandsDir)
+        .then(() => true)
+        .catch(() => false);
       expect(exists).toBe(true);
     });
 
@@ -162,7 +168,10 @@ describe('Claude Plugin Structure', () => {
     const skillsDir = path.join(projectRoot, 'skills');
 
     it('should have skills/ directory at project root', async () => {
-      const exists = await fs.access(skillsDir).then(() => true).catch(() => false);
+      const exists = await fs
+        .access(skillsDir)
+        .then(() => true)
+        .catch(() => false);
       expect(exists).toBe(true);
     });
 
@@ -207,7 +216,13 @@ describe('Claude Plugin Structure', () => {
     });
 
     it('should have YAML frontmatter with name and description in all skills', async () => {
-      const skillDirs = ['rulebook-typescript', 'rulebook-task-management', 'rulebook-quality-gates', 'rulebook-git-workflow', 'rulebook-mcp'];
+      const skillDirs = [
+        'rulebook-typescript',
+        'rulebook-task-management',
+        'rulebook-quality-gates',
+        'rulebook-git-workflow',
+        'rulebook-mcp',
+      ];
 
       for (const skillDir of skillDirs) {
         const skillPath = path.join(skillsDir, skillDir, 'SKILL.md');
@@ -223,13 +238,19 @@ describe('Claude Plugin Structure', () => {
   describe('Plugin Discovery', () => {
     it('should have .claude-plugin/plugin.json', async () => {
       const pluginJsonPath = path.join(pluginDir, 'plugin.json');
-      const exists = await fs.access(pluginJsonPath).then(() => true).catch(() => false);
+      const exists = await fs
+        .access(pluginJsonPath)
+        .then(() => true)
+        .catch(() => false);
       expect(exists).toBe(true);
     });
 
     it('should have .mcp.json at root', async () => {
       const mcpPath = path.join(projectRoot, '.mcp.json');
-      const exists = await fs.access(mcpPath).then(() => true).catch(() => false);
+      const exists = await fs
+        .access(mcpPath)
+        .then(() => true)
+        .catch(() => false);
       expect(exists).toBe(true);
     });
 
@@ -260,7 +281,9 @@ describe('Claude Plugin Structure', () => {
       const pluginManifest = JSON.parse(
         await fs.readFile(path.join(pluginDir, 'plugin.json'), 'utf-8')
       );
-      const packageJson = JSON.parse(await fs.readFile(path.join(projectRoot, 'package.json'), 'utf-8'));
+      const packageJson = JSON.parse(
+        await fs.readFile(path.join(projectRoot, 'package.json'), 'utf-8')
+      );
 
       expect(pluginManifest.version).toBe(packageJson.version);
     });

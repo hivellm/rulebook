@@ -391,9 +391,7 @@ export async function promptProjectConfig(
  * - MCP activation
  * - Git hooks installation (optional)
  */
-export async function promptSimplifiedConfig(
-  detection: DetectionResult
-): Promise<ProjectConfig> {
+export async function promptSimplifiedConfig(detection: DetectionResult): Promise<ProjectConfig> {
   console.log(chalk.bold.cyan('\n📦 Quick Setup\n'));
 
   // 1. Confirm languages (single prompt if detection succeeded)
@@ -404,7 +402,7 @@ export async function promptSimplifiedConfig(
       {
         type: 'confirm',
         name: 'confirmLanguages',
-        message: `Detected: ${detection.languages.map(l => l.language).join(', ')}. Use these languages?`,
+        message: `Detected: ${detection.languages.map((l) => l.language).join(', ')}. Use these languages?`,
         default: true,
       },
     ]);
