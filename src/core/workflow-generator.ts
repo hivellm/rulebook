@@ -387,16 +387,101 @@ This project uses @hivehub/rulebook standards. All code generation should follow
 **Languages**: ${languages || 'Not specified'}
 **Coverage Threshold**: ${config.coverageThreshold}%
 
+## ⚠️ CRITICAL: File Editing Rules
+
+**MANDATORY**: When editing multiple files, you MUST edit files **SEQUENTIALLY**, one at a time.
+
+### Why Sequential Editing is Required
+
+The Edit tool uses exact string matching for replacements. When multiple files are edited in parallel:
+- The tool may fail to find the exact string in some files
+- Race conditions can cause partial or corrupted edits
+- Error recovery becomes impossible
+
+### Correct Pattern
+
+\`\`\`
+✅ CORRECT (Sequential):
+1. Edit file A → Wait for confirmation
+2. Edit file B → Wait for confirmation
+3. Edit file C → Wait for confirmation
+
+❌ WRONG (Parallel):
+1. Edit files A, B, C simultaneously → Failures likely
+\`\`\`
+
+### Implementation Rules
+
+1. **NEVER call multiple Edit tools in parallel** for different files
+2. **ALWAYS wait for each edit to complete** before starting the next
+3. **Verify each edit succeeded** before proceeding
+4. **If an edit fails**, retry that specific edit before moving on
+
+## ⚠️ CRITICAL: Test Implementation Rules
+
+**MANDATORY**: You MUST write **complete, production-quality tests**. Never simplify or reduce test coverage.
+
+### Forbidden Test Patterns
+
+\`\`\`typescript
+// ❌ NEVER do this - placeholder tests
+it('should work', () => {
+  expect(true).toBe(true);
+});
+
+// ❌ NEVER do this - skipped tests
+it.skip('should handle edge case', () => {});
+
+// ❌ NEVER do this - incomplete assertions
+it('should return data', () => {
+  const result = getData();
+  expect(result).toBeDefined(); // Too weak!
+});
+
+// ❌ NEVER do this - "simplify" by removing test cases
+// Original had 10 test cases, don't reduce to 3
+\`\`\`
+
+### Required Test Patterns
+
+\`\`\`typescript
+// ✅ CORRECT - complete test with proper assertions
+it('should return user data with correct structure', () => {
+  const result = getUserById(1);
+  expect(result).toEqual({
+    id: 1,
+    name: 'John Doe',
+    email: 'john@example.com',
+    createdAt: expect.any(Date),
+  });
+});
+
+// ✅ CORRECT - test edge cases and error paths
+it('should throw NotFoundError when user does not exist', () => {
+  expect(() => getUserById(999)).toThrow(NotFoundError);
+});
+\`\`\`
+
+### Test Implementation Rules
+
+1. **NEVER simplify tests** - Implement the full, complete test as originally designed
+2. **NEVER skip test cases** - Every test case in the spec must be implemented
+3. **NEVER use placeholder assertions** - Each assertion must verify actual behavior
+4. **ALWAYS test error paths** - Exceptions, edge cases, and failure modes
+5. **ALWAYS maintain coverage** - Tests must achieve the project's coverage threshold (${config.coverageThreshold}%+)
+
 ## Critical Rules
 
 1. **ALWAYS read AGENTS.md first** - Contains all project standards and patterns
-2. **Tests required** - Minimum ${config.coverageThreshold}% coverage for all new code
-3. **Quality checks before committing**:
+2. **Edit files sequentially** - One at a time, verify each edit
+3. **Write complete tests** - No placeholders, no simplifications
+4. **Tests required** - Minimum ${config.coverageThreshold}% coverage for all new code
+5. **Quality checks before committing**:
    - Type check / Compiler check
    - Lint (zero warnings)
    - All tests passing
    - Coverage threshold met
-4. **Documentation** - Update /docs/ when implementing features
+6. **Documentation** - Update /docs/ when implementing features
 
 ## Commands
 

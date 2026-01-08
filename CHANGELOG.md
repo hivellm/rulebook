@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2025-01-08
+
+### Added
+- **Claude Code Critical Directives**: New mandatory directives for Claude Code CLI to ensure consistent behavior
+  - **Sequential File Editing**: Claude Code must now edit files one at a time (sequentially) to prevent failures from parallel edits
+  - **Complete Test Implementation**: Strict rules against simplifying tests, placeholder assertions, or skipping test cases
+  - Updated `templates/cli/CLAUDE_CODE.md` with comprehensive guidelines
+  - Updated `generateClaudeMdContent()` function to include directives in generated `CLAUDE.md` files
+
+### Changed
+- **CLAUDE.md Generation**: Enhanced `CLAUDE.md` file generation during `rulebook init`
+  - Now includes detailed file editing rules with correct/incorrect patterns
+  - Now includes test implementation rules with forbidden and required patterns
+  - Better documentation of quality gates and workflow requirements
+
 ### Fixed
 - **Windows Test Suite Compatibility**: Fixed tests hanging/freezing on Windows
   - Added `child_process` mock in `health-scorer.test.ts` to prevent real command execution
@@ -16,7 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Test suite now completes successfully in ~2 seconds on Windows (previously hung indefinitely)
   - 705 tests passing, 236 skipped (including 25 MCP server tests on Windows)
 
-### Changed
 - **Test Performance**: Improved test execution speed
   - `health-scorer.test.ts` now runs in 96ms (previously 1078ms - 11x faster)
   - Test commands updated: `vitest run --no-watch` (explicit non-watch mode)

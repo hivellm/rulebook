@@ -48,7 +48,15 @@ npx @hivehub/rulebook@latest update
 
 ## What's New
 
-### v2.0.0 (Latest)
+### v2.1.0 (Latest)
+
+- 🔒 **Claude Code Critical Directives**: New mandatory rules for Claude Code CLI
+  - **Sequential File Editing**: Files must be edited one at a time to prevent failures from parallel edits
+  - **Complete Test Implementation**: Strict rules against simplifying tests, placeholder assertions, or skipping test cases
+  - Updated `CLAUDE.md` generation with comprehensive guidelines and examples
+- 🪟 **Windows Test Suite Fix**: Tests no longer hang on Windows (705 tests passing, 11x faster)
+
+### v2.0.0
 
 - 🧩 **Skills System**: New modular skills architecture for AI-assisted development
   - Skills are YAML-frontmatter Markdown files with enable/disable functionality
@@ -64,7 +72,6 @@ npx @hivehub/rulebook@latest update
 - 🔌 **Claude Code Plugin**: `marketplace.json` + `.claude-plugin/` structure for marketplace distribution
   - `marketplace.json` - Marketplace manifest for plugin discovery
   - Plugin manifest, MCP configuration, slash commands, and skills
-- 🪟 **Windows Test Suite Fix**: Tests no longer hang on Windows (705 tests passing, 11x faster)
 
 ### v1.1.5
 
