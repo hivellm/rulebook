@@ -214,6 +214,14 @@ export interface RulebookConfig {
     tasksDir?: string; // Relative to project root
     archiveDir?: string; // Relative to project root
   };
+  // Memory system configuration (v2.2)
+  memory?: {
+    enabled?: boolean;
+    dbPath?: string; // default: '.rulebook-memory/memory.db'
+    maxSizeBytes?: number; // default: 524288000 (500MB)
+    autoCapture?: boolean; // default: false
+    vectorDimensions?: number; // default: 256
+  };
   // Skills configuration (v2.0)
   skills?: {
     enabled: string[]; // List of enabled skill IDs

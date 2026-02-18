@@ -30,6 +30,13 @@ import {
   skillRemoveCommand,
   skillShowCommand,
   skillSearchCommand,
+  // Memory commands (v2.2)
+  memorySearchCommand,
+  memorySaveCommand,
+  memoryListCommand,
+  memoryStatsCommand,
+  memoryCleanupCommand,
+  memoryExportCommand,
 } from './cli/commands.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -254,5 +261,53 @@ skillCommand
   .command('search <query>')
   .description('Search for skills by name, description, or tags')
   .action((query: string) => skillSearchCommand(query));
+
+// Memory commands (v2.2)
+const memoryCommand = program.command('memory').description('Manage persistent memory system');
+
+memoryCommand
+  .command('search <query>')
+  .description('Search memories using hybrid BM25+vector search')
+  .option('--type <type>', 'Filter by memory type')
+  .option('--limit <n>', 'Max results', '20')
+  .option('--mode <mode>', 'Search mode: bm25, vector, hybrid', 'hybrid')
+  .action((query: string, options: { type?: string; limit?: string; mode?: string }) =>
+    memorySearchCommand(query, options)
+  );
+
+memoryCommand
+  .command('save <text>')
+  .description('Save a memory manually')
+  .option('--type <type>', 'Memory type (bugfix, feature, decision, etc.)')
+  .option('--title <title>', 'Memory title')
+  .option('--tags <tags>', 'Comma-separated tags')
+  .action((text: string, options: { type?: string; title?: string; tags?: string }) =>
+    memorySaveCommand(text, options)
+  );
+
+memoryCommand
+  .command('list')
+  .description('List recent memories')
+  .option('--limit <n>', 'Max results', '20')
+  .option('--type <type>', 'Filter by type')
+  .action((options: { limit?: string; type?: string }) => memoryListCommand(options));
+
+memoryCommand
+  .command('stats')
+  .description('Show memory database statistics')
+  .action(() => memoryStatsCommand());
+
+memoryCommand
+  .command('cleanup')
+  .description('Run memory cleanup and eviction')
+  .option('--force', 'Force cleanup regardless of size')
+  .action((options: { force?: boolean }) => memoryCleanupCommand(options));
+
+memoryCommand
+  .command('export')
+  .description('Export memories to JSON or CSV')
+  .option('--format <format>', 'Output format: json or csv', 'json')
+  .option('--output <path>', 'Output file path (default: stdout)')
+  .action((options: { format?: string; output?: string }) => memoryExportCommand(options));
 
 program.parse(process.argv);

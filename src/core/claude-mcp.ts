@@ -45,6 +45,12 @@ export async function configureMcpJson(projectRoot: string): Promise<boolean> {
   }
 
   mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
+
+  // Only add rulebook entry if not already configured (preserve user customizations)
+  if (mcpConfig.mcpServers.rulebook) {
+    return false;
+  }
+
   mcpConfig.mcpServers.rulebook = {
     command: 'npx',
     args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],

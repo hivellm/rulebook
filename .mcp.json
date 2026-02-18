@@ -1,11 +1,9 @@
 {
   "mcpServers": {
     "rulebook": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "@hivehub/rulebook@latest",
-        "mcp-server"
+        "dist/mcp/rulebook-server.js"
       ]
     }
   }

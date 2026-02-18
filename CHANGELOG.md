@@ -5,18 +5,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.0] - 2026-02-18
 
 ### Added
-- **Claude Code Auto-Setup**: `rulebook init` and `rulebook update` now auto-detect Claude Code and configure integration
-  - Detects Claude Code installation via `~/.claude` directory
-  - Creates/merges `.mcp.json` at project root with rulebook MCP server entry (preserves existing entries)
-  - Installs rulebook skills as Claude Code commands in `.claude/commands/`
-  - Non-blocking: silently skips if Claude Code is not installed
-- **Modular Template Reorganization**: Templates moved from `/rulebook/` to `/rulebook/specs/` for cleaner separation
-  - All generated spec files now live under `/rulebook/specs/` directory
-  - Updated all templates, docs, and generator to use new paths
-  - Custom `rulebookDir` support via template literals in generator
+- **Persistent Memory System**: Zero-dependency persistent context across AI sessions
+  - Hybrid search engine combining BM25 keyword search + HNSW approximate nearest neighbor vector search
+  - Reciprocal Rank Fusion (RRF) for optimal result merging (k=60)
+  - TF-IDF vectorization with FNV1a feature hashing (256-dimension embeddings)
+  - Pure TypeScript HNSW index with binary serialization (no native dependencies)
+  - SQLite persistence via sql.js WASM (zero compilation required)
+  - FTS5 full-text search with fallback to LIKE queries
+  - LRU cache eviction (500MB default, protects `decision` type memories)
+  - Privacy filter: automatically redacts `<private>...</private>` tags
+  - Lazy initialization: WASM/DB only loaded on first operation
+  - 7 memory types: bugfix, feature, refactor, decision, discovery, change, observation
+  - 3-layer search pattern: compact search, timeline context, full details
+
+- **Memory MCP Tools** (6 new functions):
+  - `rulebook_memory_search` - Hybrid BM25+vector search with mode selection
+  - `rulebook_memory_timeline` - Chronological context around a specific memory
+  - `rulebook_memory_get` - Full details for specific memory IDs
+  - `rulebook_memory_save` - Save new memories with type, title, tags
+  - `rulebook_memory_stats` - Database statistics and health status
+  - `rulebook_memory_cleanup` - Force eviction and cleanup
+
+- **Memory CLI Commands** (6 new commands):
+  - `rulebook memory search <query>` - Search with mode/limit options
+  - `rulebook memory save <text>` - Save with type/title/tags
+  - `rulebook memory list` - List memories with type/limit filters
+  - `rulebook memory stats` - Show DB size, count, usage, health
+  - `rulebook memory cleanup` - Run eviction with optional --force
+  - `rulebook memory export` - Export as JSON or CSV
+
+- **106 SKILL.md Files Generated**: All legacy templates now have proper skill format
+  - 5 core skills (agent-automation, dag, documentation-rules, quality-enforcement, rulebook)
+  - 28 language skills (ada through zig)
+  - 17 framework skills (angular through zend)
+  - 13 module skills (atlassian through vectorizer, including memory)
+  - 20 service skills (azure-blob through sqlserver)
+  - 8 IDE skills (copilot through zed)
+  - 15 CLI skills (aider through opencode)
+  - All with YAML frontmatter (name, description, version, category, tags, dependencies, conflicts)
+
+- **Claude Code Commands**: Memory skill commands installed to `.claude/commands/`
+  - `rulebook-memory-search.md` - 3-layer search documentation
+  - `rulebook-memory-save.md` - Memory save with type classification
+  - Auto-installed via `rulebook init` and `rulebook update`
+
+- **Memory Configuration**: Opt-in via `.rulebook` config
+  - `memory.enabled` - Enable/disable memory system (default: false)
+  - `memory.dbPath` - Custom database path (default: `.rulebook-memory/memory.db`)
+  - `memory.maxSizeBytes` - Max DB size (default: 500MB)
+  - `memory.vectorDimensions` - Embedding dimensions (default: 256)
+  - Config migration support for existing projects
+
+### Changed
+- **Update Command**: Now preserves `memory`, `skills`, and other custom config fields
+  - Previously rebuilt `.rulebook` from scratch, losing custom fields
+  - Now inherits `coverageThreshold`, `language`, `outputLanguage`, `cliTools`, `timeouts`
+- **MCP .mcp.json**: `configureMcpJson` no longer overwrites existing `rulebook` entry
+  - Preserves user customizations (e.g., local dev server path)
+  - Only creates entry if `mcpServers.rulebook` doesn't exist
+- **MCP Module Count**: Expanded from 12 to 13 (added Memory)
+- **Total MCP Functions**: Expanded from 13 to 19 (7 task + 6 skills + 6 memory)
+- **Total Skills**: 119 skills across 10 categories (was 2 SKILL.md files)
+
+### Internal
+- Added `src/memory/` module (8 source files, ~2,200 lines)
+- Added 6 test files with 92 memory-specific tests
+- Total: 812 tests passing, 236 skipped
+- Added `sql.js` dependency (WASM SQLite, zero native compilation)
+- Added `.rulebook-memory/` to `.gitignore`
 
 ## [2.1.0] - 2025-01-08
 

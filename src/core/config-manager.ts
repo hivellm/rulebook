@@ -112,6 +112,9 @@ export class ConfigManager {
         cliResponse: 60000, // 1 minute
         testRun: 120000, // 2 minutes
       },
+      memory: {
+        enabled: false,
+      },
     };
 
     await this.saveConfig(defaultConfig);
@@ -161,6 +164,11 @@ export class ConfigManager {
         cliResponse: 60000,
         testRun: 120000,
       };
+    }
+
+    // Add memory config if missing
+    if (!migrated.memory) {
+      migrated.memory = { enabled: false };
     }
 
     // Update version
@@ -316,6 +324,9 @@ export function getDefaultConfig(): RulebookConfig {
       taskExecution: 300000,
       cliResponse: 60000,
       testRun: 120000,
+    },
+    memory: {
+      enabled: false,
     },
   };
 }
