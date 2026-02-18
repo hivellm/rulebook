@@ -644,6 +644,229 @@ export async function startRulebookMcpServer(): Promise<void> {
     }
   );
 
+  // ============================================
+  // Memory System Functions (v2.2)
+  // ============================================
+
+  // Conditionally initialize MemoryManager
+  let memoryManager: Awaited<ReturnType<typeof import('../memory/memory-manager.js').createMemoryManager>> | null = null;
+
+  const rulebookConfig = await configManager.loadConfig();
+  if (rulebookConfig.memory?.enabled) {
+    try {
+      const { createMemoryManager } = await import('../memory/memory-manager.js');
+      memoryManager = createMemoryManager(config.projectRoot, rulebookConfig.memory);
+    } catch {
+      // Memory module not available
+    }
+  }
+
+  function memoryNotEnabled() {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: false,
+            error: 'Memory system is not enabled. Set memory.enabled=true in .rulebook',
+          }),
+        },
+      ],
+    };
+  }
+
+  // Register tool: rulebook_memory_search
+  server.registerTool(
+    'rulebook_memory_search',
+    {
+      title: 'Search Memories',
+      description: 'Search persistent memories using hybrid BM25+vector search',
+      inputSchema: {
+        query: z.string().describe('Search query'),
+        limit: z.number().optional().describe('Max results (default 20)'),
+        mode: z.enum(['bm25', 'vector', 'hybrid']).optional().describe('Search mode'),
+        type: z.string().optional().describe('Filter by memory type'),
+      },
+    },
+    async (args) => {
+      if (!memoryManager) return memoryNotEnabled();
+      try {
+        const results = await memoryManager.searchMemories({
+          query: args.query,
+          limit: args.limit,
+          mode: args.mode,
+          type: args.type as any,
+        });
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, results, total: results.length }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: false, error: String(error) }) },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_memory_timeline
+  server.registerTool(
+    'rulebook_memory_timeline',
+    {
+      title: 'Memory Timeline',
+      description: 'Get chronological context around a specific memory',
+      inputSchema: {
+        memoryId: z.string().describe('Memory ID to anchor timeline'),
+        window: z.number().optional().describe('Number of memories before/after (default 5)'),
+      },
+    },
+    async (args) => {
+      if (!memoryManager) return memoryNotEnabled();
+      try {
+        const timeline = await memoryManager.getTimeline(args.memoryId, args.window);
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: true, timeline }) },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: false, error: String(error) }) },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_memory_get
+  server.registerTool(
+    'rulebook_memory_get',
+    {
+      title: 'Get Memory Details',
+      description: 'Get full details for specific memory IDs',
+      inputSchema: {
+        ids: z.array(z.string()).describe('Memory IDs to fetch'),
+      },
+    },
+    async (args) => {
+      if (!memoryManager) return memoryNotEnabled();
+      try {
+        const memories = await memoryManager.getFullDetails(args.ids);
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: true, memories }) },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: false, error: String(error) }) },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_memory_save
+  server.registerTool(
+    'rulebook_memory_save',
+    {
+      title: 'Save Memory',
+      description: 'Save a new memory manually',
+      inputSchema: {
+        type: z.string().describe('Memory type (bugfix, feature, refactor, decision, discovery, change, observation)'),
+        title: z.string().describe('Memory title'),
+        content: z.string().describe('Memory content'),
+        tags: z.array(z.string()).optional().describe('Tags'),
+      },
+    },
+    async (args) => {
+      if (!memoryManager) return memoryNotEnabled();
+      try {
+        const memory = await memoryManager.saveMemory({
+          type: args.type as any,
+          title: args.title,
+          content: args.content,
+          tags: args.tags,
+        });
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: true, memory: { id: memory.id, type: memory.type, title: memory.title } }) },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: false, error: String(error) }) },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_memory_stats
+  server.registerTool(
+    'rulebook_memory_stats',
+    {
+      title: 'Memory Statistics',
+      description: 'Get memory database statistics',
+      inputSchema: {},
+    },
+    async () => {
+      if (!memoryManager) return memoryNotEnabled();
+      try {
+        const stats = await memoryManager.getStats();
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: true, stats }) },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: false, error: String(error) }) },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_memory_cleanup
+  server.registerTool(
+    'rulebook_memory_cleanup',
+    {
+      title: 'Memory Cleanup',
+      description: 'Force memory eviction and cleanup',
+      inputSchema: {
+        force: z.boolean().optional().describe('Force cleanup regardless of size'),
+      },
+    },
+    async (args) => {
+      if (!memoryManager) return memoryNotEnabled();
+      try {
+        const result = await memoryManager.cleanup(args.force ?? false);
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: true, ...result }) },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: false, error: String(error) }) },
+          ],
+        };
+      }
+    }
+  );
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

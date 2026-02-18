@@ -55,6 +55,9 @@ Thumbs.db
 .tsc/
 out/
 
+# Memory system database
+.rulebook-memory/
+
 # MCP debug output
 mcp_stderr.txt
 mcp_tools.txt
