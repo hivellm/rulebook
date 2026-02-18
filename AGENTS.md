@@ -138,6 +138,55 @@ For comprehensive rules, see the corresponding files in `/rulebook/specs/`:
 Language-specific rules are in `/rulebook/specs/`.
 Module-specific patterns are in `/rulebook/specs/`.
 
+## Persistent Memory
+
+This project uses a **persistent memory system** via the Rulebook MCP server.
+Memory persists across sessions — use it to maintain context between conversations.
+
+**MANDATORY: You MUST actively use memory to preserve context.**
+
+### When to Save to Memory
+
+Save to memory whenever you:
+- **Make an architectural decision** — why you chose one approach over another
+- **Fix a bug** — what caused it and how it was resolved
+- **Discover something important** — codebase patterns, gotchas, constraints
+- **Implement a feature** — what was built, key design choices, trade-offs
+- **Encounter an error** — root cause and solution for future reference
+- **Receive user preferences** — coding style, conventions, workflow preferences
+- **Complete a task or session** — summarize what was accomplished
+
+### How to Save
+
+Use the `rulebook_memory_save` MCP tool:
+```
+type: decision | bugfix | feature | discovery | change | refactor | observation
+title: Short descriptive title
+content: Detailed context (what, why, how)
+tags: [relevant, tags]
+```
+
+### When to Search Memory
+
+**At the START of every new session**, search memory for relevant context:
+```
+rulebook_memory_search: query="<current task or topic>"
+```
+
+Also search when:
+- Working on code you've touched before
+- The user references a past discussion or decision
+- You need context about why something was done a certain way
+
+### Session Summary
+
+Before ending a session or when context is getting long, save a summary:
+```
+type: observation
+title: "Session summary: <date or topic>"
+content: "Accomplished: ... | Pending: ... | Key decisions: ..."
+```
+
 When in doubt, ask to review @AGENTS.md first.
 
 <!-- RULEBOOK:END -->

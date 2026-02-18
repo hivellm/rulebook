@@ -11,7 +11,7 @@
 [![Build](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/build.yml?label=build&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/build.yml)
 [![Lint](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/lint.yml?label=lint&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/lint.yml)
 
-> Standardize AI-generated projects with automated templates, quality gates, and framework detection for 28 languages, 17 frameworks, 12 MCP modules, and 20 services.
+> Standardize AI-generated projects with automated templates, quality gates, persistent memory, and framework detection for 28 languages, 17 frameworks, 13 MCP modules, and 20 services.
 
 ---
 
@@ -22,10 +22,11 @@ Large Language Models (LLMs) for software development need **clear directives** 
 **Rulebook solves this by providing:**
 
 - 📋 **Comprehensive Rule Sets**: Language-specific guidelines (TypeScript, Rust, Python, etc.), framework conventions (NestJS, Django, React), testing standards, linting rules, spell-checking, CI/CD pipelines, Git hooks, and version control best practices
+- 🧠 **Persistent Memory**: Context that survives across AI sessions with hybrid BM25+HNSW search, zero native dependencies
 - 🎯 **Normalized Deliverables**: Ensures consistent code quality across all AI-generated outputs
 - 🛡️ **Error Reduction**: Catches issues early through automated quality gates and pre-commit/pre-push hooks
 - ⚙️ **Process Automation**: Automates repetitive tasks like formatting, testing, and deployment
-- 🔌 **MCP Integration**: Supports multiple Model Context Protocol (MCP) modules for enhanced AI capabilities
+- 🔌 **MCP Integration**: 19 MCP functions for task management, skills, and persistent memory
 - 📊 **Task Management**: Built-in task management system (OpenSpec-compatible format) for structured development
 
 By giving LLMs a clear "rulebook" to follow, you ensure that every piece of generated code meets your project's standards—**automatically**.
@@ -48,13 +49,21 @@ npx @hivehub/rulebook@latest update
 
 ## What's New
 
-### v2.2.0 (Latest)
+### v3.0.0 (Latest)
 
-- 🔌 **Claude Code Auto-Setup**: `init` and `update` now auto-detect Claude Code and configure integration
-  - Creates/merges `.mcp.json` at project root with rulebook MCP server (preserves existing entries)
-  - Installs rulebook skills as Claude Code commands in `.claude/commands/`
-  - Non-blocking: silently skips if Claude Code is not installed
-- 📁 **Modular Template Reorganization**: Spec templates moved from `/rulebook/` to `/rulebook/specs/`
+- 🧠 **Persistent Memory System**: Zero-dependency persistent context across AI sessions
+  - Hybrid search: BM25 keyword + HNSW vector with Reciprocal Rank Fusion
+  - TF-IDF embeddings with FNV1a feature hashing (256-dim, pure TypeScript)
+  - SQLite persistence via sql.js WASM (zero native compilation)
+  - LRU cache eviction (500MB default, protects decision memories)
+  - Privacy filter: auto-redacts `<private>...</private>` tags
+  - 7 memory types: bugfix, feature, refactor, decision, discovery, change, observation
+  - 6 MCP tools + 6 CLI commands for complete memory management
+- 🧩 **119 Skills with YAML Frontmatter**: All 106 legacy templates converted to proper SKILL.md format
+  - 28 languages, 17 frameworks, 13 modules, 20 services, 8 IDEs, 15 CLI, 5 core + git/hooks
+- 🔌 **Claude Code Commands**: Memory + task commands auto-installed to `.claude/commands/`
+- 🔧 **Update Preserves Config**: `rulebook update` no longer resets custom `.rulebook` fields (memory, skills, timeouts, etc.)
+- 🛡️ **MCP Config Safety**: `.mcp.json` entry preserved if already configured (no more overwriting)
 
 ### v2.1.0
 
@@ -280,6 +289,14 @@ npx @hivehub/rulebook@latest skill remove <skill-id>    # Disable a skill
 npx @hivehub/rulebook@latest skill show <skill-id>      # Show skill details
 npx @hivehub/rulebook@latest skill search <query>       # Search for skills
 
+# Persistent Memory (v3.0)
+npx @hivehub/rulebook@latest memory search <query>    # Search memories (hybrid BM25+vector)
+npx @hivehub/rulebook@latest memory save <text>        # Save a memory
+npx @hivehub/rulebook@latest memory list               # List all memories
+npx @hivehub/rulebook@latest memory stats              # Database stats and health
+npx @hivehub/rulebook@latest memory cleanup            # Run cache eviction
+npx @hivehub/rulebook@latest memory export             # Export as JSON or CSV
+
 # Configuration
 npx @hivehub/rulebook@latest config --show     # Show current config
 npx @hivehub/rulebook@latest config --set key=value  # Set config value
@@ -314,9 +331,9 @@ Bare minimum rules: no quality enforcement, no testing requirements, no linting.
 - Mobile: React Native, Flutter
 - Desktop: Electron
 
-## MCP Modules (12)
+## MCP Modules (13)
 
-**Core**: Vectorizer • Synap • Context7 • GitHub MCP • Playwright
+**Core**: Vectorizer • Synap • Context7 • GitHub MCP • Playwright • Memory
 
 **Services**: Supabase • Notion • Atlassian • Serena • Figma • Grafana
 
@@ -382,7 +399,16 @@ This command:
 - `rulebook_skill_search` - Search skills by name, description, or tags
 - `rulebook_skill_validate` - Validate skills configuration
 
-**Total: 13 MCP functions** (7 task + 6 skills).
+**Memory MCP Functions (v3.0):**
+
+- `rulebook_memory_search` - Hybrid BM25+vector search with mode selection (hybrid/bm25/vector)
+- `rulebook_memory_timeline` - Chronological context around a specific memory
+- `rulebook_memory_get` - Full details for specific memory IDs
+- `rulebook_memory_save` - Save new memories with type, title, content, and tags
+- `rulebook_memory_stats` - Database statistics (size, count, usage, health)
+- `rulebook_memory_cleanup` - Force eviction and cleanup
+
+**Total: 19 MCP functions** (7 task + 6 skills + 6 memory).
 
 ## Skills System (v2.0)
 

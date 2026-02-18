@@ -1,5 +1,5 @@
 {
-  "version": "2.3.0",
+  "version": "3.0.0",
   "installedAt": "2026-02-18T21:36:14.050Z",
   "updatedAt": "2026-02-18T22:15:07.888Z",
   "projectId": "rulebook",
@@ -34,6 +34,7 @@
     "enabled": true,
     "dbPath": ".rulebook-memory/memory.db",
     "maxSizeBytes": 524288000,
+    "autoCapture": true,
     "vectorDimensions": 256
   }
 }

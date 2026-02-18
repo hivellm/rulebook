@@ -336,6 +336,42 @@ When modifying MCP server:
 - **Build before publish**: `npm run build` (automatic via prepublishOnly script)
 - **License**: Apache 2.0
 
+### Persistent Memory
+
+This project uses a **persistent memory system** via the Rulebook MCP server.
+Memory persists across sessions — use it to maintain context between conversations.
+
+**MANDATORY: You MUST actively use memory to preserve context across sessions.**
+
+#### Auto-Capture
+
+Tool interactions (task create/update/archive, skill enable/disable) are auto-captured.
+But you MUST also manually save important context:
+
+- **Architectural decisions** — why you chose one approach over another
+- **Bug fixes** — root cause and resolution
+- **Discoveries** — codebase patterns, gotchas, constraints
+- **Feature implementations** — what was built, key design choices
+- **User preferences** — coding style, conventions, workflow preferences
+- **Session summaries** — what was accomplished, what's pending
+
+#### Memory Commands (MCP)
+
+```
+rulebook_memory_save    — Save context (type, title, content, tags)
+rulebook_memory_search  — Search past context (query, mode: hybrid/bm25/vector)
+rulebook_memory_get     — Get full details by ID
+rulebook_memory_timeline — Chronological context around a memory
+rulebook_memory_stats   — Database stats
+rulebook_memory_cleanup — Evict old memories
+```
+
+#### Session Workflow
+
+1. **Start of session**: `rulebook_memory_search` for relevant past context
+2. **During work**: Save decisions, bugs, discoveries as they happen
+3. **End of session**: Save a summary with `type: observation`
+
 ### Known Limitations
 
 1. **Watcher tests are skipped** due to blessed mock issues (see vitest.config.ts)

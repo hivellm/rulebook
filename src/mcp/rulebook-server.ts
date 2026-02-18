@@ -75,18 +75,9 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       await taskManager.createTask(args.taskId);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              taskId: args.taskId,
-              message: `Task ${args.taskId} created successfully`,
-            }),
-          },
-        ],
-      };
+      const resultText = JSON.stringify({ success: true, taskId: args.taskId, message: `Task ${args.taskId} created successfully` });
+      autoCapture('rulebook_task_create', args, resultText);
+      return { content: [{ type: 'text', text: resultText }] };
     }
   );
 
@@ -186,18 +177,9 @@ export async function startRulebookMcpServer(): Promise<void> {
       if (args.status) {
         await taskManager.updateTaskStatus(args.taskId, args.status);
       }
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              taskId: args.taskId,
-              message: `Task ${args.taskId} updated successfully`,
-            }),
-          },
-        ],
-      };
+      const resultText = JSON.stringify({ success: true, taskId: args.taskId, message: `Task ${args.taskId} updated successfully` });
+      autoCapture('rulebook_task_update', args, resultText);
+      return { content: [{ type: 'text', text: resultText }] };
     }
   );
 
@@ -241,18 +223,9 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       await taskManager.archiveTask(args.taskId, args.skipValidation || false);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              taskId: args.taskId,
-              message: `Task ${args.taskId} archived successfully`,
-            }),
-          },
-        ],
-      };
+      const resultText = JSON.stringify({ success: true, taskId: args.taskId, message: `Task ${args.taskId} archived successfully` });
+      autoCapture('rulebook_task_archive', args, resultText);
+      return { content: [{ type: 'text', text: resultText }] };
     }
   );
 
@@ -268,18 +241,9 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       await taskManager.deleteTask(args.taskId);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              taskId: args.taskId,
-              message: `Task ${args.taskId} deleted successfully`,
-            }),
-          },
-        ],
-      };
+      const resultText = JSON.stringify({ success: true, taskId: args.taskId, message: `Task ${args.taskId} deleted successfully` });
+      autoCapture('rulebook_task_delete', args, resultText);
+      return { content: [{ type: 'text', text: resultText }] };
     }
   );
 
@@ -459,20 +423,15 @@ export async function startRulebookMcpServer(): Promise<void> {
         // Validate to check for conflicts
         const validation = await skillsManager.validateSkills(rulebookConfig);
 
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: true,
-                skillId: args.skillId,
-                message: `Skill ${args.skillId} enabled successfully`,
-                warnings: validation.warnings,
-                conflicts: validation.conflicts,
-              }),
-            },
-          ],
-        };
+        const resultText = JSON.stringify({
+          success: true,
+          skillId: args.skillId,
+          message: `Skill ${args.skillId} enabled successfully`,
+          warnings: validation.warnings,
+          conflicts: validation.conflicts,
+        });
+        autoCapture('rulebook_skill_enable', args, resultText);
+        return { content: [{ type: 'text', text: resultText }] };
       } catch (error) {
         return {
           content: [
@@ -521,18 +480,13 @@ export async function startRulebookMcpServer(): Promise<void> {
         rulebookConfig = await skillsManager.disableSkill(args.skillId, rulebookConfig);
         await configManager.saveConfig(rulebookConfig);
 
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: true,
-                skillId: args.skillId,
-                message: `Skill ${args.skillId} disabled successfully`,
-              }),
-            },
-          ],
-        };
+        const resultText = JSON.stringify({
+          success: true,
+          skillId: args.skillId,
+          message: `Skill ${args.skillId} disabled successfully`,
+        });
+        autoCapture('rulebook_skill_disable', args, resultText);
+        return { content: [{ type: 'text', text: resultText }] };
       } catch (error) {
         return {
           content: [
@@ -645,19 +599,42 @@ export async function startRulebookMcpServer(): Promise<void> {
   );
 
   // ============================================
-  // Memory System Functions (v2.2)
+  // Memory System Functions (v3.0)
   // ============================================
 
   // Conditionally initialize MemoryManager
   let memoryManager: Awaited<ReturnType<typeof import('../memory/memory-manager.js').createMemoryManager>> | null = null;
+  let autoCaptureEnabled = false;
 
   const rulebookConfig = await configManager.loadConfig();
   if (rulebookConfig.memory?.enabled) {
     try {
       const { createMemoryManager } = await import('../memory/memory-manager.js');
       memoryManager = createMemoryManager(config.projectRoot, rulebookConfig.memory);
+      autoCaptureEnabled = rulebookConfig.memory.autoCapture !== false; // enabled by default when memory is on
     } catch {
       // Memory module not available
+    }
+  }
+
+  /**
+   * Auto-capture: save tool interactions to memory in the background.
+   * Fire-and-forget — never blocks or fails the original tool call.
+   */
+  async function autoCapture(toolName: string, args: Record<string, unknown>, resultText: string): Promise<void> {
+    if (!memoryManager || !autoCaptureEnabled) return;
+    try {
+      const { captureFromToolCall } = await import('../memory/memory-hooks.js');
+      const captured = captureFromToolCall(toolName, args, resultText);
+      if (!captured) return;
+      await memoryManager.saveMemory({
+        type: captured.type,
+        title: captured.title,
+        content: captured.content,
+        tags: captured.tags,
+      });
+    } catch {
+      // Never fail the original tool call
     }
   }
 
