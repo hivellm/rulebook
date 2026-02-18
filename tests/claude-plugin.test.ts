@@ -238,12 +238,28 @@ describe('Claude Plugin Structure', () => {
       const entries = await fs.readdir(skillsDir, { withFileTypes: true });
       const skillDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
 
+      // Original 5 skills
       expect(skillDirs).toContain('rulebook-typescript');
       expect(skillDirs).toContain('rulebook-task-management');
       expect(skillDirs).toContain('rulebook-quality-gates');
       expect(skillDirs).toContain('rulebook-git-workflow');
       expect(skillDirs).toContain('rulebook-mcp');
-      expect(skillDirs.length).toBe(5);
+      // 7 task management MCP tool skills
+      expect(skillDirs).toContain('rulebook-task-create');
+      expect(skillDirs).toContain('rulebook-task-list');
+      expect(skillDirs).toContain('rulebook-task-show');
+      expect(skillDirs).toContain('rulebook-task-update');
+      expect(skillDirs).toContain('rulebook-task-validate');
+      expect(skillDirs).toContain('rulebook-task-archive');
+      expect(skillDirs).toContain('rulebook-task-delete');
+      // 6 skill management MCP tool skills
+      expect(skillDirs).toContain('rulebook-skill-list');
+      expect(skillDirs).toContain('rulebook-skill-show');
+      expect(skillDirs).toContain('rulebook-skill-enable');
+      expect(skillDirs).toContain('rulebook-skill-disable');
+      expect(skillDirs).toContain('rulebook-skill-search');
+      expect(skillDirs).toContain('rulebook-skill-validate');
+      expect(skillDirs.length).toBe(18);
     });
   });
 

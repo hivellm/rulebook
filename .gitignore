@@ -54,3 +54,7 @@ Thumbs.db
 .cache/
 .tsc/
 out/
+
+# MCP debug output
+mcp_stderr.txt
+mcp_tools.txt
