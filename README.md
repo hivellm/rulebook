@@ -171,25 +171,106 @@ npx @hivehub/rulebook@latest update
 
 > **Breaking Change**: OpenSpec module removed. Use `npx @hivellm/rulebook@latest task` commands instead. See [Migration Guide](docs/guides/OPENSPEC_MIGRATION.md).
 
+---
+
+## Persistent Memory System
+
+> **NEW in v3.0.0** — Give your AI assistant a brain that persists across sessions.
+
+Every time you open a new tab or restart your editor, the AI loses all context about your project. Rulebook's persistent memory solves this — decisions, bugs, discoveries, and preferences are stored locally and searchable across sessions.
+
+### How It Works
+
+```
+Session 1: "Let's use sql.js instead of better-sqlite3 for zero native deps"
+  → Saved to memory automatically
+
+Session 2 (new tab, days later):
+  AI searches memory → finds the decision → continues with full context
+```
+
+### Architecture
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **Storage** | SQLite via sql.js WASM | Zero native compilation, works everywhere |
+| **Keyword Search** | BM25 | Fast exact-match scoring |
+| **Vector Search** | HNSW index | Semantic similarity matching |
+| **Embeddings** | TF-IDF + FNV1a hashing | 256-dim vectors, pure TypeScript, no API calls |
+| **Ranking** | Reciprocal Rank Fusion | Combines BM25 + vector scores |
+| **Eviction** | LRU cache | 500MB default, protects decision/bugfix memories |
+| **Privacy** | Auto-redact filter | `<private>...</private>` tags stripped before storage |
+
+### Memory Types
+
+| Type | When to Use |
+|------|-------------|
+| `decision` | Chose one approach over another |
+| `bugfix` | Root cause and resolution |
+| `feature` | What was built, key design choices |
+| `discovery` | Codebase patterns, gotchas, constraints |
+| `refactor` | Structural changes and reasoning |
+| `change` | Configuration or dependency updates |
+| `observation` | Session summaries, general notes |
+
+### Auto-Capture
+
+Tool interactions are captured automatically — when the AI creates a task, updates a status, enables a skill, etc., the memory system records it without any manual action.
+
+For conversation context (decisions, discussions, user preferences), the AI saves manually following the mandatory directives in `CLAUDE.md` and `AGENTS.md`.
+
+### Usage
+
+**CLI Commands:**
+```bash
+rulebook memory search "authentication approach"   # Hybrid BM25+vector search
+rulebook memory save "Chose JWT over sessions"     # Save manually
+rulebook memory stats                               # DB size, count, health
+rulebook memory cleanup                             # Evict old memories
+rulebook memory export                              # Export as JSON/CSV
+```
+
+**MCP Tools (used by AI agents):**
+```
+rulebook_memory_save      — Save context with type, title, content, tags
+rulebook_memory_search    — Hybrid search (bm25/vector/hybrid modes)
+rulebook_memory_get       — Get full details by memory ID
+rulebook_memory_timeline  — Chronological context around a memory
+rulebook_memory_stats     — Database statistics and health
+rulebook_memory_cleanup   — Force eviction and cleanup
+```
+
+### Configuration
+
+Memory is enabled in `.rulebook`:
+
+```json
+{
+  "memory": {
+    "enabled": true,
+    "autoCapture": true,
+    "dbPath": ".rulebook-memory/memory.db",
+    "maxSizeBytes": 524288000,
+    "vectorDimensions": 256
+  }
+}
+```
+
+> Add `.rulebook-memory/` to your `.gitignore` — memory is local per developer.
+
+---
+
 ## Key Features
 
-- 🔍 **Auto-Detection**: Detects languages, frameworks (NestJS, React, Spring, etc.), MCP modules, and services (databases, caches, message queues, etc.)
-- 📁 **Modular Architecture**: Templates stored in `/rulebook/` directory for better organization
-  - Smaller AGENTS.md files (prevents 100k+ character limits)
-  - QUALITY_ENFORCEMENT and Git rules moved to `/rulebook/` for cleaner structure
-  - On-demand loading for better AI performance
-  - Easier maintenance and updates
-- 📋 **Simplified AGENTS.md**: Clean, focused structure with only core rules and references
-  - Proper hierarchy with `##` and `###` subsections
-  - All modules grouped logically
-  - Better readability and navigation
-- 🔗 **Git Hook Automation**: Optional pre-commit/pre-push hooks with language-aware quality checks
-- 🚫 **Automatic .gitignore**: Creates/updates `.gitignore` automatically for 28 languages on `npx @hivellm/rulebook@latest init`
-- 🎯 **Minimal Mode**: Quick setup with just README, LICENSE, tests/, and basic CI
-- 📝 **106+ Templates**: Languages, frameworks, IDEs, workflows, and services pre-configured
+- 🧠 **Persistent Memory**: Context that survives across AI sessions — hybrid BM25+HNSW search, auto-capture, zero native dependencies
+- 🔍 **Auto-Detection**: Detects languages, frameworks, MCP modules, and services from your project files
+- 📁 **Modular Architecture**: Templates in `/rulebook/` directory — smaller AGENTS.md, on-demand loading
+- 🔗 **Git Hook Automation**: Pre-commit/pre-push hooks with language-aware quality checks
+- 🔌 **19 MCP Functions**: Task management (7), skills (6), and persistent memory (6) via Model Context Protocol
+- 📝 **106+ Templates**: 28 languages, 17 frameworks, 8 IDEs, 20 services, 15 CLI agents
 - 🤖 **AI-Optimized**: Works with 23 AI assistants (Cursor, Claude, Gemini, etc.)
 - 📦 **Publication Ready**: CI/CD pipelines for npm, crates.io, PyPI, Maven Central, and more
-- 🔄 **Automatic Migration**: Existing projects automatically migrated to modular structure and OpenSpec tasks
+- 🔄 **Automatic Migration**: Existing projects automatically migrated to modular structure
 
 ## What It Does
 
