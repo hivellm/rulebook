@@ -8,7 +8,7 @@ description: List all Rulebook tasks (active and optionally archived).
 **Guardrails**
 - Favor straightforward, minimal implementations first and add complexity only when it is requested or clearly required.
 - Keep changes tightly scoped to the requested outcome.
-- Refer to `/rulebook/RULEBOOK.md` for complete task management guidelines.
+- Refer to `/rulebook/specs/RULEBOOK.md` for complete task management guidelines.
 
 **Steps**
 1. **List Active Tasks**:
@@ -37,6 +37,6 @@ description: List all Rulebook tasks (active and optionally archived).
 **Reference**
 - Use `rulebook task show <task-id>` to view task details
 - Use `rulebook task validate <task-id>` to check task format
-- See `/rulebook/RULEBOOK.md` for complete task management guidelines
+- See `/rulebook/specs/RULEBOOK.md` for complete task management guidelines
 <!-- RULEBOOK:END -->
 

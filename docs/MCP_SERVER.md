@@ -412,6 +412,6 @@ After configuration, restart Cursor to load the MCP server. The tools will be av
 
 For issues or questions:
 - Check [README.md](../README.md) for general information
-- Review [RULEBOOK.md](../rulebook/RULEBOOK.md) for task management details
+- Review [RULEBOOK.md](../rulebook/specs/RULEBOOK.md) for task management details
 - Open an issue on GitHub: https://github.com/hivellm/rulebook/issues
 

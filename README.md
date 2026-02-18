@@ -48,7 +48,15 @@ npx @hivehub/rulebook@latest update
 
 ## What's New
 
-### v2.1.0 (Latest)
+### v2.2.0 (Latest)
+
+- 🔌 **Claude Code Auto-Setup**: `init` and `update` now auto-detect Claude Code and configure integration
+  - Creates/merges `.mcp.json` at project root with rulebook MCP server (preserves existing entries)
+  - Installs rulebook skills as Claude Code commands in `.claude/commands/`
+  - Non-blocking: silently skips if Claude Code is not installed
+- 📁 **Modular Template Reorganization**: Spec templates moved from `/rulebook/` to `/rulebook/specs/`
+
+### v2.1.0
 
 - 🔒 **Claude Code Critical Directives**: New mandatory rules for Claude Code CLI
   - **Sequential File Editing**: Files must be edited one at a time to prevent failures from parallel edits
@@ -182,9 +190,10 @@ npx @hivehub/rulebook@latest update
 3. Generates AGENTS.md with AI assistant rules (modular structure)
 4. Creates `/rulebook/` directory with language/framework/module/service templates
 5. Creates/updates `.gitignore` automatically for detected languages
-6. Optionally installs Git hooks (pre-commit/pre-push)
-7. Creates GitHub Actions workflows
-8. Scaffolds README, LICENSE, /docs, and /tests
+6. Auto-configures Claude Code integration (MCP + skills) if detected
+7. Optionally installs Git hooks (pre-commit/pre-push)
+8. Creates GitHub Actions workflows
+9. Scaffolds README, LICENSE, /docs, and /tests
 
 **For Existing Projects:**
 ```bash
@@ -335,6 +344,8 @@ This command:
 - Adds `mcp` block to your `.rulebook` file
 - Creates/updates `.cursor/mcp.json` automatically
 - Server uses stdio transport (MCP standard)
+
+> **Note**: `rulebook init` and `rulebook update` automatically detect Claude Code and configure `.mcp.json` at the project root + install skills to `.claude/commands/`. No manual setup needed for Claude Code users.
 
 **Available MCP Functions:**
 

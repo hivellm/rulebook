@@ -1,14 +1,25 @@
-import { readFile, writeFile, existsSync } from 'fs';
+import { readFile, writeFile, existsSync, readFileSync } from 'fs';
 import { promisify } from 'util';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { randomUUID } from 'crypto';
+import { fileURLToPath } from 'url';
 import type { RulebookConfig } from '../types.js';
 
 const readFileAsync = promisify(readFile);
 const writeFileAsync = promisify(writeFile);
 
 const CONFIG_FILE = '.rulebook';
-const CONFIG_VERSION = '1.0.0';
+
+function getPackageVersion(): string {
+  try {
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const packagePath = join(__dirname, '..', '..', 'package.json');
+    const packageJson = JSON.parse(readFileSync(packagePath, 'utf-8'));
+    return packageJson.version;
+  } catch {
+    return '2.2.0';
+  }
+}
 
 export class ConfigManager {
   private configPath: string;
@@ -70,7 +81,7 @@ export class ConfigManager {
     const projectId = randomUUID();
 
     const defaultConfig: RulebookConfig = {
-      version: CONFIG_VERSION,
+      version: getPackageVersion(),
       installedAt: now,
       updatedAt: now,
       projectId,
@@ -153,7 +164,7 @@ export class ConfigManager {
     }
 
     // Update version
-    migrated.version = CONFIG_VERSION;
+    migrated.version = getPackageVersion();
 
     return migrated;
   }
@@ -275,7 +286,7 @@ export function getDefaultConfig(): RulebookConfig {
   const projectId = randomUUID();
 
   return {
-    version: CONFIG_VERSION,
+    version: getPackageVersion(),
     installedAt: now,
     updatedAt: now,
     projectId,

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Claude Code Auto-Setup**: `rulebook init` and `rulebook update` now auto-detect Claude Code and configure integration
+  - Detects Claude Code installation via `~/.claude` directory
+  - Creates/merges `.mcp.json` at project root with rulebook MCP server entry (preserves existing entries)
+  - Installs rulebook skills as Claude Code commands in `.claude/commands/`
+  - Non-blocking: silently skips if Claude Code is not installed
+- **Modular Template Reorganization**: Templates moved from `/rulebook/` to `/rulebook/specs/` for cleaner separation
+  - All generated spec files now live under `/rulebook/specs/` directory
+  - Updated all templates, docs, and generator to use new paths
+  - Custom `rulebookDir` support via template literals in generator
+
 ## [2.1.0] - 2025-01-08
 
 ### Added

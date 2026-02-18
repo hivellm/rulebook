@@ -540,7 +540,7 @@ npx @hivehub/rulebook init
 
 ## Related Templates
 
-- See `/rulebook/PRE_COMMIT.md` for pre-commit quality checks
-- See `/rulebook/PRE_PUSH.md` for pre-push validation
-- See `/rulebook/GIT.md` for git workflow
+- See `/rulebook/specs/PRE_COMMIT.md` for pre-commit quality checks
+- See `/rulebook/specs/PRE_PUSH.md` for pre-push validation
+- See `/rulebook/specs/GIT.md` for git workflow
 - See language-specific templates for dependency management commands

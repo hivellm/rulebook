@@ -274,6 +274,6 @@ You can pass environment variables:
 ## Next Steps
 
 - Read [MCP_SERVER.md](../MCP_SERVER.md) for complete API documentation
-- Review [RULEBOOK.md](../../rulebook/RULEBOOK.md) for task management guidelines
+- Review [RULEBOOK.md](../../rulebook/specs/RULEBOOK.md) for task management guidelines
 - Check [README.md](../../README.md) for general project information
 

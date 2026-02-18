@@ -524,7 +524,7 @@ npx @hivehub/rulebook init
 
 ## Related Templates
 
-- See `/rulebook/PRE_COMMIT.md` for quality checks before commit
-- See `/rulebook/PREPARE_COMMIT_MSG.md` for auto-generating commit messages
-- See `/rulebook/GIT.md` for git workflow and commit conventions
-- See `/rulebook/DOCUMENTATION_RULES.md` for changelog generation from commits
+- See `/rulebook/specs/PRE_COMMIT.md` for quality checks before commit
+- See `/rulebook/specs/PREPARE_COMMIT_MSG.md` for auto-generating commit messages
+- See `/rulebook/specs/GIT.md` for git workflow and commit conventions
+- See `/rulebook/specs/DOCUMENTATION_RULES.md` for changelog generation from commits

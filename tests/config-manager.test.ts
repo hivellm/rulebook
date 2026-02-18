@@ -3,6 +3,15 @@ import { createConfigManager, getDefaultConfig } from '../src/core/config-manage
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// Read the package version dynamically (same as config-manager does)
+const __testDirname = dirname(fileURLToPath(import.meta.url));
+const PKG_VERSION = JSON.parse(
+  readFileSync(join(__testDirname, '..', 'package.json'), 'utf-8')
+).version;
 
 describe('ConfigManager', () => {
   let tempDir: string;
@@ -29,7 +38,7 @@ describe('ConfigManager', () => {
       const config = await configManager.initializeConfig();
 
       expect(config).toMatchObject({
-        version: '1.0.0',
+        version: PKG_VERSION,
         projectId: expect.any(String),
         coverageThreshold: 95,
         language: 'en',
@@ -74,7 +83,7 @@ describe('ConfigManager', () => {
       const config = await configManager.loadConfig();
 
       expect(config).toMatchObject({
-        version: '1.0.0',
+        version: PKG_VERSION,
         coverageThreshold: 95,
       });
     });
@@ -101,7 +110,7 @@ describe('ConfigManager', () => {
 
       // Should reinitialize with defaults
       const config = await configManager.loadConfig();
-      expect(config.version).toBe('1.0.0');
+      expect(config.version).toBe(PKG_VERSION);
     });
 
     it('should handle missing features object', async () => {
@@ -115,7 +124,7 @@ describe('ConfigManager', () => {
     it('should handle empty updates', async () => {
       await configManager.initializeConfig();
       const config = await configManager.updateConfig({});
-      expect(config.version).toBe('1.0.0');
+      expect(config.version).toBe(PKG_VERSION);
     });
 
     it('should handle null and undefined values in updates', async () => {
@@ -161,7 +170,7 @@ describe('ConfigManager', () => {
       const summary = await configManager.getConfigSummary();
 
       expect(summary).toMatchObject({
-        version: '1.0.0',
+        version: PKG_VERSION,
         projectId: expect.any(String),
         coverageThreshold: 95,
         cliTools: expect.any(Array),
@@ -176,7 +185,7 @@ describe('getDefaultConfig', () => {
     const config = getDefaultConfig();
 
     expect(config).toMatchObject({
-      version: '1.0.0',
+      version: PKG_VERSION,
       projectId: expect.any(String),
       coverageThreshold: 95,
       language: 'en',
@@ -274,7 +283,7 @@ describe('ConfigManager edge cases and error handling', () => {
 
     const migrated = await configManager.migrateConfig(oldConfig);
 
-    expect(migrated.version).toBe('1.0.0');
+    expect(migrated.version).toBe(PKG_VERSION);
     expect(migrated.features.watcher).toBe(false);
     expect(migrated.features.agent).toBe(false);
   });
@@ -340,20 +349,20 @@ describe('ConfigManager edge cases and error handling', () => {
     // Test loading from non-existent file - this should initialize config instead of throwing
     const config = await configManager.loadConfig();
     expect(config).toBeDefined();
-    expect(config.version).toBe('1.0.0');
+    expect(config.version).toBe(PKG_VERSION);
   });
 
   it('should handle migration with different version formats', async () => {
     const configs = [
       { version: '0.8.0', projectId: 'test1' },
       { version: '0.9.0', projectId: 'test2' },
-      { version: '1.0.0', projectId: 'test3' },
+      { version: PKG_VERSION, projectId: 'test3' },
       { version: '1.1.0', projectId: 'test4' },
     ];
 
     for (const config of configs) {
       const migrated = await configManager.migrateConfig(config as any);
-      expect(migrated.version).toBe('1.0.0');
+      expect(migrated.version).toBe(PKG_VERSION);
       expect(migrated.projectId).toBe(config.projectId);
     }
   });

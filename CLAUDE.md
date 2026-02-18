@@ -122,8 +122,8 @@ The codebase follows a **modular CLI architecture** with clear separation of con
 
 Instead of embedding all rules in AGENTS.md (which causes 100k+ character files), templates are:
 - Stored in `/templates/` directory at build time
-- Generated into `/rulebook/` directory at runtime (user's project)
-- Referenced from AGENTS.md using relative paths: `/rulebook/TYPESCRIPT.md`
+- Generated into `/rulebook/specs/` directory at runtime (user's project)
+- Referenced from AGENTS.md using relative paths: `/rulebook/specs/TYPESCRIPT.md`
 - This allows on-demand loading and better AI performance
 
 #### 2. **Detection System**

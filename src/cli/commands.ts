@@ -267,6 +267,22 @@ export async function initCommand(options: {
     let finalContent: string;
 
     if (detection.existingAgents) {
+      // Migrate flat layout to specs/ subdirectory if needed
+      {
+        const { hasFlatLayout, migrateFlatToSpecs } = await import('../core/migrator.js');
+        const rulebookDirForMigration = config.rulebookDir || 'rulebook';
+        if (await hasFlatLayout(cwd, rulebookDirForMigration)) {
+          const { migratedFiles } = await migrateFlatToSpecs(cwd, rulebookDirForMigration);
+          if (migratedFiles.length > 0) {
+            console.log(
+              chalk.gray(
+                `  Migrated ${migratedFiles.length} file(s) to /${rulebookDirForMigration}/specs/`
+              )
+            );
+          }
+        }
+      }
+
       const strategy = options.yes ? 'merge' : await promptMergeStrategy();
 
       if (strategy === 'merge') {
@@ -348,6 +364,30 @@ export async function initCommand(options: {
         }
       } else {
         cliSpinner.info('AI CLI files already exist (skipped)');
+      }
+    }
+
+    // Auto-setup Claude Code integration (MCP + skills)
+    if (!minimalMode) {
+      const claudeSpinner = ora('Checking Claude Code integration...').start();
+      try {
+        const { setupClaudeCodeIntegration } = await import('../core/claude-mcp.js');
+        const result = await setupClaudeCodeIntegration(cwd);
+        if (result.detected) {
+          claudeSpinner.succeed('Claude Code integration configured');
+          if (result.mcpConfigured) {
+            console.log(chalk.gray('  • MCP server added to .mcp.json'));
+          }
+          if (result.skillsInstalled.length > 0) {
+            console.log(
+              chalk.gray(`  • ${result.skillsInstalled.length} skills installed to .claude/commands/`)
+            );
+          }
+        } else {
+          claudeSpinner.info('Claude Code not detected (skipped)');
+        }
+      } catch {
+        claudeSpinner.info('Claude Code integration skipped');
       }
     }
 
@@ -1457,10 +1497,10 @@ export async function updateCommand(options: {
         }
       }
 
-      // Remove /rulebook/OPENSPEC.md if exists
+      // Remove /rulebook/specs/OPENSPEC.md if exists
       const removed = await removeOpenSpecRulebookFile(cwd, rulebookDir);
       if (removed) {
-        console.log(chalk.gray('  Removed /rulebook/OPENSPEC.md'));
+        console.log(chalk.gray('  Removed /rulebook/specs/OPENSPEC.md'));
       }
 
       // Remove OpenSpec commands from .cursor/commands/
@@ -1649,6 +1689,25 @@ export async function updateCommand(options: {
       skills: detectedSkills.length > 0 ? { enabled: detectedSkills } : undefined,
     });
 
+    // Migrate flat layout to specs/ subdirectory if needed
+    {
+      const { hasFlatLayout, migrateFlatToSpecs } = await import('../core/migrator.js');
+      const rulebookDirForMigration = config.rulebookDir || 'rulebook';
+      if (await hasFlatLayout(cwd, rulebookDirForMigration)) {
+        const migrationSpinner = ora(
+          'Migrating rulebook files to specs/ subdirectory...'
+        ).start();
+        const { migratedFiles } = await migrateFlatToSpecs(cwd, rulebookDirForMigration);
+        if (migratedFiles.length > 0) {
+          migrationSpinner.succeed(
+            `Migrated ${migratedFiles.length} file(s) to /${rulebookDirForMigration}/specs/`
+          );
+        } else {
+          migrationSpinner.info('No files to migrate');
+        }
+      }
+    }
+
     // Merge with existing AGENTS.md (with migration support)
     const mergeSpinner = ora('Updating AGENTS.md with latest templates...').start();
     config.modular = config.modular ?? true; // Enable modular by default
@@ -1726,6 +1785,28 @@ export async function updateCommand(options: {
 
     await writeFile(rulebookPath, JSON.stringify(rulebookConfig, null, 2));
     configSpinner.succeed('.rulebook configuration updated');
+
+    // Auto-setup Claude Code integration (MCP + skills)
+    const claudeSpinner = ora('Checking Claude Code integration...').start();
+    try {
+      const { setupClaudeCodeIntegration } = await import('../core/claude-mcp.js');
+      const result = await setupClaudeCodeIntegration(cwd);
+      if (result.detected) {
+        claudeSpinner.succeed('Claude Code integration updated');
+        if (result.mcpConfigured) {
+          console.log(chalk.gray('  • MCP server added to .mcp.json'));
+        }
+        if (result.skillsInstalled.length > 0) {
+          console.log(
+            chalk.gray(`  • ${result.skillsInstalled.length} skills updated in .claude/commands/`)
+          );
+        }
+      } else {
+        claudeSpinner.info('Claude Code not detected (skipped)');
+      }
+    } catch {
+      claudeSpinner.info('Claude Code integration skipped');
+    }
 
     // Success message
     console.log(chalk.bold.green('\n✅ Update complete!\n'));

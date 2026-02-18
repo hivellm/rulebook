@@ -614,6 +614,6 @@ npx @hivehub/rulebook init
 
 ## Related Templates
 
-- See `/rulebook/COMMIT_MSG.md` for commit message validation
-- See `/rulebook/GIT.md` for git workflow and branch naming
-- See `/rulebook/PRE_COMMIT.md` for pre-commit checks
+- See `/rulebook/specs/COMMIT_MSG.md` for commit message validation
+- See `/rulebook/specs/GIT.md` for git workflow and branch naming
+- See `/rulebook/specs/PRE_COMMIT.md` for pre-commit checks

@@ -1,9 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { promises as fs } from 'fs';
+import { promises as fs, readFileSync } from 'fs';
 import path from 'path';
 import os from 'os';
+import { fileURLToPath } from 'url';
 import { createConfigManager } from '../src/core/config-manager.js';
 import { SkillsManager, getDefaultTemplatesPath } from '../src/core/skills-manager.js';
+
+const __testDirname = path.dirname(fileURLToPath(import.meta.url));
+const PKG_VERSION = JSON.parse(
+  readFileSync(path.join(__testDirname, '..', 'package.json'), 'utf-8')
+).version;
 
 /**
  * Backward Compatibility Tests for v2.0
@@ -60,7 +66,8 @@ describe('Backward Compatibility v1.x to v2.0', () => {
       const configManager = createConfigManager(testDir);
       const loadedConfig = await configManager.loadConfig();
 
-      expect(loadedConfig.version).toBe('1.0.0');
+      // After migration, version is updated to current package version
+      expect(loadedConfig.version).toBe(PKG_VERSION);
       expect(loadedConfig.languages).toContain('typescript');
       // skills should be undefined or have default values
       expect(loadedConfig.skills === undefined || loadedConfig.skills?.enabled !== undefined).toBe(

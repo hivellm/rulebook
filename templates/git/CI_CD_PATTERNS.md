@@ -655,7 +655,7 @@ npx @hivehub/rulebook workflows
 
 ## Related Templates
 
-- See `/rulebook/GITHUB_ACTIONS.md` for GitHub Actions specifics
-- See `/rulebook/GITLAB_CI.md` for GitLab CI specifics
-- See `/rulebook/SECRETS_MANAGEMENT.md` for secrets handling
-- See `/rulebook/QUALITY_ENFORCEMENT.md` for quality standards
+- See `/rulebook/specs/GITHUB_ACTIONS.md` for GitHub Actions specifics
+- See `/rulebook/specs/GITLAB_CI.md` for GitLab CI specifics
+- See `/rulebook/specs/SECRETS_MANAGEMENT.md` for secrets handling
+- See `/rulebook/specs/QUALITY_ENFORCEMENT.md` for quality standards

@@ -235,19 +235,26 @@ export async function migrateOpenSpecArchives(
 }
 
 /**
- * Remove /rulebook/OPENSPEC.md if it exists
+ * Remove /rulebook/specs/OPENSPEC.md if it exists
  */
 export async function removeOpenSpecRulebookFile(
   projectRoot: string,
   rulebookDir: string = 'rulebook'
 ): Promise<boolean> {
-  const openspecRulebookPath = join(projectRoot, rulebookDir, 'OPENSPEC.md');
-  if (await fileExists(openspecRulebookPath)) {
-    const { unlink } = await import('fs/promises');
-    await unlink(openspecRulebookPath);
-    return true;
+  const { unlink } = await import('fs/promises');
+  // Check both new specs/ path and legacy flat path
+  const specsPath = join(projectRoot, rulebookDir, 'specs', 'OPENSPEC.md');
+  const legacyPath = join(projectRoot, rulebookDir, 'OPENSPEC.md');
+  let removed = false;
+  if (await fileExists(specsPath)) {
+    await unlink(specsPath);
+    removed = true;
   }
-  return false;
+  if (await fileExists(legacyPath)) {
+    await unlink(legacyPath);
+    removed = true;
+  }
+  return removed;
 }
 
 /**

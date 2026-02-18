@@ -594,8 +594,8 @@ Hook configuration in `.rulebook`:
 
 ## Related Templates
 
-- See `/rulebook/PRE_COMMIT.md` for fast quality checks before commit
-- See `/rulebook/QUALITY_ENFORCEMENT.md` for quality standards
-- See `/rulebook/GIT.md` for git workflow and conventions
-- See `/rulebook/GITHUB_ACTIONS.md` for CI/CD integration
+- See `/rulebook/specs/PRE_COMMIT.md` for fast quality checks before commit
+- See `/rulebook/specs/QUALITY_ENFORCEMENT.md` for quality standards
+- See `/rulebook/specs/GIT.md` for git workflow and conventions
+- See `/rulebook/specs/GITHUB_ACTIONS.md` for CI/CD integration
 - See language-specific templates for test commands and coverage tools

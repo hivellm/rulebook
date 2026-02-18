@@ -48,7 +48,7 @@ This guide explains the migration from embedded templates to the new modular arc
 
 ## TypeScript Development Rules
 
-For comprehensive TypeScript-specific guidelines, see `/rulebook/TYPESCRIPT.md`
+For comprehensive TypeScript-specific guidelines, see `/rulebook/specs/TYPESCRIPT.md`
 
 Quick reference:
 - Type safety and strict mode
@@ -58,7 +58,7 @@ Quick reference:
 - Error handling patterns
 ```
 
-And `/rulebook/TYPESCRIPT.md` contains:
+And `/rulebook/specs/TYPESCRIPT.md` contains:
 ```markdown
 <!-- TYPESCRIPT:START -->
 # TypeScript Rules
@@ -77,7 +77,7 @@ If you prefer to migrate manually:
 
 2. **Extract templates:**
    - Find blocks like `<!-- TYPESCRIPT:START -->` to `<!-- TYPESCRIPT:END -->`
-   - Copy content to `/rulebook/TYPESCRIPT.md`
+   - Copy content to `/rulebook/specs/TYPESCRIPT.md`
    - Repeat for all languages, frameworks, and modules
 
 3. **Replace with references:**
@@ -139,14 +139,14 @@ If you must use embedded templates (not recommended):
 
 **Solution**: Verify that:
 1. `/rulebook/` directory exists
-2. Template files exist (e.g., `/rulebook/TYPESCRIPT.md`)
+2. Template files exist (e.g., `/rulebook/specs/TYPESCRIPT.md`)
 3. File names match exactly (case-sensitive)
 
 ## Rollback
 
 If you need to rollback to embedded mode:
 
-1. Copy content from `/rulebook/*.md` files back into AGENTS.md
+1. Copy content from `/rulebook/specs/*.md` files back into AGENTS.md
 2. Set `modular: false` in config
 3. Remove `/rulebook/` directory
 

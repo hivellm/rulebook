@@ -31,8 +31,8 @@ describe('generator', () => {
       expect(content).toContain('# Project Rules');
       expect(content).toContain('Core Rules');
       expect(content).toContain('Detailed Rules');
-      expect(content).toContain('/rulebook/QUALITY_ENFORCEMENT.md');
-      expect(content).toContain('/rulebook/GIT.md');
+      expect(content).toContain('/rulebook/specs/QUALITY_ENFORCEMENT.md');
+      expect(content).toContain('/rulebook/specs/GIT.md');
     });
 
     it('should include coverage threshold', async () => {
@@ -80,21 +80,21 @@ describe('generator', () => {
 
       // Should include language references (not embedded blocks in modular mode)
       expect(content).toContain('Language-Specific Rules');
-      expect(content).toContain('/rulebook/RUST.md');
-      expect(content).toContain('/rulebook/TYPESCRIPT.md');
+      expect(content).toContain('/rulebook/specs/RUST.md');
+      expect(content).toContain('/rulebook/specs/TYPESCRIPT.md');
 
       // Should include module references
       expect(content).toContain('Module-Specific Instructions');
-      expect(content).toContain('/rulebook/VECTORIZER.md');
-      expect(content).toContain('/rulebook/SYNAP.md');
+      expect(content).toContain('/rulebook/specs/VECTORIZER.md');
+      expect(content).toContain('/rulebook/specs/SYNAP.md');
     });
 
     it('should generate content for single language (modular mode)', async () => {
       const config = { ...baseConfig, modular: true };
       const content = await generateFullAgents(config, '/tmp/test');
 
-      expect(content).toContain('/rulebook/RUST.md');
-      expect(content).not.toContain('/rulebook/TYPESCRIPT.md');
+      expect(content).toContain('/rulebook/specs/RUST.md');
+      expect(content).not.toContain('/rulebook/specs/TYPESCRIPT.md');
     });
 
     it('should generate content for multiple modules (modular mode)', async () => {
@@ -105,9 +105,9 @@ describe('generator', () => {
       };
       const content = await generateFullAgents(config, '/tmp/test');
 
-      expect(content).toContain('/rulebook/VECTORIZER.md');
-      expect(content).toContain('/rulebook/SYNAP.md');
-      expect(content).toContain('/rulebook/CONTEXT7.md');
+      expect(content).toContain('/rulebook/specs/VECTORIZER.md');
+      expect(content).toContain('/rulebook/specs/SYNAP.md');
+      expect(content).toContain('/rulebook/specs/CONTEXT7.md');
     });
 
     it('should generate embedded content in legacy mode', async () => {
@@ -140,7 +140,7 @@ describe('generator', () => {
       };
       const content = await generateFullAgents(config, '/tmp/test');
 
-      expect(content).toContain('/rulebook/GIT.md');
+      expect(content).toContain('/rulebook/specs/GIT.md');
     });
 
     it('should exclude Git workflow when disabled', async () => {
@@ -151,7 +151,7 @@ describe('generator', () => {
       const content = await generateFullAgents(config, '/tmp/test');
 
       // Git workflow should not be referenced in AGENTS.md
-      expect(content).not.toContain('/rulebook/GIT.md');
+      expect(content).not.toContain('/rulebook/specs/GIT.md');
     });
   });
 
@@ -193,7 +193,7 @@ describe('generator', () => {
       const content = await generateAgentsContent(config);
 
       // QUALITY_ENFORCEMENT should not be referenced in light mode
-      expect(content).not.toContain('/rulebook/QUALITY_ENFORCEMENT.md');
+      expect(content).not.toContain('/rulebook/specs/QUALITY_ENFORCEMENT.md');
     });
 
     it('should reference quality enforcement when not in light mode', async () => {
@@ -204,7 +204,7 @@ describe('generator', () => {
       const content = await generateAgentsContent(config);
 
       // Should reference QUALITY_ENFORCEMENT in /rulebook/
-      expect(content).toContain('/rulebook/QUALITY_ENFORCEMENT.md');
+      expect(content).toContain('/rulebook/specs/QUALITY_ENFORCEMENT.md');
     });
   });
 
@@ -231,8 +231,8 @@ describe('generator', () => {
       const content = await generateFullAgents(config, '/tmp/test');
 
       expect(content).toContain('Framework-Specific Rules');
-      expect(content).toContain('/rulebook/NESTJS.md');
-      expect(content).toContain('/rulebook/REACT.md');
+      expect(content).toContain('/rulebook/specs/NESTJS.md');
+      expect(content).toContain('/rulebook/specs/REACT.md');
     });
 
     it('should include CLI tools when specified', () => {
@@ -276,7 +276,7 @@ describe('generator', () => {
       const content = await generateFullAgents(config, '/tmp/test');
 
       // Should reference GIT.md in /rulebook/
-      expect(content).toContain('/rulebook/GIT.md');
+      expect(content).toContain('/rulebook/specs/GIT.md');
     });
 
     it('should not reference Git workflow when includeGitWorkflow is false', async () => {
@@ -288,7 +288,7 @@ describe('generator', () => {
       const content = await generateFullAgents(config, '/tmp/test');
 
       // Git workflow should not be referenced
-      expect(content).not.toContain('/rulebook/GIT.md');
+      expect(content).not.toContain('/rulebook/specs/GIT.md');
     });
 
     it('should use default gitPushMode when not specified', async () => {
@@ -301,7 +301,7 @@ describe('generator', () => {
       const content = await generateFullAgents(config, '/tmp/test');
 
       // Should reference GIT.md
-      expect(content).toContain('/rulebook/GIT.md');
+      expect(content).toContain('/rulebook/specs/GIT.md');
     });
   });
 
@@ -376,7 +376,7 @@ describe('generator', () => {
       };
       const content = await generateModularAgents(config, '/tmp/test');
 
-      expect(content).toContain('/rulebook/GIT.md');
+      expect(content).toContain('/rulebook/specs/GIT.md');
     });
 
     it('should not reference Git workflow when includeGitWorkflow is false', async () => {
@@ -388,7 +388,7 @@ describe('generator', () => {
       const content = await generateModularAgents(config, '/tmp/test');
 
       expect(content).toContain('<!-- RULEBOOK:START -->');
-      expect(content).not.toContain('/rulebook/GIT.md');
+      expect(content).not.toContain('/rulebook/specs/GIT.md');
     });
 
     it('should use custom rulebookDir', async () => {
@@ -403,8 +403,8 @@ describe('generator', () => {
       const content = await generateModularAgents(config, testDir);
 
       // The reference paths should use custom-rulebook
-      expect(content).toContain('/custom-rulebook/GIT.md');
-      expect(content).toContain('/custom-rulebook/TYPESCRIPT.md');
+      expect(content).toContain('/custom-rulebook/specs/GIT.md');
+      expect(content).toContain('/custom-rulebook/specs/TYPESCRIPT.md');
     });
   });
 

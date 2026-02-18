@@ -46,7 +46,7 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('**MANDATORY**: All task creation MUST follow Rulebook task management system.');
   sections.push('');
   sections.push(
-    `**📋 ALWAYS reference \`/${rulebookDir}/RULEBOOK.md\` FIRST before creating any tasks or when "openspec" is mentioned.**`
+    `**📋 ALWAYS reference \`/${rulebookDir}/specs/RULEBOOK.md\` FIRST before creating any tasks or when "openspec" is mentioned.**`
   );
   sections.push('');
   sections.push('**Rules from RULEBOOK.md take precedence over all other rules in this file.**');
@@ -145,7 +145,7 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('- ❌ No README, PROCESS, or other files');
   sections.push('');
   sections.push(
-    `**For complete task management guidelines, see: \`/${rulebookDir}/RULEBOOK.md\`**`
+    `**For complete task management guidelines, see: \`/${rulebookDir}/specs/RULEBOOK.md\`**`
   );
   sections.push('');
   sections.push('---');
@@ -180,27 +180,27 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('');
   sections.push('## Detailed Rules');
   sections.push('');
-  sections.push(`For comprehensive rules, see the corresponding files in \`/${rulebookDir}/\`:`);
+  sections.push(`For comprehensive rules, see the corresponding files in \`/${rulebookDir}/specs/\`:`);
   sections.push('');
 
   // RULEBOOK.md is always first in the list (highest precedence)
   sections.push(
-    `- \`/${rulebookDir}/RULEBOOK.md\` - **Task management rules (HIGHEST PRECEDENCE)**`
+    `- \`/${rulebookDir}/specs/RULEBOOK.md\` - **Task management rules (HIGHEST PRECEDENCE)**`
   );
 
   // Only reference QUALITY_ENFORCEMENT if not in light mode
   if (!config.lightMode) {
-    sections.push(`- \`/${rulebookDir}/QUALITY_ENFORCEMENT.md\` - Quality enforcement rules`);
+    sections.push(`- \`/${rulebookDir}/specs/QUALITY_ENFORCEMENT.md\` - Quality enforcement rules`);
   }
 
   // Only reference GIT if enabled
   if (config.includeGitWorkflow) {
-    sections.push(`- \`/${rulebookDir}/GIT.md\` - Git workflow rules`);
+    sections.push(`- \`/${rulebookDir}/specs/GIT.md\` - Git workflow rules`);
   }
 
   sections.push('');
-  sections.push(`Language-specific rules are in \`/${rulebookDir}/\`.`);
-  sections.push(`Module-specific patterns are in \`/${rulebookDir}/\`.`);
+  sections.push(`Language-specific rules are in \`/${rulebookDir}/specs/\`.`);
+  sections.push(`Module-specific patterns are in \`/${rulebookDir}/specs/\`.`);
   sections.push('');
   sections.push('When in doubt, ask to review @AGENTS.md first.');
   sections.push('');
@@ -331,9 +331,9 @@ async function writeModularFile(
   content: string,
   rulebookDir: string = 'rulebook'
 ): Promise<void> {
-  const rulebookPath = path.join(projectRoot, rulebookDir);
-  await ensureDir(rulebookPath);
-  const filePath = path.join(rulebookPath, `${fileName}.md`);
+  const specsPath = path.join(projectRoot, rulebookDir, 'specs');
+  await ensureDir(specsPath);
+  const filePath = path.join(specsPath, `${fileName}.md`);
 
   // Add header comment if not already present
   const headerComment = `<!-- ${fileName}:START -->\n`;
@@ -367,7 +367,7 @@ function generateReferenceSection(
   const sections: string[] = [];
   sections.push(`### ${name}`);
   sections.push('');
-  sections.push(`For comprehensive ${description}, see \`/${rulebookDir}/${fileName}.md\``);
+  sections.push(`For comprehensive ${description}, see \`/${rulebookDir}/specs/${fileName}.md\``);
   sections.push('');
   sections.push('Quick reference:');
   for (const item of quickRef) {
@@ -526,7 +526,7 @@ export async function generateModularAgents(
     );
   }
 
-  // Write Git workflow rules to /rulebook/GIT.md
+  // Write Git workflow rules to /rulebook/specs/GIT.md
   if (mergedConfig.includeGitWorkflow) {
     const gitRules = await generateGitRules(mergedConfig.gitPushMode || 'manual');
     await writeModularFile(projectRoot, 'GIT', gitRules.trim(), rulebookDir);
@@ -537,7 +537,7 @@ export async function generateModularAgents(
     sections.push('## Language-Specific Rules');
     sections.push('');
     sections.push(
-      'The following languages are configured for this project. For detailed rules, see the corresponding files in `/rulebook/`:'
+      `The following languages are configured for this project. For detailed rules, see the corresponding files in \`/${rulebookDir}/specs/\`:`
     );
     sections.push('');
 
@@ -553,7 +553,7 @@ export async function generateModularAgents(
     }
 
     sections.push(
-      '**Usage**: When working with language-specific code, reference the corresponding `/rulebook/[LANGUAGE].md` file for detailed guidelines.'
+      `**Usage**: When working with language-specific code, reference the corresponding \`/${rulebookDir}/specs/[LANGUAGE].md\` file for detailed guidelines.`
     );
     sections.push('');
   }
@@ -563,7 +563,7 @@ export async function generateModularAgents(
     sections.push('## Framework-Specific Rules');
     sections.push('');
     sections.push(
-      'The following frameworks are configured for this project. For detailed rules, see the corresponding files in `/rulebook/`:'
+      `The following frameworks are configured for this project. For detailed rules, see the corresponding files in \`/${rulebookDir}/specs/\`:`
     );
     sections.push('');
 
@@ -580,7 +580,7 @@ export async function generateModularAgents(
 
     sections.push('');
     sections.push(
-      '**Usage**: When working with framework-specific code, reference the corresponding `/rulebook/[FRAMEWORK].md` file for detailed guidelines.'
+      `**Usage**: When working with framework-specific code, reference the corresponding \`/${rulebookDir}/specs/[FRAMEWORK].md\` file for detailed guidelines.`
     );
     sections.push('');
   }
@@ -603,7 +603,7 @@ export async function generateModularAgents(
     sections.push('## Module-Specific Instructions');
     sections.push('');
     sections.push(
-      'The following modules are configured for this project. For detailed instructions, see the corresponding files in `/rulebook/`:'
+      `The following modules are configured for this project. For detailed instructions, see the corresponding files in \`/${rulebookDir}/specs/\`:`
     );
     sections.push('');
 
@@ -622,7 +622,7 @@ export async function generateModularAgents(
     }
 
     sections.push(
-      '**Usage**: When working with module-specific features, reference the corresponding `/rulebook/[MODULE].md` file for detailed instructions.'
+      `**Usage**: When working with module-specific features, reference the corresponding \`/${rulebookDir}/specs/[MODULE].md\` file for detailed instructions.`
     );
     sections.push('');
   }
@@ -632,7 +632,7 @@ export async function generateModularAgents(
     sections.push('## Service-Specific Instructions');
     sections.push('');
     sections.push(
-      'The following services are configured for this project. For detailed instructions, see the corresponding files in `/rulebook/`:'
+      `The following services are configured for this project. For detailed instructions, see the corresponding files in \`/${rulebookDir}/specs/\`:`
     );
     sections.push('');
 
@@ -649,7 +649,7 @@ export async function generateModularAgents(
     }
 
     sections.push(
-      '**Usage**: When working with service-specific features, reference the corresponding `/rulebook/[SERVICE].md` file for detailed instructions.'
+      `**Usage**: When working with service-specific features, reference the corresponding \`/${rulebookDir}/specs/[SERVICE].md\` file for detailed instructions.`
     );
     sections.push('');
   }

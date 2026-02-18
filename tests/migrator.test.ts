@@ -149,8 +149,8 @@ Vectorizer-specific content here.
       expect(result.extractedModules).toContain('vectorizer');
 
       // Verify files were created
-      const typescriptPath = path.join(testDir, 'rulebook', 'TYPESCRIPT.md');
-      const vectorizerPath = path.join(testDir, 'rulebook', 'VECTORIZER.md');
+      const typescriptPath = path.join(testDir, 'rulebook', 'specs', 'TYPESCRIPT.md');
+      const vectorizerPath = path.join(testDir, 'rulebook', 'specs', 'VECTORIZER.md');
 
       expect(await fileExists(typescriptPath)).toBe(true);
       expect(await fileExists(vectorizerPath)).toBe(true);
@@ -201,8 +201,8 @@ Vectorizer-specific content here.
       expect(result.extractedModules).toContain('vectorizer');
 
       // Verify files were created (generated, not extracted)
-      const typescriptPath = path.join(testDir, 'rulebook', 'TYPESCRIPT.md');
-      const vectorizerPath = path.join(testDir, 'rulebook', 'VECTORIZER.md');
+      const typescriptPath = path.join(testDir, 'rulebook', 'specs', 'TYPESCRIPT.md');
+      const vectorizerPath = path.join(testDir, 'rulebook', 'specs', 'VECTORIZER.md');
 
       expect(await fileExists(typescriptPath)).toBe(true);
       expect(await fileExists(vectorizerPath)).toBe(true);
@@ -216,7 +216,7 @@ Vectorizer-specific content here.
 
       await migrateEmbeddedTemplates(existingAgents, customConfig, testDir);
 
-      const typescriptPath = path.join(testDir, 'custom-rulebook', 'TYPESCRIPT.md');
+      const typescriptPath = path.join(testDir, 'custom-rulebook', 'specs', 'TYPESCRIPT.md');
       expect(await fileExists(typescriptPath)).toBe(true);
     });
 
@@ -254,7 +254,7 @@ React content here.
 
       expect(result.extractedFrameworks).toContain('react');
 
-      const reactPath = path.join(testDir, 'rulebook', 'REACT.md');
+      const reactPath = path.join(testDir, 'rulebook', 'specs', 'REACT.md');
       expect(await fileExists(reactPath)).toBe(true);
 
       const reactContent = await readFile(reactPath);
@@ -286,7 +286,7 @@ React content here.
 
       // Should generate new template when block has no content
       expect(result.extractedLanguages).toContain('typescript');
-      const typescriptPath = path.join(testDir, 'rulebook', 'TYPESCRIPT.md');
+      const typescriptPath = path.join(testDir, 'rulebook', 'specs', 'TYPESCRIPT.md');
       expect(await fileExists(typescriptPath)).toBe(true);
     });
 
@@ -376,8 +376,8 @@ React content here.
       const result = await replaceEmbeddedWithReferences(config, testDir);
 
       expect(result).toContain('<!-- RULEBOOK:START -->');
-      expect(result).toContain('/rulebook/TYPESCRIPT.md');
-      expect(result).toContain('/rulebook/VECTORIZER.md');
+      expect(result).toContain('/rulebook/specs/TYPESCRIPT.md');
+      expect(result).toContain('/rulebook/specs/VECTORIZER.md');
     });
   });
 });

@@ -8,7 +8,7 @@ description: Create a new Rulebook task following OpenSpec-compatible format wit
 **Guardrails**
 - Favor straightforward, minimal implementations first and add complexity only when it is requested or clearly required.
 - Keep changes tightly scoped to the requested outcome.
-- Refer to `/rulebook/RULEBOOK.md` for complete task management guidelines and format requirements.
+- Refer to `/rulebook/specs/RULEBOOK.md` for complete task management guidelines and format requirements.
 - **CRITICAL**: Context7 MCP is REQUIRED for task creation to ensure correct OpenSpec-compatible format.
 - Identify any vague or ambiguous details and ask the necessary follow-up questions before editing files.
 
@@ -77,7 +77,7 @@ description: Create a new Rulebook task following OpenSpec-compatible format wit
    - Delta headers: Use ADDED/MODIFIED/REMOVED/RENAMED ✅
 
 **Reference**
-- See `/rulebook/RULEBOOK.md` for complete task management guidelines
+- See `/rulebook/specs/RULEBOOK.md` for complete task management guidelines
 - Use `rulebook task show <task-id>` to view task details
 - Use `rulebook task list` to see all tasks
 - Search existing requirements with `rg -n "Requirement:|Scenario:" rulebook/tasks` before writing new ones

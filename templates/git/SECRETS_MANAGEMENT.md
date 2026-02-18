@@ -579,7 +579,7 @@ AWS_SECRET_ACCESS_KEY=your-secret-key
 
 ## Related Templates
 
-- See `/rulebook/GITHUB_ACTIONS.md` for GitHub Actions secrets
-- See `/rulebook/GITLAB_CI.md` for GitLab CI secrets
-- See `/rulebook/CI_CD_PATTERNS.md` for deployment patterns
-- See `/rulebook/GIT.md` for .gitignore patterns
+- See `/rulebook/specs/GITHUB_ACTIONS.md` for GitHub Actions secrets
+- See `/rulebook/specs/GITLAB_CI.md` for GitLab CI secrets
+- See `/rulebook/specs/CI_CD_PATTERNS.md` for deployment patterns
+- See `/rulebook/specs/GIT.md` for .gitignore patterns

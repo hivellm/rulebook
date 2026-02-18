@@ -18,7 +18,7 @@ This command will:
 1. Detect existing OpenSpec tasks in `/openspec/changes/`
 2. Migrate them to `/rulebook/tasks/`
 3. Migrate archived tasks from `/openspec/changes/archive/` to `/rulebook/tasks/archive/`
-4. Remove `/rulebook/OPENSPEC.md` if it exists
+4. Remove `/rulebook/specs/OPENSPEC.md` if it exists
 5. Remove OpenSpec commands from `.cursor/commands/`
 6. **Remove `/openspec` directory** after successful migration
 7. Update AGENTS.md with new task management directives
@@ -167,7 +167,7 @@ If validation fails after migration:
    ```
 
 2. Check format requirements:
-   - See `/rulebook/RULEBOOK.md` for format requirements
+   - See `/rulebook/specs/RULEBOOK.md` for format requirements
    - Use Context7 MCP to get official OpenSpec format documentation
 
 3. Fix format issues:
@@ -228,7 +228,7 @@ mv openspec openspec-archive-$(date +%Y-%m-%d)
 
 ## Need Help?
 
-- See `/rulebook/RULEBOOK.md` for complete task management guidelines
+- See `/rulebook/specs/RULEBOOK.md` for complete task management guidelines
 - Check task format examples in `/rulebook/tasks/`
 - Use Context7 MCP for official OpenSpec format documentation
 
