@@ -78,7 +78,7 @@ describe('claude-mcp', () => {
       });
     });
 
-    it('should overwrite existing rulebook entry in .mcp.json', async () => {
+    it('should preserve existing rulebook entry in .mcp.json', async () => {
       const mcpJsonPath = path.join(testDir, '.mcp.json');
       const existingConfig = {
         mcpServers: {
@@ -90,12 +90,13 @@ describe('claude-mcp', () => {
       };
       await fs.writeFile(mcpJsonPath, JSON.stringify(existingConfig, null, 2));
 
-      await configureMcpJson(testDir);
+      const result = await configureMcpJson(testDir);
 
+      expect(result).toBe(false);
       const content = JSON.parse(await fs.readFile(mcpJsonPath, 'utf8'));
       expect(content.mcpServers.rulebook).toEqual({
-        command: 'npx',
-        args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
+        command: 'node',
+        args: ['old-server.js'],
       });
     });
 

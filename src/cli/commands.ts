@@ -1771,16 +1771,18 @@ export async function updateCommand(options: {
       projectId: path.basename(cwd),
       mode: minimalMode ? 'minimal' : 'full',
       features: rulebookFeatures,
-      coverageThreshold: 95,
-      language: 'en',
-      outputLanguage: 'en',
-      cliTools: [],
-      maxParallelTasks: 5,
-      timeouts: {
+      coverageThreshold: existingConfig.coverageThreshold ?? 95,
+      language: existingConfig.language ?? 'en',
+      outputLanguage: existingConfig.outputLanguage ?? 'en',
+      cliTools: existingConfig.cliTools ?? [],
+      maxParallelTasks: existingConfig.maxParallelTasks ?? 5,
+      timeouts: existingConfig.timeouts ?? {
         taskExecution: 3600000,
         cliResponse: 180000,
         testRun: 600000,
       },
+      ...(existingConfig.memory ? { memory: existingConfig.memory } : {}),
+      ...(existingConfig.skills ? { skills: existingConfig.skills } : {}),
     };
 
     await writeFile(rulebookPath, JSON.stringify(rulebookConfig, null, 2));
