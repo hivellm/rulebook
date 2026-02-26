@@ -2753,10 +2753,11 @@ export async function setupClaudeCodePlugin(): Promise<void> {
     const { readFile } = await import('../utils/file-system.js');
     const os = await import('os');
     const fs = await import('fs/promises');
+    const url = await import('url');
 
-    // Get plugin info from .claude-plugin/plugin.json
-    const cwd = process.cwd();
-    const pluginJsonPath = path.join(cwd, '.claude-plugin', 'plugin.json');
+    // Get plugin info from .claude-plugin/plugin.json relative to this module
+    const packageDir = path.dirname(url.fileURLToPath(import.meta.url));
+    const pluginJsonPath = path.join(packageDir, '..', '..', '.claude-plugin', 'plugin.json');
     const pluginJson = JSON.parse(await readFile(pluginJsonPath));
 
     // Get Claude Code plugins directory
@@ -2781,7 +2782,7 @@ export async function setupClaudeCodePlugin(): Promise<void> {
 
     // Add rulebook plugin
     const pluginKey = `rulebook@hivehub`;
-    const version = pluginJson.version || '3.1.0';
+    const version = pluginJson.version || '3.2.0';
     const installPath = path.join(pluginsDir, 'cache', 'hivehub', 'rulebook', version);
 
     if (!installedPlugins.plugins[pluginKey]) {
