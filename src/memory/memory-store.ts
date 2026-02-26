@@ -123,18 +123,10 @@ export class MemoryStore {
     }
 
     // Index for common queries
-    this.db.run(
-      'CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type)'
-    );
-    this.db.run(
-      'CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at)'
-    );
-    this.db.run(
-      'CREATE INDEX IF NOT EXISTS idx_memories_accessed ON memories(accessed_at)'
-    );
-    this.db.run(
-      'CREATE INDEX IF NOT EXISTS idx_memories_session ON memories(session_id)'
-    );
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_memories_accessed ON memories(accessed_at)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_memories_session ON memories(session_id)');
   }
 
   private trackWrite(): void {
@@ -200,13 +192,9 @@ export class MemoryStore {
 
     const conditions: string[] = [];
     if (options?.type) conditions.push(`type = '${options.type}'`);
-    if (options?.project)
-      conditions.push(
-        `project = '${options.project.replace(/'/g, "''")}'`
-      );
+    if (options?.project) conditions.push(`project = '${options.project.replace(/'/g, "''")}'`);
 
-    const where =
-      conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const limit = options?.limit ? `LIMIT ${options.limit}` : 'LIMIT 100';
     const offset = options?.offset ? `OFFSET ${options.offset}` : '';
 
@@ -222,10 +210,7 @@ export class MemoryStore {
   updateAccessedAt(id: string): void {
     if (!this.db) throw new Error('Database not initialized');
 
-    this.db.run(`UPDATE memories SET accessed_at = ? WHERE id = ?`, [
-      Date.now(),
-      id,
-    ]);
+    this.db.run(`UPDATE memories SET accessed_at = ? WHERE id = ?`, [Date.now(), id]);
     this.trackWrite();
   }
 
@@ -294,14 +279,12 @@ export class MemoryStore {
     if (terms.length === 0) return [];
 
     const conditions = terms.map(
-      (t) =>
-        `(LOWER(title) LIKE '%${t}%' OR LOWER(content) LIKE '%${t}%')`
+      (t) => `(LOWER(title) LIKE '%${t}%' OR LOWER(content) LIKE '%${t}%')`
     );
 
     let sql = `SELECT id FROM memories WHERE ${conditions.join(' OR ')}`;
     if (filters?.type) sql += ` AND type = '${filters.type}'`;
-    if (filters?.project)
-      sql += ` AND project = '${filters.project.replace(/'/g, "''")}'`;
+    if (filters?.project) sql += ` AND project = '${filters.project.replace(/'/g, "''")}'`;
     sql += ` LIMIT ${limit}`;
 
     const result = this.db.exec(sql);
@@ -379,9 +362,7 @@ export class MemoryStore {
   getOldestMemoryTimestamp(): number | undefined {
     if (!this.db) return undefined;
 
-    const result = this.db.exec(
-      'SELECT MIN(created_at) FROM memories'
-    );
+    const result = this.db.exec('SELECT MIN(created_at) FROM memories');
     if (result.length === 0 || result[0].values[0][0] === null) return undefined;
     return Number(result[0].values[0][0]);
   }
@@ -389,17 +370,12 @@ export class MemoryStore {
   getNewestMemoryTimestamp(): number | undefined {
     if (!this.db) return undefined;
 
-    const result = this.db.exec(
-      'SELECT MAX(created_at) FROM memories'
-    );
+    const result = this.db.exec('SELECT MAX(created_at) FROM memories');
     if (result.length === 0 || result[0].values[0][0] === null) return undefined;
     return Number(result[0].values[0][0]);
   }
 
-  getEvictionCandidates(
-    batchSize: number,
-    activeSessionId?: string
-  ): Array<{ id: string }> {
+  getEvictionCandidates(batchSize: number, activeSessionId?: string): Array<{ id: string }> {
     if (!this.db) return [];
 
     let sql = `SELECT id FROM memories WHERE type != 'decision'`;
@@ -426,8 +402,7 @@ export class MemoryStore {
     const anchorResult = this.db.exec(
       `SELECT created_at FROM memories WHERE id = '${memoryId.replace(/'/g, "''")}'`
     );
-    if (anchorResult.length === 0 || anchorResult[0].values.length === 0)
-      return [];
+    if (anchorResult.length === 0 || anchorResult[0].values.length === 0) return [];
 
     const anchorTs = anchorResult[0].values[0][0] as number;
 

@@ -24,7 +24,10 @@ describe('MemoryManager', () => {
   describe('lazy initialization', () => {
     it('should not create DB until first operation', async () => {
       const dbPath = path.join(testDir, '.rulebook-memory', 'memory.db');
-      const exists = await fs.access(dbPath).then(() => true).catch(() => false);
+      const exists = await fs
+        .access(dbPath)
+        .then(() => true)
+        .catch(() => false);
       expect(exists).toBe(false);
     });
 
@@ -39,7 +42,10 @@ describe('MemoryManager', () => {
       await manager.close();
 
       const dbPath = path.join(testDir, '.rulebook-memory', 'memory.db');
-      const exists = await fs.access(dbPath).then(() => true).catch(() => false);
+      const exists = await fs
+        .access(dbPath)
+        .then(() => true)
+        .catch(() => false);
       expect(exists).toBe(true);
 
       // Re-create manager for afterEach cleanup

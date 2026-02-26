@@ -390,7 +390,9 @@ export async function initCommand(options: {
           }
           if (result.skillsInstalled.length > 0) {
             console.log(
-              chalk.gray(`  • ${result.skillsInstalled.length} skills installed to .claude/commands/`)
+              chalk.gray(
+                `  • ${result.skillsInstalled.length} skills installed to .claude/commands/`
+              )
             );
           }
         } else {
@@ -1703,9 +1705,7 @@ export async function updateCommand(options: {
       const { hasFlatLayout, migrateFlatToSpecs } = await import('../core/migrator.js');
       const rulebookDirForMigration = config.rulebookDir || 'rulebook';
       if (await hasFlatLayout(cwd, rulebookDirForMigration)) {
-        const migrationSpinner = ora(
-          'Migrating rulebook files to specs/ subdirectory...'
-        ).start();
+        const migrationSpinner = ora('Migrating rulebook files to specs/ subdirectory...').start();
         const { migratedFiles } = await migrateFlatToSpecs(cwd, rulebookDirForMigration);
         if (migratedFiles.length > 0) {
           migrationSpinner.succeed(
@@ -2258,8 +2258,11 @@ export async function memorySearchCommand(
     } else {
       console.log('');
       for (const r of results) {
-        const typeColor = r.type === 'bugfix' ? chalk.red : r.type === 'feature' ? chalk.green : chalk.blue;
-        console.log(`  ${typeColor(r.type.padEnd(12))} ${chalk.white(r.title)} ${chalk.gray(`[${r.matchType}] ${r.score.toFixed(3)}`)}`);
+        const typeColor =
+          r.type === 'bugfix' ? chalk.red : r.type === 'feature' ? chalk.green : chalk.blue;
+        console.log(
+          `  ${typeColor(r.type.padEnd(12))} ${chalk.white(r.title)} ${chalk.gray(`[${r.matchType}] ${r.score.toFixed(3)}`)}`
+        );
       }
     }
 
@@ -2310,9 +2313,7 @@ export async function memorySaveCommand(
   }
 }
 
-export async function memoryListCommand(
-  options: { limit?: string; type?: string }
-): Promise<void> {
+export async function memoryListCommand(options: { limit?: string; type?: string }): Promise<void> {
   const ora = (await import('ora')).default;
   const chalk = (await import('chalk')).default;
   const spinner = ora('Loading memories...').start();
@@ -2343,8 +2344,11 @@ export async function memoryListCommand(
       console.log('');
       for (const m of memories) {
         const date = new Date(m.createdAt).toLocaleDateString();
-        const typeColor = m.type === 'bugfix' ? chalk.red : m.type === 'feature' ? chalk.green : chalk.blue;
-        console.log(`  ${chalk.gray(date)} ${typeColor(m.type.padEnd(12))} ${chalk.white(m.title)}`);
+        const typeColor =
+          m.type === 'bugfix' ? chalk.red : m.type === 'feature' ? chalk.green : chalk.blue;
+        console.log(
+          `  ${chalk.gray(date)} ${typeColor(m.type.padEnd(12))} ${chalk.white(m.title)}`
+        );
       }
     }
 
@@ -2381,13 +2385,19 @@ export async function memoryStatsCommand(): Promise<void> {
     const sizeMB = (stats.dbSizeBytes / 1024 / 1024).toFixed(2);
     const maxMB = (stats.maxSizeBytes / 1024 / 1024).toFixed(0);
     const usage = stats.usagePercent.toFixed(1);
-    const bar = '█'.repeat(Math.floor(stats.usagePercent / 5)) + '░'.repeat(20 - Math.floor(stats.usagePercent / 5));
+    const bar =
+      '█'.repeat(Math.floor(stats.usagePercent / 5)) +
+      '░'.repeat(20 - Math.floor(stats.usagePercent / 5));
 
     console.log(`\n  Memories:  ${chalk.cyan(stats.memoryCount)}`);
     console.log(`  Sessions:  ${chalk.cyan(stats.sessionCount)}`);
     console.log(`  DB Size:   ${chalk.cyan(sizeMB + ' MB')} / ${maxMB} MB`);
-    console.log(`  Usage:     [${stats.usagePercent > 80 ? chalk.red(bar) : chalk.green(bar)}] ${usage}%`);
-    console.log(`  Health:    ${stats.indexHealth === 'good' ? chalk.green(stats.indexHealth) : chalk.yellow(stats.indexHealth)}`);
+    console.log(
+      `  Usage:     [${stats.usagePercent > 80 ? chalk.red(bar) : chalk.green(bar)}] ${usage}%`
+    );
+    console.log(
+      `  Health:    ${stats.indexHealth === 'good' ? chalk.green(stats.indexHealth) : chalk.yellow(stats.indexHealth)}`
+    );
 
     await manager.close();
   } catch (error) {
@@ -2397,9 +2407,7 @@ export async function memoryStatsCommand(): Promise<void> {
   }
 }
 
-export async function memoryCleanupCommand(
-  options: { force?: boolean }
-): Promise<void> {
+export async function memoryCleanupCommand(options: { force?: boolean }): Promise<void> {
   const ora = (await import('ora')).default;
   const chalk = (await import('chalk')).default;
   const spinner = ora('Running cleanup...').start();
@@ -2434,9 +2442,10 @@ export async function memoryCleanupCommand(
   }
 }
 
-export async function memoryExportCommand(
-  options: { format?: string; output?: string }
-): Promise<void> {
+export async function memoryExportCommand(options: {
+  format?: string;
+  output?: string;
+}): Promise<void> {
   const ora = (await import('ora')).default;
   const chalk = (await import('chalk')).default;
   const spinner = ora('Exporting memories...').start();
@@ -2620,7 +2629,9 @@ export async function ralphStatusCommand(): Promise<void> {
     console.log(`\n  ${chalk.bold('Ralph Loop Status')}`);
     console.log(`  Iteration:    ${status.current_iteration}/${status.max_iterations}`);
     console.log(`  Tasks:        ${status.completed_tasks}/${status.total_tasks}`);
-    console.log(`  Status:       ${status.paused ? chalk.yellow('PAUSED') : chalk.green('RUNNING')}`);
+    console.log(
+      `  Status:       ${status.paused ? chalk.yellow('PAUSED') : chalk.green('RUNNING')}`
+    );
     console.log(`  AI Tool:      ${status.tool}`);
     console.log(`  Started:      ${new Date(status.started_at).toLocaleString()}`);
     console.log();
@@ -2656,10 +2667,16 @@ export async function ralphHistoryCommand(options: { limit?: number }): Promise<
 
     for (const iter of history) {
       const statusIcon =
-        iter.status === 'success' ? chalk.green('✓') : iter.status === 'partial' ? chalk.yellow('◐') : chalk.red('✗');
+        iter.status === 'success'
+          ? chalk.green('✓')
+          : iter.status === 'partial'
+            ? chalk.yellow('◐')
+            : chalk.red('✗');
       console.log(`  ${statusIcon} Iteration ${iter.iteration}: ${iter.task_title}`);
       console.log(`     Status: ${iter.status} | Duration: ${(iter.duration_ms || 0) / 1000}s`);
-      console.log(`     Checks: type=${iter.quality_checks.type_check ? '✓' : '✗'} lint=${iter.quality_checks.lint ? '✓' : '✗'} tests=${iter.quality_checks.tests ? '✓' : '✗'}`);
+      console.log(
+        `     Checks: type=${iter.quality_checks.type_check ? '✓' : '✗'} lint=${iter.quality_checks.lint ? '✓' : '✗'} tests=${iter.quality_checks.tests ? '✓' : '✗'}`
+      );
       if (iter.git_commit) {
         console.log(`     Commit: ${iter.git_commit}`);
       }
@@ -2669,7 +2686,9 @@ export async function ralphHistoryCommand(options: { limit?: number }): Promise<
     // Show statistics
     const stats = await tracker.getStatistics();
     console.log(`  ${chalk.bold('Statistics')}`);
-    console.log(`  Total: ${stats.total_iterations} | Success: ${stats.successful_iterations} | Failed: ${stats.failed_iterations}`);
+    console.log(
+      `  Total: ${stats.total_iterations} | Success: ${stats.successful_iterations} | Failed: ${stats.failed_iterations}`
+    );
     console.log(`  Success rate: ${(stats.success_rate * 100).toFixed(1)}%`);
     console.log(`  Avg duration: ${stats.average_duration_ms}ms\n`);
   } catch (error) {
@@ -2763,13 +2782,7 @@ export async function setupClaudeCodePlugin(): Promise<void> {
     // Add rulebook plugin
     const pluginKey = `rulebook@hivehub`;
     const version = pluginJson.version || '3.1.0';
-    const installPath = path.join(
-      pluginsDir,
-      'cache',
-      'hivehub',
-      'rulebook',
-      version
-    );
+    const installPath = path.join(pluginsDir, 'cache', 'hivehub', 'rulebook', version);
 
     if (!installedPlugins.plugins[pluginKey]) {
       installedPlugins.plugins[pluginKey] = [];
@@ -2790,10 +2803,7 @@ export async function setupClaudeCodePlugin(): Promise<void> {
     }
 
     // Save installed_plugins.json
-    await fs.writeFile(
-      installedPluginsPath,
-      JSON.stringify(installedPlugins, null, 2)
-    );
+    await fs.writeFile(installedPluginsPath, JSON.stringify(installedPlugins, null, 2));
 
     // Update install-counts-cache.json
     let installCounts: Record<string, number> = {};
@@ -2802,10 +2812,7 @@ export async function setupClaudeCodePlugin(): Promise<void> {
       installCounts = JSON.parse(content);
     }
     installCounts[pluginKey] = (installCounts[pluginKey] || 0) + 1;
-    await fs.writeFile(
-      installCountsPath,
-      JSON.stringify(installCounts, null, 2)
-    );
+    await fs.writeFile(installCountsPath, JSON.stringify(installCounts, null, 2));
 
     spinner.succeed('Claude Code plugin installed');
     console.log(`\n  ${chalk.green('✓')} Plugin: ${pluginKey} v${version}`);

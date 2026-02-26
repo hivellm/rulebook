@@ -255,12 +255,8 @@ describe('MemoryStore', () => {
 
   describe('eviction candidates', () => {
     it('should exclude decision type', () => {
-      store.saveMemory(
-        makeMemory({ id: 'dec-1', type: 'decision', accessedAt: 1 })
-      );
-      store.saveMemory(
-        makeMemory({ id: 'obs-1', type: 'observation', accessedAt: 1 })
-      );
+      store.saveMemory(makeMemory({ id: 'dec-1', type: 'decision', accessedAt: 1 }));
+      store.saveMemory(makeMemory({ id: 'obs-1', type: 'observation', accessedAt: 1 }));
 
       const candidates = store.getEvictionCandidates(10);
       const ids = candidates.map((c) => c.id);

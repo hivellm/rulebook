@@ -35,9 +35,7 @@ describe('HNSW Index', () => {
 
     it('should throw on dimension mismatch', () => {
       const index = createIndex();
-      expect(() => index.add('a', new Float32Array(128))).toThrow(
-        'dimensions mismatch'
-      );
+      expect(() => index.add('a', new Float32Array(128))).toThrow('dimensions mismatch');
     });
   });
 
@@ -87,18 +85,14 @@ describe('HNSW Index', () => {
 
       const results = index.search(makeVector('authentication'), 3);
       for (let i = 1; i < results.length; i++) {
-        expect(results[i].distance).toBeGreaterThanOrEqual(
-          results[i - 1].distance
-        );
+        expect(results[i].distance).toBeGreaterThanOrEqual(results[i - 1].distance);
       }
     });
 
     it('should throw on query dimension mismatch', () => {
       const index = createIndex();
       index.add('a', makeVector('test'));
-      expect(() => index.search(new Float32Array(128), 5)).toThrow(
-        'dimensions mismatch'
-      );
+      expect(() => index.search(new Float32Array(128), 5)).toThrow('dimensions mismatch');
     });
   });
 
@@ -191,9 +185,7 @@ describe('HNSW Index', () => {
       const restoredResults = restored.search(query, 3);
 
       // Same top results
-      expect(restoredResults.map((r) => r.label)).toEqual(
-        originalResults.map((r) => r.label)
-      );
+      expect(restoredResults.map((r) => r.label)).toEqual(originalResults.map((r) => r.label));
     });
 
     it('should throw on invalid magic number', () => {

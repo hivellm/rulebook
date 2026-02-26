@@ -56,10 +56,7 @@ export class IterationTracker {
   /**
    * Get iteration history with optional filtering
    */
-  async getHistory(
-    limit?: number,
-    taskId?: string
-  ): Promise<RalphIterationMetadata[]> {
+  async getHistory(limit?: number, taskId?: string): Promise<RalphIterationMetadata[]> {
     if (!existsSync(this.historyDir)) {
       return [];
     }
@@ -208,9 +205,7 @@ export class IterationTracker {
       learnings.push(
         `📊 Success rate: ${(stats.success_rate * 100).toFixed(1)}% (${stats.successful_iterations}/${stats.total_iterations})`
       );
-      learnings.push(
-        `⏱️ Average iteration time: ${stats.average_duration_ms}ms`
-      );
+      learnings.push(`⏱️ Average iteration time: ${stats.average_duration_ms}ms`);
     }
 
     return learnings;

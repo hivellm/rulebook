@@ -19,9 +19,7 @@ export class PRDGenerator {
   /**
    * Generate PRD from rulebook tasks
    */
-  async generatePRD(
-    projectName: string
-  ): Promise<RalphPRD> {
+  async generatePRD(projectName: string): Promise<RalphPRD> {
     this.logger.info('Generating PRD from rulebook tasks...');
 
     const tasks = await this.loadTasksFromDisk();
@@ -162,6 +160,4 @@ export class PRDGenerator {
     const lines = proposal.split('\n').filter((l) => l.trim() && !l.startsWith('#'));
     return lines.slice(0, 3).join('\n').substring(0, 500);
   }
-
-
 }

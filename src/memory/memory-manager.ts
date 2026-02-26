@@ -46,19 +46,11 @@ export class MemoryManager {
   private readonly maxSizeBytes: number;
   private readonly dimensions: number;
 
-  constructor(
-    projectRoot: string,
-    config: MemoryConfig
-  ) {
-    this.dbPath = join(
-      projectRoot,
-      config.dbPath ?? DEFAULT_DB_PATH
-    );
+  constructor(projectRoot: string, config: MemoryConfig) {
+    this.dbPath = join(projectRoot, config.dbPath ?? DEFAULT_DB_PATH);
     this.hnswPath = join(
       projectRoot,
-      config.dbPath
-        ? config.dbPath.replace(/\.db$/, '.hnsw')
-        : DEFAULT_HNSW_PATH
+      config.dbPath ? config.dbPath.replace(/\.db$/, '.hnsw') : DEFAULT_HNSW_PATH
     );
     this.maxSizeBytes = config.maxSizeBytes ?? DEFAULT_MAX_SIZE;
     this.dimensions = config.vectorDimensions ?? DEFAULT_DIMENSIONS;
@@ -150,10 +142,7 @@ export class MemoryManager {
     this.store!.saveMemory(memory);
 
     // Vectorize using title + summary (if available) + content for better semantic relevance
-    const textToVectorize = [
-      memory.title,
-      memory.summary || memory.content.substring(0, 300),
-    ]
+    const textToVectorize = [memory.title, memory.summary || memory.content.substring(0, 300)]
       .filter(Boolean)
       .join(' ');
     const vec = vectorize(textToVectorize, this.dimensions);
@@ -235,8 +224,8 @@ export class MemoryManager {
         this.index!.size === memoryCount
           ? 'good'
           : Math.abs(this.index!.size - memoryCount) < memoryCount * 0.1
-          ? 'degraded'
-          : 'needs-rebuild',
+            ? 'degraded'
+            : 'needs-rebuild',
     };
   }
 
@@ -282,9 +271,6 @@ export class MemoryManager {
 /**
  * Factory function
  */
-export function createMemoryManager(
-  projectRoot: string,
-  config: MemoryConfig
-): MemoryManager {
+export function createMemoryManager(projectRoot: string, config: MemoryConfig): MemoryManager {
   return new MemoryManager(projectRoot, config);
 }

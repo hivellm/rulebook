@@ -76,36 +76,16 @@ export class RalphParser {
 
     const lintPass =
       this.hasKeyword(lowerOutput, ['eslint', 'lint']) &&
-      !this.hasKeyword(lowerOutput, [
-        'error',
-        'failed',
-        'fail',
-        'warning',
-        'problems',
-      ]);
+      !this.hasKeyword(lowerOutput, ['error', 'failed', 'fail', 'warning', 'problems']);
 
     const testsPass =
       this.hasKeyword(lowerOutput, ['test', 'jest', 'vitest', 'mocha']) &&
-      this.hasKeyword(lowerOutput, [
-        'pass',
-        'passed',
-        '✓',
-        'all',
-        'success',
-        '100%',
-      ]) &&
+      this.hasKeyword(lowerOutput, ['pass', 'passed', '✓', 'all', 'success', '100%']) &&
       !this.hasKeyword(lowerOutput, ['failed', 'fail', 'error']);
 
     const coveragePass =
       this.hasKeyword(lowerOutput, ['coverage']) &&
-      (this.hasKeyword(lowerOutput, [
-        '95%',
-        '96%',
-        '97%',
-        '98%',
-        '99%',
-        '100%',
-      ]) ||
+      (this.hasKeyword(lowerOutput, ['95%', '96%', '97%', '98%', '99%', '100%']) ||
         this.hasPercentageAbove(output, 95));
 
     return {
@@ -150,9 +130,7 @@ export class RalphParser {
     const learnings: string[] = [];
 
     // Look for key learnings markers
-    const learningsMatch = output.match(
-      /(?:learning|insight|pattern|note)[\s:]*([^\n]+)/gi
-    );
+    const learningsMatch = output.match(/(?:learning|insight|pattern|note)[\s:]*([^\n]+)/gi);
     if (learningsMatch) {
       learningsMatch.forEach((match) => {
         const cleaned = match.replace(/^(?:learning|insight|pattern|note)[\s:]*/i, '').trim();
@@ -166,9 +144,7 @@ export class RalphParser {
     const discoveryMatch = output.match(/(?:discovered|found|realized)[\s:]*([^\n]+)/gi);
     if (discoveryMatch) {
       discoveryMatch.forEach((match) => {
-        const cleaned = match
-          .replace(/^(?:discovered|found|realized)[\s:]*/i, '')
-          .trim();
+        const cleaned = match.replace(/^(?:discovered|found|realized)[\s:]*/i, '').trim();
         if (cleaned.length > 10 && cleaned.length < 500) {
           learnings.push(cleaned);
         }
@@ -218,10 +194,7 @@ export class RalphParser {
     if (commitMatch) {
       const hash = commitMatch[0];
       // Verify it looks like a commit hash (after 'commit' keyword)
-      if (
-        output.toLowerCase().includes('commit') &&
-        output.includes(hash)
-      ) {
+      if (output.toLowerCase().includes('commit') && output.includes(hash)) {
         return hash;
       }
     }
@@ -290,9 +263,7 @@ export class RalphParser {
    * Helper: Check if output contains keyword (case-insensitive)
    */
   private static hasKeyword(output: string, keywords: string[]): boolean {
-    return keywords.some((kw) =>
-      output.toLowerCase().includes(kw.toLowerCase())
-    );
+    return keywords.some((kw) => output.toLowerCase().includes(kw.toLowerCase()));
   }
 
   /**

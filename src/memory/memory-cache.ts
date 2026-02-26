@@ -61,10 +61,7 @@ export class MemoryCache {
     let evictedCount = 0;
 
     // Always run at least one batch
-    const candidates = this.store.getEvictionCandidates(
-      EVICTION_BATCH_SIZE,
-      activeSessionId
-    );
+    const candidates = this.store.getEvictionCandidates(EVICTION_BATCH_SIZE, activeSessionId);
 
     for (const candidate of candidates) {
       this.store.deleteMemory(candidate.id);
@@ -75,10 +72,7 @@ export class MemoryCache {
     // If still over target, keep evicting
     const targetSize = this.maxSizeBytes * TARGET_USAGE;
     while (this.getCurrentSize() > targetSize) {
-      const moreCandidates = this.store.getEvictionCandidates(
-        EVICTION_BATCH_SIZE,
-        activeSessionId
-      );
+      const moreCandidates = this.store.getEvictionCandidates(EVICTION_BATCH_SIZE, activeSessionId);
       if (moreCandidates.length === 0) break;
 
       for (const candidate of moreCandidates) {
@@ -98,10 +92,7 @@ export class MemoryCache {
     let evictedCount = 0;
 
     while (this.getCurrentSize() > targetSize) {
-      const candidates = this.store.getEvictionCandidates(
-        EVICTION_BATCH_SIZE,
-        activeSessionId
-      );
+      const candidates = this.store.getEvictionCandidates(EVICTION_BATCH_SIZE, activeSessionId);
 
       if (candidates.length === 0) break;
 

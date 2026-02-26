@@ -112,7 +112,15 @@ describe('Ralph Autonomous Loop', () => {
         branchName: 'ralph/test-project',
         description: 'Test Ralph autonomous loop',
         userStories: [
-          { id: 'US-001', title: 'Story 1', description: 'Test story', acceptanceCriteria: [], priority: 1, passes: false, notes: '' },
+          {
+            id: 'US-001',
+            title: 'Story 1',
+            description: 'Test story',
+            acceptanceCriteria: [],
+            priority: 1,
+            passes: false,
+            notes: '',
+          },
         ],
       };
 
@@ -139,9 +147,33 @@ describe('Ralph Autonomous Loop', () => {
         branchName: 'ralph/test-project',
         description: 'Test Ralph autonomous loop',
         userStories: [
-          { id: 'US-001', title: 'Story 1', description: 'Test story 1', acceptanceCriteria: [], priority: 1, passes: true, notes: '' },
-          { id: 'US-002', title: 'Story 2', description: 'Test story 2', acceptanceCriteria: [], priority: 2, passes: false, notes: '' },
-          { id: 'US-003', title: 'Story 3', description: 'Test story 3', acceptanceCriteria: [], priority: 3, passes: false, notes: '' },
+          {
+            id: 'US-001',
+            title: 'Story 1',
+            description: 'Test story 1',
+            acceptanceCriteria: [],
+            priority: 1,
+            passes: true,
+            notes: '',
+          },
+          {
+            id: 'US-002',
+            title: 'Story 2',
+            description: 'Test story 2',
+            acceptanceCriteria: [],
+            priority: 2,
+            passes: false,
+            notes: '',
+          },
+          {
+            id: 'US-003',
+            title: 'Story 3',
+            description: 'Test story 3',
+            acceptanceCriteria: [],
+            priority: 3,
+            passes: false,
+            notes: '',
+          },
         ],
       };
 

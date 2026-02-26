@@ -88,9 +88,7 @@ export function extractSummary(content: string, _memoryType: MemoryType): string
     if (hasGotcha) contextClues.push('gotcha');
     if (hasError) contextClues.push('error');
 
-    const contextStr = contextClues.length > 0
-      ? ` [${contextClues.join(', ')}]`
-      : '';
+    const contextStr = contextClues.length > 0 ? ` [${contextClues.join(', ')}]` : '';
 
     summary = [
       firstThreeLines,
@@ -125,10 +123,7 @@ function splitIntoChunks(output: string): string[] {
 /**
  * Capture memories from Claude Code agent output
  */
-export function captureFromClaudeCode(
-  output: string,
-  _sessionId: string
-): CapturedMemory[] {
+export function captureFromClaudeCode(output: string, _sessionId: string): CapturedMemory[] {
   const chunks = splitIntoChunks(output);
   return chunks.map((chunk) => {
     const type = classifyMemory(chunk);
@@ -144,10 +139,7 @@ export function captureFromClaudeCode(
 /**
  * Capture memories from Cursor agent output
  */
-export function captureFromCursor(
-  output: string,
-  _sessionId: string
-): CapturedMemory[] {
+export function captureFromCursor(output: string, _sessionId: string): CapturedMemory[] {
   const chunks = splitIntoChunks(output);
   return chunks.map((chunk) => {
     const type = classifyMemory(chunk);
@@ -163,10 +155,7 @@ export function captureFromCursor(
 /**
  * Capture memories from Gemini agent output
  */
-export function captureFromGemini(
-  output: string,
-  _sessionId: string
-): CapturedMemory[] {
+export function captureFromGemini(output: string, _sessionId: string): CapturedMemory[] {
   const chunks = splitIntoChunks(output);
   return chunks.map((chunk) => {
     const type = classifyMemory(chunk);
@@ -190,7 +179,7 @@ const SKIP_CAPTURE_TOOLS = new Set([
   'rulebook_memory_search',
   'rulebook_memory_timeline',
   'rulebook_memory_get',
-  'rulebook_memory_save',    // Avoid infinite loop: save triggers auto-capture triggers save
+  'rulebook_memory_save', // Avoid infinite loop: save triggers auto-capture triggers save
   'rulebook_memory_stats',
   'rulebook_memory_cleanup',
   'rulebook_task_list',
@@ -225,7 +214,7 @@ function isDuplicate(title: string): boolean {
 export function captureFromToolCall(
   toolName: string,
   args: Record<string, unknown>,
-  result: string,
+  result: string
 ): CapturedMemory | null {
   // Skip read-only / meta tools
   if (SKIP_CAPTURE_TOOLS.has(toolName)) return null;

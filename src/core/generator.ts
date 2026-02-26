@@ -180,7 +180,9 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('');
   sections.push('## Detailed Rules');
   sections.push('');
-  sections.push(`For comprehensive rules, see the corresponding files in \`/${rulebookDir}/specs/\`:`);
+  sections.push(
+    `For comprehensive rules, see the corresponding files in \`/${rulebookDir}/specs/\`:`
+  );
   sections.push('');
 
   // RULEBOOK.md is always first in the list (highest precedence)
@@ -205,7 +207,9 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('## Persistent Memory System');
   sections.push('');
   sections.push('This project uses a **persistent memory system** with hybrid BM25+vector search.');
-  sections.push('Memory is **enabled by default** and persists across sessions for maintaining context and preserving learnings.');
+  sections.push(
+    'Memory is **enabled by default** and persists across sessions for maintaining context and preserving learnings.'
+  );
   sections.push('');
   sections.push('**MANDATORY: You MUST actively use memory to preserve context and learnings.**');
   sections.push('');
@@ -213,9 +217,15 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('');
   sections.push('### Key Features');
   sections.push('');
-  sections.push('- **Rich Contextual Summaries**: Memories auto-extract summaries with key concepts, decisions, patterns, gotchas');
-  sections.push('- **Hybrid Search**: BM25 keyword search + HNSW vector semantic search for relevant results');
-  sections.push('- **3-Layer Search Pattern**: Compact results → Timeline context → Full details (token-efficient)');
+  sections.push(
+    '- **Rich Contextual Summaries**: Memories auto-extract summaries with key concepts, decisions, patterns, gotchas'
+  );
+  sections.push(
+    '- **Hybrid Search**: BM25 keyword search + HNSW vector semantic search for relevant results'
+  );
+  sections.push(
+    '- **3-Layer Search Pattern**: Compact results → Timeline context → Full details (token-efficient)'
+  );
   sections.push('- **Auto-Capture**: Implementation outputs from AI agents automatically captured');
   sections.push('- **Zero Native Dependencies**: Pure WASM + TypeScript, works on all platforms');
   sections.push('');
@@ -225,7 +235,9 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('- **Make an architectural decision** — why you chose one approach over another');
   sections.push('- **Fix a bug** — root cause and how it was resolved');
   sections.push('- **Discover something important** — codebase patterns, gotchas, constraints');
-  sections.push('- **Implement a feature** — design approach, patterns discovered, edge cases handled');
+  sections.push(
+    '- **Implement a feature** — design approach, patterns discovered, edge cases handled'
+  );
   sections.push('- **Encounter an error** — root cause and solution for future reference');
   sections.push('- **Receive user preferences** — coding style, conventions, workflow preferences');
   sections.push('- **Complete a task or session** — summarize what was accomplished and learnings');
@@ -239,17 +251,23 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('rulebook_memory_save({');
   sections.push('  type: "feature|decision|bugfix|discovery|refactor|change|observation",');
   sections.push('  title: "Short title (≤80 chars)",');
-  sections.push('  content: "Detailed explanation: what was done, why, key decisions, patterns, gotchas...",');
+  sections.push(
+    '  content: "Detailed explanation: what was done, why, key decisions, patterns, gotchas...",'
+  );
   sections.push('  tags: ["relevant", "tags"]');
   sections.push('})');
   sections.push('```');
   sections.push('');
   sections.push('**Via CLI:**');
   sections.push('```bash');
-  sections.push('rulebook memory save "Detailed content here" --type feature --title "Brief Title" --tags tag1,tag2');
+  sections.push(
+    'rulebook memory save "Detailed content here" --type feature --title "Brief Title" --tags tag1,tag2'
+  );
   sections.push('```');
   sections.push('');
-  sections.push('**Summary Auto-Extraction**: Summaries are automatically extracted from content, capturing:');
+  sections.push(
+    '**Summary Auto-Extraction**: Summaries are automatically extracted from content, capturing:'
+  );
   sections.push('- Key concepts and decisions');
   sections.push('- Design patterns discovered');
   sections.push('- Gotchas and edge cases');
@@ -261,7 +279,9 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('');
   sections.push('**Via MCP (3-Layer Search - token efficient):**');
   sections.push('```');
-  sections.push('Layer 1 - Compact search: rulebook_memory_search({ query: "your topic", mode: "hybrid", limit: 10 })');
+  sections.push(
+    'Layer 1 - Compact search: rulebook_memory_search({ query: "your topic", mode: "hybrid", limit: 10 })'
+  );
   sections.push('  → Returns: id, title, type, score, summary (compact results)');
   sections.push('Layer 2 - Timeline: rulebook_memory_timeline({ memoryId: "abc-123", window: 5 })');
   sections.push('  → Returns: 5 before/after chronologically');
@@ -271,13 +291,17 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('');
   sections.push('**Via CLI:**');
   sections.push('```bash');
-  sections.push('rulebook memory search "authentication" --mode hybrid          # Keyword + semantic');
-  sections.push('rulebook memory search "oauth" --type feature                  # Filter by memory type');
+  sections.push(
+    'rulebook memory search "authentication" --mode hybrid          # Keyword + semantic'
+  );
+  sections.push(
+    'rulebook memory search "oauth" --type feature                  # Filter by memory type'
+  );
   sections.push('rulebook memory list --limit 10                               # Recent memories');
   sections.push('```');
   sections.push('');
   sections.push('Also search when:');
-  sections.push('- Working on code you\'ve touched before');
+  sections.push("- Working on code you've touched before");
   sections.push('- The user references a past discussion or decision');
   sections.push('- You need context about why something was done a certain way');
   sections.push('- **Before implementing similar features** — find past patterns and gotchas');
@@ -303,8 +327,12 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('');
   sections.push('## Ralph Autonomous Loop');
   sections.push('');
-  sections.push('This project is **enabled for Ralph autonomous loop** for iterative feature implementation.');
-  sections.push('Ralph automates multi-iteration development with fresh AI context per iteration, persisting learnings via git and progress logs.');
+  sections.push(
+    'This project is **enabled for Ralph autonomous loop** for iterative feature implementation.'
+  );
+  sections.push(
+    'Ralph automates multi-iteration development with fresh AI context per iteration, persisting learnings via git and progress logs.'
+  );
   sections.push('');
   sections.push('**Status**: ✅ Enabled by default in `.rulebook` configuration');
   sections.push('');
@@ -327,14 +355,20 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('');
   sections.push('### Key Commands');
   sections.push('');
-  sections.push('- `rulebook ralph init` — Initialize Ralph configuration and create PRD from tasks');
-  sections.push('- `rulebook ralph run [--max-iterations N] [--tool claude|amp]` — Execute autonomous loop');
+  sections.push(
+    '- `rulebook ralph init` — Initialize Ralph configuration and create PRD from tasks'
+  );
+  sections.push(
+    '- `rulebook ralph run [--max-iterations N] [--tool claude|amp]` — Execute autonomous loop'
+  );
   sections.push('- `rulebook ralph status` — Show loop progress and current iteration');
   sections.push('- `rulebook ralph history` — Display iteration history and learnings');
   sections.push('- `rulebook ralph pause` — Gracefully pause autonomous loop');
   sections.push('- `rulebook ralph resume` — Resume from paused state');
   sections.push('');
-  sections.push('For detailed Ralph documentation, see `templates/skills/workflows/ralph/SKILL.md`');
+  sections.push(
+    'For detailed Ralph documentation, see `templates/skills/workflows/ralph/SKILL.md`'
+  );
   sections.push('');
   sections.push('<!-- RULEBOOK:END -->');
 

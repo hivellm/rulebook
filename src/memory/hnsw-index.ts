@@ -142,10 +142,7 @@ export class HNSWIndex {
   /**
    * Select M nearest neighbors from candidates, pruning for diversity
    */
-  private selectNeighbors(
-    candidates: SearchCandidate[],
-    M: number
-  ): SearchCandidate[] {
+  private selectNeighbors(candidates: SearchCandidate[], M: number): SearchCandidate[] {
     candidates.sort((a, b) => a.distance - b.distance);
     return candidates.slice(0, M);
   }
@@ -198,12 +195,7 @@ export class HNSWIndex {
 
     // Insert at layers nodeLayer down to 0
     for (let l = Math.min(nodeLayer, this.maxLayer); l >= 0; l--) {
-      const candidates = this.searchLayer(
-        vector,
-        currentLabel,
-        this.efConstruction,
-        l
-      );
+      const candidates = this.searchLayer(vector, currentLabel, this.efConstruction, l);
 
       const neighbors = this.selectNeighbors(candidates, this.M);
 
@@ -257,11 +249,7 @@ export class HNSWIndex {
   /**
    * Search k nearest neighbors
    */
-  search(
-    query: Float32Array,
-    k: number,
-    ef?: number
-  ): Array<{ label: string; distance: number }> {
+  search(query: Float32Array, k: number, ef?: number): Array<{ label: string; distance: number }> {
     if (this.entryPoint === null || this.nodes.size === 0) {
       return [];
     }
@@ -364,38 +352,53 @@ export class HNSWIndex {
     let offset = 0;
 
     // Header
-    view.setUint32(offset, MAGIC_NUMBER, true); offset += 4;
-    view.setUint8(offset, FORMAT_VERSION); offset += 1;
-    view.setUint32(offset, this.dimensions, true); offset += 4;
-    view.setUint16(offset, this.M, true); offset += 2;
-    view.setUint32(offset, nodeEntries.length, true); offset += 4;
-    view.setInt32(offset, this.entryPoint ? labelToIndex.get(this.entryPoint)! : -1, true); offset += 4;
-    view.setUint32(offset, this.maxLayer, true); offset += 4;
+    view.setUint32(offset, MAGIC_NUMBER, true);
+    offset += 4;
+    view.setUint8(offset, FORMAT_VERSION);
+    offset += 1;
+    view.setUint32(offset, this.dimensions, true);
+    offset += 4;
+    view.setUint16(offset, this.M, true);
+    offset += 2;
+    view.setUint32(offset, nodeEntries.length, true);
+    offset += 4;
+    view.setInt32(offset, this.entryPoint ? labelToIndex.get(this.entryPoint)! : -1, true);
+    offset += 4;
+    view.setUint32(offset, this.maxLayer, true);
+    offset += 4;
 
     // Nodes
     const encoder = new TextEncoder();
     for (const [, node] of nodeEntries) {
       const labelBytes = encoder.encode(node.label);
-      view.setUint16(offset, labelBytes.length, true); offset += 2;
-      new Uint8Array(buffer, offset, labelBytes.length).set(labelBytes); offset += labelBytes.length;
+      view.setUint16(offset, labelBytes.length, true);
+      offset += 2;
+      new Uint8Array(buffer, offset, labelBytes.length).set(labelBytes);
+      offset += labelBytes.length;
 
       // Vector
       for (let i = 0; i < this.dimensions; i++) {
-        view.setFloat32(offset, node.vector[i], true); offset += 4;
+        view.setFloat32(offset, node.vector[i], true);
+        offset += 4;
       }
 
       // Layer
-      view.setUint32(offset, node.layer, true); offset += 4;
+      view.setUint32(offset, node.layer, true);
+      offset += 4;
 
       // Connections
       const layerCount = node.connections.size;
-      view.setUint32(offset, layerCount, true); offset += 4;
+      view.setUint32(offset, layerCount, true);
+      offset += 4;
       for (const [layer, connections] of node.connections) {
-        view.setUint32(offset, layer, true); offset += 4;
-        view.setUint32(offset, connections.size, true); offset += 4;
+        view.setUint32(offset, layer, true);
+        offset += 4;
+        view.setUint32(offset, connections.size, true);
+        offset += 4;
         for (const neighborLabel of connections) {
           const idx = labelToIndex.get(neighborLabel);
-          view.setUint32(offset, idx ?? 0, true); offset += 4;
+          view.setUint32(offset, idx ?? 0, true);
+          offset += 4;
         }
       }
     }
@@ -412,19 +415,26 @@ export class HNSWIndex {
     const decoder = new TextDecoder();
 
     // Header
-    const magic = view.getUint32(offset, true); offset += 4;
+    const magic = view.getUint32(offset, true);
+    offset += 4;
     if (magic !== MAGIC_NUMBER) {
       throw new Error('Invalid HNSW index file');
     }
-    const version = view.getUint8(offset); offset += 1;
+    const version = view.getUint8(offset);
+    offset += 1;
     if (version !== FORMAT_VERSION) {
       throw new Error(`Unsupported HNSW format version: ${version}`);
     }
-    const dimensions = view.getUint32(offset, true); offset += 4;
-    const M = view.getUint16(offset, true); offset += 2;
-    const nodeCount = view.getUint32(offset, true); offset += 4;
-    const entryPointIndex = view.getInt32(offset, true); offset += 4;
-    const maxLayer = view.getUint32(offset, true); offset += 4;
+    const dimensions = view.getUint32(offset, true);
+    offset += 4;
+    const M = view.getUint16(offset, true);
+    offset += 2;
+    const nodeCount = view.getUint32(offset, true);
+    offset += 4;
+    const entryPointIndex = view.getInt32(offset, true);
+    offset += 4;
+    const maxLayer = view.getUint32(offset, true);
+    offset += 4;
 
     const index = new HNSWIndex({ dimensions, M });
     index.maxLayer = maxLayer;
@@ -439,29 +449,37 @@ export class HNSWIndex {
     }> = [];
 
     for (let n = 0; n < nodeCount; n++) {
-      const labelLen = view.getUint16(offset, true); offset += 2;
+      const labelLen = view.getUint16(offset, true);
+      offset += 2;
       const labelBytes = new Uint8Array(buffer, offset, labelLen);
-      const label = decoder.decode(labelBytes); offset += labelLen;
+      const label = decoder.decode(labelBytes);
+      offset += labelLen;
       labels.push(label);
 
       const vector = new Float32Array(dimensions);
       for (let i = 0; i < dimensions; i++) {
-        vector[i] = view.getFloat32(offset, true); offset += 4;
+        vector[i] = view.getFloat32(offset, true);
+        offset += 4;
       }
 
-      const layer = view.getUint32(offset, true); offset += 4;
-      const layerCount = view.getUint32(offset, true); offset += 4;
+      const layer = view.getUint32(offset, true);
+      offset += 4;
+      const layerCount = view.getUint32(offset, true);
+      offset += 4;
       const connectionLayers: Array<{
         layer: number;
         neighborIndices: number[];
       }> = [];
 
       for (let lc = 0; lc < layerCount; lc++) {
-        const connLayer = view.getUint32(offset, true); offset += 4;
-        const connCount = view.getUint32(offset, true); offset += 4;
+        const connLayer = view.getUint32(offset, true);
+        offset += 4;
+        const connCount = view.getUint32(offset, true);
+        offset += 4;
         const neighborIndices: number[] = [];
         for (let c = 0; c < connCount; c++) {
-          neighborIndices.push(view.getUint32(offset, true)); offset += 4;
+          neighborIndices.push(view.getUint32(offset, true));
+          offset += 4;
         }
         connectionLayers.push({ layer: connLayer, neighborIndices });
       }

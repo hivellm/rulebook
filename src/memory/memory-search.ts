@@ -46,11 +46,7 @@ export class MemorySearch {
   /**
    * BM25 keyword search via FTS5
    */
-  private searchBM25(
-    query: string,
-    limit: number,
-    type?: MemoryType
-  ): MemorySearchResult[] {
+  private searchBM25(query: string, limit: number, type?: MemoryType): MemorySearchResult[] {
     const results = this.store.searchBM25(query, limit, { type });
     return results.map((r) => {
       const memory = this.store.getMemory(r.id);
@@ -68,11 +64,7 @@ export class MemorySearch {
   /**
    * Vector similarity search via HNSW
    */
-  private searchVector(
-    query: string,
-    limit: number,
-    type?: MemoryType
-  ): MemorySearchResult[] {
+  private searchVector(query: string, limit: number, type?: MemoryType): MemorySearchResult[] {
     if (this.index.size === 0) return [];
 
     const queryVector = vectorize(query, this.dimensions);
@@ -104,11 +96,7 @@ export class MemorySearch {
    *
    * RRF formula: score(d) = 1/(k + rank_bm25(d)) + 1/(k + rank_hnsw(d))
    */
-  private searchHybrid(
-    query: string,
-    limit: number,
-    type?: MemoryType
-  ): MemorySearchResult[] {
+  private searchHybrid(query: string, limit: number, type?: MemoryType): MemorySearchResult[] {
     const bm25Results = this.searchBM25(query, limit * 2, type);
     const vectorResults = this.searchVector(query, limit * 2, type);
 
@@ -120,10 +108,7 @@ export class MemorySearch {
     vectorResults.forEach((r, i) => vectorRank.set(r.id, i + 1));
 
     // Collect all unique IDs
-    const allIds = new Set([
-      ...bm25Results.map((r) => r.id),
-      ...vectorResults.map((r) => r.id),
-    ]);
+    const allIds = new Set([...bm25Results.map((r) => r.id), ...vectorResults.map((r) => r.id)]);
 
     // Compute RRF scores
     const scored: Array<{
@@ -184,13 +169,11 @@ export class MemorySearch {
       position:
         row.id === memoryId
           ? ('anchor' as const)
-          : row.createdAt <=
-            (rows.find((r) => r.id === memoryId)?.createdAt ?? 0)
-          ? ('before' as const)
-          : ('after' as const),
+          : row.createdAt <= (rows.find((r) => r.id === memoryId)?.createdAt ?? 0)
+            ? ('before' as const)
+            : ('after' as const),
       distanceFromAnchor: Math.abs(
-        row.createdAt -
-          (rows.find((r) => r.id === memoryId)?.createdAt ?? 0)
+        row.createdAt - (rows.find((r) => r.id === memoryId)?.createdAt ?? 0)
       ),
     }));
   }

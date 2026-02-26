@@ -159,10 +159,7 @@ describe('claude-mcp', () => {
 
       // Verify files were written
       const targetDir = path.join(projectDir, '.claude', 'commands');
-      const listContent = await fs.readFile(
-        path.join(targetDir, 'rulebook-task-list.md'),
-        'utf8'
-      );
+      const listContent = await fs.readFile(path.join(targetDir, 'rulebook-task-list.md'), 'utf8');
       expect(listContent).toContain('List tasks');
     });
 
@@ -179,10 +176,7 @@ describe('claude-mcp', () => {
 
       await installClaudeCodeSkills(projectDir, templatesDir);
 
-      const content = await fs.readFile(
-        path.join(targetDir, 'rulebook-task-list.md'),
-        'utf8'
-      );
+      const content = await fs.readFile(path.join(targetDir, 'rulebook-task-list.md'), 'utf8');
       expect(content).toBe('NEW CONTENT');
     });
 
@@ -241,9 +235,7 @@ describe('claude-mcp', () => {
       expect(result.skillsInstalled).toContain('rulebook-task-list.md');
 
       // Verify .mcp.json was created
-      const mcpContent = JSON.parse(
-        await fs.readFile(path.join(projectDir, '.mcp.json'), 'utf8')
-      );
+      const mcpContent = JSON.parse(await fs.readFile(path.join(projectDir, '.mcp.json'), 'utf8'));
       expect(mcpContent.mcpServers.rulebook).toBeDefined();
 
       // Verify skill was installed

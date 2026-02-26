@@ -75,7 +75,11 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       await taskManager.createTask(args.taskId);
-      const resultText = JSON.stringify({ success: true, taskId: args.taskId, message: `Task ${args.taskId} created successfully` });
+      const resultText = JSON.stringify({
+        success: true,
+        taskId: args.taskId,
+        message: `Task ${args.taskId} created successfully`,
+      });
       autoCapture('rulebook_task_create', args, resultText);
       return { content: [{ type: 'text', text: resultText }] };
     }
@@ -177,7 +181,11 @@ export async function startRulebookMcpServer(): Promise<void> {
       if (args.status) {
         await taskManager.updateTaskStatus(args.taskId, args.status);
       }
-      const resultText = JSON.stringify({ success: true, taskId: args.taskId, message: `Task ${args.taskId} updated successfully` });
+      const resultText = JSON.stringify({
+        success: true,
+        taskId: args.taskId,
+        message: `Task ${args.taskId} updated successfully`,
+      });
       autoCapture('rulebook_task_update', args, resultText);
       return { content: [{ type: 'text', text: resultText }] };
     }
@@ -223,7 +231,11 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       await taskManager.archiveTask(args.taskId, args.skipValidation || false);
-      const resultText = JSON.stringify({ success: true, taskId: args.taskId, message: `Task ${args.taskId} archived successfully` });
+      const resultText = JSON.stringify({
+        success: true,
+        taskId: args.taskId,
+        message: `Task ${args.taskId} archived successfully`,
+      });
       autoCapture('rulebook_task_archive', args, resultText);
       return { content: [{ type: 'text', text: resultText }] };
     }
@@ -241,7 +253,11 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       await taskManager.deleteTask(args.taskId);
-      const resultText = JSON.stringify({ success: true, taskId: args.taskId, message: `Task ${args.taskId} deleted successfully` });
+      const resultText = JSON.stringify({
+        success: true,
+        taskId: args.taskId,
+        message: `Task ${args.taskId} deleted successfully`,
+      });
       autoCapture('rulebook_task_delete', args, resultText);
       return { content: [{ type: 'text', text: resultText }] };
     }
@@ -603,7 +619,9 @@ export async function startRulebookMcpServer(): Promise<void> {
   // ============================================
 
   // Conditionally initialize MemoryManager
-  let memoryManager: Awaited<ReturnType<typeof import('../memory/memory-manager.js').createMemoryManager>> | null = null;
+  let memoryManager: Awaited<
+    ReturnType<typeof import('../memory/memory-manager.js').createMemoryManager>
+  > | null = null;
   let autoCaptureEnabled = false;
 
   const rulebookConfig = await configManager.loadConfig();
@@ -621,7 +639,11 @@ export async function startRulebookMcpServer(): Promise<void> {
    * Auto-capture: save tool interactions to memory in the background.
    * Fire-and-forget — never blocks or fails the original tool call.
    */
-  async function autoCapture(toolName: string, args: Record<string, unknown>, resultText: string): Promise<void> {
+  async function autoCapture(
+    toolName: string,
+    args: Record<string, unknown>,
+    resultText: string
+  ): Promise<void> {
     if (!memoryManager || !autoCaptureEnabled) return;
     try {
       const { captureFromToolCall } = await import('../memory/memory-hooks.js');
@@ -708,9 +730,7 @@ export async function startRulebookMcpServer(): Promise<void> {
       try {
         const timeline = await memoryManager.getTimeline(args.memoryId, args.window);
         return {
-          content: [
-            { type: 'text', text: JSON.stringify({ success: true, timeline }) },
-          ],
+          content: [{ type: 'text', text: JSON.stringify({ success: true, timeline }) }],
         };
       } catch (error) {
         return {
@@ -737,9 +757,7 @@ export async function startRulebookMcpServer(): Promise<void> {
       try {
         const memories = await memoryManager.getFullDetails(args.ids);
         return {
-          content: [
-            { type: 'text', text: JSON.stringify({ success: true, memories }) },
-          ],
+          content: [{ type: 'text', text: JSON.stringify({ success: true, memories }) }],
         };
       } catch (error) {
         return {
@@ -758,7 +776,11 @@ export async function startRulebookMcpServer(): Promise<void> {
       title: 'Save Memory',
       description: 'Save a new memory manually',
       inputSchema: {
-        type: z.string().describe('Memory type (bugfix, feature, refactor, decision, discovery, change, observation)'),
+        type: z
+          .string()
+          .describe(
+            'Memory type (bugfix, feature, refactor, decision, discovery, change, observation)'
+          ),
         title: z.string().describe('Memory title'),
         content: z.string().describe('Memory content'),
         tags: z.array(z.string()).optional().describe('Tags'),
@@ -775,7 +797,13 @@ export async function startRulebookMcpServer(): Promise<void> {
         });
         return {
           content: [
-            { type: 'text', text: JSON.stringify({ success: true, memory: { id: memory.id, type: memory.type, title: memory.title } }) },
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                memory: { id: memory.id, type: memory.type, title: memory.title },
+              }),
+            },
           ],
         };
       } catch (error) {
@@ -801,9 +829,7 @@ export async function startRulebookMcpServer(): Promise<void> {
       try {
         const stats = await memoryManager.getStats();
         return {
-          content: [
-            { type: 'text', text: JSON.stringify({ success: true, stats }) },
-          ],
+          content: [{ type: 'text', text: JSON.stringify({ success: true, stats }) }],
         };
       } catch (error) {
         return {
@@ -830,9 +856,7 @@ export async function startRulebookMcpServer(): Promise<void> {
       try {
         const result = await memoryManager.cleanup(args.force ?? false);
         return {
-          content: [
-            { type: 'text', text: JSON.stringify({ success: true, ...result }) },
-          ],
+          content: [{ type: 'text', text: JSON.stringify({ success: true, ...result }) }],
         };
       } catch (error) {
         return {
@@ -929,7 +953,10 @@ export async function startRulebookMcpServer(): Promise<void> {
 
           const configData = await configManager.loadConfig();
           const maxIterations = args.maxIterations || configData.ralph?.maxIterations || 10;
-          const tool = (args.tool || configData.ralph?.tool || 'claude') as 'claude' | 'amp' | 'gemini';
+          const tool = (args.tool || configData.ralph?.tool || 'claude') as
+            | 'claude'
+            | 'amp'
+            | 'gemini';
 
           await ralphManager.initialize(maxIterations, tool);
 

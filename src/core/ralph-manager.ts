@@ -2,11 +2,7 @@ import { mkdir, readdir, writeFile, appendFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import { Logger } from './logger.js';
-import {
-  RalphLoopState,
-  RalphIterationMetadata,
-  IterationResult,
-} from '../types.js';
+import { RalphLoopState, RalphIterationMetadata, IterationResult } from '../types.js';
 
 export class RalphManager {
   private ralphDir: string;
@@ -131,10 +127,7 @@ export class RalphManager {
       quality_checks: result.quality_checks,
     };
 
-    const iterationFile = path.join(
-      this.historyDir,
-      `iteration-${result.iteration}.json`
-    );
+    const iterationFile = path.join(this.historyDir, `iteration-${result.iteration}.json`);
     await writeFile(iterationFile, JSON.stringify(metadata, null, 2));
 
     // Append to progress.txt
@@ -169,9 +162,7 @@ export class RalphManager {
       result.learnings && result.learnings.length > 0
         ? `Learnings: ${result.learnings.join('; ')}`
         : '',
-      result.errors && result.errors.length > 0
-        ? `Errors: ${result.errors.join('; ')}`
-        : '',
+      result.errors && result.errors.length > 0 ? `Errors: ${result.errors.join('; ')}` : '',
       '---',
     ]
       .filter(Boolean)
