@@ -37,6 +37,13 @@ import {
   memoryStatsCommand,
   memoryCleanupCommand,
   memoryExportCommand,
+  // Ralph commands (v3.0)
+  ralphInitCommand,
+  ralphRunCommand,
+  ralphStatusCommand,
+  ralphHistoryCommand,
+  ralphPauseCommand,
+  ralphResumeCommand,
 } from './cli/commands.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -309,5 +316,48 @@ memoryCommand
   .option('--format <format>', 'Output format: json or csv', 'json')
   .option('--output <path>', 'Output file path (default: stdout)')
   .action((options: { format?: string; output?: string }) => memoryExportCommand(options));
+
+// Ralph Autonomous Loop Commands (v3.0)
+const ralphCommand = program.command('ralph').description('Ralph autonomous AI agent loop');
+
+ralphCommand
+  .command('init')
+  .description('Initialize Ralph and create PRD from rulebook tasks')
+  .action(() => ralphInitCommand());
+
+ralphCommand
+  .command('run')
+  .description('Execute autonomous iteration loop')
+  .option('--max-iterations <n>', 'Maximum iterations', '10')
+  .option('--tool <tool>', 'AI CLI tool: claude, amp, gemini', 'claude')
+  .action((options: { maxIterations?: string; tool?: string }) =>
+    ralphRunCommand({
+      maxIterations: options.maxIterations ? parseInt(options.maxIterations) : undefined,
+      tool: (options.tool as 'claude' | 'amp' | 'gemini') || 'claude',
+    })
+  );
+
+ralphCommand
+  .command('status')
+  .description('Show loop progress and current iteration')
+  .action(() => ralphStatusCommand());
+
+ralphCommand
+  .command('history')
+  .description('Display iteration history and learnings')
+  .option('--limit <n>', 'Max iterations to show', '10')
+  .action((options: { limit?: string }) =>
+    ralphHistoryCommand({ limit: options.limit ? parseInt(options.limit) : undefined })
+  );
+
+ralphCommand
+  .command('pause')
+  .description('Gracefully pause autonomous loop')
+  .action(() => ralphPauseCommand());
+
+ralphCommand
+  .command('resume')
+  .description('Resume from paused state')
+  .action(() => ralphResumeCommand());
 
 program.parse(process.argv);
