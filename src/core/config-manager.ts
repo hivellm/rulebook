@@ -3,13 +3,14 @@ import { promisify } from 'util';
 import { join, dirname } from 'path';
 import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
-import { cp, rm } from 'fs/promises';
+import { cp, rm, mkdir } from 'fs/promises';
 import type { RulebookConfig } from '../types.js';
 
 const readFileAsync = promisify(readFile);
 const writeFileAsync = promisify(writeFile);
 
-const CONFIG_FILE = '.rulebook';
+const CONFIG_DIR = '.rulebook';
+const CONFIG_FILE = 'rulebook.json';
 
 function getPackageVersion(): string {
   try {
@@ -24,19 +25,26 @@ function getPackageVersion(): string {
 
 export class ConfigManager {
   private configPath: string;
+  private configDir: string;
+  private projectRoot: string;
   private config: RulebookConfig | null = null;
 
   constructor(projectRoot: string) {
-    this.configPath = join(projectRoot, CONFIG_FILE);
+    this.projectRoot = projectRoot;
+    this.configDir = join(projectRoot, CONFIG_DIR);
+    this.configPath = join(this.configDir, CONFIG_FILE);
   }
 
   /**
-   * Load configuration from .rulebook file
+   * Load configuration from .rulebook/rulebook.json file
    */
   async loadConfig(): Promise<RulebookConfig> {
     if (this.config) {
       return this.config;
     }
+
+    // Migrate old .rulebook file to new directory structure if needed
+    await this.migrateOldRulebookFile();
 
     if (!existsSync(this.configPath)) {
       return await this.initializeConfig();
@@ -58,10 +66,25 @@ export class ConfigManager {
   }
 
   /**
-   * Save configuration to .rulebook file
+   * Save configuration to .rulebook/rulebook.json file
    */
   async saveConfig(config: RulebookConfig): Promise<void> {
     try {
+      const fsPromises = await import('fs/promises');
+
+      // Check if .rulebook exists as a file (old structure) and remove it
+      const oldConfigPath = join(this.projectRoot, '.rulebook');
+      if (existsSync(oldConfigPath)) {
+        const stats = await fsPromises.stat(oldConfigPath);
+        if (stats.isFile()) {
+          // It's a file, remove it
+          await fsPromises.rm(oldConfigPath, { force: true });
+        }
+      }
+
+      // Ensure .rulebook directory exists
+      await mkdir(this.configDir, { recursive: true });
+
       const configToSave = {
         ...config,
         updatedAt: new Date().toISOString(),
@@ -71,6 +94,42 @@ export class ConfigManager {
       this.config = configToSave;
     } catch (error) {
       throw new Error(`Failed to save config: ${error}`);
+    }
+  }
+
+  /**
+   * Migrate old .rulebook file to new .rulebook/rulebook.json structure
+   */
+  private async migrateOldRulebookFile(): Promise<void> {
+    const oldConfigPath = join(this.projectRoot, '.rulebook');
+    const fsPromises = await import('fs/promises');
+
+    // Check if old .rulebook file exists and is a file (not directory)
+    if (!existsSync(oldConfigPath)) {
+      return;
+    }
+
+    try {
+      const stats = await fsPromises.stat(oldConfigPath);
+      if (stats.isDirectory()) {
+        // Already migrated
+        return;
+      }
+
+      // Old file exists as a file, migrate it
+      const data = await readFileAsync(oldConfigPath, 'utf-8');
+      const config = JSON.parse(data) as RulebookConfig;
+
+      // Remove old file first (before creating directory with same name)
+      await fsPromises.rm(oldConfigPath, { force: true });
+
+      // Create .rulebook directory
+      await mkdir(this.configDir, { recursive: true });
+
+      // Save config to new location
+      await this.saveConfig(config);
+    } catch {
+      // Silently skip migration errors - they'll be handled by loadConfig
     }
   }
 
@@ -327,7 +386,8 @@ export class ConfigManager {
    * Moves .rulebook-memory/ to .rulebook/memory/ and .rulebook-ralph/ to .rulebook/ralph/
    */
   async migrateDirectoryStructure(projectRoot: string): Promise<void> {
-    const { mkdir } = await import('fs/promises');
+    const fsPromises = await import('fs/promises');
+    const { mkdir } = fsPromises;
     const oldMemoryDir = join(projectRoot, '.rulebook-memory');
     const oldRalphDir = join(projectRoot, '.rulebook-ralph');
     const newRulebookDir = join(projectRoot, '.rulebook');
@@ -335,13 +395,35 @@ export class ConfigManager {
     const newRalphDir = join(newRulebookDir, 'ralph');
 
     try {
+      // Check if .rulebook exists
+      if (existsSync(newRulebookDir)) {
+        const stats = await fsPromises.stat(newRulebookDir);
+        if (stats.isFile()) {
+          // Old .rulebook file exists, remove it
+          await fsPromises.rm(newRulebookDir, { force: true });
+        } else if (stats.isDirectory()) {
+          // Already migrated to directory structure, skip migration
+          // Clean up accidental subdirectories and exit
+          const accidentalDir = join(newRulebookDir, '.rulebook');
+          if (existsSync(accidentalDir)) {
+            await fsPromises.rm(accidentalDir, { recursive: true, force: true });
+          }
+          return;
+        }
+      }
+
       // Create parent .rulebook directory if needed
       if (!existsSync(newRulebookDir)) {
         await mkdir(newRulebookDir, { recursive: true });
       }
 
-      // Migrate memory directory if it exists
-      if (existsSync(oldMemoryDir)) {
+      // Migrate memory directory if it exists (but not if it's already in new location)
+      // Also prevent copying .rulebook into itself
+      if (
+        existsSync(oldMemoryDir) &&
+        oldMemoryDir !== newMemoryDir &&
+        !oldMemoryDir.includes(newRulebookDir)
+      ) {
         if (!existsSync(newMemoryDir)) {
           await cp(oldMemoryDir, newMemoryDir, { recursive: true });
         }
@@ -349,16 +431,37 @@ export class ConfigManager {
         await rm(oldMemoryDir, { recursive: true, force: true });
       }
 
-      // Migrate ralph directory if it exists
-      if (existsSync(oldRalphDir)) {
+      // Migrate ralph directory if it exists (but not if it's already in new location)
+      // Also prevent copying .rulebook into itself
+      if (
+        existsSync(oldRalphDir) &&
+        oldRalphDir !== newRalphDir &&
+        !oldRalphDir.includes(newRulebookDir)
+      ) {
         if (!existsSync(newRalphDir)) {
           await cp(oldRalphDir, newRalphDir, { recursive: true });
         }
         // Remove old directory after successful copy
         await rm(oldRalphDir, { recursive: true, force: true });
       }
+
+      // Clean up any accidental .rulebook/.rulebook directory
+      const accidentalDir = join(newRulebookDir, '.rulebook');
+      if (existsSync(accidentalDir)) {
+        await rm(accidentalDir, { recursive: true, force: true });
+      }
     } catch (error) {
       // Log error but don't fail - migration is non-critical
+      // Still clean up accidental directories even if there's an error
+      try {
+        const accidentalDir = join(newRulebookDir, '.rulebook');
+        if (existsSync(accidentalDir)) {
+          const fsP = await import('fs/promises');
+          await fsP.rm(accidentalDir, { recursive: true, force: true });
+        }
+      } catch {
+        // Ignore cleanup errors
+      }
       console.warn(`Directory migration warning: ${error}`);
     }
   }

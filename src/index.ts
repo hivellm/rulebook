@@ -44,6 +44,9 @@ import {
   ralphHistoryCommand,
   ralphPauseCommand,
   ralphResumeCommand,
+  // Setup commands
+  setupClaudeCodePlugin,
+  migrateMemoryDirectory,
 } from './cli/commands.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -359,5 +362,16 @@ ralphCommand
   .command('resume')
   .description('Resume from paused state')
   .action(() => ralphResumeCommand());
+
+// Setup commands
+program
+  .command('setup:plugin')
+  .description('Install Rulebook plugin in Claude Code')
+  .action(() => setupClaudeCodePlugin());
+
+program
+  .command('migrate:memory')
+  .description('Migrate .rulebook-memory to .rulebook/memory structure')
+  .action(() => migrateMemoryDirectory());
 
 program.parse(process.argv);

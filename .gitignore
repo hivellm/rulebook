@@ -57,6 +57,7 @@ out/
 
 # Memory system database
 .rulebook-memory/
+.rulebook
 
 # MCP debug output
 mcp_stderr.txt

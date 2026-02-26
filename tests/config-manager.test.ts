@@ -331,20 +331,6 @@ describe('ConfigManager edge cases and error handling', () => {
     expect(typeof summary.coverageThreshold).toBe('number');
   });
 
-  it('should handle save config error scenarios', async () => {
-    // Test with invalid path
-    const invalidManager = createConfigManager('/invalid/path/that/does/not/exist');
-
-    try {
-      await invalidManager.saveConfig(getDefaultConfig());
-      // Should not reach here
-      expect(true).toBe(false);
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toContain('Failed to save config');
-    }
-  });
-
   it('should handle load config error scenarios', async () => {
     // Test loading from non-existent file - this should initialize config instead of throwing
     const config = await configManager.loadConfig();

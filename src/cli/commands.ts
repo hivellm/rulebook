@@ -9,7 +9,7 @@ import {
   generateIDEFiles,
   generateAICLIFiles,
 } from '../core/workflow-generator.js';
-import { writeFile, createBackup, readFile, fileExists } from '../utils/file-system.js';
+import { writeFile, createBackup } from '../utils/file-system.js';
 import { existsSync } from 'fs';
 import { parseRulesIgnore } from '../utils/rulesignore.js';
 import { RulebookConfig } from '../types.js';
@@ -257,6 +257,9 @@ export async function initCommand(options: {
       // Skills system not available or error - continue without skills
     }
 
+    // Load existing config to preserve ralph and memory settings
+    const existingConfig = await configManager.loadConfig();
+
     await configManager.updateConfig({
       languages: config.languages as LanguageDetection['language'][],
       frameworks: config.frameworks as FrameworkId[],
@@ -265,6 +268,8 @@ export async function initCommand(options: {
       modular: config.modular ?? true,
       rulebookDir: config.rulebookDir || 'rulebook',
       skills: enabledSkills.length > 0 ? { enabled: enabledSkills } : undefined,
+      ralph: existingConfig.ralph,
+      memory: existingConfig.memory,
     });
 
     // Generate or merge AGENTS.md
@@ -1413,22 +1418,20 @@ export async function updateCommand(options: {
     }
 
     const agentsPath = path.join(cwd, 'AGENTS.md');
-    const rulebookPath = path.join(cwd, '.rulebook');
+
+    // Load existing config using ConfigManager
+    const { createConfigManager } = await import('../core/config-manager.js');
+    const configManager = createConfigManager(cwd);
+    const existingConfig = await configManager.loadConfig();
 
     let existingMode: 'minimal' | 'full' | undefined;
     let existingLightMode: boolean | undefined;
-    if (await fileExists(rulebookPath)) {
-      try {
-        const currentConfig = JSON.parse(await readFile(rulebookPath));
-        if (currentConfig && (currentConfig.mode === 'minimal' || currentConfig.mode === 'full')) {
-          existingMode = currentConfig.mode;
-        }
-        if (currentConfig && currentConfig.lightMode !== undefined) {
-          existingLightMode = currentConfig.lightMode;
-        }
-      } catch {
-        existingMode = undefined;
-        existingLightMode = undefined;
+    if (existingConfig) {
+      if (existingConfig && (existingConfig.mode === 'minimal' || existingConfig.mode === 'full')) {
+        existingMode = existingConfig.mode;
+      }
+      if (existingConfig && (existingConfig as any).lightMode !== undefined) {
+        existingLightMode = (existingConfig as any).lightMode;
       }
     }
 
@@ -1641,18 +1644,12 @@ export async function updateCommand(options: {
       }
     }
 
-    // Save project configuration to .rulebook
-    const { createConfigManager } = await import('../core/config-manager.js');
-    const configManager = createConfigManager(cwd);
+    // Migration already done via configManager.loadConfig() -> migrateConfig() -> migrateDirectoryStructure()
+    // No need to call it again here
 
-    // Migrate old directory structure to new consolidated structure
-    const migrationSpinner = ora('Migrating directory structure...').start();
-    await configManager.migrateDirectoryStructure(cwd);
-    migrationSpinner.succeed('Directory structure migrated');
-
-    // Load existing config to preserve skills
-    const existingConfig = await configManager.loadConfig();
+    // Load existing config to preserve skills and ralph settings (already loaded above)
     const existingSkills = existingConfig.skills?.enabled || [];
+    const existingRalph = existingConfig.ralph;
 
     // Auto-detect skills based on project detection (v2.0)
     let detectedSkills: string[] = [];
@@ -1697,6 +1694,8 @@ export async function updateCommand(options: {
       modular: config.modular ?? true,
       rulebookDir: config.rulebookDir || 'rulebook',
       skills: detectedSkills.length > 0 ? { enabled: detectedSkills } : undefined,
+      ralph: existingRalph,
+      memory: existingConfig.memory,
     });
 
     // Migrate flat layout to specs/ subdirectory if needed
@@ -1792,10 +1791,11 @@ export async function updateCommand(options: {
         testRun: 600000,
       },
       ...(existingConfig.memory ? { memory: existingConfig.memory } : {}),
+      ...(existingConfig.ralph ? { ralph: existingConfig.ralph } : {}),
       ...(existingConfig.skills ? { skills: existingConfig.skills } : {}),
     };
 
-    await writeFile(rulebookPath, JSON.stringify(rulebookConfig, null, 2));
+    await configManager.saveConfig(rulebookConfig);
     configSpinner.succeed('.rulebook configuration updated');
 
     // Auto-setup Claude Code integration (MCP + skills)
@@ -1818,6 +1818,31 @@ export async function updateCommand(options: {
       }
     } catch {
       claudeSpinner.info('Claude Code integration skipped');
+    }
+
+    // Migrate memory directory if old structure exists
+    try {
+      await migrateMemoryDirectory();
+    } catch {
+      // Silently skip if migration fails
+    }
+
+    // Install plugin in Claude Code
+    try {
+      await setupClaudeCodePlugin();
+    } catch {
+      // Silently skip if plugin installation fails
+    }
+
+    // Clean up any accidental duplicate directories
+    try {
+      const fsPromises = await import('fs/promises');
+      const accidentalDir = path.join(cwd, '.rulebook', '.rulebook');
+      if (existsSync(accidentalDir)) {
+        await fsPromises.rm(accidentalDir, { recursive: true, force: true });
+      }
+    } catch {
+      // Ignore cleanup errors
     }
 
     // Success message
@@ -2700,6 +2725,160 @@ export async function ralphResumeCommand(): Promise<void> {
     console.log(`\n  Continue loop: ${chalk.bold('rulebook ralph run')}\n`);
   } catch (error) {
     spinner.fail('Failed to resume');
+    console.error(chalk.red(String(error)));
+    process.exit(1);
+  }
+}
+
+export async function setupClaudeCodePlugin(): Promise<void> {
+  const oraModule = await import('ora');
+  const ora = oraModule.default;
+  const spinner = ora('Setting up Claude Code plugin...').start();
+
+  try {
+    const { readFile } = await import('../utils/file-system.js');
+    const os = await import('os');
+    const fs = await import('fs/promises');
+
+    // Get plugin info from .claude-plugin/plugin.json
+    const cwd = process.cwd();
+    const pluginJsonPath = path.join(cwd, '.claude-plugin', 'plugin.json');
+    const pluginJson = JSON.parse(await readFile(pluginJsonPath));
+
+    // Get Claude Code plugins directory
+    const homeDir = os.homedir();
+    const pluginsDir = path.join(homeDir, '.claude', 'plugins');
+    const installCountsPath = path.join(pluginsDir, 'install-counts-cache.json');
+    const installedPluginsPath = path.join(pluginsDir, 'installed_plugins.json');
+
+    // Create plugins directory if it doesn't exist
+    await fs.mkdir(pluginsDir, { recursive: true });
+
+    // Load or create installed_plugins.json
+    let installedPlugins: { version: number; plugins: Record<string, unknown[]> } = {
+      version: 2,
+      plugins: {},
+    };
+
+    if (existsSync(installedPluginsPath)) {
+      const content = await readFile(installedPluginsPath);
+      installedPlugins = JSON.parse(content);
+    }
+
+    // Add rulebook plugin
+    const pluginKey = `rulebook@hivehub`;
+    const version = pluginJson.version || '3.1.0';
+    const installPath = path.join(
+      pluginsDir,
+      'cache',
+      'hivehub',
+      'rulebook',
+      version
+    );
+
+    if (!installedPlugins.plugins[pluginKey]) {
+      installedPlugins.plugins[pluginKey] = [];
+    }
+
+    // Check if already installed
+    const existing = (installedPlugins.plugins[pluginKey] as { version: string }[]).find(
+      (p) => p.version === version
+    );
+    if (!existing) {
+      (installedPlugins.plugins[pluginKey] as Record<string, unknown>[]).push({
+        scope: 'user',
+        installPath: installPath,
+        version: version,
+        installedAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString(),
+      });
+    }
+
+    // Save installed_plugins.json
+    await fs.writeFile(
+      installedPluginsPath,
+      JSON.stringify(installedPlugins, null, 2)
+    );
+
+    // Update install-counts-cache.json
+    let installCounts: Record<string, number> = {};
+    if (existsSync(installCountsPath)) {
+      const content = await readFile(installCountsPath);
+      installCounts = JSON.parse(content);
+    }
+    installCounts[pluginKey] = (installCounts[pluginKey] || 0) + 1;
+    await fs.writeFile(
+      installCountsPath,
+      JSON.stringify(installCounts, null, 2)
+    );
+
+    spinner.succeed('Claude Code plugin installed');
+    console.log(`\n  ${chalk.green('✓')} Plugin: ${pluginKey} v${version}`);
+    console.log(`  ${chalk.gray('Installed to:')} ${installPath}`);
+    console.log(`\n  ${chalk.blue('Note:')} Restart Claude Code to load the plugin.\n`);
+  } catch (error) {
+    spinner.fail('Failed to install plugin');
+    console.error(chalk.red(String(error)));
+    process.exit(1);
+  }
+}
+
+export async function migrateMemoryDirectory(): Promise<void> {
+  const oraModule = await import('ora');
+  const ora = oraModule.default;
+  const spinner = ora('Migrating memory directory structure...').start();
+
+  try {
+    const { createConfigManager } = await import('../core/config-manager.js');
+    const fs = await import('fs');
+    const fsPromises = fs.promises;
+    const cwd = process.cwd();
+
+    const oldDir = path.join(cwd, '.rulebook-memory');
+    const rulebookDir = path.join(cwd, '.rulebook');
+    const newDir = path.join(rulebookDir, 'memory');
+
+    // Check if old directory exists
+    if (!existsSync(oldDir)) {
+      spinner.info('No old memory directory found (.rulebook-memory)');
+      return;
+    }
+
+    // Create .rulebook directory if it doesn't exist
+    if (!existsSync(rulebookDir)) {
+      await fsPromises.mkdir(rulebookDir, { recursive: true });
+    }
+
+    // Create memory subdirectory
+    await fsPromises.mkdir(newDir, { recursive: true });
+
+    // Copy files from old to new
+    const files = await fsPromises.readdir(oldDir);
+    for (const file of files) {
+      const oldPath = path.join(oldDir, file);
+      const newPath = path.join(newDir, file);
+      await fsPromises.copyFile(oldPath, newPath);
+    }
+
+    // Remove old directory
+    await fsPromises.rm(oldDir, { recursive: true, force: true });
+
+    // Update config to use new path
+    const configManager = createConfigManager(cwd);
+    const existingConfig = await configManager.loadConfig();
+    if (existingConfig.memory) {
+      existingConfig.memory.dbPath = '.rulebook/memory/memory.db';
+    }
+    await configManager.updateConfig(existingConfig);
+
+    spinner.succeed('Memory directory migrated');
+    console.log(`\n  ${chalk.green('✓')} Migrated to: ${newDir}`);
+    console.log(`  ${chalk.gray('Old directory removed: .rulebook-memory')}\n`);
+  } catch (error) {
+    const oraModule = await import('ora');
+    const ora = oraModule.default;
+    const spinner2 = ora();
+    spinner2.fail('Failed to migrate memory directory');
     console.error(chalk.red(String(error)));
     process.exit(1);
   }
