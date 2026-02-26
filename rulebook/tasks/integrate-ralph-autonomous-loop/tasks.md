@@ -8,12 +8,12 @@
 - [x] Extend `src/types.ts` with RalphConfig, IterationResult, PRDTask interfaces
 - [ ] Update `src/core/agent-manager.ts` to support Ralph execution mode
 
-## Phase 2: Agent Integration
+## Phase 2: Agent Integration ✅
 
-- [ ] Create `src/agents/ralph-parser.ts` to extract task status from AI output
+- [x] Create `src/agents/ralph-parser.ts` to extract task status from AI output
 - [ ] Add Ralph-specific prompt templates for Claude Code and Amp
-- [ ] Implement quality gate checks (type-check, lint, tests)
-- [ ] Add iteration learning capture from agent output
+- [x] Implement quality gate checks (type-check, lint, tests)
+- [x] Add iteration learning capture from agent output
 
 ## Phase 3: CLI Commands
 
