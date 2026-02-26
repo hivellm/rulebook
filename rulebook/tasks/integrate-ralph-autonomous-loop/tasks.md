@@ -25,13 +25,13 @@
 - [x] Add `ralph resume` command to continue from checkpoint
 - [x] Register ralph subcommand in main CLI
 
-## Phase 4: MCP Server Integration
+## Phase 4: MCP Server Integration ✅
 
-- [ ] Add `rulebook_ralph_init` MCP tool
-- [ ] Add `rulebook_ralph_run` MCP tool
-- [ ] Add `rulebook_ralph_status` MCP tool
-- [ ] Add `rulebook_ralph_get_iteration_history` MCP tool
-- [ ] Update MCP server schema and error handling
+- [x] Add `rulebook_ralph_init` MCP tool
+- [x] Add `rulebook_ralph_run` MCP tool
+- [x] Add `rulebook_ralph_status` MCP tool
+- [x] Add `rulebook_ralph_get_iteration_history` MCP tool
+- [x] Update MCP server schema and error handling
 
 ## Phase 5: Configuration and Storage
 
