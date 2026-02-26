@@ -22,6 +22,7 @@ Large Language Models (LLMs) for software development need **clear directives** 
 **Rulebook solves this by providing:**
 
 - 📋 **Comprehensive Rule Sets**: Language-specific guidelines (TypeScript, Rust, Python, etc.), framework conventions (NestJS, Django, React), testing standards, linting rules, spell-checking, CI/CD pipelines, Git hooks, and version control best practices
+- 🤖 **Ralph Autonomous Loop**: Multi-iteration AI agent task solving with quality gates (type-check, lint, tests, coverage), iteration tracking, learnings extraction, and graceful pause/resume
 - 🧠 **Persistent Memory**: Context that survives across AI sessions with hybrid BM25+HNSW search, zero native dependencies
 - 🎯 **Normalized Deliverables**: Ensures consistent code quality across all AI-generated outputs
 - 🛡️ **Error Reduction**: Catches issues early through automated quality gates and pre-commit/pre-push hooks
