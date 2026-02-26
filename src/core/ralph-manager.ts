@@ -17,7 +17,7 @@ export class RalphManager {
 
   constructor(projectRoot: string, logger: Logger) {
     this.logger = logger;
-    this.ralphDir = path.join(projectRoot, '.rulebook-ralph');
+    this.ralphDir = path.join(projectRoot, '.rulebook', 'ralph');
     this.historyDir = path.join(this.ralphDir, 'history');
   }
 
@@ -27,7 +27,7 @@ export class RalphManager {
   async initialize(maxIterations: number, tool: 'claude' | 'amp' | 'gemini'): Promise<void> {
     this.logger.info('Initializing Ralph autonomous loop...');
 
-    // Create .rulebook-ralph directory structure
+    // Create .rulebook/ralph directory structure
     await mkdir(this.ralphDir, { recursive: true });
     await mkdir(this.historyDir, { recursive: true });
 
@@ -57,7 +57,7 @@ export class RalphManager {
   }
 
   /**
-   * Load PRD from .rulebook-ralph/prd.json
+   * Load PRD from .rulebook/ralph/prd.json
    */
   async loadPRD(): Promise<any | null> {
     const prdPath = path.join(this.ralphDir, 'prd.json');
@@ -275,7 +275,7 @@ export class RalphManager {
   }
 
   /**
-   * Save loop state to .rulebook-ralph/state.json
+   * Save loop state to .rulebook/ralph/state.json
    */
   private async saveLoopState(): Promise<void> {
     if (!this.loopState) {
@@ -286,7 +286,7 @@ export class RalphManager {
   }
 
   /**
-   * Load loop state from .rulebook-ralph/state.json
+   * Load loop state from .rulebook/ralph/state.json
    */
   private async loadLoopState(): Promise<RalphLoopState | null> {
     const statePath = path.join(this.ralphDir, 'state.json');

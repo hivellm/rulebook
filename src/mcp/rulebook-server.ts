@@ -880,7 +880,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           );
 
           const { writeFile } = await import('../utils/file-system.js');
-          const prdPath = join(config.projectRoot, '.rulebook-ralph', 'prd.json');
+          const prdPath = join(config.projectRoot, '.rulebook', 'ralph', 'prd.json');
           await writeFile(prdPath, JSON.stringify(prd, null, 2));
 
           return {

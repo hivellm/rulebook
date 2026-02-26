@@ -2477,7 +2477,7 @@ export async function ralphInitCommand(): Promise<void> {
     );
 
     // Save PRD
-    const prdPath = path.join(cwd, '.rulebook-ralph', 'prd.json');
+    const prdPath = path.join(cwd, '.rulebook', 'ralph', 'prd.json');
     await writeFile(prdPath, JSON.stringify(prd, null, 2));
 
     spinner.succeed(`Ralph initialized: ${prd.total_tasks} tasks loaded`);

@@ -114,7 +114,7 @@ export class ConfigManager {
       },
       memory: {
         enabled: true,
-        dbPath: '.rulebook-memory/memory.db',
+        dbPath: '.rulebook/memory/memory.db',
         maxSizeBytes: 524288000,
         autoCapture: true,
         vectorDimensions: 256,
@@ -180,7 +180,7 @@ export class ConfigManager {
     if (!migrated.memory) {
       migrated.memory = {
         enabled: true,
-        dbPath: '.rulebook-memory/memory.db',
+        dbPath: '.rulebook/memory/memory.db',
         maxSizeBytes: 524288000,
         autoCapture: true,
         vectorDimensions: 256,
@@ -188,7 +188,7 @@ export class ConfigManager {
     } else {
       // Ensure memory is enabled in migration
       migrated.memory.enabled = true;
-      if (!migrated.memory.dbPath) migrated.memory.dbPath = '.rulebook-memory/memory.db';
+      if (!migrated.memory.dbPath) migrated.memory.dbPath = '.rulebook/memory/memory.db';
       if (!migrated.memory.maxSizeBytes) migrated.memory.maxSizeBytes = 524288000;
       if (migrated.memory.autoCapture === undefined) migrated.memory.autoCapture = true;
       if (!migrated.memory.vectorDimensions) migrated.memory.vectorDimensions = 256;

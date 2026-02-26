@@ -25,8 +25,8 @@ import { MemorySearch } from './memory-search.js';
 import { MemoryCache } from './memory-cache.js';
 import { vectorize } from './memory-vectorizer.js';
 
-const DEFAULT_DB_PATH = '.rulebook-memory/memory.db';
-const DEFAULT_HNSW_PATH = '.rulebook-memory/vectors.hnsw';
+const DEFAULT_DB_PATH = '.rulebook/memory/memory.db';
+const DEFAULT_HNSW_PATH = '.rulebook/memory/vectors.hnsw';
 const DEFAULT_MAX_SIZE = 524288000; // 500MB
 const DEFAULT_DIMENSIONS = 256;
 const HNSW_SAVE_THRESHOLD = 100;

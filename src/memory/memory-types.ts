@@ -58,7 +58,7 @@ export interface MemorySearchOptions {
 
 export interface MemoryConfig {
   enabled?: boolean;
-  dbPath?: string; // default: '.rulebook-memory/memory.db'
+  dbPath?: string; // default: '.rulebook/memory/memory.db'
   maxSizeBytes?: number; // default: 524288000 (500MB)
   autoCapture?: boolean; // default: false
   vectorDimensions?: number; // default: 256

@@ -14,7 +14,7 @@ export class IterationTracker {
 
   constructor(projectRoot: string, logger: Logger) {
     this.logger = logger;
-    this.ralphDir = path.join(projectRoot, '.rulebook-ralph');
+    this.ralphDir = path.join(projectRoot, '.rulebook', 'ralph');
     this.historyDir = path.join(this.ralphDir, 'history');
   }
 

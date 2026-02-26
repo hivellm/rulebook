@@ -217,7 +217,7 @@ export interface RulebookConfig {
   // Memory system configuration (v3.0)
   memory?: {
     enabled?: boolean;
-    dbPath?: string; // default: '.rulebook-memory/memory.db'
+    dbPath?: string; // default: '.rulebook/memory/memory.db'
     maxSizeBytes?: number; // default: 524288000 (500MB)
     autoCapture?: boolean; // default: true
     vectorDimensions?: number; // default: 256
