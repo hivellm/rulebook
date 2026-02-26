@@ -2,18 +2,16 @@ import path from 'path';
 import { readFile, readdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { Logger } from './logger.js';
-import { PRDTask, RalphPRD } from '../types.js';
+import { PRDUserStory, RalphPRD } from '../types.js';
 
 /**
  * Converts rulebook tasks to Ralph-compatible PRD JSON format
  */
 export class PRDGenerator {
-  private projectRoot: string;
   private tasksDir: string;
   private logger: Logger;
 
   constructor(projectRoot: string, logger: Logger, tasksDir: string = 'rulebook/tasks') {
-    this.projectRoot = projectRoot;
     this.tasksDir = path.join(projectRoot, tasksDir);
     this.logger = logger;
   }
@@ -22,34 +20,28 @@ export class PRDGenerator {
    * Generate PRD from rulebook tasks
    */
   async generatePRD(
-    projectName: string,
-    languages: string[] = [],
-    frameworks: string[] = []
+    projectName: string
   ): Promise<RalphPRD> {
     this.logger.info('Generating PRD from rulebook tasks...');
 
     const tasks = await this.loadTasksFromDisk();
     // Map returns Promise[] so we need Promise.all
-    const prdTasksPromises = tasks.map((task, index) =>
-      this.convertTaskToPRD(task, index + 1)
+    const userStoriesPromises = tasks.map((task, index) =>
+      this.convertTaskToUserStory(task, index + 1)
     );
-    const prdTasks = await Promise.all(prdTasksPromises);
+    const userStories = await Promise.all(userStoriesPromises);
+
+    // Generate branch name from project name
+    const branchName = `ralph/${projectName.toLowerCase().replace(/\s+/g, '-')}`;
 
     const prd: RalphPRD = {
-      version: '1.0',
-      generated_at: new Date().toISOString(),
-      project_name: projectName,
-      total_tasks: prdTasks.length,
-      tasks: prdTasks,
-      metadata: {
-        coverage_threshold: 95,
-        languages,
-        frameworks,
-        git_origin: await this.getGitOrigin(),
-      },
+      project: projectName,
+      branchName,
+      description: `Ralph autonomous loop for ${projectName} - ${userStories.length} user stories`,
+      userStories,
     };
 
-    this.logger.info(`Generated PRD with ${prdTasks.length} tasks`);
+    this.logger.info(`Generated PRD with ${userStories.length} user stories`);
     return prd;
   }
 
@@ -98,28 +90,23 @@ export class PRDGenerator {
   }
 
   /**
-   * Convert a rulebook task to PRD task format
+   * Convert a rulebook task to Ralph user story format
    * Uses the full rulebook task structure: proposal.md + tasks.md + specs/
    */
-  private async convertTaskToPRD(task: any, priority: number): Promise<PRDTask> {
+  private async convertTaskToUserStory(task: any, priority: number): Promise<PRDUserStory> {
     const title = this.extractTitle(task.proposal);
     const description = this.extractDescription(task.proposal);
     const tasksChecklist = await this.loadTasksChecklist(task.path);
 
     return {
-      id: task.id,
+      id: `US-${String(priority).padStart(3, '0')}`,
       title: title || task.id,
       description: description || 'Task extracted from rulebook proposal',
-      status: 'pending',
-      priority,
-      // Use actual tasks from tasks.md as acceptance criteria
-      acceptance_criteria:
+      acceptanceCriteria:
         tasksChecklist.length > 0 ? tasksChecklist.slice(0, 10) : ['Implementation complete'],
-      estimated_iterations: this.estimateIterations(description),
-      dependencies: [],
-      tags: this.extractTags(task.id),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      priority,
+      passes: false,
+      notes: '',
     };
   }
 
@@ -177,59 +164,4 @@ export class PRDGenerator {
   }
 
 
-  /**
-   * Extract tags from task ID
-   */
-  private extractTags(taskId: string): string[] {
-    // Convert task ID parts to tags
-    // e.g., "integrate-ralph-autonomous-loop" -> ["ralph", "autonomous", "loop"]
-    return taskId
-      .split('-')
-      .filter((part) => part.length > 2)
-      .slice(0, 5);
-  }
-
-  /**
-   * Estimate number of iterations needed
-   */
-  private estimateIterations(description: string): number {
-    // Simple heuristic based on description length and keywords
-    const length = description.length;
-    const complexityKeywords = [
-      'complex',
-      'architecture',
-      'integration',
-      'refactor',
-      'testing',
-    ];
-    const hasComplexKeywords = complexityKeywords.some((kw) =>
-      description.toLowerCase().includes(kw)
-    );
-
-    let iterations = 1;
-    if (length > 500) iterations++;
-    if (length > 1000) iterations++;
-    if (hasComplexKeywords) iterations++;
-
-    return Math.min(iterations, 5); // Cap at 5 iterations
-  }
-
-  /**
-   * Get git remote origin URL
-   */
-  private async getGitOrigin(): Promise<string | undefined> {
-    try {
-      // Try to read .git/config directly to avoid process spawning issues
-      const gitConfigPath = path.join(this.projectRoot, '.git', 'config');
-      if (!existsSync(gitConfigPath)) {
-        return undefined;
-      }
-
-      const content = await readFile(gitConfigPath, 'utf-8');
-      const match = content.match(/url\s*=\s*(.+)/);
-      return match ? match[1].trim() : undefined;
-    } catch {
-      return undefined;
-    }
-  }
 }

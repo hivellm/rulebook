@@ -874,9 +874,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           await ralphManager.initialize(maxIterations, tool);
 
           const prd = await prdGenerator.generatePRD(
-            config.projectRoot.split('/').pop() || 'project',
-            configData.languages || [],
-            configData.frameworks || []
+            config.projectRoot.split('/').pop() || 'project'
           );
 
           const { writeFile } = await import('../utils/file-system.js');
@@ -889,8 +887,8 @@ export async function startRulebookMcpServer(): Promise<void> {
                 type: 'text',
                 text: JSON.stringify({
                   success: true,
-                  message: `Ralph initialized with ${prd.total_tasks} tasks`,
-                  tasks: prd.total_tasks,
+                  message: `Ralph initialized with ${prd.userStories.length} user stories`,
+                  tasks: prd.userStories.length,
                   maxIterations,
                   tool,
                 }),
@@ -941,7 +939,8 @@ export async function startRulebookMcpServer(): Promise<void> {
             const task = await ralphManager.getNextTask();
             if (!task) break;
 
-            await ralphManager.updateTaskStatus(task.id, 'in_iteration');
+            // Mark story as complete
+            await ralphManager.markStoryComplete(task.id);
 
             // Placeholder result - real execution would use agent manager
             const result = {
@@ -961,7 +960,6 @@ export async function startRulebookMcpServer(): Promise<void> {
             };
 
             await ralphManager.recordIteration(result);
-            await ralphManager.updateTaskStatus(task.id, 'completed');
           }
 
           const stats = await ralphManager.getTaskStats();

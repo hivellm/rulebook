@@ -370,33 +370,21 @@ export interface SkillValidationResult {
 
 // Ralph Autonomous Loop Types (v3.0)
 
-export interface PRDTask {
+export interface PRDUserStory {
   id: string;
   title: string;
   description: string;
-  status: 'pending' | 'in_iteration' | 'completed' | 'blocked';
+  acceptanceCriteria: string[];
   priority: number;
-  acceptance_criteria: string[];
-  estimated_iterations: number;
-  dependencies: string[];
-  tags: string[];
-  created_at: string;
-  updated_at: string;
-  completed_at?: string;
+  passes: boolean;
+  notes: string;
 }
 
 export interface RalphPRD {
-  version: string;
-  generated_at: string;
-  project_name: string;
-  total_tasks: number;
-  tasks: PRDTask[];
-  metadata: {
-    coverage_threshold: number;
-    languages: string[];
-    frameworks: string[];
-    git_origin?: string;
-  };
+  project: string;
+  branchName: string;
+  description: string;
+  userStories: PRDUserStory[];
 }
 
 export interface IterationResult {

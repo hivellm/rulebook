@@ -2505,17 +2505,13 @@ export async function ralphInitCommand(): Promise<void> {
     await ralphManager.initialize(maxIterations, tool);
 
     // Generate PRD from rulebook tasks
-    const prd = await prdGenerator.generatePRD(
-      path.basename(cwd),
-      config.languages || [],
-      config.frameworks || []
-    );
+    const prd = await prdGenerator.generatePRD(path.basename(cwd));
 
     // Save PRD
     const prdPath = path.join(cwd, '.rulebook', 'ralph', 'prd.json');
     await writeFile(prdPath, JSON.stringify(prd, null, 2));
 
-    spinner.succeed(`Ralph initialized: ${prd.total_tasks} tasks loaded`);
+    spinner.succeed(`Ralph initialized: ${prd.userStories.length} user stories loaded`);
     console.log(`\n  📋 PRD: ${prdPath}`);
     console.log(`  🔄 Max iterations: ${maxIterations}`);
     console.log(`  🤖 AI Tool: ${tool}`);
@@ -2565,8 +2561,8 @@ export async function ralphRunCommand(options: {
       spinner.text = `Iteration ${iterationCount}: ${task.title}...`;
 
       // In production, would execute agent here
-      // For now, just update task status
-      await ralphManager.updateTaskStatus(task.id, 'in_iteration');
+      // For now, just mark story as complete
+      await ralphManager.markStoryComplete(task.id);
 
       // Simulate iteration result (placeholder)
       const result = {
@@ -2586,7 +2582,6 @@ export async function ralphRunCommand(options: {
       };
 
       await ralphManager.recordIteration(result);
-      await ralphManager.updateTaskStatus(task.id, 'completed');
     }
 
     const stats = await ralphManager.getTaskStats();

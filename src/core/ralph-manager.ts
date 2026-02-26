@@ -6,7 +6,6 @@ import {
   RalphLoopState,
   RalphIterationMetadata,
   IterationResult,
-  PRDTask,
 } from '../types.js';
 
 export class RalphManager {
@@ -47,8 +46,8 @@ export class RalphManager {
 
     // Load PRD and update task count
     const prd = await this.loadPRD();
-    if (prd) {
-      this.loopState.total_tasks = prd.total_tasks;
+    if (prd && prd.userStories) {
+      this.loopState.total_tasks = prd.userStories.length;
     }
 
     // Save initial state
@@ -77,36 +76,29 @@ export class RalphManager {
    * Get the next task to execute
    * Returns a pending task or null if all tasks are completed
    */
-  async getNextTask(): Promise<PRDTask | null> {
+  async getNextTask(): Promise<any | null> {
     const prd = await this.loadPRD();
-    if (!prd || !prd.tasks) {
+    if (!prd || !prd.userStories) {
       return null;
     }
 
-    // Find first pending task
-    const nextTask = prd.tasks.find((t: PRDTask) => t.status === 'pending');
+    // Find first unfinished story (passes: false)
+    const nextTask = prd.userStories.find((story: any) => !story.passes);
     return nextTask || null;
   }
 
   /**
-   * Update task status in PRD
+   * Mark a user story as complete
    */
-  async updateTaskStatus(
-    taskId: string,
-    status: 'pending' | 'in_iteration' | 'completed' | 'blocked'
-  ): Promise<void> {
+  async markStoryComplete(storyId: string): Promise<void> {
     const prd = await this.loadPRD();
-    if (!prd || !prd.tasks) {
+    if (!prd || !prd.userStories) {
       return;
     }
 
-    const task = prd.tasks.find((t: PRDTask) => t.id === taskId);
-    if (task) {
-      task.status = status;
-      task.updated_at = new Date().toISOString();
-      if (status === 'completed') {
-        task.completed_at = new Date().toISOString();
-      }
+    const story = prd.userStories.find((s: any) => s.id === storyId);
+    if (story) {
+      story.passes = true;
       await writeFile(path.join(this.ralphDir, 'prd.json'), JSON.stringify(prd, null, 2));
     }
   }
@@ -307,17 +299,17 @@ export class RalphManager {
    */
   async getTaskStats(): Promise<{ completed: number; pending: number; total: number }> {
     const prd = await this.loadPRD();
-    if (!prd || !prd.tasks) {
+    if (!prd || !prd.userStories) {
       return { completed: 0, pending: 0, total: 0 };
     }
 
-    const completed = prd.tasks.filter((t: PRDTask) => t.status === 'completed').length;
-    const pending = prd.tasks.filter((t: PRDTask) => t.status === 'pending').length;
+    const completed = prd.userStories.filter((story: any) => story.passes).length;
+    const pending = prd.userStories.filter((story: any) => !story.passes).length;
 
     return {
       completed,
       pending,
-      total: prd.tasks.length,
+      total: prd.userStories.length,
     };
   }
 
