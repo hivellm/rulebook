@@ -367,3 +367,86 @@ export interface SkillValidationResult {
   warnings: string[];
   conflicts: SkillConflict[];
 }
+
+// Ralph Autonomous Loop Types (v3.0)
+
+export interface PRDTask {
+  id: string;
+  title: string;
+  description: string;
+  status: 'pending' | 'in_iteration' | 'completed' | 'blocked';
+  priority: number;
+  acceptance_criteria: string[];
+  estimated_iterations: number;
+  dependencies: string[];
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
+}
+
+export interface RalphPRD {
+  version: string;
+  generated_at: string;
+  project_name: string;
+  total_tasks: number;
+  tasks: PRDTask[];
+  metadata: {
+    coverage_threshold: number;
+    languages: string[];
+    frameworks: string[];
+    git_origin?: string;
+  };
+}
+
+export interface IterationResult {
+  iteration: number;
+  timestamp: string;
+  task_id: string;
+  task_title: string;
+  status: 'success' | 'partial' | 'failed';
+  ai_tool: 'claude' | 'amp' | 'gemini';
+  execution_time_ms: number;
+  quality_checks: {
+    type_check: boolean;
+    lint: boolean;
+    tests: boolean;
+    coverage_met: boolean;
+  };
+  output_summary: string;
+  git_commit?: string;
+  errors?: string[];
+  learnings?: string[];
+  metadata: {
+    context_loss_count: number;
+    token_count?: number;
+    parsed_completion?: boolean;
+  };
+}
+
+export interface RalphLoopState {
+  enabled: boolean;
+  current_iteration: number;
+  max_iterations: number;
+  total_iterations: number;
+  completed_tasks: number;
+  total_tasks: number;
+  paused: boolean;
+  paused_at?: string;
+  started_at: string;
+  last_updated: string;
+  current_task_id?: string;
+  tool: 'claude' | 'amp' | 'gemini';
+}
+
+export interface RalphIterationMetadata {
+  iteration: number;
+  started_at: string;
+  completed_at?: string;
+  task_id: string;
+  task_title: string;
+  duration_ms?: number;
+  status: IterationResult['status'];
+  git_commit?: string;
+  quality_checks: IterationResult['quality_checks'];
+}
