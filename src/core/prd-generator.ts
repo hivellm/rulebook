@@ -219,13 +219,15 @@ export class PRDGenerator {
    */
   private async getGitOrigin(): Promise<string | undefined> {
     try {
-      const { execSync } = await import('child_process');
-      const origin = execSync('git config --get remote.origin.url', {
-        cwd: this.projectRoot,
-      })
-        .toString()
-        .trim();
-      return origin || undefined;
+      // Try to read .git/config directly to avoid process spawning issues
+      const gitConfigPath = path.join(this.projectRoot, '.git', 'config');
+      if (!existsSync(gitConfigPath)) {
+        return undefined;
+      }
+
+      const content = await readFile(gitConfigPath, 'utf-8');
+      const match = content.match(/url\s*=\s*(.+)/);
+      return match ? match[1].trim() : undefined;
     } catch {
       return undefined;
     }
