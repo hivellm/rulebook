@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import { join, dirname } from 'path';
 import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
+import { cp, rm } from 'fs/promises';
 import type { RulebookConfig } from '../types.js';
 
 const readFileAsync = promisify(readFile);
@@ -136,6 +137,10 @@ export class ConfigManager {
    */
   async migrateConfig(config: RulebookConfig): Promise<RulebookConfig> {
     const migrated = { ...config };
+
+    // Migrate directory structure from old to new layout
+    const projectRoot = dirname(this.configPath);
+    await this.migrateDirectoryStructure(projectRoot);
 
     // Add missing features with defaults
     const defaultFeatures = {
@@ -315,6 +320,47 @@ export class ConfigManager {
       coverageThreshold: config.coverageThreshold,
       cliTools: config.cliTools,
     };
+  }
+
+  /**
+   * Migrate old directory structure to new consolidated structure
+   * Moves .rulebook-memory/ to .rulebook/memory/ and .rulebook-ralph/ to .rulebook/ralph/
+   */
+  async migrateDirectoryStructure(projectRoot: string): Promise<void> {
+    const { mkdir } = await import('fs/promises');
+    const oldMemoryDir = join(projectRoot, '.rulebook-memory');
+    const oldRalphDir = join(projectRoot, '.rulebook-ralph');
+    const newRulebookDir = join(projectRoot, '.rulebook');
+    const newMemoryDir = join(newRulebookDir, 'memory');
+    const newRalphDir = join(newRulebookDir, 'ralph');
+
+    try {
+      // Create parent .rulebook directory if needed
+      if (!existsSync(newRulebookDir)) {
+        await mkdir(newRulebookDir, { recursive: true });
+      }
+
+      // Migrate memory directory if it exists
+      if (existsSync(oldMemoryDir)) {
+        if (!existsSync(newMemoryDir)) {
+          await cp(oldMemoryDir, newMemoryDir, { recursive: true });
+        }
+        // Remove old directory after successful copy
+        await rm(oldMemoryDir, { recursive: true, force: true });
+      }
+
+      // Migrate ralph directory if it exists
+      if (existsSync(oldRalphDir)) {
+        if (!existsSync(newRalphDir)) {
+          await cp(oldRalphDir, newRalphDir, { recursive: true });
+        }
+        // Remove old directory after successful copy
+        await rm(oldRalphDir, { recursive: true, force: true });
+      }
+    } catch (error) {
+      // Log error but don't fail - migration is non-critical
+      console.warn(`Directory migration warning: ${error}`);
+    }
   }
 }
 

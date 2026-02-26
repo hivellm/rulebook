@@ -226,6 +226,11 @@ export async function initCommand(options: {
     const { createConfigManager } = await import('../core/config-manager.js');
     const configManager = createConfigManager(cwd);
 
+    // Migrate old directory structure to new consolidated structure
+    const dirMigrationSpinner = ora('Migrating directory structure...').start();
+    await configManager.migrateDirectoryStructure(cwd);
+    dirMigrationSpinner.succeed('Directory structure migrated');
+
     // Auto-detect and enable skills based on project detection (v2.0)
     let enabledSkills: string[] = [];
     try {
@@ -1639,6 +1644,11 @@ export async function updateCommand(options: {
     // Save project configuration to .rulebook
     const { createConfigManager } = await import('../core/config-manager.js');
     const configManager = createConfigManager(cwd);
+
+    // Migrate old directory structure to new consolidated structure
+    const migrationSpinner = ora('Migrating directory structure...').start();
+    await configManager.migrateDirectoryStructure(cwd);
+    migrationSpinner.succeed('Directory structure migrated');
 
     // Load existing config to preserve skills
     const existingConfig = await configManager.loadConfig();
