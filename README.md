@@ -49,7 +49,28 @@ npx @hivehub/rulebook@latest update
 
 ## What's New
 
-### v3.0.0 (Latest)
+### v3.1.0
+
+- 🤖 **Ralph Autonomous Loop Integration**: Multi-iteration AI agent task solving with fresh context per iteration
+  - Autonomous iteration loop with configurable max iterations
+  - Fresh context per iteration to avoid context window exhaustion
+  - Quality gates: type-check, lint, tests, coverage verification
+  - Detailed iteration tracking with history and metrics
+  - PRD (Product Requirements Document) generation from rulebook tasks
+  - 6 CLI commands: `rulebook ralph init|run|status|history|pause|resume`
+  - 4 MCP tools: `rulebook_ralph_init|run|status|get_iteration_history`
+  - Graceful pause/resume capabilities for long-running loops
+  - Automatic directory migration from old structure to new `.rulebook/` layout
+- 📁 **Consolidated Directory Structure**: Single `.rulebook/` directory for all rulebook data
+  - `memory/` subdirectory for persistent memory system
+  - `ralph/` subdirectory for autonomous loop state and history
+  - Automatic migration from `.rulebook-memory/` and `.rulebook-ralph/` during `init` and `update`
+- 📖 **Comprehensive Ralph Documentation**: 450+ lines of guides, examples, and best practices
+  - Complete Ralph usage guide with task sizing guidelines
+  - Configuration reference and MCP integration examples
+  - Real-world workflows and troubleshooting strategies
+
+### v3.0.0
 
 - 🧠 **Persistent Memory System**: Zero-dependency persistent context across AI sessions
   - Hybrid search: BM25 keyword + HNSW vector with Reciprocal Rank Fusion
@@ -249,24 +270,29 @@ Memory is enabled in `.rulebook`:
   "memory": {
     "enabled": true,
     "autoCapture": true,
-    "dbPath": ".rulebook-memory/memory.db",
+    "dbPath": ".rulebook/memory/memory.db",
     "maxSizeBytes": 524288000,
     "vectorDimensions": 256
   }
 }
 ```
 
-> Add `.rulebook-memory/` to your `.gitignore` — memory is local per developer.
+> Add `.rulebook/` to your `.gitignore` — memory is local per developer.
 
 ---
 
 ## Key Features
 
+- 🤖 **Ralph Autonomous Loop**: Multi-iteration AI task solving with fresh context per iteration (v3.1+)
+  - Quality gates: type-check, lint, tests, coverage verification
+  - Graceful pause/resume capabilities
+  - Complete iteration history and metrics
+  - 6 CLI commands + 4 MCP tools
 - 🧠 **Persistent Memory**: Context that survives across AI sessions — hybrid BM25+HNSW search, auto-capture, zero native dependencies
 - 🔍 **Auto-Detection**: Detects languages, frameworks, MCP modules, and services from your project files
 - 📁 **Modular Architecture**: Templates in `/rulebook/` directory — smaller AGENTS.md, on-demand loading
 - 🔗 **Git Hook Automation**: Pre-commit/pre-push hooks with language-aware quality checks
-- 🔌 **19 MCP Functions**: Task management (7), skills (6), and persistent memory (6) via Model Context Protocol
+- 🔌 **23 MCP Functions**: Task management (7), skills (6), persistent memory (6), Ralph loop (4) via Model Context Protocol
 - 📝 **106+ Templates**: 28 languages, 17 frameworks, 8 IDEs, 20 services, 15 CLI agents
 - 🤖 **AI-Optimized**: Works with 23 AI assistants (Cursor, Claude, Gemini, etc.)
 - 📦 **Publication Ready**: CI/CD pipelines for npm, crates.io, PyPI, Maven Central, and more
@@ -377,6 +403,17 @@ npx @hivehub/rulebook@latest memory list               # List all memories
 npx @hivehub/rulebook@latest memory stats              # Database stats and health
 npx @hivehub/rulebook@latest memory cleanup            # Run cache eviction
 npx @hivehub/rulebook@latest memory export             # Export as JSON or CSV
+
+# Ralph Autonomous Loop (v3.1)
+npx @hivehub/rulebook@latest ralph init                # Initialize Ralph and generate PRD
+npx @hivehub/rulebook@latest ralph run                 # Execute autonomous iteration loop
+npx @hivehub/rulebook@latest ralph run --max-iterations 10  # Set max iterations
+npx @hivehub/rulebook@latest ralph run --tool claude   # Specify AI tool (claude|amp|gemini)
+npx @hivehub/rulebook@latest ralph status              # Show loop status
+npx @hivehub/rulebook@latest ralph history             # View iteration history
+npx @hivehub/rulebook@latest ralph history --limit 5   # Last N iterations
+npx @hivehub/rulebook@latest ralph pause               # Gracefully pause loop
+npx @hivehub/rulebook@latest ralph resume              # Resume from pause
 
 # Configuration
 npx @hivehub/rulebook@latest config --show     # Show current config
@@ -770,10 +807,34 @@ npm test
 npm run build
 ```
 
+## Acknowledgments
+
+We gratefully acknowledge and draw inspiration from these excellent open-source projects:
+
+### [Ralph - Autonomous AI Agent Loop](https://github.com/snarktank/ralph)
+Ralph inspired the autonomous loop integration in Rulebook v3.1+, enabling multi-iteration AI task solving with fresh context per iteration. We adapted Ralph's architectural patterns for integration with the Rulebook task management system, enabling AI agents to solve complex problems across multiple iterations without context exhaustion.
+
+### [OpenSpec - AI-Native Task Format](https://github.com/Fission-AI/openspec)
+OpenSpec's innovative approach to AI-native task management influenced Rulebook's task structure, including:
+- Delta-based specifications (ADDED/MODIFIED/REMOVED)
+- Given/When/Then scenario definitions
+- Requirement-focused organization
+- Structured task metadata and tracking
+
+Rulebook builds on these concepts to provide a comprehensive task management system that works seamlessly with AI agents while maintaining compatibility with the OpenSpec format.
+
+### Special Thanks
+
+- **Ralph Team** for pioneering autonomous AI iteration patterns
+- **Fission AI** for the OpenSpec format that standardizes AI task management
+- All contributors who have helped shape Rulebook into a comprehensive solution for AI-generated project standardization
+
+These projects demonstrate that with clear structure and standards, AI agents can consistently deliver high-quality code and documentation.
+
 ## License
 
 Apache License 2.0 © HiveLLM Team
 
 ---
 
-**Links**: [Issues](https://github.com/hivellm/rulebook/issues) • [Discussions](https://github.com/hivellm/rulebook/discussions)
+**Links**: [Issues](https://github.com/hivellm/rulebook/issues) • [Discussions](https://github.com/hivellm/rulebook/discussions) • [Ralph](https://github.com/snarktank/ralph) • [OpenSpec](https://github.com/Fission-AI/openspec)
