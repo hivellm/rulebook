@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-02-26
+
+### Added
+- **Ralph Autonomous Loop Integration**: Multi-iteration AI agent task solving
+  - Fresh context per iteration to avoid context window exhaustion
+  - Quality gates: type-check, lint, tests, coverage verification
+  - Iteration tracking with detailed history in `.rulebook/ralph/history/`
+  - PRD (Product Requirements Document) generation from rulebook tasks
+  - CLI commands: `rulebook ralph init|run|status|history|pause|resume`
+  - MCP tools: `rulebook_ralph_init|run|status|get_iteration_history`
+  - Graceful pause/resume capabilities for long-running loops
+  - Automatic directory migration from `.rulebook-ralph/` to `.rulebook/ralph/`
+
+- **Consolidated Directory Structure**:
+  - Single `.rulebook/` directory for all rulebook data
+  - `memory/` subdirectory for persistent memory system
+  - `ralph/` subdirectory for autonomous loop state and history
+  - Automatic migration from old `.rulebook-memory/` and `.rulebook-ralph/` directories
+
+- **Ralph Documentation**:
+  - `/rulebook/specs/RALPH.md` - Comprehensive Ralph usage guide
+  - Task sizing guidelines for optimal iteration planning
+  - Configuration options and best practices
+  - MCP integration examples
+  - Troubleshooting and debugging strategies
+
+### Changed
+- Default directory structure now uses `.rulebook/memory/` and `.rulebook/ralph/`
+- `rulebook init` and `rulebook update` now automatically migrate old directories
+- Memory system paths updated to new consolidated structure
+
 ## [3.0.0] - 2026-02-18
 
 ### Added

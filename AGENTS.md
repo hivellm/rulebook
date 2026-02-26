@@ -231,3 +231,72 @@ Quick reference:
 - Integration patterns
 
 **Usage**: When working with module-specific features, reference the corresponding `/rulebook/specs/[MODULE].md` file for detailed instructions.
+
+## Ralph Autonomous Loop
+
+Ralph enables autonomous multi-iteration task solving with fresh context per iteration, quality gates, and progress tracking.
+
+**Documentation**: See `/rulebook/specs/RALPH.md` for comprehensive Ralph documentation.
+
+**Quick Start**:
+```bash
+rulebook ralph init                           # Generate PRD from tasks
+rulebook ralph run --max-iterations 10        # Run autonomous loop
+rulebook ralph status                         # Check current status
+rulebook ralph history --limit 5              # View iteration history
+rulebook ralph pause                          # Pause loop gracefully
+rulebook ralph resume                         # Resume from paused state
+```
+
+**Key Concepts**:
+- **Fresh Context per Iteration**: Each iteration starts with clean context, avoiding window exhaustion
+- **Quality Gates**: Automatic type-check, lint, tests, and coverage verification
+- **Iteration Tracking**: Detailed history stored in `.rulebook/ralph/history/`
+- **Task Conversion**: Rulebook tasks automatically converted to PRD format
+
+**Best Practices**:
+1. Write focused tasks with clear acceptance criteria
+2. Limit each Ralph run to 1-3 tasks maximum
+3. Review iteration results and learnings before next run
+4. Use `rulebook ralph status` to monitor progress
+5. Break large features into smaller, sequential tasks
+
+**Example Workflow**:
+```bash
+# Step 1: Create task in rulebook (see RULEBOOK.md)
+rulebook task create add-user-authentication
+
+# Step 2: Initialize Ralph with task
+rulebook ralph init
+
+# Step 3: Run autonomous loop
+rulebook ralph run --max-iterations 5
+
+# Step 4: Review results
+rulebook ralph history --limit 1
+cat .rulebook/ralph/history/iteration-*.json
+
+# Step 5: Commit successful changes
+git add .
+git commit -m "feat: user authentication via Ralph"
+```
+
+**Configuration** (in `.rulebook`):
+```json
+{
+  "ralph": {
+    "enabled": true,
+    "maxIterations": 10,
+    "tool": "claude",
+    "maxContextLoss": 3
+  }
+}
+```
+
+**MCP Tools**:
+- `rulebook_ralph_init` - Initialize Ralph loop
+- `rulebook_ralph_run` - Execute iteration loop
+- `rulebook_ralph_status` - Get loop status
+- `rulebook_ralph_get_iteration_history` - Retrieve iteration data
+
+For detailed usage examples, integration patterns, and troubleshooting, see `/rulebook/specs/RALPH.md`.
