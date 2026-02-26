@@ -1,11 +1,11 @@
 # Tasks: Integrate Ralph Autonomous Loop
 
-## Phase 1: Core Architecture
+## Phase 1: Core Architecture ✅
 
-- [ ] Create `src/core/ralph-manager.ts` with iteration loop orchestration
-- [ ] Create `src/core/prd-generator.ts` to convert tasks to PRD JSON format
-- [ ] Create `src/core/iteration-tracker.ts` for history and metrics tracking
-- [ ] Extend `src/types.ts` with RalphConfig, IterationResult, PRDTask interfaces
+- [x] Create `src/core/ralph-manager.ts` with iteration loop orchestration
+- [x] Create `src/core/prd-generator.ts` to convert tasks to PRD JSON format
+- [x] Create `src/core/iteration-tracker.ts` for history and metrics tracking
+- [x] Extend `src/types.ts` with RalphConfig, IterationResult, PRDTask interfaces
 - [ ] Update `src/core/agent-manager.ts` to support Ralph execution mode
 
 ## Phase 2: Agent Integration
