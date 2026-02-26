@@ -15,15 +15,15 @@
 - [x] Implement quality gate checks (type-check, lint, tests)
 - [x] Add iteration learning capture from agent output
 
-## Phase 3: CLI Commands
+## Phase 3: CLI Commands ✅
 
-- [ ] Add `ralph init` command to initialize Ralph and create PRD
-- [ ] Add `ralph run` command with --max-iterations and --tool flags
-- [ ] Add `ralph status` command to display loop progress
-- [ ] Add `ralph history` command for iteration review
-- [ ] Add `ralph pause` command for graceful interruption
-- [ ] Add `ralph resume` command to continue from checkpoint
-- [ ] Register ralph subcommand in main CLI
+- [x] Add `ralph init` command to initialize Ralph and create PRD
+- [x] Add `ralph run` command with --max-iterations and --tool flags
+- [x] Add `ralph status` command to display loop progress
+- [x] Add `ralph history` command for iteration review
+- [x] Add `ralph pause` command for graceful interruption
+- [x] Add `ralph resume` command to continue from checkpoint
+- [x] Register ralph subcommand in main CLI
 
 ## Phase 4: MCP Server Integration
 
