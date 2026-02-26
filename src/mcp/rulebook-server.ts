@@ -7,11 +7,11 @@ import { TaskManager } from '../core/task-manager.js';
 import { SkillsManager, getDefaultTemplatesPath } from '../core/skills-manager.js';
 import { ConfigManager } from '../core/config-manager.js';
 import { join, dirname, resolve } from 'path';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
 import type { SkillCategory } from '../types.js';
 
-// Find .rulebook file by walking up directories
-export function findRulebookFile(startDir: string): string | null {
+// Find .rulebook file/directory by walking up directories
+export function findRulebookConfig(startDir: string): string | null {
   let current = resolve(startDir);
   const root = resolve('/');
 
@@ -28,17 +28,25 @@ export function findRulebookFile(startDir: string): string | null {
 
 // Load configuration
 function loadConfig() {
-  const configPath = findRulebookFile(process.cwd());
-  if (!configPath) {
+  const rulebookPath = findRulebookConfig(process.cwd());
+  if (!rulebookPath) {
     console.error('[rulebook-mcp] .rulebook not found. Run `rulebook mcp init` in your project.');
     process.exit(1);
   }
 
-  const projectRoot = dirname(configPath);
+  const projectRoot = dirname(rulebookPath);
   let config: any = {};
 
   try {
-    const raw = readFileSync(configPath, 'utf8');
+    let configFilePath = rulebookPath;
+    const stats = statSync(rulebookPath);
+
+    // If .rulebook is a directory, read .rulebook/rulebook.json
+    if (stats.isDirectory()) {
+      configFilePath = join(rulebookPath, 'rulebook.json');
+    }
+
+    const raw = readFileSync(configFilePath, 'utf8');
     config = JSON.parse(raw);
   } catch (error) {
     console.error(`[rulebook-mcp] Failed to parse .rulebook: ${error}`);

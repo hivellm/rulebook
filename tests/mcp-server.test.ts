@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { findRulebookFile } from '../src/mcp/rulebook-server.js';
+import { findRulebookConfig } from '../src/mcp/rulebook-server.js';
 import { TaskManager } from '../src/core/task-manager.js';
 import { SkillsManager } from '../src/core/skills-manager.js';
 import { ConfigManager } from '../src/core/config-manager.js';
@@ -43,9 +43,9 @@ describeOrSkip('MCP Server', () => {
     }
   });
 
-  describe('findRulebookFile', () => {
+  describe('findRulebookConfig', () => {
     it('should find .rulebook file in current directory', () => {
-      const found = findRulebookFile(testDir);
+      const found = findRulebookConfig(testDir);
       expect(found).toBe(join(testDir, '.rulebook'));
     });
 
@@ -53,7 +53,7 @@ describeOrSkip('MCP Server', () => {
       const subDir = join(testDir, 'sub', 'dir');
       await fs.mkdir(subDir, { recursive: true });
 
-      const found = findRulebookFile(subDir);
+      const found = findRulebookConfig(subDir);
       expect(found).toBe(join(testDir, '.rulebook'));
     });
 
@@ -62,7 +62,7 @@ describeOrSkip('MCP Server', () => {
       await fs.mkdir(emptyDir, { recursive: true });
 
       try {
-        const found = findRulebookFile(emptyDir);
+        const found = findRulebookConfig(emptyDir);
         expect(found).toBeNull();
       } finally {
         await fs.rm(emptyDir, { recursive: true, force: true });
@@ -73,7 +73,7 @@ describeOrSkip('MCP Server', () => {
       const deepDir = join(testDir, 'a', 'b', 'c', 'd', 'e');
       await fs.mkdir(deepDir, { recursive: true });
 
-      const found = findRulebookFile(deepDir);
+      const found = findRulebookConfig(deepDir);
       expect(found).toBe(join(testDir, '.rulebook'));
     });
   });
