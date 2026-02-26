@@ -33,13 +33,14 @@
 - [x] Add `rulebook_ralph_get_iteration_history` MCP tool
 - [x] Update MCP server schema and error handling
 
-## Phase 5: Configuration and Storage
+## Phase 5: Configuration and Storage ✅
 
-- [ ] Extend `.rulebook` schema with ralph configuration section
-- [ ] Create `.rulebook-ralph/` directory structure setup
-- [ ] Implement prd.json generation and persistence
-- [ ] Implement progress.txt append-only logging
-- [ ] Create history/ directory for per-iteration metadata
+- [x] Consolidate directory structure to `.rulebook/` with `memory/` and `ralph/` subdirectories
+- [x] Extend `.rulebook` schema with ralph configuration section (already in config-manager.ts)
+- [x] Create `.rulebook/ralph/` directory structure setup (in ralph-manager.ts)
+- [x] Implement prd.json generation and persistence (in prd-generator.ts + cli commands)
+- [x] Implement progress.txt append-only logging (in ralph-manager.ts appendProgress)
+- [x] Create history/ directory for per-iteration metadata (in iteration-tracker.ts)
 
 ## Phase 6: Documentation
 
