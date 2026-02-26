@@ -1,0 +1,68 @@
+# Tasks: Integrate Ralph Autonomous Loop
+
+## Phase 1: Core Architecture
+
+- [ ] Create `src/core/ralph-manager.ts` with iteration loop orchestration
+- [ ] Create `src/core/prd-generator.ts` to convert tasks to PRD JSON format
+- [ ] Create `src/core/iteration-tracker.ts` for history and metrics tracking
+- [ ] Extend `src/types.ts` with RalphConfig, IterationResult, PRDTask interfaces
+- [ ] Update `src/core/agent-manager.ts` to support Ralph execution mode
+
+## Phase 2: Agent Integration
+
+- [ ] Create `src/agents/ralph-parser.ts` to extract task status from AI output
+- [ ] Add Ralph-specific prompt templates for Claude Code and Amp
+- [ ] Implement quality gate checks (type-check, lint, tests)
+- [ ] Add iteration learning capture from agent output
+
+## Phase 3: CLI Commands
+
+- [ ] Add `ralph init` command to initialize Ralph and create PRD
+- [ ] Add `ralph run` command with --max-iterations and --tool flags
+- [ ] Add `ralph status` command to display loop progress
+- [ ] Add `ralph history` command for iteration review
+- [ ] Add `ralph pause` command for graceful interruption
+- [ ] Add `ralph resume` command to continue from checkpoint
+- [ ] Register ralph subcommand in main CLI
+
+## Phase 4: MCP Server Integration
+
+- [ ] Add `rulebook_ralph_init` MCP tool
+- [ ] Add `rulebook_ralph_run` MCP tool
+- [ ] Add `rulebook_ralph_status` MCP tool
+- [ ] Add `rulebook_ralph_get_iteration_history` MCP tool
+- [ ] Update MCP server schema and error handling
+
+## Phase 5: Configuration and Storage
+
+- [ ] Extend `.rulebook` schema with ralph configuration section
+- [ ] Create `.rulebook-ralph/` directory structure setup
+- [ ] Implement prd.json generation and persistence
+- [ ] Implement progress.txt append-only logging
+- [ ] Create history/ directory for per-iteration metadata
+
+## Phase 6: Documentation
+
+- [ ] Create `templates/core/RALPH.md` documentation
+- [ ] Add Ralph usage examples to AGENTS.md
+- [ ] Document task sizing guidelines and iteration patterns
+- [ ] Update CHANGELOG.md with Ralph feature addition
+
+## Phase 7: Testing
+
+- [ ] Write tests for ralph-manager iteration logic
+- [ ] Write tests for prd-generator task conversion
+- [ ] Write tests for iteration-tracker history
+- [ ] Write tests for ralph-parser output extraction
+- [ ] Write integration tests for full ralph run cycle
+- [ ] Verify coverage meets 95%+ threshold
+
+## Phase 8: Validation
+
+- [ ] Run `npm run lint` with no errors
+- [ ] Run `npm run type-check` with no errors
+- [ ] Run `npm run test` with all tests passing
+- [ ] Run `npm run test:coverage` and verify 95%+ lines covered
+- [ ] Validate task with `rulebook task validate integrate-ralph-autonomous-loop`
+- [ ] Manual testing: `rulebook ralph init` on test project
+- [ ] Manual testing: `rulebook ralph run --max-iterations 3` complete loop

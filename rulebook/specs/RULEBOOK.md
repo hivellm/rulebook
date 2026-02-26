@@ -8,13 +8,32 @@
 Create tasks for:
 - ✅ New features/capabilities
 - ✅ Breaking changes
-- ✅ Architecture changes  
+- ✅ Architecture changes
 - ✅ Performance/security work
 
 Skip for:
 - ❌ Bug fixes (restore intended behavior)
 - ❌ Typos, formatting, comments
 - ❌ Dependency updates (non-breaking)
+
+## Persistent Memory Integration
+
+**IMPORTANT**: Task management is tightly integrated with persistent memory system for cross-session context:
+
+### Task Completion and Memory
+When a task is marked as completed:
+1. **Auto-save to memory** (if enabled): Key learnings, patterns, gotchas from task specs are captured
+2. **Search past tasks**: Before creating similar tasks, search memory for past implementations:
+   ```bash
+   rulebook memory search "authentication" --type feature
+   ```
+3. **Update implementation faster**: Reference past solutions documented in memory
+
+### Memory during Task Development
+As you work on a task:
+- **Save discoveries**: Use `rulebook memory save` to capture patterns and gotchas
+- **Reference past context**: Search memory for related implementations
+- **Document decisions**: Save architectural choices for future developers
 
 ## ⚠️ CRITICAL: Task Creation is MANDATORY Before Implementation
 

@@ -13,6 +13,7 @@ import type { MemoryType } from './memory-types.js';
 export interface CapturedMemory {
   type: MemoryType;
   title: string;
+  summary?: string; // Rich contextual summary for better search relevance
   content: string;
   tags?: string[];
 }
@@ -56,6 +57,55 @@ export function extractTitle(content: string, maxLength: number = 80): string {
 }
 
 /**
+ * Extract a rich summary from content with context for better search relevance
+ * Captures: key concepts, decisions, patterns, gotchas, context
+ */
+export function extractSummary(content: string, _memoryType: MemoryType): string {
+  const lines = content.split('\n').filter((l) => l.trim().length > 0);
+
+  // For shorter content, use it all; for longer, sample key lines
+  let summary = '';
+
+  if (content.length < 500) {
+    summary = content.trim();
+  } else {
+    // Extract first 3 lines for context
+    const firstThreeLines = lines.slice(0, 3).join(' ').trim();
+
+    // Extract last meaningful line if different from first
+    const lastLine = lines[lines.length - 1]?.trim() || '';
+
+    // Look for key indicators
+    const hasDecision = /\b(decide|chose|decision|recommend|should)\b/i.test(content);
+    const hasPattern = /\b(pattern|approach|technique|method|solution)\b/i.test(content);
+    const hasGotcha = /\b(gotcha|caveat|watch out|be careful|note that|important)\b/i.test(content);
+    const hasError = /\b(error|fail|bug|issue|problem|crash)\b/i.test(content);
+
+    // Build summary with type-specific context
+    let contextClues = [];
+    if (hasDecision) contextClues.push('decision');
+    if (hasPattern) contextClues.push('pattern');
+    if (hasGotcha) contextClues.push('gotcha');
+    if (hasError) contextClues.push('error');
+
+    const contextStr = contextClues.length > 0
+      ? ` [${contextClues.join(', ')}]`
+      : '';
+
+    summary = [
+      firstThreeLines,
+      lastLine && lastLine !== firstThreeLines ? `... ${lastLine}` : '',
+      contextStr,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .substring(0, 500);
+  }
+
+  return summary || content.substring(0, 500);
+}
+
+/**
  * Split agent output into meaningful chunks for memory capture
  */
 function splitIntoChunks(output: string): string[] {
@@ -80,11 +130,15 @@ export function captureFromClaudeCode(
   _sessionId: string
 ): CapturedMemory[] {
   const chunks = splitIntoChunks(output);
-  return chunks.map((chunk) => ({
-    type: classifyMemory(chunk),
-    title: extractTitle(chunk),
-    content: chunk,
-  }));
+  return chunks.map((chunk) => {
+    const type = classifyMemory(chunk);
+    return {
+      type,
+      title: extractTitle(chunk),
+      summary: extractSummary(chunk, type),
+      content: chunk,
+    };
+  });
 }
 
 /**
@@ -95,11 +149,15 @@ export function captureFromCursor(
   _sessionId: string
 ): CapturedMemory[] {
   const chunks = splitIntoChunks(output);
-  return chunks.map((chunk) => ({
-    type: classifyMemory(chunk),
-    title: extractTitle(chunk),
-    content: chunk,
-  }));
+  return chunks.map((chunk) => {
+    const type = classifyMemory(chunk);
+    return {
+      type,
+      title: extractTitle(chunk),
+      summary: extractSummary(chunk, type),
+      content: chunk,
+    };
+  });
 }
 
 /**
@@ -110,11 +168,15 @@ export function captureFromGemini(
   _sessionId: string
 ): CapturedMemory[] {
   const chunks = splitIntoChunks(output);
-  return chunks.map((chunk) => ({
-    type: classifyMemory(chunk),
-    title: extractTitle(chunk),
-    content: chunk,
-  }));
+  return chunks.map((chunk) => {
+    const type = classifyMemory(chunk);
+    return {
+      type,
+      title: extractTitle(chunk),
+      summary: extractSummary(chunk, type),
+      content: chunk,
+    };
+  });
 }
 
 // ============================================

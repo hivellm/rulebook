@@ -19,6 +19,7 @@ export interface Memory {
   id: string;
   type: MemoryType;
   title: string;
+  summary?: string; // Rich contextual summary for better search relevance
   content: string;
   project: string;
   tags: string[];

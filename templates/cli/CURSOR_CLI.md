@@ -19,10 +19,44 @@ Cursor automatically references:
 ## Workflow
 
 1. Use `@AGENTS.md` in chat to reference standards
-2. Request: "Follow @AGENTS.md. Implement [feature] with tests."
-3. Cursor respects .cursorrules and AGENTS.md automatically
-4. Review and accept changes
+2. Check past implementations in memory before starting
+3. Request: "Follow @AGENTS.md. Implement [feature] with tests."
+4. Cursor respects .cursorrules and AGENTS.md automatically
+5. Save implementation learnings to memory
+6. Review and accept changes
 
 **Critical**: Generated `.cursorrules` points to AGENTS.md. Use @ mentions for explicit references.
+
+## Persistent Memory Integration
+
+### Using Memory in Cursor
+When requesting features, include memory context:
+
+```
+@AGENTS.md
+@.rulebook/memory.md (if available)
+
+Search memory for similar implementations and include in your reasoning before implementing.
+Implement [feature]...
+```
+
+### Capturing Implementation Learnings
+After Cursor completes work:
+
+```bash
+# Review auto-captured memories
+rulebook memory search "feature name"
+
+# Augment with additional insights
+rulebook memory save "Implementation approach, patterns discovered, edge cases handled..." --type feature --title "Feature name" --tags relevant,tags
+```
+
+### Memory-Enhanced Development
+Cursor + Memory workflow:
+1. **Search**: Find past implementations with similar patterns
+2. **Reference**: Include relevant memories in prompts for context
+3. **Implement**: Cursor generates code informed by past solutions
+4. **Capture**: Save learnings for future sessions
+5. **Search Again**: Next session finds and leverages the work
 
 <!-- CURSOR_CLI:END -->

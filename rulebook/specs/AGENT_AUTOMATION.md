@@ -3,6 +3,48 @@
 
 **CRITICAL**: Mandatory workflow that AI agents MUST execute after EVERY implementation.
 
+## ⚠️ TOKEN OPTIMIZATION (MANDATORY FOR HAIKU)
+
+**Claude Haiku has limited context. Every token counts.**
+
+### Core Rules ✅
+1. **Output code, not explanation** - Put logic in comments, not markdown
+2. **Minimal reports** - Say "✅ Done" instead of detailed status reports
+3. **No markdown abuse** - No unnecessary headings, tables, or emoji status lines
+4. **Combine outputs** - One response instead of multiple small ones
+5. **Comments > Documentation** - Use code comments for explaining logic
+
+### Tokens Saved 💰
+- Remove status emoji lines: **~500 tokens/task**
+- Skip "Next Steps" sections: **~100 tokens/task**
+- Eliminate markdown tables: **~200 tokens/task**
+- Use concise commit messages: **~50 tokens/task**
+
+**Total per task**: ~850 tokens saved = much more context for actual work
+
+### Examples
+
+❌ BAD (Wastes tokens):
+```
+✅ Implementation Complete
+
+📝 Changes:
+- Added UserService
+- Added middleware
+- Updated routes
+
+🧪 Quality Checks:
+- ✅ Type check: Passed
+- ✅ Lint: 0 warnings
+- ✅ Tests: 45/45 passed
+- ✅ Coverage: 96%
+```
+
+✅ GOOD (Efficient):
+```
+✅ Done. UserService + middleware committed.
+```
+
 ## Workflow Overview
 
 After completing ANY feature, bug fix, or code change, execute this workflow in order:
@@ -28,7 +70,34 @@ Run these checks in order - ALL must pass:
 - ✅ Fix the issue first
 - ✅ Re-run ALL checks
 
-### Step 2: Security & Dependency Audits
+**⚠️ TOKEN OPTIMIZATION**:
+- Output only pass/fail status for each check
+- Do NOT output detailed logs or test results
+- Do NOT create status tables or emoji reports
+- Use concise format: "✅ type-check pass" or "❌ tests fail: reason"
+
+### Step 2: Capture to Persistent Memory
+
+**IMPORTANT**: Save implementation insights and decisions to persistent memory for context across future sessions.
+
+```bash
+# 1. Identify key learnings from this implementation:
+#    - Design decisions made
+#    - Patterns discovered or applied
+#    - Gotchas or edge cases encountered
+#    - Performance insights
+#    - Test coverage notes
+
+# 2. Save to memory (via MCP or CLI):
+rulebook memory save "<content>" --type feature --title "Brief title" --tags tag1,tag2
+
+# 3. Example:
+rulebook memory save "Implemented OAuth token refresh with 30-min expiry. Key gotcha: tokens expire silently without warning on API calls - must check headers before retry. Pattern: Use interceptor middleware for transparent refresh." --type feature --title "OAuth token refresh implementation" --tags auth,oauth,gotchas
+```
+
+**Memory Auto-Capture**: If memory auto-capture is enabled in `.rulebook`, significant implementation outputs are automatically captured. Review and augment with additional context as needed.
+
+### Step 3: Security & Dependency Audits
 
 ```bash
 # Check for vulnerabilities (language-specific)
@@ -44,7 +113,19 @@ Run these checks in order - ALL must pass:
 - ✅ Include in Step 5 report
 - ❌ Never ignore critical/high vulnerabilities without user approval
 
-### Step 3: Update OpenSpec Tasks
+### Step 4: Update Rulebook Tasks
+
+If using rulebook task management:
+
+```bash
+# Mark implemented tasks as completed
+rulebook task update <task-id> --status completed
+
+# Update any blocked/pending tasks
+rulebook task update <task-id> --status blocked --reason "explanation"
+```
+
+### Step 5: Update OpenSpec Tasks
 
 If `openspec/` directory exists:
 
@@ -56,7 +137,7 @@ If `openspec/` directory exists:
 # Document deviations or blockers
 ```
 
-### Step 4: Update Documentation
+### Step 6: Update Documentation
 
 ```bash
 # Update ROADMAP.md (if feature is milestone)
@@ -65,7 +146,7 @@ If `openspec/` directory exists:
 # Update README.md (if public API changed)
 ```
 
-### Step 5: Git Commit
+### Step 7: Git Commit
 
 **ONLY after ALL above steps pass:**
 
@@ -79,6 +160,7 @@ git commit -m "<type>(<scope>): <description>
 - Detailed change 2
 - Tests: [describe coverage]
 - Coverage: X% (threshold: 95%)
+- Memory: [saved key learnings to persistent memory]
 
 Closes #<issue> (if applicable)"
 ```
@@ -87,40 +169,32 @@ Closes #<issue> (if applicable)"
 
 **Language Requirement**: Commit messages must be written in English. Never use Portuguese, Spanish, or any other language.
 
-### Step 6: Report to User
+### Step 8: Report to User (Minimal Token Output)
 
+**⚠️ CRITICAL: Minimize report to save tokens**
+
+**✅ MINIMAL REPORT (Preferred - Saves ~500 tokens):**
 ```
-✅ Implementation Complete
-
-📝 Changes:
-- [List main changes]
-
-🧪 Quality Checks:
-- ✅ Type check: Passed
-- ✅ Linting: Passed (0 warnings)
-- ✅ Formatting: Applied
-- ✅ Tests: X/X passed (100%)
-- ✅ Coverage: X% (threshold: 95%)
-
-🔒 Security:
-- ✅ No vulnerabilities
-
-📊 OpenSpec:
-- ✅ Tasks updated
-- ✅ Progress: X% → Y%
-
-📚 Documentation:
-- ✅ CHANGELOG.md updated
-- ✅ [other docs updated]
-
-💾 Git:
-- ✅ Committed: <commit message>
-- ✅ Hash: <commit hash>
-
-📋 Next Steps:
-- [ ] Review changes
-- [ ] Push to remote (if ready)
+✅ Done. Committed: <hash>
 ```
+
+**✅ SHORT REPORT (If needed - Only ~100 tokens):**
+```
+✅ Implementation complete
+- Files changed: X
+- Tests: pass
+- Coverage: X%
+- Committed
+```
+
+**❌ NEVER OUTPUT LONG REPORTS (Wastes tokens):**
+- ❌ Don't create "Implementation Complete" sections
+- ❌ Don't list all quality checks with emojis
+- ❌ Don't show commit messages verbatim
+- ❌ Don't add "Next Steps" sections
+- ❌ Don't create status tables or boxes
+
+**Why**: Long reports add 500-1000+ tokens per task. For Haiku (limited context), use minimal format.
 
 ## Automation Exceptions
 
@@ -173,12 +247,42 @@ If workflow fails 3+ times:
 **Complete workflow after EVERY implementation:**
 
 1. ✅ Quality checks (type, lint, format, test, coverage)
-2. ✅ Security audit
-3. ✅ Update OpenSpec tasks
-4. ✅ Update documentation
-5. ✅ Git commit (conventional format)
-6. ✅ Report summary to user
+2. ✅ Capture to persistent memory (save learnings and decisions)
+3. ✅ Security audit
+4. ✅ Update rulebook tasks
+5. ✅ Update OpenSpec tasks (if applicable)
+6. ✅ Update documentation
+7. ✅ Git commit (conventional format)
+8. ✅ Report summary to user
 
 **Only skip with explicit user permission and document why.**
+
+## Persistent Memory Best Practices
+
+### What to Capture
+- **Design decisions**: Why a particular approach was chosen
+- **Patterns**: Reusable solutions discovered during implementation
+- **Gotchas**: Edge cases, limitations, or surprising behaviors
+- **Performance insights**: Optimization lessons or bottleneck discoveries
+- **Bug fixes**: Root cause and resolution for future reference
+
+### How to Capture
+```bash
+# Via CLI
+rulebook memory save "<detailed content>" --type <type> --title "Short title" --tags tag1,tag2
+
+# Memory types: bugfix, feature, refactor, decision, discovery, change, observation
+
+# Example: Feature capture
+rulebook memory save "Implemented async batch processing for large datasets. Pattern: use queue with worker threads (maxWorkers=4). Gotcha: Queue memory grows unbounded - added max size limit with drop strategy. Tests: Added batch-size edge cases." --type feature --title "Async batch processing implementation" --tags performance,queues,patterns
+```
+
+### Search Previous Context
+Before implementing similar features, search memory for past learnings:
+```bash
+rulebook memory search "batch processing" --mode hybrid
+```
+
+This surfaces past decisions and patterns to avoid redundant work and preserve institutional knowledge.
 
 <!-- AGENT_AUTOMATION:END -->

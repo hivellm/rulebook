@@ -1,0 +1,158 @@
+{
+  "name": "Ralph Autonomous Loop",
+  "id": "ralph-autonomous-loop",
+  "version": "1.0.0",
+  "category": "workflow",
+  "description": "Autonomous AI agent loop for iterative task implementation using fresh context per iteration",
+  "author": "Rulebook",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/snarktank/ralph",
+  "tags": ["autonomous", "workflow", "iterative", "ai-agent", "task-management"],
+  "dependencies": {
+    "@hivehub/rulebook": ">=3.0.0"
+  },
+  "provides": {
+    "commands": [
+      {
+        "name": "ralph init",
+        "description": "Initialize Ralph configuration and create PRD from rulebook tasks",
+        "usage": "rulebook ralph init [--force]"
+      },
+      {
+        "name": "ralph run",
+        "description": "Execute autonomous iteration loop",
+        "usage": "rulebook ralph run [--max-iterations N] [--tool claude|amp|gemini]"
+      },
+      {
+        "name": "ralph status",
+        "description": "Show loop progress, completed tasks, and current iteration",
+        "usage": "rulebook ralph status"
+      },
+      {
+        "name": "ralph history",
+        "description": "Display iteration history and learnings",
+        "usage": "rulebook ralph history [--learnings]"
+      },
+      {
+        "name": "ralph pause",
+        "description": "Gracefully pause autonomous loop",
+        "usage": "rulebook ralph pause"
+      },
+      {
+        "name": "ralph resume",
+        "description": "Resume from paused state",
+        "usage": "rulebook ralph resume"
+      }
+    ],
+    "mcpTools": [
+      {
+        "name": "rulebook_ralph_init",
+        "description": "Initialize Ralph via MCP"
+      },
+      {
+        "name": "rulebook_ralph_run",
+        "description": "Start autonomous loop via MCP"
+      },
+      {
+        "name": "rulebook_ralph_status",
+        "description": "Query loop status via MCP"
+      },
+      {
+        "name": "rulebook_ralph_get_iteration_history",
+        "description": "Retrieve iteration history via MCP"
+      }
+    ]
+  },
+  "installation": {
+    "type": "bash",
+    "script": "install.sh",
+    "instructions": [
+      "Ralph will be enabled in your .rulebook configuration",
+      "Create rulebook tasks with: rulebook task create <task-id>",
+      "Initialize Ralph with: rulebook ralph init",
+      "Run autonomous loop with: rulebook ralph run"
+    ]
+  },
+  "configuration": {
+    "defaults": {
+      "ralph": {
+        "enabled": false,
+        "maxIterations": 10,
+        "tool": "claude",
+        "maxContextLoss": 3
+      }
+    },
+    "schema": {
+      "ralph.enabled": {
+        "type": "boolean",
+        "description": "Enable Ralph autonomous loop"
+      },
+      "ralph.maxIterations": {
+        "type": "integer",
+        "description": "Maximum iterations before stopping",
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "ralph.tool": {
+        "type": "string",
+        "description": "AI CLI tool to use (claude, amp, gemini)",
+        "enum": ["claude", "amp", "gemini"]
+      },
+      "ralph.maxContextLoss": {
+        "type": "integer",
+        "description": "Tolerance for incomplete agent outputs",
+        "minimum": 1,
+        "maximum": 10
+      }
+    }
+  },
+  "requiredCapabilities": [
+    "task-management",
+    "git-integration",
+    "quality-gates"
+  ],
+  "relatedSkills": [
+    "claude-code",
+    "cline",
+    "cursor-cli",
+    "persistent-memory"
+  ],
+  "documentation": {
+    "readme": "SKILL.md",
+    "examples": [
+      {
+        "title": "Initialize Ralph",
+        "command": "rulebook ralph init"
+      },
+      {
+        "title": "Run autonomous loop with 10 iterations",
+        "command": "rulebook ralph run --max-iterations 10"
+      },
+      {
+        "title": "Check loop status",
+        "command": "rulebook ralph status"
+      },
+      {
+        "title": "View iteration history and learnings",
+        "command": "rulebook ralph history --learnings"
+      },
+      {
+        "title": "Pause and resume loop",
+        "command": "rulebook ralph pause && rulebook ralph resume"
+      }
+    ]
+  },
+  "changelog": {
+    "1.0.0": {
+      "date": "2026-02-26",
+      "changes": [
+        "Initial release of Ralph Autonomous Loop skill",
+        "Support for Claude Code, Amp, and Gemini CLI tools",
+        "Fresh context per iteration with memory persistence via git, PRD, and progress log",
+        "Quality gates enforcement (type-check, lint, tests)",
+        "Pause/resume capability",
+        "MCP server integration for programmatic access"
+      ]
+    }
+  }
+}

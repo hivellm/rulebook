@@ -113,7 +113,17 @@ export class ConfigManager {
         testRun: 120000, // 2 minutes
       },
       memory: {
-        enabled: false,
+        enabled: true,
+        dbPath: '.rulebook-memory/memory.db',
+        maxSizeBytes: 524288000,
+        autoCapture: true,
+        vectorDimensions: 256,
+      },
+      ralph: {
+        enabled: true,
+        maxIterations: 10,
+        tool: 'claude',
+        maxContextLoss: 3,
       },
     };
 
@@ -166,9 +176,38 @@ export class ConfigManager {
       };
     }
 
-    // Add memory config if missing
+    // Add/update memory config with defaults enabled
     if (!migrated.memory) {
-      migrated.memory = { enabled: false };
+      migrated.memory = {
+        enabled: true,
+        dbPath: '.rulebook-memory/memory.db',
+        maxSizeBytes: 524288000,
+        autoCapture: true,
+        vectorDimensions: 256,
+      };
+    } else {
+      // Ensure memory is enabled in migration
+      migrated.memory.enabled = true;
+      if (!migrated.memory.dbPath) migrated.memory.dbPath = '.rulebook-memory/memory.db';
+      if (!migrated.memory.maxSizeBytes) migrated.memory.maxSizeBytes = 524288000;
+      if (migrated.memory.autoCapture === undefined) migrated.memory.autoCapture = true;
+      if (!migrated.memory.vectorDimensions) migrated.memory.vectorDimensions = 256;
+    }
+
+    // Add/update Ralph config with defaults enabled
+    if (!migrated.ralph) {
+      migrated.ralph = {
+        enabled: true,
+        maxIterations: 10,
+        tool: 'claude',
+        maxContextLoss: 3,
+      };
+    } else {
+      // Ensure Ralph is enabled in migration
+      migrated.ralph.enabled = true;
+      if (!migrated.ralph.maxIterations) migrated.ralph.maxIterations = 10;
+      if (!migrated.ralph.tool) migrated.ralph.tool = 'claude';
+      if (!migrated.ralph.maxContextLoss) migrated.ralph.maxContextLoss = 3;
     }
 
     // Update version

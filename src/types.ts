@@ -214,13 +214,20 @@ export interface RulebookConfig {
     tasksDir?: string; // Relative to project root
     archiveDir?: string; // Relative to project root
   };
-  // Memory system configuration (v2.2)
+  // Memory system configuration (v3.0)
   memory?: {
     enabled?: boolean;
     dbPath?: string; // default: '.rulebook-memory/memory.db'
     maxSizeBytes?: number; // default: 524288000 (500MB)
-    autoCapture?: boolean; // default: false
+    autoCapture?: boolean; // default: true
     vectorDimensions?: number; // default: 256
+  };
+  // Ralph autonomous loop configuration (v3.0)
+  ralph?: {
+    enabled?: boolean; // default: true
+    maxIterations?: number; // default: 10
+    tool?: 'claude' | 'amp' | 'gemini'; // default: 'claude'
+    maxContextLoss?: number; // default: 3
   };
   // Skills configuration (v2.0)
   skills?: {

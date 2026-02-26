@@ -124,6 +124,7 @@ export class MemoryManager {
   async saveMemory(input: {
     type: MemoryType;
     title: string;
+    summary?: string;
     content: string;
     tags?: string[];
     project?: string;
@@ -136,6 +137,7 @@ export class MemoryManager {
       id: randomUUID(),
       type: input.type,
       title: input.title,
+      summary: input.summary,
       content: this.filterPrivate(input.content),
       project: input.project ?? '',
       tags: input.tags ?? [],
@@ -147,8 +149,14 @@ export class MemoryManager {
 
     this.store!.saveMemory(memory);
 
-    // Vectorize and add to HNSW
-    const vec = vectorize(`${memory.title} ${memory.content}`, this.dimensions);
+    // Vectorize using title + summary (if available) + content for better semantic relevance
+    const textToVectorize = [
+      memory.title,
+      memory.summary || memory.content.substring(0, 300),
+    ]
+      .filter(Boolean)
+      .join(' ');
+    const vec = vectorize(textToVectorize, this.dimensions);
     this.index!.add(memory.id, vec);
     this.saveHnswIfNeeded();
 
