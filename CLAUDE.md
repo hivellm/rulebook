@@ -15,6 +15,85 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - MCP server for programmatic task management via Model Context Protocol
 - Git hooks automation for quality enforcement
 - GitHub Actions workflow generation
+- **Ralph Autonomous Loop**: AI-driven task solving with multi-iteration learning and quality gates
+
+## Ralph Autonomous Loop
+
+Ralph is an autonomous AI loop integrated into rulebook that iteratively solves tasks from a PRD (Product Requirements Document). It provides:
+
+**Core Capabilities**:
+1. **Iterative Task Solving**: Runs your AI tool (Claude, Cursor, Gemini) on each incomplete user story
+2. **Quality Gates**: Enforces type-check, lint, tests, and coverage on every iteration
+3. **Learning & History**: Records iterations, learnings, errors, and maintains full execution history
+4. **Flexible Control**: Pause/resume iterations for manual inspection and fixes
+5. **Configuration**: Customizable max iterations, AI tool selection, and loop parameters
+
+**Ralph Commands**:
+```bash
+# Initialize Ralph for a project
+rulebook ralph init
+
+# Start the autonomous loop
+rulebook ralph run
+
+# Check current status and statistics
+rulebook ralph status
+
+# View past iterations and learnings
+rulebook ralph history
+
+# Pause/resume the loop
+rulebook ralph pause
+rulebook ralph resume
+
+# Configure loop parameters
+rulebook ralph config set max_iterations 15
+rulebook ralph config set ai_tool claude
+```
+
+**Ralph Workflow**:
+1. `rulebook ralph init` - Sets up PRD with max iterations and AI tool
+2. `rulebook ralph run` - Starts iterative loop
+3. Loop executes until all stories pass or max iterations reached
+4. `rulebook ralph history` - Review results and learnings
+5. Use `/ralph-*` skills for interactive configuration and monitoring
+
+**Ralph Skills** (available as `/ralph-<command>`):
+- `/ralph-init` - Initialize the autonomous loop
+- `/ralph-run` - Start iterating on tasks
+- `/ralph-status` - Check loop health and progress
+- `/ralph-history` - View past iterations
+- `/ralph-pause-resume` - Control execution flow
+- `/ralph-config` - Configure loop settings
+
+**Ralph PRD Format**:
+Ralph uses a standardized PRD format stored in `.rulebook/ralph/prd.json`:
+```json
+{
+  "project": "project-name",
+  "branchName": "ralph/project-name",
+  "description": "Project description",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Story Title",
+      "description": "What needs to be done",
+      "acceptanceCriteria": ["Must compile", "Tests pass"],
+      "priority": 1,
+      "passes": false,
+      "notes": "Additional context"
+    }
+  ]
+}
+```
+
+**Key Ralph Rules**:
+- User stories use `passes: false/true` to track completion (NOT status enum)
+- Each iteration records: task details, quality checks, errors, learnings, execution time
+- Quality gates MUST pass: type-check ✓, lint ✓, tests ✓, coverage ✓
+- Failed iterations are recorded but don't auto-complete stories
+- Use `rulebook ralph pause` for graceful stops and manual fixes
+- Ralph preserves PRD state across runs - can resume incomplete loops
 
 ## Commands
 
@@ -95,6 +174,10 @@ The codebase follows a **modular CLI architecture** with clear separation of con
    - **validator.ts**: Validates project structure against rulebook standards
    - **health-scorer.ts**: Calculates project health score (0-100)
    - **auto-fixer.ts**: Auto-fixes common issues (missing files, bad configs)
+   - **ralph-manager.ts**: Manages Ralph autonomous loop state, iterations, and PRD loading
+   - **prd-generator.ts**: Generates PRD (Product Requirements Document) from task proposals
+   - **iteration-tracker.ts**: Records and analyzes Ralph iterations, statistics, and learnings
+   - **ralph-parser.ts**: Parses AI tool output for quality checks, completion status, and learnings
 
 3. **MCP Server** (`src/mcp/rulebook-server.ts`)
    - Model Context Protocol server using `@modelcontextprotocol/sdk`
@@ -199,13 +282,17 @@ rulebook/
 │   │   ├── workflow-generator.ts
 │   │   ├── agent-manager.ts
 │   │   ├── watcher.ts
+│   │   ├── ralph-manager.ts  # Ralph autonomous loop state
+│   │   ├── prd-generator.ts  # Generate PRD from proposals
+│   │   ├── iteration-tracker.ts  # Track Ralph iterations
 │   │   └── ...
 │   ├── mcp/                  # MCP server
 │   │   └── rulebook-server.ts
 │   ├── agents/               # AI agent parsers
 │   │   ├── cursor-agent.ts
 │   │   ├── claude-code.ts
-│   │   └── gemini-cli.ts
+│   │   ├── gemini-cli.ts
+│   │   └── ralph-parser.ts   # Parse Ralph iteration output
 │   └── utils/                # Utilities
 │       ├── file-system.ts
 │       ├── git-hooks.ts
@@ -295,6 +382,42 @@ Tests use mocking for:
 3. **Remove temporary files immediately after use** (MANDATORY)
 4. **ALWAYS check AGENTS.md or RULEBOOK.md first** when working with task management
 5. **Follow OpenSpec-compatible task structure** (see Task Management System above)
+
+### Ralph Development
+
+When working with Ralph autonomous loop:
+
+1. **PRD Format MUST be:**
+   - `project`, `branchName`, `description`, `userStories` (NOT old `tasks` format)
+   - User stories use `passes: boolean` for completion tracking (NOT `status` enum)
+   - Each story: `id`, `title`, `description`, `acceptanceCriteria`, `priority`, `passes`, `notes`
+
+2. **Iteration Records:**
+   - Always stored in `.rulebook/ralph/history/iteration-<N>.json`
+   - Must include: quality checks (type-check, lint, tests, coverage_met), errors, learnings, git_commit
+   - Iteration status: `success`, `partial`, or `failed`
+
+3. **Quality Gates:**
+   - All 4 gates MUST pass for iteration to succeed: type-check ✓, lint ✓, tests ✓, coverage ✓
+   - Failed gates mark story as `passes: false` for retry
+   - Use RalphParser to extract gate results from AI tool output
+
+4. **Configuration:**
+   - Stored in `.rulebook/ralph/config.json` with: enabled, current_iteration, max_iterations, ai_tool, paused
+   - Configuration changes apply to future iterations only
+   - Preserve config state across pause/resume cycles
+
+5. **Testing Ralph:**
+   - Use mock PRD format with userStories in tests
+   - Mock stories should have realistic acceptance criteria
+   - Test both success and failure paths for quality gates
+   - All Ralph tests in `tests/ralph.test.ts` (currently 20 tests)
+
+6. **Ralph Skills (.claude/commands/):**
+   - 6 skills available: init, run, status, history, pause-resume, config
+   - Skills located in `.claude/commands/ralph-*.md`
+   - Keep skills documentation up-to-date with CLI changes
+   - Skills follow same format as rulebook-task-* skills
 
 ### File Naming Conventions
 
