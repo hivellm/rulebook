@@ -42,12 +42,12 @@
 - [x] Implement progress.txt append-only logging (in ralph-manager.ts appendProgress)
 - [x] Create history/ directory for per-iteration metadata (in iteration-tracker.ts)
 
-## Phase 6: Documentation
+## Phase 6: Documentation ✅
 
-- [ ] Create `templates/core/RALPH.md` documentation
-- [ ] Add Ralph usage examples to AGENTS.md
-- [ ] Document task sizing guidelines and iteration patterns
-- [ ] Update CHANGELOG.md with Ralph feature addition
+- [x] Create `templates/core/RALPH.md` documentation
+- [x] Add Ralph usage examples to AGENTS.md
+- [x] Document task sizing guidelines and iteration patterns
+- [x] Update CHANGELOG.md with Ralph feature addition
 
 ## Phase 7: Testing
 
