@@ -32,9 +32,15 @@
   },
   "memory": {
     "enabled": true,
-    "dbPath": ".rulebook-memory/memory.db",
+    "dbPath": ".rulebook/memory/memory.db",
     "maxSizeBytes": 524288000,
     "autoCapture": true,
     "vectorDimensions": 256
+  },
+  "ralph": {
+    "enabled": true,
+    "maxIterations": 10,
+    "tool": "claude",
+    "maxContextLoss": 3
   }
 }
