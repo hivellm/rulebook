@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2026-02-26
+
+### Fixed
+- **MCP Server Directory Handling**: Resolved EISDIR error when reading `.rulebook` directory
+  - Renamed `findRulebookFile` to `findRulebookConfig` to reflect new behavior
+  - Handles both `.rulebook` file and `.rulebook/` directory structures
+  - Reads `.rulebook/rulebook.json` for new directory format
+  - Maintains backward compatibility with old `.rulebook` file format
+
+- **Plugin Path Resolution**: Fixed NPX usage with import.meta.url
+  - Use `import.meta.url` to resolve `.claude-plugin` directory relative to module
+  - Works correctly in any context (NPX, CLI, development)
+  - Added `.claude-plugin` and `.claude/commands` to package.json files array
+
+### Changed
+- Plugin detection now supports both file and directory structures
+- Version bumped to 3.2.1 across all manifests
+
+## [3.2.0] - 2026-02-26
+
+### Added
+- **Ralph Autonomous Loop Skills**: 6 new Claude Code skills for Ralph management
+  - `/ralph-init` - Initialize Ralph autonomous loop
+  - `/ralph-run` - Start iterative task solving
+  - `/ralph-status` - Check loop status and statistics
+  - `/ralph-history` - View past iterations and learnings
+  - `/ralph-pause-resume` - Pause/resume loop execution
+  - `/ralph-config` - Configure loop parameters
+
+- **Ralph Documentation in CLAUDE.md**: Comprehensive guidelines for Ralph development
+  - PRD format specification and user story structure
+  - Quality gates and iteration record requirements
+  - Configuration preservation and testing strategies
+  - Ralph skills overview and development guidelines
+
+### Changed
+- Package distribution now includes `.claude-plugin` directory
+- All manifest versions synchronized to 3.2.0
+
 ## [3.1.0] - 2026-02-26
 
 ### Added

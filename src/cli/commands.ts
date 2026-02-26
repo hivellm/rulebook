@@ -2782,7 +2782,7 @@ export async function setupClaudeCodePlugin(): Promise<void> {
 
     // Add rulebook plugin
     const pluginKey = `rulebook@hivehub`;
-    const version = pluginJson.version || '3.2.0';
+    const version = pluginJson.version || '3.2.1';
     const installPath = path.join(pluginsDir, 'cache', 'hivehub', 'rulebook', version);
 
     if (!installedPlugins.plugins[pluginKey]) {
