@@ -1,7 +1,7 @@
 {
   "name": "rulebook",
   "description": "Standardize AI-generated projects with Ralph autonomous loop, persistent memory, and quality gates. Supports 28 languages, 17 frameworks, 13 MCP modules, and 20 services.",
-  "version": "3.4.0",
+  "version": "3.4.1",
   "author": {
     "name": "HiveLLM"
   }

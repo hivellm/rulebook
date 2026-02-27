@@ -5,6 +5,7 @@ import { Logger } from './logger.js';
 import { RalphLoopState, RalphIterationMetadata, IterationResult } from '../types.js';
 
 export class RalphManager {
+  private projectRoot: string;
   private ralphDir: string;
   private historyDir: string;
   private loopState: RalphLoopState | null = null;
@@ -12,6 +13,7 @@ export class RalphManager {
 
   constructor(projectRoot: string, logger: Logger) {
     this.logger = logger;
+    this.projectRoot = projectRoot;
     this.ralphDir = path.join(projectRoot, '.rulebook', 'ralph');
     this.historyDir = path.join(this.ralphDir, 'history');
   }
@@ -112,8 +114,7 @@ export class RalphManager {
     acceptanceCriteria: string[]
   ): Promise<void> {
     // Look in .rulebook/tasks/<sourceTaskId>/tasks.md
-    const projectRoot = path.dirname(path.dirname(this.ralphDir));
-    const tasksPath = path.join(projectRoot, '.rulebook', 'tasks', sourceTaskId, 'tasks.md');
+    const tasksPath = path.join(this.projectRoot, '.rulebook', 'tasks', sourceTaskId, 'tasks.md');
 
     if (!existsSync(tasksPath)) {
       return;
@@ -157,7 +158,12 @@ export class RalphManager {
     this.loopState.current_iteration = result.iteration;
     this.loopState.last_updated = new Date().toISOString();
 
-    if (result.status === 'success') {
+    // Sync completed_tasks from PRD truth (not just increment) for consistency
+    const prd = await this.loadPRD();
+    if (prd && prd.userStories) {
+      this.loopState.completed_tasks = prd.userStories.filter((s: any) => s.passes).length;
+      this.loopState.total_tasks = prd.userStories.length;
+    } else if (result.status === 'success') {
       this.loopState.completed_tasks++;
     }
 

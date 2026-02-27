@@ -903,13 +903,15 @@ export async function startRulebookMcpServer(): Promise<void> {
           const maxIterations = configData.ralph?.maxIterations || 10;
           const tool = (configData.ralph?.tool || 'claude') as 'claude' | 'amp' | 'gemini';
 
-          await ralphManager.initialize(maxIterations, tool);
-
+          // Generate PRD first, then initialize with correct task count
           const prd = await prdGenerator.generatePRD(basename(config.projectRoot) || 'project');
 
           const { writeFile } = await import('../utils/file-system.js');
           const prdPath = join(config.projectRoot, '.rulebook', 'ralph', 'prd.json');
           await writeFile(prdPath, JSON.stringify(prd, null, 2));
+
+          // Initialize after PRD is written so task count is correct
+          await ralphManager.initialize(maxIterations, tool);
 
           return {
             content: [
@@ -955,6 +957,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           const { RalphManager } = await import('../core/ralph-manager.js');
           const { RalphParser } = await import('../agents/ralph-parser.js');
           const { spawn } = await import('child_process');
+          const { execSync } = await import('child_process');
 
           const logger = new Logger(config.projectRoot);
           const ralphManager = new RalphManager(config.projectRoot, logger);
@@ -965,6 +968,29 @@ export async function startRulebookMcpServer(): Promise<void> {
             | 'claude'
             | 'amp'
             | 'gemini';
+
+          // Validate tool is available before starting
+          const toolCmdNames: Record<string, string> = {
+            claude: 'claude',
+            amp: 'amp',
+            gemini: 'gemini',
+          };
+          const toolCmd = toolCmdNames[tool] || 'claude';
+          try {
+            execSync(`${toolCmd} --version`, { stdio: 'pipe', timeout: 10000 });
+          } catch {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify({
+                    success: false,
+                    error: `CLI tool "${toolCmd}" not found or not responding. Install it first: https://docs.anthropic.com/claude-code`,
+                  }),
+                },
+              ],
+            };
+          }
 
           // Resume existing state if available, otherwise initialize fresh
           const existingState = await ralphManager.getStatus();
@@ -998,12 +1024,12 @@ export async function startRulebookMcpServer(): Promise<void> {
             });
 
           // Helper: build prompt for AI agent
-          const buildPrompt = (task: any, prd: any): string => {
+          const buildPrompt = (task: any, projectName: string): string => {
             const criteria = (task.acceptanceCriteria || [])
               .map((c: string) => `- ${c}`)
               .join('\n');
             return [
-              `You are working on project: ${prd?.project || 'unknown'}`,
+              `You are working on project: ${projectName}`,
               ``,
               `## Current Task: ${task.title}`,
               `ID: ${task.id}`,
@@ -1026,10 +1052,11 @@ export async function startRulebookMcpServer(): Promise<void> {
               .join('\n');
           };
 
-          // Helper: execute AI agent
+          // Helper: execute AI agent with proper error handling
           const executeAgent = (agentTool: string, prompt: string): Promise<string> =>
             new Promise((resolve, reject) => {
               let output = '';
+              let stderrOutput = '';
               const toolCmds: Record<
                 string,
                 { cmd: string; args: string[]; stdinPrompt: boolean }
@@ -1043,34 +1070,79 @@ export async function startRulebookMcpServer(): Promise<void> {
                 gemini: { cmd: 'gemini', args: ['-p', prompt], stdinPrompt: false },
               };
               const cfg = toolCmds[agentTool] || toolCmds.claude;
+
+              let settled = false;
+              const settle = (fn: () => void) => {
+                if (!settled) {
+                  settled = true;
+                  fn();
+                }
+              };
+
               const proc = spawn(cfg.cmd, cfg.args, {
                 cwd: config.projectRoot,
                 shell: true,
                 stdio: ['pipe', 'pipe', 'pipe'],
               });
+
               if (cfg.stdinPrompt && proc.stdin) {
                 proc.stdin.write(prompt);
                 proc.stdin.end();
               }
+
               proc.stdout?.on('data', (d: Buffer) => {
                 output += d.toString();
               });
-              proc.stderr?.on('data', () => {});
-              proc.on('close', (code: number | null) => {
-                if (code === 0 || output.length > 0) resolve(output);
-                else reject(new Error(`Agent ${agentTool} exited with code ${code}`));
+              proc.stderr?.on('data', (d: Buffer) => {
+                stderrOutput += d.toString();
               });
-              proc.on('error', (err: Error) => reject(err));
-              setTimeout(() => {
+
+              proc.on('close', (code: number | null) => {
+                settle(() => {
+                  if (code === 0 || output.length > 0) {
+                    resolve(output);
+                  } else {
+                    reject(
+                      new Error(
+                        `Agent ${agentTool} exited with code ${code}${stderrOutput ? ': ' + stderrOutput.slice(0, 500) : ''}`
+                      )
+                    );
+                  }
+                });
+              });
+
+              proc.on('error', (err: Error) => {
+                settle(() => reject(new Error(`Failed to spawn ${agentTool}: ${err.message}`)));
+              });
+
+              const timeout = setTimeout(() => {
                 proc.kill('SIGTERM');
-                resolve(output || 'Agent timed out');
+                settle(() => resolve(output || `Agent ${agentTool} timed out after 10 minutes`));
               }, 600000);
+
+              proc.on('close', () => clearTimeout(timeout));
             });
 
           // Sync task count from PRD
           await ralphManager.refreshTaskCount();
 
+          // Load PRD for project name (used in prompts)
           const prd = await ralphManager.loadPRD();
+          if (!prd || !prd.userStories || prd.userStories.length === 0) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify({
+                    success: false,
+                    error: 'No PRD found or no user stories. Run rulebook_ralph_init first.',
+                  }),
+                },
+              ],
+            };
+          }
+
+          const projectName = prd.project || 'unknown';
           let iterationCount = 0;
 
           while (ralphManager.canContinue() && iterationCount < maxIterations) {
@@ -1083,7 +1155,7 @@ export async function startRulebookMcpServer(): Promise<void> {
             // 1. Execute AI agent
             let agentOutput = '';
             try {
-              const prompt = buildPrompt(task, prd);
+              const prompt = buildPrompt(task, projectName);
               agentOutput = await executeAgent(tool, prompt);
             } catch (agentErr: any) {
               agentOutput = `Error: ${agentErr.message || agentErr}`;
@@ -1128,7 +1200,7 @@ export async function startRulebookMcpServer(): Promise<void> {
               tool
             );
 
-            // 5. Record iteration
+            // 5. Record iteration and refresh task count for canContinue()
             await ralphManager.recordIteration({
               iteration: iterationCount,
               timestamp: new Date().toISOString(),
@@ -1147,6 +1219,9 @@ export async function startRulebookMcpServer(): Promise<void> {
                 parsed_completion: parsed.metadata.parsed_completion,
               },
             });
+
+            // Refresh task count so canContinue() reflects updated PRD
+            await ralphManager.refreshTaskCount();
           }
 
           const stats = await ralphManager.getTaskStats();

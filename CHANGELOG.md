@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.1] - 2026-02-27
+
+### Fixed
+- **Ralph MCP: CLI tool validation** — `rulebook_ralph_run` now validates that the selected AI tool (claude/amp/gemini) is installed and accessible before starting the loop, returning a clear error message instead of silently failing.
+- **Ralph MCP: PRD init race condition** — `rulebook_ralph_init` now generates and writes the PRD to disk *before* calling `initialize()`, so `total_tasks` is correctly set from the start.
+- **Ralph MCP: PRD staleness in loop** — After each iteration, `refreshTaskCount()` is called to sync completed/total tasks from the PRD file, ensuring `canContinue()` reflects the latest state.
+- **Ralph MCP: Missing PRD guard** — `rulebook_ralph_run` now returns an explicit error if no PRD exists or has no user stories, instead of silently doing nothing.
+- **Ralph MCP: executeAgent error handling** — Spawn failures now include stderr output in error messages. Timeout cleanup properly clears. Race between close/error/timeout events prevented with settle guard.
+- **Ralph Manager: projectRoot calculation** — Replaced fragile `path.dirname(path.dirname(ralphDir))` with stored `this.projectRoot` for reliable path resolution in `syncTasksCheckboxes`.
+- **Ralph Manager: task stats consistency** — `recordIteration()` now syncs `completed_tasks` and `total_tasks` from the PRD file instead of blindly incrementing, keeping state consistent with `getTaskStats()`.
+- **RalphParser: quality gate false positives** — Rewrote `extractQualityChecks` to use line-level matching instead of global keyword search, preventing unrelated mentions of "error" or "test" from corrupting gate results.
+- **PRDGenerator test**: Fixed default `tasksDir` from old `rulebook/tasks` to `.rulebook/tasks`.
+
 ## [3.4.0] - 2026-02-27
 
 ### Removed

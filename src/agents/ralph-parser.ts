@@ -59,7 +59,10 @@ export class RalphParser {
   }
 
   /**
-   * Extract quality check results from agent output
+   * Extract quality check results from agent output.
+   * Uses line-level matching to avoid false positives from global keyword presence.
+   * Note: In MCP ralph_run, real quality gates are determined by actual command exit codes,
+   * not this parser. This is a best-effort extraction for standalone parsing.
    */
   private static extractQualityChecks(output: string): {
     type_check: boolean;
@@ -67,26 +70,42 @@ export class RalphParser {
     tests: boolean;
     coverage_met: boolean;
   } {
-    const lowerOutput = output.toLowerCase();
+    const lines = output.split('\n').map((l) => l.toLowerCase().trim());
 
-    // Look for quality gate indicators
-    const typeCheckPass =
-      this.hasKeyword(lowerOutput, ['type-check', 'typescript', 'tsc']) &&
-      !this.hasKeyword(lowerOutput, ['error', 'failed', 'fail']);
+    // Look for explicit pass/fail patterns on the SAME line as the gate keyword
+    const typeCheckPass = lines.some(
+      (l) =>
+        (l.includes('type-check') || l.includes('tsc')) &&
+        (l.includes('pass') || l.includes('success') || l.includes('✓')) &&
+        !l.includes('fail') &&
+        !l.includes('error')
+    );
 
-    const lintPass =
-      this.hasKeyword(lowerOutput, ['eslint', 'lint']) &&
-      !this.hasKeyword(lowerOutput, ['error', 'failed', 'fail', 'warning', 'problems']);
+    const lintPass = lines.some(
+      (l) =>
+        (l.includes('eslint') || (l.includes('lint') && !l.includes('linting issues'))) &&
+        (l.includes('pass') ||
+          l.includes('success') ||
+          l.includes('✓') ||
+          l.includes('0 problems')) &&
+        !l.includes('fail') &&
+        !l.includes('error')
+    );
 
-    const testsPass =
-      this.hasKeyword(lowerOutput, ['test', 'jest', 'vitest', 'mocha']) &&
-      this.hasKeyword(lowerOutput, ['pass', 'passed', '✓', 'all', 'success', '100%']) &&
-      !this.hasKeyword(lowerOutput, ['failed', 'fail', 'error']);
+    const testsPass = lines.some(
+      (l) =>
+        (l.includes('test') || l.includes('vitest') || l.includes('jest')) &&
+        (l.includes('pass') || l.includes('passed') || l.includes('✓') || l.includes('success')) &&
+        !l.includes('fail') &&
+        !l.includes('error')
+    );
 
     const coveragePass =
-      this.hasKeyword(lowerOutput, ['coverage']) &&
-      (this.hasKeyword(lowerOutput, ['95%', '96%', '97%', '98%', '99%', '100%']) ||
-        this.hasPercentageAbove(output, 95));
+      lines.some((l) => l.includes('coverage') && this.lineHasPercentageAbove(l, 95)) ||
+      lines.some(
+        (l) =>
+          l.includes('coverage') && (l.includes('pass') || l.includes('met') || l.includes('✓'))
+      );
 
     return {
       type_check: typeCheckPass,
@@ -94,6 +113,21 @@ export class RalphParser {
       tests: testsPass,
       coverage_met: coveragePass,
     };
+  }
+
+  /**
+   * Helper: Check if a single line contains percentage >= threshold
+   */
+  private static lineHasPercentageAbove(line: string, threshold: number): boolean {
+    // eslint-disable-next-line no-useless-escape
+    const percentMatches = line.match(/(\d+(?:\.\d+)?)%/g);
+    if (!percentMatches) {
+      return false;
+    }
+    return percentMatches.some((match) => {
+      const percent = parseFloat(match);
+      return percent >= threshold;
+    });
   }
 
   /**
@@ -257,28 +291,5 @@ export class RalphParser {
 
     const lowerOutput = output.toLowerCase();
     return completionKeywords.some((kw) => lowerOutput.includes(kw));
-  }
-
-  /**
-   * Helper: Check if output contains keyword (case-insensitive)
-   */
-  private static hasKeyword(output: string, keywords: string[]): boolean {
-    return keywords.some((kw) => output.toLowerCase().includes(kw.toLowerCase()));
-  }
-
-  /**
-   * Helper: Check if output contains percentage >= threshold
-   */
-  private static hasPercentageAbove(output: string, threshold: number): boolean {
-    // eslint-disable-next-line no-useless-escape
-    const percentMatches = output.match(/(\d+(?:\.\d+)?)%/g);
-    if (!percentMatches) {
-      return false;
-    }
-
-    return percentMatches.some((match) => {
-      const percent = parseFloat(match);
-      return percent >= threshold;
-    });
   }
 }

@@ -439,7 +439,7 @@ describe('Ralph Autonomous Loop', () => {
     let generator: PRDGenerator;
 
     beforeEach(() => {
-      generator = new PRDGenerator(tempDir, logger, 'rulebook/tasks');
+      generator = new PRDGenerator(tempDir, logger);
     });
 
     it('should initialize generator', () => {
