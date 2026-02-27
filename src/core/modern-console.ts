@@ -1,7 +1,14 @@
 import blessed from 'blessed';
-import { createOpenSpecManager } from './openspec-manager.js';
-import type { OpenSpecTask } from '../types.js';
 import type { AgentManager } from './agent-manager.js';
+
+interface WatcherTask {
+  id: string;
+  title: string;
+  description: string;
+  status: 'pending' | 'in-progress' | 'completed' | 'failed' | 'skipped';
+  completedAt?: string;
+  metadata?: { startedAt?: string; [key: string]: any };
+}
 
 export interface ModernConsoleOptions {
   projectRoot: string;
@@ -21,7 +28,6 @@ interface ActivityLogEntry {
  */
 export class ModernConsole {
   private screen: blessed.Widgets.Screen;
-  private openspecManager: ReturnType<typeof createOpenSpecManager>;
   private isRunning = false;
 
   // UI Components
@@ -33,8 +39,8 @@ export class ModernConsole {
   private progressLabel!: blessed.Widgets.TextElement;
 
   // Data
-  private tasks: OpenSpecTask[] = [];
-  private history: OpenSpecTask[] = [];
+  private tasks: WatcherTask[] = [];
+  private history: WatcherTask[] = [];
   private activityLogs: ActivityLogEntry[] = [];
   private agentManager?: AgentManager;
   private isAgentRunning = false;
@@ -52,14 +58,6 @@ export class ModernConsole {
 
   constructor(options: ModernConsoleOptions) {
     this.agentManager = options.agentManager;
-
-    // Use the same openspecManager as the agent to avoid loading different tasks
-    if (this.agentManager) {
-      // Get the openspecManager from agentManager (we'll need to expose it)
-      this.openspecManager = createOpenSpecManager(options.projectRoot);
-    } else {
-      this.openspecManager = createOpenSpecManager(options.projectRoot);
-    }
 
     this.screen = blessed.screen({
       smartCSR: true,
@@ -268,7 +266,7 @@ export class ModernConsole {
             },
             onTasksReloaded: (tasks) => {
               // Update tasks list with the ones agent loaded
-              this.tasks = tasks;
+              this.tasks = tasks as WatcherTask[];
               this.logActivity(
                 'info',
                 `[DEBUG] Watcher updated with ${tasks.length} tasks from agent`
@@ -294,7 +292,7 @@ export class ModernConsole {
 
               if (task) {
                 // Update task status
-                task.status = status as OpenSpecTask['status'];
+                task.status = status as WatcherTask['status'];
 
                 // Update metadata
                 if (status === 'in-progress') {
@@ -362,13 +360,12 @@ export class ModernConsole {
   }
 
   /**
-   * Refresh tasks from OpenSpec
+   * Refresh tasks
    */
   private async refreshTasks(): Promise<void> {
     try {
-      const data = await this.openspecManager.loadOpenSpec();
-      this.tasks = data.tasks;
-      this.history = data.history;
+      // Tasks are now managed by Rulebook task system, not loaded here
+      // The watcher displays tasks provided via callbacks
 
       // Debug: Log refresh results
       const progress = this.getProgressInfo();
@@ -623,10 +620,9 @@ export class ModernConsole {
     this.isRunning = true;
 
     try {
-      await this.openspecManager.initialize();
-      const data = await this.openspecManager.loadOpenSpec();
-      this.tasks = data.tasks;
-      this.history = data.history;
+      // Tasks loaded via callbacks from agent manager
+      this.tasks = [];
+      this.history = [];
 
       // Debug: Log loaded task IDs
       this.logActivity(

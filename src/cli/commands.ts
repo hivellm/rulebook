@@ -1021,8 +1021,7 @@ export async function taskCreateCommand(taskId: string): Promise<void> {
     console.log(chalk.green(`✅ Task ${taskId} created successfully`));
     console.log(chalk.gray(`Location: ${rulebookDir}/tasks/${taskId}/`));
     console.log(chalk.yellow('\n⚠️  Remember to:'));
-    console.log(chalk.gray('  1. Check Context7 MCP for OpenSpec format requirements'));
-    console.log(chalk.gray('  2. Fill in proposal.md (minimum 20 characters in "Why" section)'));
+    console.log(chalk.gray('  1. Fill in proposal.md (minimum 20 characters in "Why" section)'));
     console.log(chalk.gray('  3. Add tasks to tasks.md'));
     console.log(chalk.gray('  4. Create spec deltas in specs/*/spec.md'));
     console.log(chalk.gray('  5. Validate with: rulebook task validate ' + taskId));
@@ -1323,8 +1322,8 @@ export async function tasksCommand(options: {
   console.log(chalk.gray('  - rulebook task archive <task-id>'));
 
   if (options.tree || options.current || options.status) {
-    console.log(chalk.red('\n❌ Legacy OpenSpec commands are no longer supported.'));
-    console.log(chalk.yellow('Please migrate to the new Rulebook task system.'));
+    console.log(chalk.red('\n❌ Legacy commands are no longer supported.'));
+    console.log(chalk.yellow('Please use the Rulebook task system.'));
     process.exit(1);
   }
 
@@ -1483,143 +1482,7 @@ export async function updateCommand(options: {
       });
     }
 
-    // Migrate OpenSpec tasks to Rulebook format (if OpenSpec exists)
-    const openspecChangesPath = path.join(cwd, 'openspec', 'changes');
-    if (existsSync(openspecChangesPath)) {
-      const migrationSpinner = ora('Migrating OpenSpec tasks to Rulebook format...').start();
-      const { migrateOpenSpecToRulebook, migrateOpenSpecArchives, removeOpenSpecRulebookFile } =
-        await import('../core/openspec-migrator.js');
-
-      const rulebookDir = config.rulebookDir || '.rulebook';
-      const migrationResult = await migrateOpenSpecToRulebook(cwd, rulebookDir);
-      const archiveMigrationResult = await migrateOpenSpecArchives(cwd, rulebookDir);
-
-      if (migrationResult.migrated > 0 || archiveMigrationResult.migrated > 0) {
-        const totalMigrated = migrationResult.migrated + archiveMigrationResult.migrated;
-        migrationSpinner.succeed(`Migrated ${totalMigrated} OpenSpec task(s) to Rulebook format`);
-        if (migrationResult.migratedTasks.length > 0) {
-          console.log(chalk.gray(`  Active tasks: ${migrationResult.migratedTasks.join(', ')}`));
-        }
-        if (archiveMigrationResult.migratedTasks.length > 0) {
-          console.log(
-            chalk.gray(`  Archived tasks: ${archiveMigrationResult.migratedTasks.join(', ')}`)
-          );
-        }
-      } else if (migrationResult.skipped > 0 || archiveMigrationResult.skipped > 0) {
-        migrationSpinner.info('No OpenSpec tasks to migrate (already migrated or none found)');
-      } else {
-        migrationSpinner.info('No OpenSpec tasks found');
-      }
-
-      const allErrors = [...migrationResult.errors, ...archiveMigrationResult.errors];
-      if (allErrors.length > 0) {
-        console.log(chalk.yellow('\n⚠️  Migration warnings:'));
-        for (const error of allErrors) {
-          console.log(chalk.yellow(`  - ${error}`));
-        }
-      }
-
-      // Remove /.rulebook/specs/OPENSPEC.md if exists
-      const removed = await removeOpenSpecRulebookFile(cwd, rulebookDir);
-      if (removed) {
-        console.log(chalk.gray(`  Removed /${rulebookDir}/specs/OPENSPEC.md`));
-      }
-
-      // Remove OpenSpec commands from .cursor/commands/
-      const { removeOpenSpecCommands } = await import('../core/openspec-migrator.js');
-      const removedCommands = await removeOpenSpecCommands(cwd);
-      if (removedCommands > 0) {
-        console.log(
-          chalk.gray(`  Removed ${removedCommands} OpenSpec command(s) from .cursor/commands/`)
-        );
-      }
-
-      // Generate Rulebook commands if Cursor is detected or if OpenSpec was used (likely Cursor project)
-      const cursorRulesPath = path.join(cwd, '.cursorrules');
-      const cursorCommandsDir = path.join(cwd, '.cursor', 'commands');
-      const usesCursor = existsSync(cursorRulesPath) || existsSync(cursorCommandsDir);
-
-      // Always generate commands if OpenSpec exists (OpenSpec was primarily used with Cursor)
-      // or if Cursor is explicitly detected
-      if (usesCursor || removedCommands > 0) {
-        const { generateCursorCommands } = await import('../core/workflow-generator.js');
-        const generatedCommands = await generateCursorCommands(cwd);
-        if (generatedCommands.length > 0) {
-          console.log(
-            chalk.green(
-              `  Generated ${generatedCommands.length} Rulebook command(s) in .cursor/commands/`
-            )
-          );
-        } else if (usesCursor || removedCommands > 0) {
-          // Commands already exist, just inform user
-          console.log(chalk.gray('  Rulebook commands already exist in .cursor/commands/'));
-        }
-      }
-
-      // Remove OpenSpec directory after successful migration
-      const openspecPath = path.join(cwd, 'openspec');
-      if (existsSync(openspecPath)) {
-        const hasErrors =
-          migrationResult.errors.length > 0 || archiveMigrationResult.errors.length > 0;
-
-        // Remove directory if no errors occurred (migration was successful)
-        // Even if no tasks were migrated (already migrated or empty), remove the directory
-        if (!hasErrors) {
-          try {
-            const { rmSync } = await import('fs');
-            rmSync(openspecPath, { recursive: true, force: true });
-            console.log(chalk.gray('  Removed /openspec directory'));
-          } catch (error: any) {
-            console.log(
-              chalk.yellow(`  ⚠️  Could not remove /openspec directory: ${error.message}`)
-            );
-          }
-        } else {
-          console.log(
-            chalk.yellow(
-              '  ⚠️  /openspec directory kept due to migration errors (review and remove manually)'
-            )
-          );
-        }
-      }
-    } else {
-      // Check if /openspec directory exists (even without /openspec/changes)
-      const openspecPath = path.join(cwd, 'openspec');
-      if (existsSync(openspecPath)) {
-        // Remove OpenSpec commands and generate Rulebook commands
-        const { removeOpenSpecCommands } = await import('../core/openspec-migrator.js');
-        const removedCommands = await removeOpenSpecCommands(cwd);
-        if (removedCommands > 0) {
-          console.log(
-            chalk.gray(`  Removed ${removedCommands} OpenSpec command(s) from .cursor/commands/`)
-          );
-        }
-
-        // Generate Rulebook commands if Cursor is detected or if OpenSpec was used
-        const cursorRulesPath = path.join(cwd, '.cursorrules');
-        const cursorCommandsDir = path.join(cwd, '.cursor', 'commands');
-        const usesCursor = existsSync(cursorRulesPath) || existsSync(cursorCommandsDir);
-
-        // Always generate commands if OpenSpec exists (OpenSpec was primarily used with Cursor)
-        // or if Cursor is explicitly detected
-        if (usesCursor || removedCommands > 0) {
-          const { generateCursorCommands } = await import('../core/workflow-generator.js');
-          const generatedCommands = await generateCursorCommands(cwd);
-          if (generatedCommands.length > 0) {
-            console.log(
-              chalk.green(
-                `  Generated ${generatedCommands.length} Rulebook command(s) in .cursor/commands/`
-              )
-            );
-          } else if (usesCursor || removedCommands > 0) {
-            // Commands already exist, just inform user
-            console.log(chalk.gray('  Rulebook commands already exist in .cursor/commands/'));
-          }
-        }
-      }
-    }
-
-    // Always generate Rulebook commands if Cursor is detected (even without OpenSpec)
+    // Generate Rulebook commands if Cursor is detected
     // This ensures commands are available for all Cursor projects
     const cursorRulesPath = path.join(cwd, '.cursorrules');
     const cursorCommandsDir = path.join(cwd, '.cursor', 'commands');

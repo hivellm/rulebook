@@ -910,7 +910,7 @@ export class CLIBridge {
     } else if (toolName === 'gemini-cli') {
       command = `Please implement this task: ${task.title}. Description: ${task.description}`;
     } else {
-      command = `Implement task "${task.title}" from OpenSpec. Description: ${task.description}`;
+      command = `Implement task "${task.title}". Description: ${task.description}`;
     }
 
     // cursor-agent needs extra time for complex tasks (30 minutes)

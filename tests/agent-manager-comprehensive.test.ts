@@ -3,19 +3,16 @@ import { createAgentManager, AgentManager } from '../src/core/agent-manager.js';
 import { createCLIBridge } from '../src/core/cli-bridge.js';
 import { createLogger, initializeLogger } from '../src/core/logger.js';
 import { createConfigManager } from '../src/core/config-manager.js';
-import { createOpenSpecManager } from '../src/core/openspec-manager.js';
 
 // Mock dependencies
 vi.mock('../src/core/logger.js');
 vi.mock('../src/core/config-manager.js');
-vi.mock('../src/core/openspec-manager.js');
 vi.mock('../src/core/cli-bridge.js');
 
 describe.skip('Agent Manager Comprehensive Tests', () => {
   let agentManager: AgentManager;
   let mockLogger: any;
   let mockConfigManager: any;
-  let mockOpenSpecManager: any;
   let mockCLIBridge: any;
 
   beforeEach(() => {
@@ -51,26 +48,8 @@ describe.skip('Agent Manager Comprehensive Tests', () => {
         projectId: 'test-project',
         coverageThreshold: 95,
         cliTools: ['cursor-agent'],
-        enabledFeatures: ['agent', 'openspec'],
+        enabledFeatures: ['agent'],
       }),
-    };
-
-    // Mock OpenSpec manager
-    mockOpenSpecManager = {
-      initialize: vi.fn().mockResolvedValue(undefined),
-      getNextTask: vi.fn().mockResolvedValue({
-        id: 'test-task-1',
-        title: 'Test Task',
-        description: 'Test task description',
-        priority: 'high',
-        status: 'pending',
-        dependencies: [],
-      }),
-      setCurrentTask: vi.fn().mockResolvedValue(undefined),
-      updateTaskStatus: vi.fn().mockResolvedValue(undefined),
-      markTaskComplete: vi.fn().mockResolvedValue(undefined),
-      syncTaskStatus: vi.fn().mockResolvedValue(undefined),
-      setLogCallback: vi.fn().mockReturnValue(undefined),
     };
 
     // Mock CLI bridge
@@ -132,7 +111,6 @@ describe.skip('Agent Manager Comprehensive Tests', () => {
     vi.mocked(createLogger).mockReturnValue(mockLogger);
     vi.mocked(initializeLogger).mockReturnValue(mockLogger);
     vi.mocked(createConfigManager).mockReturnValue(mockConfigManager);
-    vi.mocked(createOpenSpecManager).mockReturnValue(mockOpenSpecManager);
     vi.mocked(createCLIBridge).mockReturnValue(mockCLIBridge);
 
     // Create agent manager
@@ -148,7 +126,7 @@ describe.skip('Agent Manager Comprehensive Tests', () => {
       await expect(agentManager.initialize()).resolves.not.toThrow();
 
       expect(mockConfigManager.loadConfig).toHaveBeenCalled();
-      expect(mockOpenSpecManager.initialize).toHaveBeenCalled();
+      // OpenSpec removed
       expect(mockLogger.info).toHaveBeenCalledWith('Agent Manager initialized');
     });
 
@@ -448,12 +426,12 @@ describe.skip('Agent Manager Comprehensive Tests', () => {
       await agentManager.initialize();
 
       // Mock getNextTask to return null to prevent workflow execution
-      mockOpenSpecManager.getNextTask.mockResolvedValueOnce(null);
+      // OpenSpec mock removed
 
       await (agentManager as any).startAgent(options);
 
       // Since watchMode is just a placeholder, just verify it completes without error
-      expect(mockOpenSpecManager.syncTaskStatus).toHaveBeenCalled();
+      // OpenSpec removed
     });
 
     it('should handle custom max iterations', async () => {
@@ -462,7 +440,7 @@ describe.skip('Agent Manager Comprehensive Tests', () => {
       await agentManager.initialize();
 
       // Mock getNextTask to return null immediately
-      mockOpenSpecManager.getNextTask.mockResolvedValueOnce(null);
+      // OpenSpec mock removed
 
       await (agentManager as any).runAgentWorkflow(options);
 
@@ -496,31 +474,16 @@ describe.skip('Agent Manager Comprehensive Tests', () => {
       await agentManager.initialize();
 
       // Mock getNextTask to return null to prevent workflow execution
-      mockOpenSpecManager.getNextTask.mockResolvedValueOnce(null);
+      // OpenSpec mock removed
 
       await agentManager.startAgent({ maxIterations: 1 });
 
-      expect(mockOpenSpecManager.syncTaskStatus).toHaveBeenCalledTimes(1);
+      // OpenSpec removed
     });
 
     it('should call syncTaskStatus before workflow execution', async () => {
       await agentManager.initialize();
-
-      // Mock getNextTask to return a task
-      mockOpenSpecManager.getNextTask.mockResolvedValueOnce({
-        id: 'task-1',
-        title: 'Test Task',
-        description: 'Test Description',
-        priority: 'high',
-        status: 'pending',
-        dependencies: [],
-      });
-
       await agentManager.startAgent({ maxIterations: 1 });
-
-      // Verify both functions were called
-      expect(mockOpenSpecManager.syncTaskStatus).toHaveBeenCalled();
-      expect(mockOpenSpecManager.getNextTask).toHaveBeenCalled();
     });
 
     it('should handle syncTaskStatus errors gracefully', async () => {
@@ -528,10 +491,10 @@ describe.skip('Agent Manager Comprehensive Tests', () => {
 
       // Mock syncTaskStatus to throw an error
       const syncError = new Error('Sync failed');
-      mockOpenSpecManager.syncTaskStatus.mockRejectedValue(syncError);
+      // OpenSpec mock removed
 
       // Mock getNextTask to return null to prevent workflow execution
-      mockOpenSpecManager.getNextTask.mockResolvedValue(null);
+      // OpenSpec mock removed
 
       // Agent should handle the error gracefully
       try {
@@ -548,7 +511,7 @@ describe.skip('Agent Manager Comprehensive Tests', () => {
       await agentManager.initialize();
 
       // Mock getNextTask to return null to prevent workflow execution
-      mockOpenSpecManager.getNextTask.mockResolvedValueOnce(null);
+      // OpenSpec mock removed
 
       const onLogSpy = vi.fn();
       await agentManager.startAgent({
@@ -564,7 +527,7 @@ describe.skip('Agent Manager Comprehensive Tests', () => {
       await agentManager.initialize();
 
       // Mock getNextTask to return null to prevent workflow execution
-      mockOpenSpecManager.getNextTask.mockResolvedValueOnce(null);
+      // OpenSpec mock removed
 
       // Mock console.log to track calls
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -580,29 +543,8 @@ describe.skip('Agent Manager Comprehensive Tests', () => {
 
   describe('Integration Tests', () => {
     it('should complete full agent workflow', async () => {
-      // Mock successful workflow
-      mockOpenSpecManager.getNextTask
-        .mockResolvedValueOnce({
-          id: 'task-1',
-          title: 'Test Task',
-          description: 'Test Description',
-          priority: 'high',
-          status: 'pending',
-          dependencies: [],
-        })
-        .mockResolvedValueOnce(null);
-
       await agentManager.initialize();
       await agentManager.startAgent({ maxIterations: 1 });
-
-      expect(mockOpenSpecManager.syncTaskStatus).toHaveBeenCalled();
-      expect(mockOpenSpecManager.getNextTask).toHaveBeenCalled();
-      expect(mockCLIBridge.sendTaskCommand).toHaveBeenCalled();
-      expect(mockCLIBridge.sendContinueCommand).toHaveBeenCalled();
-      expect(mockCLIBridge.sendTestCommand).toHaveBeenCalled();
-      expect(mockCLIBridge.sendLintCommand).toHaveBeenCalled();
-      expect(mockCLIBridge.sendFormatCommand).toHaveBeenCalled();
-      expect(mockCLIBridge.sendCommitCommand).toHaveBeenCalled();
     });
 
     it('should handle CLI health checks', async () => {

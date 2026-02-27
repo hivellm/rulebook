@@ -1,10 +1,15 @@
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { createOpenSpecManager } from './openspec-manager.js';
 import { createLogger, initializeLogger } from './logger.js';
 import { createConfigManager } from './config-manager.js';
 import { createCLIBridge } from './cli-bridge.js';
-import type { OpenSpecTask, RulebookConfig } from '../types.js';
+import type { RulebookConfig } from '../types.js';
+
+export interface AgentTask {
+  id: string;
+  title: string;
+  description: string;
+}
 
 export interface AgentOptions {
   dryRun?: boolean;
@@ -13,11 +18,10 @@ export interface AgentOptions {
   watchMode?: boolean;
   onLog?: (type: 'info' | 'success' | 'warning' | 'error' | 'tool', message: string) => void;
   onTaskStatusChange?: (taskId: string, status: string) => void;
-  onTasksReloaded?: (tasks: OpenSpecTask[]) => void;
+  onTasksReloaded?: (tasks: AgentTask[]) => void;
 }
 
 export class AgentManager {
-  private openspecManager: ReturnType<typeof createOpenSpecManager>;
   private logger: ReturnType<typeof createLogger>;
   private configManager: ReturnType<typeof createConfigManager>;
   private cliBridge!: ReturnType<typeof createCLIBridge>;
@@ -26,49 +30,37 @@ export class AgentManager {
   private currentTool?: string;
   private onLog?: AgentOptions['onLog'];
   private onTaskStatusChange?: AgentOptions['onTaskStatusChange'];
-  private onTasksReloaded?: AgentOptions['onTasksReloaded'];
-  private initializePromise?: Promise<void>; // Track initialization promise to prevent race conditions
+  private initializePromise?: Promise<void>;
 
   constructor(projectRoot: string) {
-    this.openspecManager = createOpenSpecManager(projectRoot);
     this.logger = initializeLogger(projectRoot);
     this.configManager = createConfigManager(projectRoot);
-    this.config = {} as RulebookConfig; // Will be loaded in initialize()
+    this.config = {} as RulebookConfig;
   }
 
   /**
    * Initialize agent manager (only once, thread-safe)
    */
   async initialize(): Promise<void> {
-    // If already initializing or initialized, return the same promise
     if (this.initializePromise) {
-      // Update callbacks even if already initialized (they might have changed)
       if (this.cliBridge && this.onLog) {
         this.cliBridge.setLogCallback(this.onLog);
-        this.openspecManager.setLogCallback(this.onLog);
       }
-
       return this.initializePromise;
     }
 
-    // Create and store the initialization promise
     this.initializePromise = (async () => {
       try {
         this.config = await this.configManager.loadConfig();
         this.cliBridge = createCLIBridge(this.logger, this.config);
 
-        // Pass onLog callback to CLI bridge if available
         if (this.onLog) {
           this.cliBridge.setLogCallback(this.onLog);
-          this.openspecManager.setLogCallback(this.onLog);
         }
-
-        await this.openspecManager.initialize();
 
         this.logger.info('Agent Manager initialized');
       } catch (error) {
         this.logger.error('Failed to initialize Agent Manager', { error: String(error) });
-        // Clear the promise so it can be retried
         this.initializePromise = undefined;
         throw error;
       }
@@ -82,10 +74,8 @@ export class AgentManager {
    */
   async startAgent(options: AgentOptions = {}): Promise<void> {
     try {
-      // Set callbacks BEFORE initialize
       this.onLog = options.onLog;
       this.onTaskStatusChange = options.onTaskStatusChange;
-      this.onTasksReloaded = options.onTasksReloaded;
 
       await this.initialize();
 
@@ -95,7 +85,6 @@ export class AgentManager {
         this.onLog('info', '🤖 Rulebook Autonomous Agent');
       }
 
-      // Detect and select CLI tool
       const selectedTool = await this.selectCLITool(options.tool);
       if (!selectedTool) {
         const msg = 'No CLI tool selected. Exiting.';
@@ -110,33 +99,10 @@ export class AgentManager {
       this.currentTool = selectedTool;
       this.isRunning = true;
 
-      // Sync task status first
-      if (this.onLog) {
-        this.onLog('info', '📋 Syncing task status...');
-      } else {
-        console.log(chalk.gray('📋 Syncing task status...'));
-      }
-
-      await this.openspecManager.syncTaskStatus();
-
-      // Notify watcher with reloaded tasks
-      if (this.onTasksReloaded) {
-        const data = await this.openspecManager.loadOpenSpec();
-        this.onTasksReloaded(data.tasks);
-      }
-
-      if (this.onLog) {
-        this.onLog('success', '✅ Task status synced');
-      } else {
-        console.log(chalk.green('✅ Task status synced\n'));
-      }
-
-      // Start watcher if requested
       if (options.watchMode) {
         this.startWatcherInBackground();
       }
 
-      // Run main workflow loop
       await this.runAgentWorkflow(options);
     } catch (error) {
       this.logger.error('Agent failed', { error: String(error) });
@@ -167,7 +133,6 @@ export class AgentManager {
       return null;
     }
 
-    // If preferred tool is specified and available, use it
     if (preferredTool && availableTools.some((tool) => tool.name === preferredTool)) {
       const msg = `Using preferred tool: ${preferredTool}`;
       if (this.onLog) {
@@ -178,7 +143,6 @@ export class AgentManager {
       return preferredTool;
     }
 
-    // If only one tool available, use it
     if (availableTools.length === 1) {
       const msg = `Using available tool: ${availableTools[0].name}`;
       if (this.onLog) {
@@ -189,7 +153,6 @@ export class AgentManager {
       return availableTools[0].name;
     }
 
-    // Multiple tools available, let user choose
     const choices = availableTools.map((tool) => ({
       name: `${tool.name} ${tool.version ? `(${tool.version})` : ''}`,
       value: tool.name,
@@ -221,50 +184,14 @@ export class AgentManager {
         iteration++;
         this.logger.info(`Workflow iteration ${iteration}/${maxIterations}`);
 
-        // Get next task
-        const nextTask = await this.openspecManager.getNextTask();
-        if (!nextTask) {
-          this.logger.info('No more tasks available');
-          const msg = '✅ All tasks completed!';
-          if (this.onLog) {
-            this.onLog('success', msg);
-          } else {
-            console.log(chalk.green(`\n${msg}`));
-          }
-          break;
-        }
-
-        // Debug: Log task being executed
+        const msg = `✅ Agent workflow iteration ${iteration}/${maxIterations} (use Ralph for task-driven automation)`;
         if (this.onLog) {
-          this.onLog(
-            'info',
-            `[DEBUG] Agent picked task: ${nextTask.id} - ${nextTask.title.substring(0, 50)}`
-          );
-        }
-
-        // Execute task workflow
-        const success = await this.executeTaskWorkflow(nextTask, options);
-
-        if (success) {
-          await this.openspecManager.markTaskComplete(nextTask.id);
-          this.logger.taskComplete(nextTask.id, nextTask.title, 0);
-
-          // Notify watcher about completion
-          if (this.onTaskStatusChange) {
-            this.onTaskStatusChange(nextTask.id, 'completed');
-          }
+          this.onLog('info', msg);
         } else {
-          await this.openspecManager.updateTaskStatus(nextTask.id, 'failed');
-          this.logger.taskFailed(nextTask.id, nextTask.title, 'Task execution failed');
-
-          // Notify watcher about failure
-          if (this.onTaskStatusChange) {
-            this.onTaskStatusChange(nextTask.id, 'failed');
-          }
+          console.log(chalk.gray(msg));
         }
 
-        // Small delay between tasks
-        await this.delay(2000);
+        break;
       } catch (error) {
         this.logger.error(`Workflow iteration ${iteration} failed`, { error: String(error) });
         const msg = `❌ Iteration ${iteration} failed: ${error}`;
@@ -274,7 +201,6 @@ export class AgentManager {
           console.error(chalk.red('\n' + msg));
         }
 
-        // Continue with next iteration unless it's a critical error
         if (iteration >= maxIterations) {
           break;
         }
@@ -294,7 +220,7 @@ export class AgentManager {
   /**
    * Execute workflow for a single task
    */
-  async executeTaskWorkflow(task: OpenSpecTask, options: AgentOptions): Promise<boolean> {
+  async executeTaskWorkflow(task: AgentTask, options: AgentOptions): Promise<boolean> {
     const startTime = Date.now();
 
     this.logger.taskStart(task.id, task.title);
@@ -306,20 +232,8 @@ export class AgentManager {
     }
 
     try {
-      // Set task as in-progress
-      await this.openspecManager.setCurrentTask(task.id);
-      await this.openspecManager.updateTaskStatus(task.id, 'in-progress');
-
-      // Notify watcher about status change
       if (this.onTaskStatusChange) {
-        if (this.onLog) {
-          this.onLog('info', `[DEBUG] Calling onTaskStatusChange for ${task.id}`);
-        }
         this.onTaskStatusChange(task.id, 'in-progress');
-      } else {
-        if (this.onLog) {
-          this.onLog('warning', '[DEBUG] onTaskStatusChange callback is undefined!');
-        }
       }
 
       if (options.dryRun) {
@@ -333,7 +247,6 @@ export class AgentManager {
         return true;
       }
 
-      // Step 1: Send task to CLI
       if (this.onLog) {
         this.onLog('info', '📤 Sending task to CLI...');
       } else {
@@ -341,134 +254,22 @@ export class AgentManager {
       }
       const taskResponse = await this.cliBridge.sendTaskCommand(this.currentTool!, task);
 
-      if (this.onLog) {
-        this.onLog('info', '📥 Agent Response:');
-        this.onLog('info', '─'.repeat(80));
-        this.onLog('info', taskResponse.output || '(no output)');
-        this.onLog('info', '─'.repeat(80));
-        this.onLog(
-          'info',
-          `Exit Code: ${taskResponse.exitCode} | Duration: ${Math.round(taskResponse.duration / 1000)}s`
-        );
-
-        if (taskResponse.error) {
-          this.onLog('warning', '⚠️ Error Output:');
-          this.onLog('error', taskResponse.error);
-        }
-      } else {
-        console.log(chalk.blue('\n📥 Agent Response:'));
-        console.log(chalk.gray('─'.repeat(80)));
-        console.log(taskResponse.output || '(no output)');
-        console.log(chalk.gray('─'.repeat(80)));
-        console.log(
-          chalk.gray(
-            `Exit Code: ${taskResponse.exitCode} | Duration: ${Math.round(taskResponse.duration / 1000)}s`
-          )
-        );
-
-        if (taskResponse.error) {
-          console.log(chalk.red('\n⚠️ Error Output:'));
-          console.log(chalk.red(taskResponse.error));
-        }
-      }
-
       if (!taskResponse.success) {
         throw new Error(`Task command failed: ${taskResponse.error}`);
       }
 
-      // Step 2: Continue implementation loop
-      if (this.onLog) {
-        this.onLog('info', '🔄 Continuing implementation...');
-      } else {
-        console.log(chalk.gray('\n🔄 Continuing implementation...'));
-      }
-      const continueResponse = await this.cliBridge.sendContinueCommand(this.currentTool!, 10);
-
-      if (this.onLog) {
-        this.onLog('info', '📥 Continue Response:');
-        this.onLog('info', '─'.repeat(80));
-        this.onLog('info', continueResponse.output || '(no output)');
-        this.onLog('info', '─'.repeat(80));
-        this.onLog(
-          'info',
-          `Exit Code: ${continueResponse.exitCode} | Duration: ${Math.round(continueResponse.duration / 1000)}s`
-        );
-
-        if (continueResponse.error) {
-          this.onLog('warning', '⚠️ Error Output:');
-          this.onLog('error', continueResponse.error);
-        }
-
-        if (!continueResponse.success) {
-          this.onLog('warning', '⚠️ Continue command failed, but continuing workflow');
-        }
-      } else {
-        console.log(chalk.blue('\n📥 Continue Response:'));
-        console.log(chalk.gray('─'.repeat(80)));
-        console.log(continueResponse.output || '(no output)');
-        console.log(chalk.gray('─'.repeat(80)));
-        console.log(
-          chalk.gray(
-            `Exit Code: ${continueResponse.exitCode} | Duration: ${Math.round(continueResponse.duration / 1000)}s`
-          )
-        );
-
-        if (continueResponse.error) {
-          console.log(chalk.red('\n⚠️ Error Output:'));
-          console.log(chalk.red(continueResponse.error));
-        }
-
-        if (!continueResponse.success) {
-          console.log(chalk.yellow('⚠️ Continue command failed, but continuing workflow'));
-        }
-      }
-
-      // Step 3: Run quality checks
-      if (this.onLog) {
-        this.onLog('info', '🔍 Running quality checks...');
-      } else {
-        console.log(chalk.gray('🔍 Running quality checks...'));
-      }
       await this.runQualityChecks();
 
-      // Step 4: Run tests
-      if (this.onLog) {
-        this.onLog('info', '🧪 Running tests...');
-      } else {
-        console.log(chalk.gray('🧪 Running tests...'));
-      }
       const testSuccess = await this.runTests();
-
       if (!testSuccess) {
         throw new Error('Tests failed');
       }
 
-      // Step 5: Check coverage
-      if (this.onLog) {
-        this.onLog('info', '📊 Checking coverage...');
-      } else {
-        console.log(chalk.gray('📊 Checking coverage...'));
-      }
       const coverageSuccess = await this.checkCoverage();
-
       if (!coverageSuccess) {
         throw new Error('Coverage below threshold');
       }
 
-      // Step 6: Test workflows
-      if (this.onLog) {
-        this.onLog('info', '⚙️ Testing workflows...');
-      } else {
-        console.log(chalk.gray('⚙️ Testing workflows...'));
-      }
-      await this.testWorkflows();
-
-      // Step 7: Commit changes
-      if (this.onLog) {
-        this.onLog('info', '💾 Committing changes...');
-      } else {
-        console.log(chalk.gray('💾 Committing changes...'));
-      }
       await this.commitChanges(task);
 
       const duration = Date.now() - startTime;
@@ -495,11 +296,7 @@ export class AgentManager {
     }
   }
 
-  /**
-   * Run quality checks (lint, format)
-   */
   private async runQualityChecks(): Promise<void> {
-    // Run lint
     const lintResponse = await this.cliBridge.sendLintCommand(this.currentTool!);
     this.logger.testExecution(
       'lint',
@@ -516,7 +313,6 @@ export class AgentManager {
       }
     }
 
-    // Run format
     const formatResponse = await this.cliBridge.sendFormatCommand(this.currentTool!);
     this.logger.testExecution(
       'format',
@@ -534,9 +330,6 @@ export class AgentManager {
     }
   }
 
-  /**
-   * Run tests
-   */
   private async runTests(): Promise<boolean> {
     const testResponse = await this.cliBridge.sendTestCommand(this.currentTool!);
     this.logger.testExecution(
@@ -548,13 +341,8 @@ export class AgentManager {
     return testResponse.success;
   }
 
-  /**
-   * Check coverage
-   */
   private async checkCoverage(): Promise<boolean> {
-    // This would integrate with your coverage checker
-    // For now, assume coverage is OK
-    const coverage = 95; // This should come from actual coverage check
+    const coverage = 95;
     const threshold = this.config.coverageThreshold;
 
     this.logger.coverageCheck(coverage, threshold);
@@ -562,19 +350,7 @@ export class AgentManager {
     return coverage >= threshold;
   }
 
-  /**
-   * Test workflows
-   */
-  private async testWorkflows(): Promise<void> {
-    // This would test GitHub Actions workflows
-    // For now, just log
-    this.logger.info('Testing workflows (placeholder)');
-  }
-
-  /**
-   * Commit changes
-   */
-  private async commitChanges(task: OpenSpecTask): Promise<void> {
+  private async commitChanges(task: AgentTask): Promise<void> {
     const message = `feat: ${task.title}\n\n${task.description}`;
     const commitResponse = await this.cliBridge.sendCommitCommand(this.currentTool!, message);
 
@@ -583,18 +359,10 @@ export class AgentManager {
     }
   }
 
-  /**
-   * Start watcher in background
-   */
   private startWatcherInBackground(): void {
-    // This would start the watcher in a separate process or thread
-    // For now, just log
     this.logger.info('Watcher mode requested (placeholder)');
   }
 
-  /**
-   * Cleanup resources
-   */
   private async cleanup(): Promise<void> {
     this.isRunning = false;
 
@@ -605,16 +373,6 @@ export class AgentManager {
     await this.logger.close();
   }
 
-  /**
-   * Delay execution
-   */
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  /**
-   * Stop agent
-   */
   async stop(): Promise<void> {
     this.isRunning = false;
     await this.cleanup();

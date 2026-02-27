@@ -251,19 +251,8 @@ describe('Simplified Watcher UI', () => {
     });
   });
 
-  describe('OpenSpec Integration', () => {
-    it('should update markdown files when tasks are completed', () => {
-      // Test that markdown updates are triggered
-      expect(modernConsole).toBeDefined();
-
-      // The OpenSpec integration should be working
-      const openspecManager = (modernConsole as any).openspecManager;
-      expect(openspecManager).toBeDefined();
-    });
-
+  describe('Task Integration', () => {
     it('should handle task status changes in real-time', () => {
-      // Test real-time status updates
-      // Methods were removed in favor of onTaskStatusChange callback
       expect(modernConsole).toBeDefined();
     });
   });

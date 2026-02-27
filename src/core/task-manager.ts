@@ -257,7 +257,7 @@ export class TaskManager {
   }
 
   /**
-   * Validate task format (OpenSpec-compatible)
+   * Validate task format
    */
   async validateTask(taskId: string): Promise<TaskValidationResult> {
     const task = await this.loadTask(taskId);

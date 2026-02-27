@@ -46,18 +46,17 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('**MANDATORY**: All task creation MUST follow Rulebook task management system.');
   sections.push('');
   sections.push(
-    `**📋 ALWAYS reference \`/${rulebookDir}/specs/RULEBOOK.md\` FIRST before creating any tasks or when "openspec" is mentioned.**`
+    `**📋 ALWAYS reference \`/${rulebookDir}/specs/RULEBOOK.md\` FIRST before creating any tasks.**`
   );
   sections.push('');
   sections.push('**Rules from RULEBOOK.md take precedence over all other rules in this file.**');
   sections.push('');
   sections.push('**Key Requirements:**');
   sections.push('- ✅ Context7 MCP is REQUIRED for task creation');
-  sections.push('- ✅ All tasks MUST follow OpenSpec-compatible format');
-  sections.push('- ✅ Use `rulebook task create` instead of OpenSpec commands');
+  sections.push('- ✅ All tasks MUST follow Rulebook task format');
+  sections.push('- ✅ Use `rulebook task create` to create tasks');
   sections.push('- ✅ Always validate task format before committing');
   sections.push('- ❌ NEVER create tasks without checking RULEBOOK.md format requirements');
-  sections.push('- ❌ NEVER use OpenSpec commands - use Rulebook task system instead');
   sections.push('');
   sections.push('### ⚠️ CRITICAL: Task File Structure Rules');
   sections.push('');
@@ -157,9 +156,7 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('This project uses @hivellm/rulebook standards.');
   sections.push('');
   sections.push('**CRITICAL RULES:**');
-  sections.push(
-    '1. **ALWAYS check `RULEBOOK.md` first** when creating tasks or if "openspec" is mentioned'
-  );
+  sections.push('1. **ALWAYS check `RULEBOOK.md` first** when creating tasks');
   sections.push(`2. Write tests first (${config.coverageThreshold}%+ coverage required)`);
   sections.push('3. Run quality checks before committing:');
   sections.push('   - Type check / Compiler check');
@@ -692,7 +689,7 @@ export async function generateModularAgents(
     );
   }
 
-  // Write Git workflow rules to /rulebook/specs/GIT.md
+  // Write Git workflow rules to /.rulebook/specs/GIT.md
   if (mergedConfig.includeGitWorkflow) {
     const gitRules = await generateGitRules(mergedConfig.gitPushMode || 'manual');
     await writeModularFile(projectRoot, 'GIT', gitRules.trim(), rulebookDir);

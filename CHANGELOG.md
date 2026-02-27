@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] - 2026-02-27
+
+### Removed
+- **OpenSpec system completely removed**: Deleted `openspec-manager.ts`, `openspec-migrator.ts`, `test-task-manager.ts`, and related interfaces (`OpenSpecTask`, `OpenSpecData`). All task management now uses the Rulebook task system exclusively.
+- **OpenSpec migration code**: Removed the `updateCommand` migration block that migrated OpenSpec tasks to Rulebook format — no longer needed.
+- **OpenSpec test files**: Removed `openspec-manager.test.ts`, `openspec-migrator.test.ts`, and `modern-watcher-real-tasks.test.ts`.
+
+### Fixed
+- **`.gitignore` patterns**: Anchored all patterns with leading `/` (`/.rulebook/*`, `!/.rulebook/specs/`, etc.) and added `!/.rulebook/tasks/**/*.md` exception for task markdown files.
+- **Workflow generator**: Fixed `rulebook/**/*.md` glob to `.rulebook/**/*.md`.
+- **Logger path**: Changed log directory from `openspec/logs` to `.rulebook/logs`.
+
+### Changed
+- `agent-manager.ts` refactored to remove OpenSpec dependency — uses lightweight `AgentTask` interface instead.
+- `modern-console.ts` uses local `WatcherTask` interface instead of `OpenSpecTask`.
+- Generated `AGENTS.md` no longer mentions OpenSpec.
+
 ## [3.3.0] - 2026-02-27
 
 ### Breaking Changes

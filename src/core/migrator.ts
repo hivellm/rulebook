@@ -19,7 +19,7 @@ export function hasEmbeddedTemplates(existing: ExistingAgentsInfo): boolean {
   const embeddedLanguagePattern =
     /<!--\s*(TYPESCRIPT|RUST|PYTHON|JAVASCRIPT|GO|JAVA|ELIXIR|CSHARP|PHP|SWIFT|KOTLIN|CPP|C|SOLIDITY|ZIG|ERLANG|DART|RUBY|SCALA|R|HASKELL|JULIA|LUA|ADA|SAS|LISP|OBJECTIVEC|SQL):START\s*-->/i;
 
-  // Check for embedded module blocks (e.g., <!-- OPENSPEC:START -->)
+  // Check for embedded module blocks (e.g., <!-- VECTORIZER:START -->)
   const embeddedModulePattern =
     /<!--\s*(VECTORIZER|SYNAP|CONTEXT7|GITHUB|PLAYWRIGHT|SUPABASE|NOTION|ATLASSIAN|SERENA|FIGMA|GRAFANA|AGENT_AUTOMATION):START\s*-->/i;
 

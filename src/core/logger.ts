@@ -7,7 +7,7 @@ const writeFileAsync = promisify(writeFile);
 const readdirAsync = promisify(readdir);
 const unlinkAsync = promisify(unlink);
 
-const LOGS_DIR = 'openspec/logs';
+const LOGS_DIR = '.rulebook/logs';
 const MAX_LOG_AGE_DAYS = 30;
 
 export class Logger {

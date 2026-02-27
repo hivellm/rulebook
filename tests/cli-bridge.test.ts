@@ -28,7 +28,6 @@ describe.skip('CLIBridge', () => {
       updatedAt: new Date().toISOString(),
       projectId: 'test-project',
       features: {
-        openspec: true,
         watcher: true,
         agent: true,
         logging: true,
@@ -1068,7 +1067,7 @@ describe('CLIBridge Additional Coverage Tests', () => {
         formatting: true,
         coverage: true,
         workflows: true,
-        openspec: true,
+
         agents: true,
         watcher: true,
       },
@@ -1297,7 +1296,7 @@ describe('CLIBridge Deep Coverage Tests', () => {
         formatting: true,
         coverage: true,
         workflows: true,
-        openspec: true,
+
         agents: true,
         watcher: true,
       },

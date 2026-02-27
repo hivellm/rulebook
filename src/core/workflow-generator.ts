@@ -621,7 +621,7 @@ function generateGeminiExtensionContent(
     version: '1.0.0',
     description: 'Gemini CLI extension for project standards',
     main: 'GEMINI.md',
-    includes: ['AGENTS.md', 'rulebook/**/*.md', 'docs/**/*.md'],
+    includes: ['AGENTS.md', '.rulebook/**/*.md', 'docs/**/*.md'],
     excludes: ['node_modules/**', 'dist/**', '.git/**'],
     settings: {
       coverageThreshold: config.coverageThreshold,

@@ -132,9 +132,7 @@ program.command('fix').description('Auto-fix common project issues').action(fixC
 // New advanced commands (BETA)
 program
   .command('watcher')
-  .description(
-    'Start modern full-screen console watcher for OpenSpec tasks and agent progress [BETA]'
-  )
+  .description('Start modern full-screen console watcher for tasks and agent progress [BETA]')
   .action(watcherCommand);
 
 program
@@ -205,7 +203,7 @@ taskCommand
 // Legacy tasks command (deprecated)
 program
   .command('tasks')
-  .description('Manage OpenSpec tasks (DEPRECATED - use "task" commands)')
+  .description('Manage tasks (DEPRECATED - use "task" commands)')
   .option('--tree', 'Show task dependency tree')
   .option('--current', 'Show current active task')
   .option('--status <taskId>', 'Update task status')

@@ -239,40 +239,6 @@ export interface RulebookConfig {
   };
 }
 
-export interface OpenSpecTask {
-  id: string;
-  title: string;
-  description: string;
-  priority: number;
-  status: 'pending' | 'in-progress' | 'completed' | 'failed' | 'skipped';
-  dependencies: string[];
-  estimatedTime: number;
-  actualTime?: number;
-  attempts: number;
-  createdAt: string;
-  updatedAt: string;
-  completedAt?: string;
-  assignedTo?: string;
-  tags: string[];
-  metadata?: {
-    startedAt?: string;
-    [key: string]: any;
-  };
-}
-
-export interface OpenSpecData {
-  tasks: OpenSpecTask[];
-  currentTask?: string;
-  history: OpenSpecTask[];
-  metadata: {
-    version: string;
-    createdAt: string;
-    updatedAt: string;
-    totalTasks: number;
-    completedTasks: number;
-  };
-}
-
 export interface LogEntry {
   timestamp: string;
   level: 'debug' | 'info' | 'warn' | 'error';

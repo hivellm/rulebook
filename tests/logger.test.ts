@@ -293,7 +293,7 @@ describe('Logger edge cases', () => {
       await logger.flush();
 
       // Manually corrupt a log file
-      const logsPath = join(tempDir, 'openspec', 'logs');
+      const logsPath = join(tempDir, '.rulebook', 'logs');
       const files = await fs.readdir(logsPath);
       if (files.length > 0) {
         const logFile = join(logsPath, files[0]);
@@ -422,7 +422,7 @@ describe('Logger edge cases', () => {
     });
 
     it('should handle cleanOldLogs with non-log files', async () => {
-      const logsPath = join(tempDir, 'openspec', 'logs');
+      const logsPath = join(tempDir, '.rulebook', 'logs');
       await fs.writeFile(join(logsPath, 'not-a-log.txt'), 'content');
       await logger.close();
       expect(true).toBe(true);
