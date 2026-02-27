@@ -252,6 +252,117 @@ describe('Ralph Autonomous Loop', () => {
       await manager.releaseLock();
     });
 
+    it('should load PRD and get next task', async () => {
+      const prdPath = join(tempDir, '.rulebook', 'ralph', 'prd.json');
+      await mkdir(join(tempDir, '.rulebook', 'ralph'), { recursive: true });
+
+      const mockPRD = {
+        project: 'test-project',
+        branchName: 'ralph/test',
+        description: 'Test',
+        userStories: [
+          {
+            id: 'US-001',
+            title: 'Story A',
+            description: 'First',
+            acceptanceCriteria: ['Works'],
+            priority: 1,
+            passes: true,
+            notes: '',
+          },
+          {
+            id: 'US-002',
+            title: 'Story B',
+            description: 'Second',
+            acceptanceCriteria: ['Also works'],
+            priority: 2,
+            passes: false,
+            notes: '',
+          },
+        ],
+      };
+
+      const { writeFile: wf } = await import('fs/promises');
+      await wf(prdPath, JSON.stringify(mockPRD));
+
+      const prd = await manager.loadPRD();
+      expect(prd).toBeDefined();
+      expect(prd.userStories).toHaveLength(2);
+
+      const next = await manager.getNextTask();
+      expect(next).toBeDefined();
+      expect(next.id).toBe('US-002'); // First non-passing story
+    });
+
+    it('should return null when no tasks remain', async () => {
+      const prdPath = join(tempDir, '.rulebook', 'ralph', 'prd.json');
+      await mkdir(join(tempDir, '.rulebook', 'ralph'), { recursive: true });
+
+      const { writeFile: wf } = await import('fs/promises');
+      await wf(
+        prdPath,
+        JSON.stringify({
+          project: 'done',
+          branchName: 'ralph/done',
+          description: 'All done',
+          userStories: [
+            {
+              id: 'US-001',
+              title: 'Done',
+              description: 'Done',
+              acceptanceCriteria: [],
+              priority: 1,
+              passes: true,
+              notes: '',
+            },
+          ],
+        })
+      );
+
+      const next = await manager.getNextTask();
+      expect(next).toBeNull();
+    });
+
+    it('should mark story complete and update PRD', async () => {
+      const prdPath = join(tempDir, '.rulebook', 'ralph', 'prd.json');
+      await mkdir(join(tempDir, '.rulebook', 'ralph'), { recursive: true });
+
+      const { writeFile: wf } = await import('fs/promises');
+      await wf(
+        prdPath,
+        JSON.stringify({
+          project: 'test',
+          branchName: 'ralph/test',
+          description: 'Test',
+          userStories: [
+            {
+              id: 'US-001',
+              title: 'Story',
+              description: 'Desc',
+              acceptanceCriteria: ['Done'],
+              priority: 1,
+              passes: false,
+              notes: '',
+            },
+          ],
+        })
+      );
+
+      await manager.markStoryComplete('US-001');
+
+      // Reload PRD and verify
+      const prd = await manager.loadPRD();
+      expect(prd.userStories[0].passes).toBe(true);
+    });
+
+    it('should return null when no PRD exists', async () => {
+      const prd = await manager.loadPRD();
+      expect(prd).toBeNull();
+
+      const next = await manager.getNextTask();
+      expect(next).toBeNull();
+    });
+
     it('should report running state via isRunning when lock is held', async () => {
       // No lock — not running
       expect(await manager.isRunning()).toBe(false);
@@ -528,15 +639,69 @@ describe('Ralph Autonomous Loop', () => {
       expect(generator).toBeDefined();
     });
 
-    it('should extract title from proposal', () => {
-      const proposal = `
-# My Task Title
+    it('should generate PRD from task directories', async () => {
+      // Create a task with proposal.md and tasks.md
+      const taskDir = join(tempDir, '.rulebook', 'tasks', 'my-feature');
+      await mkdir(taskDir, { recursive: true });
 
-Some content here.
-      `;
+      const { writeFile: wf } = await import('fs/promises');
+      await wf(
+        join(taskDir, 'proposal.md'),
+        '# Add Dark Mode\n\n## What Changes\n\nImplement dark mode toggle in settings page.'
+      );
+      await wf(
+        join(taskDir, 'tasks.md'),
+        '- [ ] Add theme context\n- [ ] Create toggle component\n- [x] Design mockup'
+      );
 
-      // Use reflection to test private method (for demonstration)
-      expect(proposal).toContain('# My Task Title');
+      const prd = await generator.generatePRD('test-project');
+
+      expect(prd.project).toBe('test-project');
+      expect(prd.branchName).toBe('ralph/test-project');
+      expect(prd.userStories).toHaveLength(1);
+      expect(prd.userStories[0].id).toBe('US-001');
+      expect(prd.userStories[0].title).toBe('Add Dark Mode');
+      expect(prd.userStories[0].description).toContain('dark mode toggle');
+      expect(prd.userStories[0].acceptanceCriteria.length).toBeGreaterThan(0);
+      expect(prd.userStories[0].passes).toBe(false);
+      expect(prd.userStories[0].sourceTaskId).toBe('my-feature');
+    });
+
+    it('should return empty PRD when no tasks exist', async () => {
+      const prd = await generator.generatePRD('empty-project');
+
+      expect(prd.project).toBe('empty-project');
+      expect(prd.userStories).toHaveLength(0);
+    });
+
+    it('should skip archive directory', async () => {
+      const tasksBase = join(tempDir, '.rulebook', 'tasks');
+      await mkdir(join(tasksBase, 'real-task'), { recursive: true });
+      await mkdir(join(tasksBase, 'archive', 'old-task'), { recursive: true });
+
+      const { writeFile: wf } = await import('fs/promises');
+      await wf(join(tasksBase, 'real-task', 'proposal.md'), '# Real Task\n\nDo something real.');
+      await wf(
+        join(tasksBase, 'archive', 'old-task', 'proposal.md'),
+        '# Old Task\n\nAlready done.'
+      );
+
+      const prd = await generator.generatePRD('test');
+      expect(prd.userStories).toHaveLength(1);
+      expect(prd.userStories[0].title).toBe('Real Task');
+    });
+
+    it('should handle tasks without tasks.md', async () => {
+      const taskDir = join(tempDir, '.rulebook', 'tasks', 'simple-task');
+      await mkdir(taskDir, { recursive: true });
+
+      const { writeFile: wf } = await import('fs/promises');
+      await wf(join(taskDir, 'proposal.md'), '# Simple Task\n\nJust a simple change.');
+
+      const prd = await generator.generatePRD('test');
+      expect(prd.userStories).toHaveLength(1);
+      // No tasks.md means default acceptance criteria
+      expect(prd.userStories[0].acceptanceCriteria).toContain('Implementation complete');
     });
   });
 
