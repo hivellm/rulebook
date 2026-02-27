@@ -251,6 +251,24 @@ describe('Ralph Autonomous Loop', () => {
 
       await manager.releaseLock();
     });
+
+    it('should report running state via isRunning when lock is held', async () => {
+      // No lock — not running
+      expect(await manager.isRunning()).toBe(false);
+
+      // Acquire lock — running
+      await manager.acquireLock('gemini');
+      expect(await manager.isRunning()).toBe(true);
+
+      // Lock info should reflect the tool and PID
+      const info = await manager.getLockInfo();
+      expect(info?.tool).toBe('gemini');
+      expect(info?.pid).toBe(process.pid);
+
+      // Release — not running
+      await manager.releaseLock();
+      expect(await manager.isRunning()).toBe(false);
+    });
   });
 
   describe('RalphParser', () => {
