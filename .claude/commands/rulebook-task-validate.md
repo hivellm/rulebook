@@ -8,7 +8,7 @@ description: Validate Rulebook task format against OpenSpec-compatible requireme
 **Guardrails**
 - Favor straightforward, minimal implementations first and add complexity only when it is requested or clearly required.
 - Keep changes tightly scoped to the requested outcome.
-- Refer to `/rulebook/specs/RULEBOOK.md` for complete task management guidelines and format requirements.
+- Refer to `/.rulebook/specs/RULEBOOK.md` for complete task management guidelines and format requirements.
 
 **Steps**
 1. **Validate Task Format**:
@@ -46,7 +46,7 @@ description: Validate Rulebook task format against OpenSpec-compatible requireme
    - ❌ `## New Requirements` → ✅ `## ADDED Requirements`
 
 **Reference**
-- See `/rulebook/specs/RULEBOOK.md` for complete format requirements
+- See `/.rulebook/specs/RULEBOOK.md` for complete format requirements
 - Use Context7 MCP to get official OpenSpec format documentation
 - Use `rulebook task show <task-id>` to view task details
 <!-- RULEBOOK:END -->

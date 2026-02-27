@@ -724,7 +724,7 @@ npx @hivehub/rulebook workflows
 
 ## Related Templates
 
-- See `/rulebook/specs/GITHUB_ACTIONS.md` for GitHub Actions comparison
-- See `/rulebook/specs/CI_CD_PATTERNS.md` for general CI/CD patterns
-- See `/rulebook/specs/SECRETS_MANAGEMENT.md` for secrets handling
-- See `/rulebook/specs/QUALITY_ENFORCEMENT.md` for quality gates
+- See `/.rulebook/specs/GITHUB_ACTIONS.md` for GitHub Actions comparison
+- See `/.rulebook/specs/CI_CD_PATTERNS.md` for general CI/CD patterns
+- See `/.rulebook/specs/SECRETS_MANAGEMENT.md` for secrets handling
+- See `/.rulebook/specs/QUALITY_ENFORCEMENT.md` for quality gates

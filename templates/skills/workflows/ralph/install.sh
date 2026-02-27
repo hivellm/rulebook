@@ -36,7 +36,7 @@ echo "📁 Creating Ralph directories..."
 mkdir -p .rulebook-ralph/history
 
 # Create initial PRD if tasks exist
-if [ -d "rulebook/tasks" ] && [ "$(ls -A rulebook/tasks)" ]; then
+if [ -d ".rulebook/tasks" ] && [ "$(ls -A .rulebook/tasks)" ]; then
   echo "📋 Generating PRD from existing tasks..."
   rulebook ralph init || echo "⚠️  Could not auto-generate PRD. Run: rulebook ralph init"
 else

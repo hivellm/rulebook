@@ -149,8 +149,8 @@ export interface ProjectConfig {
   installGitHooks?: boolean;
   minimal?: boolean;
   lightMode?: boolean;
-  modular?: boolean; // Enable modular /rulebook directory structure
-  rulebookDir?: string; // Custom rulebook directory (default: 'rulebook')
+  modular?: boolean; // Enable modular /.rulebook directory structure
+  rulebookDir?: string; // Custom rulebook directory (default: '.rulebook')
 }
 
 export interface RuleConfig {
@@ -206,8 +206,8 @@ export interface RulebookConfig {
   frameworks?: FrameworkId[];
   modules?: ModuleDetection['module'][];
   services?: ServiceId[];
-  modular?: boolean; // Enable modular /rulebook directory structure
-  rulebookDir?: string; // Custom rulebook directory (default: 'rulebook')
+  modular?: boolean; // Enable modular /.rulebook directory structure
+  rulebookDir?: string; // Custom rulebook directory (default: '.rulebook')
   // MCP server configuration
   mcp?: {
     enabled?: boolean;
@@ -378,6 +378,7 @@ export interface PRDUserStory {
   priority: number;
   passes: boolean;
   notes: string;
+  sourceTaskId?: string;
 }
 
 export interface RalphPRD {

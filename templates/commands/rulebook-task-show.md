@@ -8,7 +8,7 @@ description: Show detailed information about a specific Rulebook task.
 **Guardrails**
 - Favor straightforward, minimal implementations first and add complexity only when it is requested or clearly required.
 - Keep changes tightly scoped to the requested outcome.
-- Refer to `/rulebook/specs/RULEBOOK.md` for complete task management guidelines.
+- Refer to `/.rulebook/specs/RULEBOOK.md` for complete task management guidelines.
 
 **Steps**
 1. **Show Task Details**:
@@ -47,6 +47,6 @@ description: Show detailed information about a specific Rulebook task.
 **Reference**
 - Use `rulebook task list` to see all tasks
 - Use `rulebook task validate <task-id>` to check task format
-- See `/rulebook/specs/RULEBOOK.md` for complete task management guidelines
+- See `/.rulebook/specs/RULEBOOK.md` for complete task management guidelines
 <!-- RULEBOOK:END -->
 

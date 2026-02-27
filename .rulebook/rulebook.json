@@ -1,0 +1,59 @@
+{
+  "version": "3.3.0",
+  "installedAt": "2026-02-27T10:17:37.098Z",
+  "updatedAt": "2026-02-27T10:18:49.994Z",
+  "projectId": "rulebook",
+  "mode": "full",
+  "features": {
+    "watcher": false,
+    "agent": false,
+    "logging": true,
+    "telemetry": false,
+    "notifications": false,
+    "dryRun": false,
+    "gitHooks": true,
+    "repl": false,
+    "templates": true,
+    "context": true,
+    "health": true,
+    "plugins": false,
+    "parallel": true,
+    "smartContinue": true
+  },
+  "coverageThreshold": 95,
+  "language": "en",
+  "outputLanguage": "en",
+  "cliTools": [],
+  "maxParallelTasks": 5,
+  "timeouts": {
+    "taskExecution": 3600000,
+    "cliResponse": 180000,
+    "testRun": 600000
+  },
+  "memory": {
+    "enabled": true,
+    "dbPath": ".rulebook/memory/memory.db",
+    "maxSizeBytes": 524288000,
+    "autoCapture": true,
+    "vectorDimensions": 256
+  },
+  "ralph": {
+    "enabled": true,
+    "maxIterations": 10,
+    "tool": "claude",
+    "maxContextLoss": 3
+  },
+  "skills": {
+    "enabled": [
+      "languages/typescript",
+      "core/agent-automation",
+      "core/dag-workflow",
+      "core/documentation-rules",
+      "core/quality-enforcement",
+      "core/rulebook-task-management",
+      "core/dag",
+      "core/ralph",
+      "core/rulebook"
+    ]
+  }
+}

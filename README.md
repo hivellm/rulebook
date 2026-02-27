@@ -65,7 +65,7 @@ npx @hivehub/rulebook@latest update
 - 📁 **Consolidated Directory Structure**: Single `.rulebook/` directory for all rulebook data
   - `memory/` subdirectory for persistent memory system
   - `ralph/` subdirectory for autonomous loop state and history
-  - Automatic migration from `.rulebook-memory/` and `.rulebook-ralph/` during `init` and `update`
+  - Automatic migration from `rulebook/`, `.rulebook-memory/`, and `.rulebook-ralph/` during `init` and `update`
 - 📖 **Comprehensive Ralph Documentation**: 450+ lines of guides, examples, and best practices
   - Complete Ralph usage guide with task sizing guidelines
   - Configuration reference and MCP integration examples
@@ -189,7 +189,7 @@ npx @hivehub/rulebook@latest update
 - 🎯 **Built-in Task Management**: OpenSpec deprecated and integrated into Rulebook's native task system
 - 📋 **RULEBOOK.md Template**: Core template with task management directives and Context7 MCP requirements
 - 🚫 **Automatic .gitignore**: `npx @hivellm/rulebook@latest init` now creates/updates `.gitignore` automatically for 28 languages
-- 🔄 **Migration Support**: Existing OpenSpec tasks automatically migrated to `/rulebook/tasks/` format
+- 🔄 **Migration Support**: Existing OpenSpec tasks automatically migrated to `/.rulebook/tasks/` format
 
 > **Breaking Change**: OpenSpec module removed. Use `npx @hivellm/rulebook@latest task` commands instead. See [Migration Guide](docs/guides/OPENSPEC_MIGRATION.md).
 
@@ -291,7 +291,7 @@ Memory is enabled in `.rulebook`:
   - 6 CLI commands + 4 MCP tools
 - 🧠 **Persistent Memory**: Context that survives across AI sessions — hybrid BM25+HNSW search, auto-capture, zero native dependencies
 - 🔍 **Auto-Detection**: Detects languages, frameworks, MCP modules, and services from your project files
-- 📁 **Modular Architecture**: Templates in `/rulebook/` directory — smaller AGENTS.md, on-demand loading
+- 📁 **Modular Architecture**: Templates in `/.rulebook/` directory — smaller AGENTS.md, on-demand loading
 - 🔗 **Git Hook Automation**: Pre-commit/pre-push hooks with language-aware quality checks
 - 🔌 **23 MCP Functions**: Task management (7), skills (6), persistent memory (6), Ralph loop (4) via Model Context Protocol
 - 📝 **106+ Templates**: 28 languages, 17 frameworks, 8 IDEs, 20 services, 15 CLI agents
@@ -305,7 +305,7 @@ Memory is enabled in `.rulebook`:
 1. Detects your language(s), frameworks, MCP modules, and services
 2. Asks setup questions (or use `--minimal` for defaults)
 3. Generates AGENTS.md with AI assistant rules (modular structure)
-4. Creates `/rulebook/` directory with language/framework/module/service templates
+4. Creates `/.rulebook/` directory with language/framework/module/service templates
 5. Creates/updates `.gitignore` automatically for detected languages
 6. Auto-configures Claude Code integration (MCP + skills) if detected
 7. Optionally installs Git hooks (pre-commit/pre-push)
@@ -316,7 +316,7 @@ Memory is enabled in `.rulebook`:
 ```bash
 npx @hivehub/rulebook update
 ```
-- Automatically migrates embedded templates to modular `/rulebook/` structure
+- Automatically migrates embedded templates to modular `/.rulebook/` structure
 - Automatically migrates OpenSpec tasks to Rulebook format (if OpenSpec exists)
 - Merges latest templates while preserving your customizations
 - Updates AGENTS.md with references to modular files
@@ -644,7 +644,7 @@ Each service template provides:
 - Development and testing integration
 - Common pitfalls and solutions
 
-Templates are generated in `/rulebook/[SERVICE].md` and referenced in `AGENTS.md` for easy access during development.
+Templates are generated in `/.rulebook/specs/[SERVICE].md` and referenced in `AGENTS.md` for easy access during development.
 
 **Server Details:**
 - **Transport**: stdio only - stdout contains ONLY JSON-RPC 2.0 messages
@@ -660,8 +660,8 @@ The MCP server configuration lives in your `.rulebook` file:
 {
   "mcp": {
     "enabled": true,
-    "tasksDir": "rulebook/tasks",
-    "archiveDir": "rulebook/archive"
+    "tasksDir": ".rulebook/tasks",
+    "archiveDir": ".rulebook/archive"
   }
 }
 ```

@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2026-02-27
+
+### Breaking Changes
+- **Default directory changed from `rulebook/` to `.rulebook/`**: All specs, tasks, and configuration now live under `.rulebook/`. Automatic migration moves existing `rulebook/specs/` and `rulebook/tasks/` on `rulebook init` or `rulebook update`.
+
+### Added
+- **Automatic `.gitignore` management**: `rulebook init` adds `.rulebook/*` to `.gitignore` with exceptions for `specs/`, `tasks/`, and `rulebook.json` — runtime data (ralph, memory) is ignored while task/spec files stay version-controlled
+- **Ralph tasks.md sync**: When Ralph completes a user story, matching checkboxes in the source `tasks.md` are automatically marked as `[x]`
+- **Ralph real MCP execution**: The `rulebook_ralph_run` MCP tool now executes the AI agent and runs real quality gates instead of placeholder results
+- **Ralph state resume**: `rulebook_ralph_run` (MCP) resumes existing state instead of resetting progress on each call
+- **Ralph `refreshTaskCount()`**: Syncs `total_tasks` from PRD before loop starts, fixing count mismatch when PRD is saved after `initialize()`
+
+### Fixed
+- **Ralph pause/resume commands**: Now load state from disk before operating, instead of silently doing nothing
+- **MCP default paths**: `tasksDir` and `archiveDir` defaults updated from `rulebook/` to `.rulebook/`
+- **Windows path handling**: `ralph_init` MCP tool uses `basename()` instead of `split('/').pop()`
+- **PRD generator default**: `tasksDir` default changed from `rulebook/tasks` to `.rulebook/tasks`
+
+### Changed
+- All source files updated to use `.rulebook` as default `rulebookDir`
+- All test files updated with `.rulebook` path expectations (838 tests passing)
+- `PRDUserStory` type now includes optional `sourceTaskId` for task-to-story traceability
+
 ## [3.2.1] - 2026-02-26
 
 ### Fixed

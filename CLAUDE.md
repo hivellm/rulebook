@@ -205,8 +205,8 @@ The codebase follows a **modular CLI architecture** with clear separation of con
 
 Instead of embedding all rules in AGENTS.md (which causes 100k+ character files), templates are:
 - Stored in `/templates/` directory at build time
-- Generated into `/rulebook/specs/` directory at runtime (user's project)
-- Referenced from AGENTS.md using relative paths: `/rulebook/specs/TYPESCRIPT.md`
+- Generated into `/.rulebook/specs/` directory at runtime (user's project)
+- Referenced from AGENTS.md using relative paths: `/.rulebook/specs/TYPESCRIPT.md`
 - This allows on-demand loading and better AI performance
 
 #### 2. **Detection System**
@@ -223,7 +223,7 @@ Returns confidence scores (0.0-1.0) for each detection.
 
 Task structure (OpenSpec-compatible):
 ```
-rulebook/tasks/<task-id>/
+.rulebook/tasks/<task-id>/
 ├── proposal.md         # Why and what changes
 ├── tasks.md           # Simple checklist (- [ ] items only)
 ├── design.md          # Technical design (optional)

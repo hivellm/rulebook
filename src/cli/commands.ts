@@ -231,6 +231,9 @@ export async function initCommand(options: {
     await configManager.migrateDirectoryStructure(cwd);
     dirMigrationSpinner.succeed('Directory structure migrated');
 
+    // Ensure .gitignore has .rulebook entries (keep specs/ and tasks/ tracked)
+    await configManager.ensureGitignore();
+
     // Auto-detect and enable skills based on project detection (v2.0)
     let enabledSkills: string[] = [];
     try {
@@ -266,7 +269,7 @@ export async function initCommand(options: {
       modules: config.modules as ModuleDetection['module'][],
       services: config.services as ServiceId[],
       modular: config.modular ?? true,
-      rulebookDir: config.rulebookDir || 'rulebook',
+      rulebookDir: config.rulebookDir || '.rulebook',
       skills: enabledSkills.length > 0 ? { enabled: enabledSkills } : undefined,
       ralph: existingConfig.ralph,
       memory: existingConfig.memory,
@@ -280,7 +283,7 @@ export async function initCommand(options: {
       // Migrate flat layout to specs/ subdirectory if needed
       {
         const { hasFlatLayout, migrateFlatToSpecs } = await import('../core/migrator.js');
-        const rulebookDirForMigration = config.rulebookDir || 'rulebook';
+        const rulebookDirForMigration = config.rulebookDir || '.rulebook';
         if (await hasFlatLayout(cwd, rulebookDirForMigration)) {
           const { migratedFiles } = await migrateFlatToSpecs(cwd, rulebookDirForMigration);
           if (migratedFiles.length > 0) {
@@ -1010,7 +1013,7 @@ export async function taskCreateCommand(taskId: string): Promise<void> {
 
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || 'rulebook';
+    const rulebookDir = config.rulebookDir || '.rulebook';
 
     const taskManager = createTaskManager(cwd, rulebookDir);
     await taskManager.createTask(taskId);
@@ -1037,7 +1040,7 @@ export async function taskListCommand(includeArchived: boolean = false): Promise
 
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || 'rulebook';
+    const rulebookDir = config.rulebookDir || '.rulebook';
 
     const taskManager = createTaskManager(cwd, rulebookDir);
     const tasks = await taskManager.listTasks(includeArchived);
@@ -1093,7 +1096,7 @@ export async function taskShowCommand(taskId: string): Promise<void> {
 
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || 'rulebook';
+    const rulebookDir = config.rulebookDir || '.rulebook';
 
     const taskManager = createTaskManager(cwd, rulebookDir);
     const task = await taskManager.showTask(taskId);
@@ -1143,7 +1146,7 @@ export async function taskValidateCommand(taskId: string): Promise<void> {
 
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || 'rulebook';
+    const rulebookDir = config.rulebookDir || '.rulebook';
 
     const taskManager = createTaskManager(cwd, rulebookDir);
     const validation = await taskManager.validateTask(taskId);
@@ -1187,7 +1190,7 @@ export async function taskArchiveCommand(
 
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || 'rulebook';
+    const rulebookDir = config.rulebookDir || '.rulebook';
 
     const taskManager = createTaskManager(cwd, rulebookDir);
     await taskManager.archiveTask(taskId, skipValidation);
@@ -1205,7 +1208,7 @@ export async function taskArchiveCommand(
  */
 export async function mcpInitCommand(): Promise<void> {
   const { findRulebookConfig } = await import('../mcp/rulebook-server.js');
-  const { existsSync, readFileSync, writeFileSync } = await import('fs');
+  const { existsSync, readFileSync, writeFileSync, statSync } = await import('fs');
   const { join, dirname } = await import('path');
   const { createConfigManager } = await import('../core/config-manager.js');
 
@@ -1215,7 +1218,7 @@ export async function mcpInitCommand(): Promise<void> {
     let rulebookPath = findRulebookConfig(cwd);
 
     if (!rulebookPath) {
-      // Create new .rulebook file
+      // Create new .rulebook directory via ConfigManager
       rulebookPath = join(cwd, '.rulebook');
       const configManager = createConfigManager(cwd);
       await configManager.initializeConfig();
@@ -1223,21 +1226,30 @@ export async function mcpInitCommand(): Promise<void> {
 
     const projectRoot = dirname(rulebookPath);
 
+    // Resolve config file path (handle .rulebook as directory or file)
+    let configFilePath = rulebookPath;
+    if (existsSync(rulebookPath)) {
+      const stats = statSync(rulebookPath);
+      if (stats.isDirectory()) {
+        configFilePath = join(rulebookPath, 'rulebook.json');
+      }
+    }
+
     // Load existing config
     let config: any = {};
-    if (existsSync(rulebookPath)) {
-      const raw = readFileSync(rulebookPath, 'utf8');
+    if (existsSync(configFilePath)) {
+      const raw = readFileSync(configFilePath, 'utf8');
       config = JSON.parse(raw);
     }
 
     // Add/update mcp block
     config.mcp = config.mcp ?? {};
     if (config.mcp.enabled === undefined) config.mcp.enabled = true;
-    if (!config.mcp.tasksDir) config.mcp.tasksDir = 'rulebook/tasks';
-    if (!config.mcp.archiveDir) config.mcp.archiveDir = 'rulebook/archive';
+    if (!config.mcp.tasksDir) config.mcp.tasksDir = '.rulebook/tasks';
+    if (!config.mcp.archiveDir) config.mcp.archiveDir = '.rulebook/archive';
 
     // Save updated config
-    writeFileSync(rulebookPath, JSON.stringify(config, null, 2) + '\n');
+    writeFileSync(configFilePath, JSON.stringify(config, null, 2) + '\n');
 
     // Create/update .cursor/mcp.json if .cursor directory exists
     const cursorDir = join(projectRoot, '.cursor');
@@ -1478,7 +1490,7 @@ export async function updateCommand(options: {
       const { migrateOpenSpecToRulebook, migrateOpenSpecArchives, removeOpenSpecRulebookFile } =
         await import('../core/openspec-migrator.js');
 
-      const rulebookDir = config.rulebookDir || 'rulebook';
+      const rulebookDir = config.rulebookDir || '.rulebook';
       const migrationResult = await migrateOpenSpecToRulebook(cwd, rulebookDir);
       const archiveMigrationResult = await migrateOpenSpecArchives(cwd, rulebookDir);
 
@@ -1507,10 +1519,10 @@ export async function updateCommand(options: {
         }
       }
 
-      // Remove /rulebook/specs/OPENSPEC.md if exists
+      // Remove /.rulebook/specs/OPENSPEC.md if exists
       const removed = await removeOpenSpecRulebookFile(cwd, rulebookDir);
       if (removed) {
-        console.log(chalk.gray('  Removed /rulebook/specs/OPENSPEC.md'));
+        console.log(chalk.gray(`  Removed /${rulebookDir}/specs/OPENSPEC.md`));
       }
 
       // Remove OpenSpec commands from .cursor/commands/
@@ -1694,16 +1706,19 @@ export async function updateCommand(options: {
       modules: config.modules as ModuleDetection['module'][],
       services: config.services as ServiceId[],
       modular: config.modular ?? true,
-      rulebookDir: config.rulebookDir || 'rulebook',
+      rulebookDir: config.rulebookDir || '.rulebook',
       skills: detectedSkills.length > 0 ? { enabled: detectedSkills } : undefined,
       ralph: existingRalph,
       memory: existingConfig.memory,
     });
 
+    // Ensure .rulebook is in .gitignore with exceptions for specs/tasks
+    await configManager.ensureGitignore();
+
     // Migrate flat layout to specs/ subdirectory if needed
     {
       const { hasFlatLayout, migrateFlatToSpecs } = await import('../core/migrator.js');
-      const rulebookDirForMigration = config.rulebookDir || 'rulebook';
+      const rulebookDirForMigration = config.rulebookDir || '.rulebook';
       if (await hasFlatLayout(cwd, rulebookDirForMigration)) {
         const migrationSpinner = ora('Migrating rulebook files to specs/ subdirectory...').start();
         const { migratedFiles } = await migrateFlatToSpecs(cwd, rulebookDirForMigration);
@@ -2573,6 +2588,9 @@ export async function ralphRunCommand(options: {
     };
     process.on('SIGINT', handleInterrupt);
 
+    // Sync task count from PRD (may have been saved after initialize)
+    await ralphManager.refreshTaskCount();
+
     spinner.text = 'Ralph loop running (Ctrl+C to pause)...';
 
     let iterationCount = 0;
@@ -2728,24 +2746,36 @@ async function ralphExecuteAgent(
   cwd: string,
   spawn: typeof import('child_process').spawn
 ): Promise<string> {
-  const toolCommands: Record<string, { cmd: string; args: string[] }> = {
-    claude: { cmd: 'claude', args: ['-p', prompt, '--no-input'] },
-    amp: { cmd: 'amp', args: ['-p', prompt] },
-    gemini: { cmd: 'gemini', args: ['-p', prompt] },
+  // Claude: use -p (print mode) with --dangerously-skip-permissions to allow file edits
+  // Prompt is passed via stdin to avoid shell escaping issues and arg length limits
+  const toolCommands: Record<string, { cmd: string; args: string[]; stdinPrompt: boolean }> = {
+    claude: {
+      cmd: 'claude',
+      args: ['-p', '--dangerously-skip-permissions', '--verbose'],
+      stdinPrompt: true,
+    },
+    amp: { cmd: 'amp', args: ['-p', prompt], stdinPrompt: false },
+    gemini: { cmd: 'gemini', args: ['-p', prompt], stdinPrompt: false },
   };
 
-  const { cmd, args } = toolCommands[tool] || toolCommands.claude;
+  const config = toolCommands[tool] || toolCommands.claude;
 
   return new Promise((resolve, reject) => {
     let output = '';
     let errorOutput = '';
 
-    const proc = spawn(cmd, args, {
+    const proc = spawn(config.cmd, config.args, {
       cwd,
       shell: true,
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env },
     });
+
+    // For Claude, write prompt to stdin then close it
+    if (config.stdinPrompt && proc.stdin) {
+      proc.stdin.write(prompt);
+      proc.stdin.end();
+    }
 
     proc.stdout?.on('data', (data: Buffer) => {
       const text = data.toString();
@@ -3021,6 +3051,14 @@ export async function ralphPauseCommand(): Promise<void> {
 
     const logger = new Logger(cwd);
     const ralphManager = new RalphManager(cwd, logger);
+    const status = await ralphManager.getStatus();
+
+    if (!status) {
+      spinner.fail('Ralph not initialized');
+      console.log(`\n  Run: ${chalk.bold('rulebook ralph init')}\n`);
+      return;
+    }
+
     await ralphManager.pause();
 
     spinner.succeed('Ralph loop paused');
@@ -3044,6 +3082,14 @@ export async function ralphResumeCommand(): Promise<void> {
 
     const logger = new Logger(cwd);
     const ralphManager = new RalphManager(cwd, logger);
+    const status = await ralphManager.getStatus();
+
+    if (!status) {
+      spinner.fail('Ralph not initialized');
+      console.log(`\n  Run: ${chalk.bold('rulebook ralph init')}\n`);
+      return;
+    }
+
     await ralphManager.resume();
 
     spinner.succeed('Ralph loop resumed');

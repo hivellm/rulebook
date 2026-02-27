@@ -25,29 +25,17 @@ describe('OpenSpecManager', () => {
   });
 
   describe('initialize', () => {
-    it('should create openspec directory structure', async () => {
+    it('should not create openspec directory (deprecated)', async () => {
       await openspecManager.initialize();
 
       const openspecPath = join(tempDir, 'openspec');
-      const changesPath = join(openspecPath, 'changes');
-      const specsPath = join(openspecPath, 'specs');
 
       const openspecExists = await fs
         .access(openspecPath)
         .then(() => true)
         .catch(() => false);
-      const changesExists = await fs
-        .access(changesPath)
-        .then(() => true)
-        .catch(() => false);
-      const specsExists = await fs
-        .access(specsPath)
-        .then(() => true)
-        .catch(() => false);
 
-      expect(openspecExists).toBe(true);
-      expect(changesExists).toBe(true);
-      expect(specsExists).toBe(true);
+      expect(openspecExists).toBe(false);
     });
 
     it('should create initial tasks', async () => {

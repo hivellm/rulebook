@@ -407,8 +407,8 @@ Hook configuration in `.rulebook`:
 
 ## Related Templates
 
-- See `/rulebook/specs/PRE_PUSH.md` for build and test checks before push
-- See `/rulebook/specs/COMMIT_MSG.md` for commit message validation
-- See `/rulebook/specs/QUALITY_ENFORCEMENT.md` for quality standards
-- See `/rulebook/specs/GIT.md` for git workflow and commit conventions
+- See `/.rulebook/specs/PRE_PUSH.md` for build and test checks before push
+- See `/.rulebook/specs/COMMIT_MSG.md` for commit message validation
+- See `/.rulebook/specs/QUALITY_ENFORCEMENT.md` for quality standards
+- See `/.rulebook/specs/GIT.md` for git workflow and commit conventions
 - See language-specific templates for language-specific quality commands

@@ -152,7 +152,7 @@ rulebook task show <task-id>
 rulebook task create <task-id>
 
 # This creates:
-# /rulebook/tasks/<task-id>/
+# /.rulebook/tasks/<task-id>/
 #   ├── proposal.md       # Why and what changes
 #   ├── tasks.md          # Implementation checklist
 #   ├── design.md         # Technical decisions (optional)
@@ -163,7 +163,7 @@ rulebook task create <task-id>
 
 ### Step 5: Write Proposal
 
-**File**: `/rulebook/tasks/<task-id>/proposal.md`
+**File**: `/.rulebook/tasks/<task-id>/proposal.md`
 
 ```markdown
 # Proposal: Task Name
@@ -188,7 +188,7 @@ Detailed description of what will change:
 
 ### Step 6: Write Tasks Checklist
 
-**File**: `/rulebook/tasks/<task-id>/tasks.md`
+**File**: `/.rulebook/tasks/<task-id>/tasks.md`
 
 ```markdown
 ## 1. Implementation Phase
@@ -206,7 +206,7 @@ Detailed description of what will change:
 
 ### Step 7: Write Spec Delta
 
-**File**: `/rulebook/tasks/<task-id>/specs/<module>/spec.md`
+**File**: `/.rulebook/tasks/<task-id>/specs/<module>/spec.md`
 
 **CRITICAL FORMAT REQUIREMENTS:**
 
@@ -301,7 +301,7 @@ rulebook task archive <task-id> --yes
 1. Validates task format
 2. Checks task completion status
 3. Applies spec deltas to main specifications
-4. Moves task to `/rulebook/tasks/archive/YYYY-MM-DD-<task-id>/`
+4. Moves task to `/.rulebook/tasks/archive/YYYY-MM-DD-<task-id>/`
 5. Updates related specifications
 
 ## Task Format Examples
@@ -1088,12 +1088,12 @@ rulebook task list --archived
 
 **Archived tasks are moved to:**
 ```
-/rulebook/tasks/archive/YYYY-MM-DD-<task-id>/
+/.rulebook/tasks/archive/YYYY-MM-DD-<task-id>/
 ```
 
 **Structure:**
 ```
-/rulebook/tasks/archive/2025-11-13-add-auth/
+/.rulebook/tasks/archive/2025-11-13-add-auth/
 ├── proposal.md
 ├── tasks.md          # All items marked [x]
 ├── design.md
@@ -1338,7 +1338,7 @@ rulebook task create add-user-authentication
 ```
 
 **What it does:**
-- Creates `/rulebook/tasks/<task-id>/` directory
+- Creates `/.rulebook/tasks/<task-id>/` directory
 - Generates `proposal.md` template
 - Generates `tasks.md` template
 - Creates `specs/` directory for spec deltas
@@ -1351,7 +1351,7 @@ rulebook task create add-user-authentication
 ```bash
 $ rulebook task create add-email-notifications
 ✅ Task add-email-notifications created successfully
-Location: rulebook/tasks/add-email-notifications/
+Location: .rulebook/tasks/add-email-notifications/
 
 ⚠️  Remember to:
   1. Check Context7 MCP for OpenSpec format requirements
@@ -1515,7 +1515,7 @@ rulebook task archive add-user-authentication --skip-validation
 1. Validates task format (unless `--skip-validation` is used)
 2. Checks task completion status
 3. Applies spec deltas to main specifications
-4. Moves task to `/rulebook/tasks/archive/YYYY-MM-DD-<task-id>/`
+4. Moves task to `/.rulebook/tasks/archive/YYYY-MM-DD-<task-id>/`
 5. Updates related specifications
 
 **Example:**
@@ -1800,7 +1800,7 @@ rulebook config --feature agent --disable
 If your project previously used OpenSpec:
 
 1. **Automatic Migration**: Run `rulebook update` to automatically migrate OpenSpec tasks to Rulebook format
-2. **Manual Migration**: Tasks in `/openspec/changes/` will be moved to `/rulebook/tasks/`
+2. **Manual Migration**: Tasks in `/openspec/changes/` will be moved to `/.rulebook/tasks/`
 3. **Format Compatibility**: Rulebook uses OpenSpec-compatible format, so existing tasks remain valid
 
 ## Context7 MCP Requirement
@@ -1872,7 +1872,7 @@ If your project previously used OpenSpec:
 
 **Error**: "No tasks found"
 - **Fix**: Create a task first with `rulebook task create <task-id>`
-- **Check**: Verify `/rulebook/tasks/` directory exists
+- **Check**: Verify `/.rulebook/tasks/` directory exists
 
 ### Migration Errors
 
@@ -1887,7 +1887,7 @@ If your project previously used OpenSpec:
 
 ## Examples
 
-See `/rulebook/tasks/` directory for examples of correctly formatted tasks.
+See `/.rulebook/tasks/` directory for examples of correctly formatted tasks.
 
 <!-- RULEBOOK:END -->
 

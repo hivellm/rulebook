@@ -22,7 +22,7 @@ export interface MigrationResult {
  */
 export async function migrateOpenSpecToRulebook(
   projectRoot: string,
-  rulebookDir: string = 'rulebook'
+  rulebookDir: string = '.rulebook'
 ): Promise<MigrationResult> {
   const result: MigrationResult = {
     migrated: 0,
@@ -130,7 +130,7 @@ export async function migrateOpenSpecToRulebook(
  */
 export async function migrateOpenSpecArchives(
   projectRoot: string,
-  rulebookDir: string = 'rulebook'
+  rulebookDir: string = '.rulebook'
 ): Promise<MigrationResult> {
   const result: MigrationResult = {
     migrated: 0,
@@ -239,7 +239,7 @@ export async function migrateOpenSpecArchives(
  */
 export async function removeOpenSpecRulebookFile(
   projectRoot: string,
-  rulebookDir: string = 'rulebook'
+  rulebookDir: string = '.rulebook'
 ): Promise<boolean> {
   const { unlink } = await import('fs/promises');
   // Check both new specs/ path and legacy flat path

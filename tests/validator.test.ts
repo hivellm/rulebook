@@ -435,14 +435,14 @@ describe('validator', () => {
         '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
       );
       await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
-      await fs.mkdir(path.join(testDir, 'rulebook'), { recursive: true });
-      // Don't create any .md files in rulebook
+      await fs.mkdir(path.join(testDir, '.rulebook', 'specs'), { recursive: true });
+      // Don't create any .md files in .rulebook/specs
 
       const result = await validateProject(testDir);
 
       expect(
         result.warnings.some((w) =>
-          w.message.includes('rulebook/ directory exists but contains no .md files')
+          w.message.includes('.rulebook/specs/ directory exists but contains no .md files')
         )
       ).toBe(true);
     });
@@ -453,14 +453,14 @@ describe('validator', () => {
         '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
       );
       await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
-      await fs.mkdir(path.join(testDir, 'rulebook'), { recursive: true });
-      await fs.writeFile(path.join(testDir, 'rulebook', 'TYPESCRIPT.md'), '# TypeScript');
+      await fs.mkdir(path.join(testDir, '.rulebook', 'specs'), { recursive: true });
+      await fs.writeFile(path.join(testDir, '.rulebook', 'specs', 'TYPESCRIPT.md'), '# TypeScript');
 
       const result = await validateProject(testDir);
 
       expect(
         result.warnings.some((w) =>
-          w.message.includes('rulebook/ directory exists but contains no .md files')
+          w.message.includes('.rulebook/specs/ directory exists but contains no .md files')
         )
       ).toBe(false);
     });
@@ -471,13 +471,13 @@ describe('validator', () => {
         '<!-- RULEBOOK:START -->\nContent\n<!-- RULEBOOK:END -->'
       );
       await fs.mkdir(path.join(testDir, 'tests'), { recursive: true });
-      // Don't create rulebook directory
+      // Don't create .rulebook directory
 
       const result = await validateProject(testDir);
 
       expect(
         result.warnings.some((w) =>
-          w.message.includes('rulebook/ directory exists but contains no .md files')
+          w.message.includes('.rulebook/specs/ directory exists but contains no .md files')
         )
       ).toBe(false);
     });

@@ -37,7 +37,7 @@ export class TaskManager {
   private tasksPath: string;
   private archivePath: string;
 
-  constructor(projectRoot: string, rulebookDir: string = 'rulebook') {
+  constructor(projectRoot: string, rulebookDir: string = '.rulebook') {
     this.rulebookPath = join(projectRoot, rulebookDir);
     this.tasksPath = join(this.rulebookPath, TASKS_DIR);
     this.archivePath = join(this.tasksPath, ARCHIVE_DIR);
@@ -427,7 +427,7 @@ export class TaskManager {
 
 export function createTaskManager(
   projectRoot: string,
-  rulebookDir: string = 'rulebook'
+  rulebookDir: string = '.rulebook'
 ): TaskManager {
   return new TaskManager(projectRoot, rulebookDir);
 }

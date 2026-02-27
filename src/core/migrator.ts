@@ -46,7 +46,7 @@ export async function migrateEmbeddedTemplates(
   extractedModules: string[];
   extractedFrameworks: string[];
 }> {
-  const rulebookDir = config.rulebookDir || 'rulebook';
+  const rulebookDir = config.rulebookDir || '.rulebook';
   const specsPath = path.join(projectRoot, rulebookDir, 'specs');
   await ensureDir(specsPath);
 
@@ -142,7 +142,7 @@ export async function replaceEmbeddedWithReferences(
  */
 export async function hasFlatLayout(
   projectRoot: string,
-  rulebookDir: string = 'rulebook'
+  rulebookDir: string = '.rulebook'
 ): Promise<boolean> {
   const rulebookPath = path.join(projectRoot, rulebookDir);
 
@@ -175,7 +175,7 @@ export async function hasFlatLayout(
  */
 export async function migrateFlatToSpecs(
   projectRoot: string,
-  rulebookDir: string = 'rulebook'
+  rulebookDir: string = '.rulebook'
 ): Promise<{ migratedFiles: string[] }> {
   const rulebookPath = path.join(projectRoot, rulebookDir);
   const specsPath = path.join(rulebookPath, 'specs');

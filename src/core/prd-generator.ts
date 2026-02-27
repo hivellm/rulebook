@@ -11,7 +11,7 @@ export class PRDGenerator {
   private tasksDir: string;
   private logger: Logger;
 
-  constructor(projectRoot: string, logger: Logger, tasksDir: string = 'rulebook/tasks') {
+  constructor(projectRoot: string, logger: Logger, tasksDir: string = '.rulebook/tasks') {
     this.tasksDir = path.join(projectRoot, tasksDir);
     this.logger = logger;
   }
@@ -105,6 +105,7 @@ export class PRDGenerator {
       priority,
       passes: false,
       notes: '',
+      sourceTaskId: task.id,
     };
   }
 

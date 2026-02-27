@@ -38,7 +38,7 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push(`Generated at: ${new Date().toISOString()}`);
   sections.push('');
 
-  const rulebookDir = config.rulebookDir || 'rulebook';
+  const rulebookDir = config.rulebookDir || '.rulebook';
 
   // RULEBOOK.md has HIGHEST PRECEDENCE - must be first and most prominent
   sections.push('## ⚠️ CRITICAL: Task Management Rules (HIGHEST PRECEDENCE)');
@@ -495,7 +495,7 @@ async function writeModularFile(
   projectRoot: string,
   fileName: string,
   content: string,
-  rulebookDir: string = 'rulebook'
+  rulebookDir: string = '.rulebook'
 ): Promise<void> {
   const specsPath = path.join(projectRoot, rulebookDir, 'specs');
   await ensureDir(specsPath);
@@ -528,7 +528,7 @@ function generateReferenceSection(
   fileName: string,
   description: string,
   quickRef: string[],
-  rulebookDir: string = 'rulebook'
+  rulebookDir: string = '.rulebook'
 ): string {
   const sections: string[] = [];
   sections.push(`### ${name}`);
@@ -546,7 +546,7 @@ function generateReferenceSection(
 /**
  * Generate language reference for AGENTS.md
  */
-function generateLanguageReference(language: string, rulebookDir: string = 'rulebook'): string {
+function generateLanguageReference(language: string, rulebookDir: string = '.rulebook'): string {
   const languageName = language.charAt(0).toUpperCase() + language.slice(1);
   const quickRef = [
     'Type safety and strict mode',
@@ -567,7 +567,7 @@ function generateLanguageReference(language: string, rulebookDir: string = 'rule
 /**
  * Generate framework reference for AGENTS.md
  */
-function generateFrameworkReference(framework: string, rulebookDir: string = 'rulebook'): string {
+function generateFrameworkReference(framework: string, rulebookDir: string = '.rulebook'): string {
   const frameworkName = framework.charAt(0).toUpperCase() + framework.slice(1);
   const quickRef = [
     'Framework-specific patterns',
@@ -587,7 +587,7 @@ function generateFrameworkReference(framework: string, rulebookDir: string = 'ru
 /**
  * Generate module reference for AGENTS.md
  */
-function generateModuleReference(module: string, rulebookDir: string = 'rulebook'): string {
+function generateModuleReference(module: string, rulebookDir: string = '.rulebook'): string {
   const moduleName = module.charAt(0).toUpperCase() + module.slice(1).replace(/_/g, ' ');
   const quickRef = ['Module-specific instructions', 'Usage guidelines', 'Integration patterns'];
   return generateReferenceSection(
@@ -602,7 +602,7 @@ function generateModuleReference(module: string, rulebookDir: string = 'rulebook
 /**
  * Generate service reference for AGENTS.md
  */
-function generateServiceReference(service: string, rulebookDir: string = 'rulebook'): string {
+function generateServiceReference(service: string, rulebookDir: string = '.rulebook'): string {
   const serviceName = service
     .split(/[-_]/)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -637,7 +637,7 @@ async function loadProjectConfigFromRulebook(
       modules: rulebookConfig.modules || [],
       services: rulebookConfig.services || [],
       modular: rulebookConfig.modular !== false, // Default to true
-      rulebookDir: rulebookConfig.rulebookDir || 'rulebook',
+      rulebookDir: rulebookConfig.rulebookDir || '.rulebook',
     };
 
     return projectConfig;
@@ -667,10 +667,10 @@ export async function generateModularAgents(
     services: savedConfig.services?.length ? savedConfig.services : config.services || [],
     modular: savedConfig.modular !== undefined ? savedConfig.modular : config.modular !== false,
     // rulebookDir: provided config takes precedence if explicitly set, otherwise use saved or default
-    rulebookDir: config.rulebookDir || savedConfig.rulebookDir || 'rulebook',
+    rulebookDir: config.rulebookDir || savedConfig.rulebookDir || '.rulebook',
   };
 
-  const rulebookDir = mergedConfig.rulebookDir || 'rulebook';
+  const rulebookDir = mergedConfig.rulebookDir || '.rulebook';
   const sections: string[] = [];
 
   // Add Rulebook section (core rules stay embedded - simplified)

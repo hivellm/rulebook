@@ -231,7 +231,7 @@ TypeScript content
       const merged = await mergeFullAgents(existing, config, projectRoot);
 
       // Should generate modular format with references
-      expect(merged).toContain('/rulebook/specs/TYPESCRIPT.md');
+      expect(merged).toContain('/.rulebook/specs/TYPESCRIPT.md');
       expect(merged).toContain('<!-- RULEBOOK:START -->');
     });
 
@@ -299,8 +299,8 @@ TypeScript content
       const merged = await mergeFullAgents(existing, config, projectRoot);
 
       // Should generate modular format
-      expect(merged).toContain('/rulebook/specs/TYPESCRIPT.md');
-      expect(merged).toContain('/rulebook/specs/VECTORIZER.md');
+      expect(merged).toContain('/.rulebook/specs/TYPESCRIPT.md');
+      expect(merged).toContain('/.rulebook/specs/VECTORIZER.md');
     });
 
     it('should use legacy merge when modular enabled but no projectRoot', async () => {
