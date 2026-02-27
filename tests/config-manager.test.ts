@@ -546,6 +546,7 @@ describe('ensureGitignore', () => {
     expect(content).toContain('/.rulebook/*');
     expect(content).toContain('!/.rulebook/specs/');
     expect(content).toContain('!/.rulebook/tasks/');
+    expect(content).toContain('!/.rulebook/tasks/**/*.md');
     expect(content).toContain('!/.rulebook/rulebook.json');
   });
 
@@ -562,7 +563,7 @@ describe('ensureGitignore', () => {
   it('should skip if .rulebook already in .gitignore', async () => {
     await fs.writeFile(
       join(tempDir, '.gitignore'),
-      'node_modules/\n/.rulebook/*\n!/.rulebook/specs/\n'
+      'node_modules/\n/.rulebook/*\n!/.rulebook/specs/\n!/.rulebook/tasks/**/*.md\n'
     );
 
     await configManager.ensureGitignore();

@@ -542,6 +542,7 @@ export class ConfigManager {
       '/.rulebook/*',
       '!/.rulebook/specs/',
       '!/.rulebook/tasks/',
+      '!/.rulebook/tasks/**/*.md',
       '!/.rulebook/rulebook.json',
     ].join('\n');
 
@@ -549,8 +550,11 @@ export class ConfigManager {
       if (existsSync(gitignorePath)) {
         let content = await readFileAsync(gitignorePath, 'utf-8');
 
-        // Already has the correct block with exceptions
-        if (content.includes('!/.rulebook/specs/')) {
+        // Already has the correct block with all exceptions
+        if (
+          content.includes('!/.rulebook/specs/') &&
+          content.includes('!/.rulebook/tasks/**/*.md')
+        ) {
           return;
         }
 
@@ -569,7 +573,12 @@ export class ConfigManager {
               trimmed !== '/.rulebook/*' &&
               trimmed !== '!.rulebook/specs/' &&
               trimmed !== '!.rulebook/tasks/' &&
+              trimmed !== '!.rulebook/tasks/**/*.md' &&
               trimmed !== '!.rulebook/rulebook.json' &&
+              trimmed !== '!/.rulebook/specs/' &&
+              trimmed !== '!/.rulebook/tasks/' &&
+              trimmed !== '!/.rulebook/tasks/**/*.md' &&
+              trimmed !== '!/.rulebook/rulebook.json' &&
               trimmed !== '# Rulebook - ignore runtime data, keep specs and tasks'
             );
           });

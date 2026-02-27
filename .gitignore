@@ -66,4 +66,5 @@ mcp_tools.txt
 /.rulebook/*
 !/.rulebook/specs/
 !/.rulebook/tasks/
+!/.rulebook/tasks/**/*.md
 !/.rulebook/rulebook.json
