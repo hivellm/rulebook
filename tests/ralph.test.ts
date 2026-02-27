@@ -187,6 +187,70 @@ describe('Ralph Autonomous Loop', () => {
       expect(stats.completed).toBe(1);
       expect(stats.pending).toBe(2);
     });
+
+    it('should acquire and release lock', async () => {
+      const acquired = await manager.acquireLock('claude');
+      expect(acquired).toBe(true);
+
+      const lockInfo = await manager.getLockInfo();
+      expect(lockInfo).toBeDefined();
+      expect(lockInfo?.pid).toBe(process.pid);
+      expect(lockInfo?.tool).toBe('claude');
+
+      const isRunning = await manager.isRunning();
+      expect(isRunning).toBe(true);
+
+      await manager.releaseLock();
+
+      const afterRelease = await manager.getLockInfo();
+      expect(afterRelease).toBeNull();
+
+      const isRunningAfter = await manager.isRunning();
+      expect(isRunningAfter).toBe(false);
+    });
+
+    it('should reject concurrent lock acquisition', async () => {
+      const first = await manager.acquireLock('claude');
+      expect(first).toBe(true);
+
+      // Same process tries to acquire again — PID is alive, should fail
+      const second = await manager.acquireLock('claude');
+      expect(second).toBe(false);
+
+      await manager.releaseLock();
+    });
+
+    it('should clean stale lock with dead PID', async () => {
+      // Write a lock with a PID that doesn't exist
+      const { writeFile } = await import('fs/promises');
+      const lockPath = join(tempDir, '.rulebook', 'ralph', 'ralph.lock');
+      await mkdir(join(tempDir, '.rulebook', 'ralph'), { recursive: true });
+      await writeFile(
+        lockPath,
+        JSON.stringify({ pid: 999999, startedAt: new Date().toISOString(), tool: 'claude' })
+      );
+
+      // Should acquire because PID 999999 is dead
+      const acquired = await manager.acquireLock('amp');
+      expect(acquired).toBe(true);
+
+      const lockInfo = await manager.getLockInfo();
+      expect(lockInfo?.pid).toBe(process.pid);
+      expect(lockInfo?.tool).toBe('amp');
+
+      await manager.releaseLock();
+    });
+
+    it('should update lock progress', async () => {
+      await manager.acquireLock('claude');
+      await manager.updateLockProgress(3, 'US-002: Fix auth');
+
+      const lockInfo = await manager.getLockInfo();
+      expect(lockInfo?.iteration).toBe(3);
+      expect(lockInfo?.currentTask).toBe('US-002: Fix auth');
+
+      await manager.releaseLock();
+    });
   });
 
   describe('RalphParser', () => {

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.2] - 2026-02-27
+
+### Added
+- **Ralph concurrency guard**: Lockfile-based mechanism (`.rulebook/ralph/ralph.lock`) prevents multiple simultaneous Ralph runs. If a run is already active, `ralph_run` returns an immediate error with PID, task, and iteration info. Stale locks (dead PID) are auto-cleaned.
+- **Ralph progress logging**: `ralph_run` now logs progress to stderr on every iteration (task name, quality gate results, duration). AI callers and users can see that Ralph is actively working.
+- **Ralph running status**: `ralph_status` now reports `running: true/false` with PID, current task, and iteration number when a loop is active. This lets AI tools check before starting a new run.
+- **Ralph per-iteration results**: `ralph_run` response now includes a `results` array with per-iteration task ID, status, and duration.
+- **Signal cleanup**: Lock is released on SIGTERM/SIGINT and in finally block, preventing orphaned locks.
+
 ## [3.4.1] - 2026-02-27
 
 ### Fixed

@@ -1,13 +1,22 @@
-import { mkdir, readdir, writeFile, appendFile, readFile } from 'fs/promises';
+import { mkdir, readdir, writeFile, appendFile, readFile, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import { Logger } from './logger.js';
 import { RalphLoopState, RalphIterationMetadata, IterationResult } from '../types.js';
 
+export interface RalphLockInfo {
+  pid: number;
+  startedAt: string;
+  tool: string;
+  currentTask?: string;
+  iteration?: number;
+}
+
 export class RalphManager {
   private projectRoot: string;
   private ralphDir: string;
   private historyDir: string;
+  private lockPath: string;
   private loopState: RalphLoopState | null = null;
   private logger: Logger;
 
@@ -16,6 +25,107 @@ export class RalphManager {
     this.projectRoot = projectRoot;
     this.ralphDir = path.join(projectRoot, '.rulebook', 'ralph');
     this.historyDir = path.join(this.ralphDir, 'history');
+    this.lockPath = path.join(this.ralphDir, 'ralph.lock');
+  }
+
+  // ─── Lock Management ───
+
+  /**
+   * Acquire an exclusive lock for Ralph execution.
+   * Returns true if lock was acquired, false if another process holds it.
+   */
+  async acquireLock(tool: string): Promise<boolean> {
+    await mkdir(this.ralphDir, { recursive: true });
+
+    // Check if lock already exists
+    const existing = await this.getLockInfo();
+    if (existing) {
+      // Check if the PID is still alive
+      if (this.isPidAlive(existing.pid)) {
+        this.logger.warn(`Ralph lock held by PID ${existing.pid} (started ${existing.startedAt})`);
+        return false;
+      }
+      // Stale lock — PID is dead, clean it up
+      this.logger.info(`Cleaning stale Ralph lock (PID ${existing.pid} is dead)`);
+      await this.releaseLock();
+    }
+
+    const lockInfo: RalphLockInfo = {
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+      tool,
+    };
+
+    await writeFile(this.lockPath, JSON.stringify(lockInfo, null, 2));
+    this.logger.info(`Ralph lock acquired (PID ${process.pid})`);
+    return true;
+  }
+
+  /**
+   * Release the Ralph execution lock.
+   */
+  async releaseLock(): Promise<void> {
+    try {
+      if (existsSync(this.lockPath)) {
+        await unlink(this.lockPath);
+        this.logger.info('Ralph lock released');
+      }
+    } catch (err) {
+      this.logger.warn(`Failed to release Ralph lock: ${err}`);
+    }
+  }
+
+  /**
+   * Update lock with current progress info.
+   */
+  async updateLockProgress(iteration: number, currentTask?: string): Promise<void> {
+    const existing = await this.getLockInfo();
+    if (!existing) return;
+
+    existing.iteration = iteration;
+    existing.currentTask = currentTask;
+
+    try {
+      await writeFile(this.lockPath, JSON.stringify(existing, null, 2));
+    } catch {
+      // Non-critical — best effort
+    }
+  }
+
+  /**
+   * Read current lock info. Returns null if no lock exists.
+   */
+  async getLockInfo(): Promise<RalphLockInfo | null> {
+    if (!existsSync(this.lockPath)) {
+      return null;
+    }
+    try {
+      const content = await this.readFileAsync(this.lockPath);
+      return JSON.parse(content);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Check if a Ralph loop is currently running (lock held by alive process).
+   */
+  async isRunning(): Promise<boolean> {
+    const lock = await this.getLockInfo();
+    if (!lock) return false;
+    return this.isPidAlive(lock.pid);
+  }
+
+  /**
+   * Check if a PID is alive.
+   */
+  private isPidAlive(pid: number): boolean {
+    try {
+      process.kill(pid, 0); // Signal 0 = check existence only
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**

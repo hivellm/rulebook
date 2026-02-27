@@ -969,276 +969,359 @@ export async function startRulebookMcpServer(): Promise<void> {
             | 'amp'
             | 'gemini';
 
-          // Validate tool is available before starting
-          const toolCmdNames: Record<string, string> = {
-            claude: 'claude',
-            amp: 'amp',
-            gemini: 'gemini',
+          // ── Concurrency guard: prevent multiple simultaneous Ralph runs ──
+          const lockAcquired = await ralphManager.acquireLock(tool);
+          if (!lockAcquired) {
+            const lockInfo = await ralphManager.getLockInfo();
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify({
+                    success: false,
+                    error: `Ralph is already running (PID ${lockInfo?.pid}, started ${lockInfo?.startedAt}, task: ${lockInfo?.currentTask || 'starting'}, iteration: ${lockInfo?.iteration || 0}). Wait for it to finish or check ralph_status. Do NOT start another run.`,
+                  }),
+                },
+              ],
+            };
+          }
+
+          // Ensure lock is released on exit, even on crashes
+          const cleanupLock = async () => {
+            await ralphManager.releaseLock();
           };
-          const toolCmd = toolCmdNames[tool] || 'claude';
+          process.on('SIGTERM', cleanupLock);
+          process.on('SIGINT', cleanupLock);
+
           try {
-            execSync(`${toolCmd} --version`, { stdio: 'pipe', timeout: 10000 });
-          } catch {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify({
-                    success: false,
-                    error: `CLI tool "${toolCmd}" not found or not responding. Install it first: https://docs.anthropic.com/claude-code`,
-                  }),
-                },
-              ],
+            // Validate tool is available before starting
+            const toolCmdNames: Record<string, string> = {
+              claude: 'claude',
+              amp: 'amp',
+              gemini: 'gemini',
             };
-          }
-
-          // Resume existing state if available, otherwise initialize fresh
-          const existingState = await ralphManager.getStatus();
-          if (!existingState) {
-            await ralphManager.initialize(maxIterations, tool);
-          }
-
-          // Helper: run a shell command and return stdout
-          const runCmd = (
-            cmd: string,
-            cmdArgs: string[]
-          ): Promise<{ code: number; stdout: string; stderr: string }> =>
-            new Promise((resolve) => {
-              let stdout = '';
-              let stderr = '';
-              const proc = spawn(cmd, cmdArgs, {
-                cwd: config.projectRoot,
-                shell: true,
-                stdio: ['pipe', 'pipe', 'pipe'],
-              });
-              proc.stdout?.on('data', (d: Buffer) => {
-                stdout += d.toString();
-              });
-              proc.stderr?.on('data', (d: Buffer) => {
-                stderr += d.toString();
-              });
-              proc.on('close', (code: number | null) =>
-                resolve({ code: code ?? 1, stdout, stderr })
-              );
-              proc.on('error', (err: Error) => resolve({ code: 1, stdout, stderr: err.message }));
-            });
-
-          // Helper: build prompt for AI agent
-          const buildPrompt = (task: any, projectName: string): string => {
-            const criteria = (task.acceptanceCriteria || [])
-              .map((c: string) => `- ${c}`)
-              .join('\n');
-            return [
-              `You are working on project: ${projectName}`,
-              ``,
-              `## Current Task: ${task.title}`,
-              `ID: ${task.id}`,
-              ``,
-              `## Description`,
-              task.description,
-              ``,
-              `## Acceptance Criteria`,
-              criteria,
-              ``,
-              task.notes ? `## Notes\n${task.notes}\n` : '',
-              `## Instructions`,
-              `1. Implement the changes described above`,
-              `2. Ensure all acceptance criteria are met`,
-              `3. Run quality checks: type-check, lint, tests`,
-              `4. Fix any issues found by quality checks`,
-              `5. When done, summarize what was changed`,
-            ]
-              .filter(Boolean)
-              .join('\n');
-          };
-
-          // Helper: execute AI agent with proper error handling
-          const executeAgent = (agentTool: string, prompt: string): Promise<string> =>
-            new Promise((resolve, reject) => {
-              let output = '';
-              let stderrOutput = '';
-              const toolCmds: Record<
-                string,
-                { cmd: string; args: string[]; stdinPrompt: boolean }
-              > = {
-                claude: {
-                  cmd: 'claude',
-                  args: ['-p', '--dangerously-skip-permissions', '--verbose'],
-                  stdinPrompt: true,
-                },
-                amp: { cmd: 'amp', args: ['-p', prompt], stdinPrompt: false },
-                gemini: { cmd: 'gemini', args: ['-p', prompt], stdinPrompt: false },
-              };
-              const cfg = toolCmds[agentTool] || toolCmds.claude;
-
-              let settled = false;
-              const settle = (fn: () => void) => {
-                if (!settled) {
-                  settled = true;
-                  fn();
-                }
-              };
-
-              const proc = spawn(cfg.cmd, cfg.args, {
-                cwd: config.projectRoot,
-                shell: true,
-                stdio: ['pipe', 'pipe', 'pipe'],
-              });
-
-              if (cfg.stdinPrompt && proc.stdin) {
-                proc.stdin.write(prompt);
-                proc.stdin.end();
-              }
-
-              proc.stdout?.on('data', (d: Buffer) => {
-                output += d.toString();
-              });
-              proc.stderr?.on('data', (d: Buffer) => {
-                stderrOutput += d.toString();
-              });
-
-              proc.on('close', (code: number | null) => {
-                settle(() => {
-                  if (code === 0 || output.length > 0) {
-                    resolve(output);
-                  } else {
-                    reject(
-                      new Error(
-                        `Agent ${agentTool} exited with code ${code}${stderrOutput ? ': ' + stderrOutput.slice(0, 500) : ''}`
-                      )
-                    );
-                  }
-                });
-              });
-
-              proc.on('error', (err: Error) => {
-                settle(() => reject(new Error(`Failed to spawn ${agentTool}: ${err.message}`)));
-              });
-
-              const timeout = setTimeout(() => {
-                proc.kill('SIGTERM');
-                settle(() => resolve(output || `Agent ${agentTool} timed out after 10 minutes`));
-              }, 600000);
-
-              proc.on('close', () => clearTimeout(timeout));
-            });
-
-          // Sync task count from PRD
-          await ralphManager.refreshTaskCount();
-
-          // Load PRD for project name (used in prompts)
-          const prd = await ralphManager.loadPRD();
-          if (!prd || !prd.userStories || prd.userStories.length === 0) {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify({
-                    success: false,
-                    error: 'No PRD found or no user stories. Run rulebook_ralph_init first.',
-                  }),
-                },
-              ],
-            };
-          }
-
-          const projectName = prd.project || 'unknown';
-          let iterationCount = 0;
-
-          while (ralphManager.canContinue() && iterationCount < maxIterations) {
-            iterationCount++;
-            const task = await ralphManager.getNextTask();
-            if (!task) break;
-
-            const startTime = Date.now();
-
-            // 1. Execute AI agent
-            let agentOutput = '';
+            const toolCmd = toolCmdNames[tool] || 'claude';
             try {
-              const prompt = buildPrompt(task, projectName);
-              agentOutput = await executeAgent(tool, prompt);
-            } catch (agentErr: any) {
-              agentOutput = `Error: ${agentErr.message || agentErr}`;
+              execSync(`${toolCmd} --version`, { stdio: 'pipe', timeout: 10000 });
+            } catch {
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: JSON.stringify({
+                      success: false,
+                      error: `CLI tool "${toolCmd}" not found or not responding. Install it first: https://docs.anthropic.com/claude-code`,
+                    }),
+                  },
+                ],
+              };
             }
 
-            // 2. Run quality gates
-            const [typeCheck, lint, tests] = await Promise.all([
-              runCmd('npm', ['run', 'type-check']).then((r) => r.code === 0),
-              runCmd('npm', ['run', 'lint']).then((r) => r.code === 0),
-              runCmd('npm', ['test']).then((r) => r.code === 0),
-            ]);
-            const qualityChecks = { type_check: typeCheck, lint, tests, coverage_met: tests };
-
-            const allPass = typeCheck && lint && tests;
-            const passCount = Object.values(qualityChecks).filter(Boolean).length;
-            const status: 'success' | 'partial' | 'failed' = allPass
-              ? 'success'
-              : passCount >= 2
-                ? 'partial'
-                : 'failed';
-
-            // 3. Git commit if all gates pass
-            let gitCommit: string | undefined;
-            if (allPass) {
-              await runCmd('git', ['add', '-A']);
-              const commitResult = await runCmd('git', [
-                'commit',
-                '-m',
-                `ralph(${task.id}): ${task.title}\n\nIteration ${iterationCount} - Ralph autonomous loop`,
-              ]);
-              const hashMatch = commitResult.stdout.match(/\[[\w/.-]+ ([a-f0-9]+)\]/);
-              gitCommit = hashMatch ? hashMatch[1] : undefined;
-              await ralphManager.markStoryComplete(task.id);
+            // Resume existing state if available, otherwise initialize fresh
+            const existingState = await ralphManager.getStatus();
+            if (!existingState) {
+              await ralphManager.initialize(maxIterations, tool);
             }
 
-            // 4. Parse output for learnings/errors
-            const parsed = RalphParser.parseAgentOutput(
-              agentOutput,
-              iterationCount,
-              task.id,
-              task.title,
-              tool
+            // Helper: run a shell command and return stdout
+            const runCmd = (
+              cmd: string,
+              cmdArgs: string[]
+            ): Promise<{ code: number; stdout: string; stderr: string }> =>
+              new Promise((resolve) => {
+                let stdout = '';
+                let stderr = '';
+                const proc = spawn(cmd, cmdArgs, {
+                  cwd: config.projectRoot,
+                  shell: true,
+                  stdio: ['pipe', 'pipe', 'pipe'],
+                });
+                proc.stdout?.on('data', (d: Buffer) => {
+                  stdout += d.toString();
+                });
+                proc.stderr?.on('data', (d: Buffer) => {
+                  stderr += d.toString();
+                });
+                proc.on('close', (code: number | null) =>
+                  resolve({ code: code ?? 1, stdout, stderr })
+                );
+                proc.on('error', (err: Error) => resolve({ code: 1, stdout, stderr: err.message }));
+              });
+
+            // Helper: build prompt for AI agent
+            const buildPrompt = (task: any, projectName: string): string => {
+              const criteria = (task.acceptanceCriteria || [])
+                .map((c: string) => `- ${c}`)
+                .join('\n');
+              return [
+                `You are working on project: ${projectName}`,
+                ``,
+                `## Current Task: ${task.title}`,
+                `ID: ${task.id}`,
+                ``,
+                `## Description`,
+                task.description,
+                ``,
+                `## Acceptance Criteria`,
+                criteria,
+                ``,
+                task.notes ? `## Notes\n${task.notes}\n` : '',
+                `## Instructions`,
+                `1. Implement the changes described above`,
+                `2. Ensure all acceptance criteria are met`,
+                `3. Run quality checks: type-check, lint, tests`,
+                `4. Fix any issues found by quality checks`,
+                `5. When done, summarize what was changed`,
+              ]
+                .filter(Boolean)
+                .join('\n');
+            };
+
+            // Helper: execute AI agent with proper error handling
+            const executeAgent = (agentTool: string, prompt: string): Promise<string> =>
+              new Promise((resolve, reject) => {
+                let output = '';
+                let stderrOutput = '';
+                const toolCmds: Record<
+                  string,
+                  { cmd: string; args: string[]; stdinPrompt: boolean }
+                > = {
+                  claude: {
+                    cmd: 'claude',
+                    args: ['-p', '--dangerously-skip-permissions', '--verbose'],
+                    stdinPrompt: true,
+                  },
+                  amp: { cmd: 'amp', args: ['-p', prompt], stdinPrompt: false },
+                  gemini: { cmd: 'gemini', args: ['-p', prompt], stdinPrompt: false },
+                };
+                const cfg = toolCmds[agentTool] || toolCmds.claude;
+
+                let settled = false;
+                const settle = (fn: () => void) => {
+                  if (!settled) {
+                    settled = true;
+                    fn();
+                  }
+                };
+
+                const proc = spawn(cfg.cmd, cfg.args, {
+                  cwd: config.projectRoot,
+                  shell: true,
+                  stdio: ['pipe', 'pipe', 'pipe'],
+                });
+
+                if (cfg.stdinPrompt && proc.stdin) {
+                  proc.stdin.write(prompt);
+                  proc.stdin.end();
+                }
+
+                proc.stdout?.on('data', (d: Buffer) => {
+                  output += d.toString();
+                });
+                proc.stderr?.on('data', (d: Buffer) => {
+                  stderrOutput += d.toString();
+                });
+
+                proc.on('close', (code: number | null) => {
+                  settle(() => {
+                    if (code === 0 || output.length > 0) {
+                      resolve(output);
+                    } else {
+                      reject(
+                        new Error(
+                          `Agent ${agentTool} exited with code ${code}${stderrOutput ? ': ' + stderrOutput.slice(0, 500) : ''}`
+                        )
+                      );
+                    }
+                  });
+                });
+
+                proc.on('error', (err: Error) => {
+                  settle(() => reject(new Error(`Failed to spawn ${agentTool}: ${err.message}`)));
+                });
+
+                const timeout = setTimeout(() => {
+                  proc.kill('SIGTERM');
+                  settle(() => resolve(output || `Agent ${agentTool} timed out after 10 minutes`));
+                }, 600000);
+
+                proc.on('close', () => clearTimeout(timeout));
+              });
+
+            // Sync task count from PRD
+            await ralphManager.refreshTaskCount();
+
+            // Load PRD for project name (used in prompts)
+            const prd = await ralphManager.loadPRD();
+            if (!prd || !prd.userStories || prd.userStories.length === 0) {
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: JSON.stringify({
+                      success: false,
+                      error: 'No PRD found or no user stories. Run rulebook_ralph_init first.',
+                    }),
+                  },
+                ],
+              };
+            }
+
+            const projectName = prd.project || 'unknown';
+            const totalTasks = prd.userStories.filter((s: any) => !s.passes).length;
+            let iterationCount = 0;
+            const iterationResults: Array<{
+              iteration: number;
+              taskId: string;
+              taskTitle: string;
+              status: string;
+              durationMs: number;
+            }> = [];
+
+            // Log to stderr so MCP callers can see progress
+            const logProgress = (msg: string) => {
+              process.stderr.write(`[Ralph] ${msg}\n`);
+            };
+
+            logProgress(
+              `Starting Ralph loop: ${totalTasks} pending tasks, max ${maxIterations} iterations, tool=${tool}`
             );
 
-            // 5. Record iteration and refresh task count for canContinue()
-            await ralphManager.recordIteration({
-              iteration: iterationCount,
-              timestamp: new Date().toISOString(),
-              task_id: task.id,
-              task_title: task.title,
-              status,
-              ai_tool: tool,
-              execution_time_ms: Date.now() - startTime,
-              quality_checks: qualityChecks,
-              output_summary: parsed.output_summary || `Iteration ${iterationCount}: ${task.title}`,
-              git_commit: gitCommit,
-              learnings: parsed.learnings,
-              errors: parsed.errors,
-              metadata: {
-                context_loss_count: parsed.metadata.context_loss_count,
-                parsed_completion: parsed.metadata.parsed_completion,
-              },
-            });
+            while (ralphManager.canContinue() && iterationCount < maxIterations) {
+              iterationCount++;
+              const task = await ralphManager.getNextTask();
+              if (!task) break;
 
-            // Refresh task count so canContinue() reflects updated PRD
-            await ralphManager.refreshTaskCount();
+              // Update lock with current progress
+              await ralphManager.updateLockProgress(iterationCount, `${task.id}: ${task.title}`);
+
+              logProgress(
+                `Iteration ${iterationCount}/${maxIterations} — Task: ${task.id} "${task.title}"`
+              );
+
+              const startTime = Date.now();
+
+              // 1. Execute AI agent
+              let agentOutput = '';
+              try {
+                logProgress(`  Executing ${tool} agent...`);
+                const prompt = buildPrompt(task, projectName);
+                agentOutput = await executeAgent(tool, prompt);
+                logProgress(`  Agent finished (${((Date.now() - startTime) / 1000).toFixed(0)}s)`);
+              } catch (agentErr: any) {
+                agentOutput = `Error: ${agentErr.message || agentErr}`;
+                logProgress(`  Agent error: ${agentErr.message || agentErr}`);
+              }
+
+              // 2. Run quality gates
+              logProgress(`  Running quality gates...`);
+              const [typeCheck, lint, tests] = await Promise.all([
+                runCmd('npm', ['run', 'type-check']).then((r) => r.code === 0),
+                runCmd('npm', ['run', 'lint']).then((r) => r.code === 0),
+                runCmd('npm', ['test']).then((r) => r.code === 0),
+              ]);
+              const qualityChecks = { type_check: typeCheck, lint, tests, coverage_met: tests };
+
+              const allPass = typeCheck && lint && tests;
+              const passCount = Object.values(qualityChecks).filter(Boolean).length;
+              const status: 'success' | 'partial' | 'failed' = allPass
+                ? 'success'
+                : passCount >= 2
+                  ? 'partial'
+                  : 'failed';
+
+              logProgress(
+                `  Quality: type-check=${typeCheck ? 'PASS' : 'FAIL'} lint=${lint ? 'PASS' : 'FAIL'} tests=${tests ? 'PASS' : 'FAIL'} → ${status.toUpperCase()}`
+              );
+
+              // 3. Git commit if all gates pass
+              let gitCommit: string | undefined;
+              if (allPass) {
+                await runCmd('git', ['add', '-A']);
+                const commitResult = await runCmd('git', [
+                  'commit',
+                  '-m',
+                  `ralph(${task.id}): ${task.title}\n\nIteration ${iterationCount} - Ralph autonomous loop`,
+                ]);
+                const hashMatch = commitResult.stdout.match(/\[[\w/.-]+ ([a-f0-9]+)\]/);
+                gitCommit = hashMatch ? hashMatch[1] : undefined;
+                await ralphManager.markStoryComplete(task.id);
+                logProgress(`  Committed: ${gitCommit || 'no hash'} — Story ${task.id} COMPLETE`);
+              }
+
+              const iterDuration = Date.now() - startTime;
+
+              // 4. Parse output for learnings/errors
+              const parsed = RalphParser.parseAgentOutput(
+                agentOutput,
+                iterationCount,
+                task.id,
+                task.title,
+                tool
+              );
+
+              // 5. Record iteration and refresh task count for canContinue()
+              await ralphManager.recordIteration({
+                iteration: iterationCount,
+                timestamp: new Date().toISOString(),
+                task_id: task.id,
+                task_title: task.title,
+                status,
+                ai_tool: tool,
+                execution_time_ms: iterDuration,
+                quality_checks: qualityChecks,
+                output_summary:
+                  parsed.output_summary || `Iteration ${iterationCount}: ${task.title}`,
+                git_commit: gitCommit,
+                learnings: parsed.learnings,
+                errors: parsed.errors,
+                metadata: {
+                  context_loss_count: parsed.metadata.context_loss_count,
+                  parsed_completion: parsed.metadata.parsed_completion,
+                },
+              });
+
+              iterationResults.push({
+                iteration: iterationCount,
+                taskId: task.id,
+                taskTitle: task.title,
+                status,
+                durationMs: iterDuration,
+              });
+
+              // Refresh task count so canContinue() reflects updated PRD
+              await ralphManager.refreshTaskCount();
+
+              logProgress(
+                `  Iteration ${iterationCount} complete (${(iterDuration / 1000).toFixed(0)}s)\n`
+              );
+            }
+
+            const stats = await ralphManager.getTaskStats();
+            logProgress(
+              `Ralph loop finished: ${iterationCount} iterations, ${stats.completed}/${stats.total} tasks completed`
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify({
+                    success: true,
+                    iterations: iterationCount,
+                    completed: stats.completed,
+                    total: stats.total,
+                    results: iterationResults,
+                  }),
+                },
+              ],
+            };
+          } finally {
+            // Always release lock, even on error
+            await ralphManager.releaseLock();
+            process.removeListener('SIGTERM', cleanupLock);
+            process.removeListener('SIGINT', cleanupLock);
           }
-
-          const stats = await ralphManager.getTaskStats();
-
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  success: true,
-                  iterations: iterationCount,
-                  completed: stats.completed,
-                  total: stats.total,
-                }),
-              },
-            ],
-          };
         } catch (error) {
           return {
             content: [
@@ -1282,12 +1365,25 @@ export async function startRulebookMcpServer(): Promise<void> {
 
           const stats = await ralphManager.getTaskStats();
 
+          // Check if Ralph is currently running (lock held by alive process)
+          const running = await ralphManager.isRunning();
+          const lockInfo = running ? await ralphManager.getLockInfo() : null;
+
           return {
             content: [
               {
                 type: 'text',
                 text: JSON.stringify({
                   success: true,
+                  running,
+                  ...(running && lockInfo
+                    ? {
+                        runningPid: lockInfo.pid,
+                        runningTask: lockInfo.currentTask || null,
+                        runningIteration: lockInfo.iteration || 0,
+                        runningSince: lockInfo.startedAt,
+                      }
+                    : {}),
                   iteration: status.current_iteration,
                   maxIterations: status.max_iterations,
                   completedTasks: stats.completed,
