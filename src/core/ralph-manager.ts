@@ -1,4 +1,4 @@
-import { mkdir, readdir, writeFile, appendFile } from 'fs/promises';
+import { mkdir, readdir, writeFile, appendFile, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import { Logger } from './logger.js';
@@ -84,7 +84,7 @@ export class RalphManager {
   }
 
   /**
-   * Mark a user story as complete
+   * Mark a user story as complete and sync tasks.md checkboxes
    */
   async markStoryComplete(storyId: string): Promise<void> {
     const prd = await this.loadPRD();
@@ -96,6 +96,53 @@ export class RalphManager {
     if (story) {
       story.passes = true;
       await writeFile(path.join(this.ralphDir, 'prd.json'), JSON.stringify(prd, null, 2));
+
+      // Sync tasks.md checkboxes for acceptance criteria
+      if (story.sourceTaskId) {
+        await this.syncTasksCheckboxes(story.sourceTaskId, story.acceptanceCriteria);
+      }
+    }
+  }
+
+  /**
+   * Mark matching checkboxes in tasks.md as completed
+   */
+  private async syncTasksCheckboxes(
+    sourceTaskId: string,
+    acceptanceCriteria: string[]
+  ): Promise<void> {
+    // Look in .rulebook/tasks/<sourceTaskId>/tasks.md
+    const projectRoot = path.dirname(path.dirname(this.ralphDir));
+    const tasksPath = path.join(projectRoot, '.rulebook', 'tasks', sourceTaskId, 'tasks.md');
+
+    if (!existsSync(tasksPath)) {
+      return;
+    }
+
+    try {
+      let content = await readFile(tasksPath, 'utf-8');
+
+      // For each acceptance criterion, find matching checkbox and mark it
+      for (const criterion of acceptanceCriteria) {
+        // Extract the task number prefix (e.g., "1.1", "2.3") from criterion
+        const numMatch = criterion.match(/^(\d+\.\d+)\s/);
+        if (numMatch) {
+          // Match checkbox line containing the same number prefix
+          const escapedNum = numMatch[1].replace('.', '\\.');
+          const regex = new RegExp(`^(- \\[) (\\] ${escapedNum}\\s)`, 'm');
+          content = content.replace(regex, '$1x$2');
+        } else {
+          // Fuzzy match: find checkbox whose text starts similarly (first 40 chars)
+          const needle = criterion.slice(0, 40).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`^(- \\[) (\\] .*${needle})`, 'm');
+          content = content.replace(regex, '$1x$2');
+        }
+      }
+
+      await writeFile(tasksPath, content);
+      this.logger.info(`Synced tasks.md checkboxes for ${sourceTaskId}`);
+    } catch (err) {
+      this.logger.warn(`Failed to sync tasks.md for ${sourceTaskId}: ${err}`);
     }
   }
 
@@ -169,6 +216,21 @@ export class RalphManager {
       .join('\n');
 
     await appendFile(progressPath, line + '\n\n');
+  }
+
+  /**
+   * Refresh total_tasks from PRD (call after PRD is saved)
+   */
+  async refreshTaskCount(): Promise<void> {
+    if (!this.loopState) {
+      return;
+    }
+    const prd = await this.loadPRD();
+    if (prd && prd.userStories) {
+      this.loopState.total_tasks = prd.userStories.length;
+      this.loopState.completed_tasks = prd.userStories.filter((s: any) => s.passes).length;
+      await this.saveLoopState();
+    }
   }
 
   /**

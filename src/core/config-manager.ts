@@ -46,6 +46,9 @@ export class ConfigManager {
     // Migrate old .rulebook file to new directory structure if needed
     await this.migrateOldRulebookFile();
 
+    // Migrate old rulebook/ directory into .rulebook/
+    await this.migrateRulebookDirectory();
+
     if (!existsSync(this.configPath)) {
       return await this.initializeConfig();
     }
@@ -382,6 +385,68 @@ export class ConfigManager {
   }
 
   /**
+   * Migrate old rulebook/ directory into .rulebook/
+   * Moves rulebook/specs/ → .rulebook/specs/ and rulebook/tasks/ → .rulebook/tasks/
+   * Then removes the now-empty rulebook/ directory
+   */
+  async migrateRulebookDirectory(): Promise<void> {
+    const fsPromises = await import('fs/promises');
+    const oldRulebookDir = join(this.projectRoot, 'rulebook');
+    const newRulebookDir = join(this.projectRoot, '.rulebook');
+
+    // Only migrate if old rulebook/ directory exists
+    if (!existsSync(oldRulebookDir)) {
+      return;
+    }
+
+    try {
+      const stats = await fsPromises.stat(oldRulebookDir);
+      if (!stats.isDirectory()) {
+        return;
+      }
+    } catch {
+      return;
+    }
+
+    try {
+      // Ensure .rulebook directory exists
+      await mkdir(newRulebookDir, { recursive: true });
+
+      // Migrate specs/
+      const oldSpecsDir = join(oldRulebookDir, 'specs');
+      const newSpecsDir = join(newRulebookDir, 'specs');
+      if (existsSync(oldSpecsDir)) {
+        if (!existsSync(newSpecsDir)) {
+          await cp(oldSpecsDir, newSpecsDir, { recursive: true });
+        }
+        await rm(oldSpecsDir, { recursive: true, force: true });
+      }
+
+      // Migrate tasks/
+      const oldTasksDir = join(oldRulebookDir, 'tasks');
+      const newTasksDir = join(newRulebookDir, 'tasks');
+      if (existsSync(oldTasksDir)) {
+        if (!existsSync(newTasksDir)) {
+          await cp(oldTasksDir, newTasksDir, { recursive: true });
+        }
+        await rm(oldTasksDir, { recursive: true, force: true });
+      }
+
+      // Remove empty rulebook/ directory if it's now empty
+      try {
+        const remaining = await fsPromises.readdir(oldRulebookDir);
+        if (remaining.length === 0) {
+          await rm(oldRulebookDir, { recursive: true, force: true });
+        }
+      } catch {
+        // Ignore errors reading the directory
+      }
+    } catch (error) {
+      console.warn(`Rulebook directory migration warning: ${error}`);
+    }
+  }
+
+  /**
    * Migrate old directory structure to new consolidated structure
    * Moves .rulebook-memory/ to .rulebook/memory/ and .rulebook-ralph/ to .rulebook/ralph/
    */
@@ -463,6 +528,58 @@ export class ConfigManager {
         // Ignore cleanup errors
       }
       console.warn(`Directory migration warning: ${error}`);
+    }
+  }
+
+  /**
+   * Ensure .gitignore has .rulebook entries with specs/ and tasks/ exceptions
+   */
+  async ensureGitignore(): Promise<void> {
+    const gitignorePath = join(this.projectRoot, '.gitignore');
+    const rulebookBlock = [
+      '',
+      '# Rulebook - ignore runtime data, keep specs and tasks',
+      '/.rulebook/*',
+      '!/.rulebook/specs/',
+      '!/.rulebook/tasks/',
+      '!/.rulebook/rulebook.json',
+    ].join('\n');
+
+    try {
+      if (existsSync(gitignorePath)) {
+        let content = await readFileAsync(gitignorePath, 'utf-8');
+
+        // Already has the correct block with exceptions
+        if (content.includes('!/.rulebook/specs/')) {
+          return;
+        }
+
+        // Has old-style entry without exceptions — replace it
+        if (content.includes('.rulebook')) {
+          // Remove old entries (with or without leading /)
+          const lines = content.split('\n');
+          const filtered = lines.filter(
+            (line) => {
+              const trimmed = line.trim();
+              return (
+                trimmed !== '.rulebook' && trimmed !== '.rulebook/' && trimmed !== '.rulebook/*' &&
+                trimmed !== '/.rulebook' && trimmed !== '/.rulebook/' && trimmed !== '/.rulebook/*' &&
+                trimmed !== '!.rulebook/specs/' && trimmed !== '!.rulebook/tasks/' && trimmed !== '!.rulebook/rulebook.json' &&
+                trimmed !== '# Rulebook - ignore runtime data, keep specs and tasks'
+              );
+            }
+          );
+          content = filtered.join('\n');
+        }
+
+        // Append the correct block
+        const separator = content.endsWith('\n') ? '' : '\n';
+        await writeFileAsync(gitignorePath, content + separator + rulebookBlock + '\n');
+      } else {
+        await writeFileAsync(gitignorePath, rulebookBlock.trimStart() + '\n');
+      }
+    } catch {
+      // Non-critical, don't fail init
     }
   }
 }

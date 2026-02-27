@@ -61,7 +61,7 @@ rulebook task validate <task-id>
 ## Task Directory Structure
 
 ```
-rulebook/tasks/<task-id>/
+.rulebook/tasks/<task-id>/
 ├── proposal.md         # Why and what changes
 ├── tasks.md            # Implementation checklist
 ├── design.md           # Technical design (optional)

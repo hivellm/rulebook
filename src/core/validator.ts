@@ -96,20 +96,20 @@ async function validateRulebookDirectory(
   _errors: ValidationError[],
   warnings: ValidationWarning[]
 ): Promise<void> {
-  const rulebookPath = path.join(cwd, 'rulebook');
+  const rulebookPath = path.join(cwd, '.rulebook');
 
-  // Check if rulebook directory exists (optional but recommended for modular mode)
+  // Check if .rulebook directory exists (optional but recommended for modular mode)
   const rulebookExists = await fileExists(rulebookPath);
 
   if (rulebookExists) {
-    // Validate that rulebook directory contains .md files
-    const rulebookFiles = await findFiles('rulebook/*.md', cwd);
+    // Validate that .rulebook/specs directory contains .md files
+    const rulebookFiles = await findFiles('.rulebook/specs/*.md', cwd);
     if (rulebookFiles.length === 0) {
       warnings.push({
         type: 'warning',
         category: 'structure',
-        message: 'rulebook/ directory exists but contains no .md files',
-        file: 'rulebook/',
+        message: '.rulebook/specs/ directory exists but contains no .md files',
+        file: '.rulebook/specs/',
       });
     }
   }

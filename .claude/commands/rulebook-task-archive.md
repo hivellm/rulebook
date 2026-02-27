@@ -8,7 +8,7 @@ description: Archive a completed Rulebook task and apply spec deltas to main spe
 **Guardrails**
 - Favor straightforward, minimal implementations first and add complexity only when it is requested or clearly required.
 - Keep changes tightly scoped to the requested outcome.
-- Refer to `/rulebook/specs/RULEBOOK.md` for complete task management guidelines.
+- Refer to `/.rulebook/specs/RULEBOOK.md` for complete task management guidelines.
 
 **Steps**
 1. **Verify Task Completion**:
@@ -46,7 +46,7 @@ description: Archive a completed Rulebook task and apply spec deltas to main spe
    - Validates task format (unless skipped)
    - Checks task completion status
    - Applies spec deltas to main specifications
-   - Moves task to `/rulebook/tasks/archive/YYYY-MM-DD-<task-id>/`
+   - Moves task to `/.rulebook/tasks/archive/YYYY-MM-DD-<task-id>/`
    - Updates related specifications
 
 6. **Verify Archive**:
@@ -65,6 +65,6 @@ description: Archive a completed Rulebook task and apply spec deltas to main spe
 **Reference**
 - Use `rulebook task list --archived` to see archived tasks
 - Use `rulebook task show <task-id>` to view task details
-- See `/rulebook/specs/RULEBOOK.md` for complete task management guidelines
+- See `/.rulebook/specs/RULEBOOK.md` for complete task management guidelines
 <!-- RULEBOOK:END -->
 

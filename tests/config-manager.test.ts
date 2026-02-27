@@ -433,3 +433,125 @@ describe('ConfigManager edge cases and error handling', () => {
     expect(summary.version).toBe('2.0.0');
   });
 });
+
+describe('migrateRulebookDirectory', () => {
+  let tempDir: string;
+  let configManager: ReturnType<typeof createConfigManager>;
+
+  beforeEach(async () => {
+    tempDir = join(tmpdir(), 'rulebook-test-migrate-' + Date.now());
+    await fs.mkdir(tempDir, { recursive: true });
+    configManager = createConfigManager(tempDir);
+  });
+
+  afterEach(async () => {
+    try {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should migrate old rulebook/ specs and tasks to .rulebook/', async () => {
+    // Setup old structure
+    await fs.mkdir(join(tempDir, 'rulebook', 'specs'), { recursive: true });
+    await fs.mkdir(join(tempDir, 'rulebook', 'tasks', 'my-task'), { recursive: true });
+    await fs.writeFile(join(tempDir, 'rulebook', 'specs', 'TYPESCRIPT.md'), '# TS');
+    await fs.writeFile(join(tempDir, 'rulebook', 'tasks', 'my-task', 'tasks.md'), '- [ ] item');
+
+    await configManager.migrateRulebookDirectory();
+
+    // New location should have files
+    const specContent = await fs.readFile(join(tempDir, '.rulebook', 'specs', 'TYPESCRIPT.md'), 'utf-8');
+    expect(specContent).toBe('# TS');
+
+    const taskContent = await fs.readFile(join(tempDir, '.rulebook', 'tasks', 'my-task', 'tasks.md'), 'utf-8');
+    expect(taskContent).toBe('- [ ] item');
+
+    // Old specs/tasks should be removed
+    const oldSpecsExists = await fs.access(join(tempDir, 'rulebook', 'specs')).then(() => true).catch(() => false);
+    expect(oldSpecsExists).toBe(false);
+  });
+
+  it('should skip migration when .rulebook/specs already exists', async () => {
+    // Setup old and new structures
+    await fs.mkdir(join(tempDir, 'rulebook', 'specs'), { recursive: true });
+    await fs.writeFile(join(tempDir, 'rulebook', 'specs', 'OLD.md'), 'old content');
+
+    await fs.mkdir(join(tempDir, '.rulebook', 'specs'), { recursive: true });
+    await fs.writeFile(join(tempDir, '.rulebook', 'specs', 'NEW.md'), 'new content');
+
+    await configManager.migrateRulebookDirectory();
+
+    // Should keep the new content, not overwrite with old
+    const newExists = await fs.access(join(tempDir, '.rulebook', 'specs', 'NEW.md')).then(() => true).catch(() => false);
+    expect(newExists).toBe(true);
+  });
+
+  it('should remove empty rulebook/ after migration', async () => {
+    // Setup old structure with only specs
+    await fs.mkdir(join(tempDir, 'rulebook', 'specs'), { recursive: true });
+    await fs.writeFile(join(tempDir, 'rulebook', 'specs', 'TEST.md'), 'test');
+
+    await configManager.migrateRulebookDirectory();
+
+    // Old rulebook/ should be gone
+    const oldDirExists = await fs.access(join(tempDir, 'rulebook')).then(() => true).catch(() => false);
+    expect(oldDirExists).toBe(false);
+  });
+
+  it('should not fail when old rulebook/ does not exist', async () => {
+    // Should not throw
+    await expect(configManager.migrateRulebookDirectory()).resolves.not.toThrow();
+  });
+});
+
+describe('ensureGitignore', () => {
+  let tempDir: string;
+  let configManager: ReturnType<typeof createConfigManager>;
+
+  beforeEach(async () => {
+    tempDir = join(tmpdir(), 'rulebook-test-gitignore-' + Date.now());
+    await fs.mkdir(tempDir, { recursive: true });
+    configManager = createConfigManager(tempDir);
+  });
+
+  afterEach(async () => {
+    try {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should create .gitignore with .rulebook entries', async () => {
+    await configManager.ensureGitignore();
+
+    const content = await fs.readFile(join(tempDir, '.gitignore'), 'utf-8');
+    expect(content).toContain('/.rulebook/*');
+    expect(content).toContain('!/.rulebook/specs/');
+    expect(content).toContain('!/.rulebook/tasks/');
+    expect(content).toContain('!/.rulebook/rulebook.json');
+  });
+
+  it('should append to existing .gitignore', async () => {
+    await fs.writeFile(join(tempDir, '.gitignore'), 'node_modules/\n');
+
+    await configManager.ensureGitignore();
+
+    const content = await fs.readFile(join(tempDir, '.gitignore'), 'utf-8');
+    expect(content).toContain('node_modules/');
+    expect(content).toContain('/.rulebook/*');
+  });
+
+  it('should skip if .rulebook already in .gitignore', async () => {
+    await fs.writeFile(join(tempDir, '.gitignore'), 'node_modules/\n/.rulebook/*\n!/.rulebook/specs/\n');
+
+    await configManager.ensureGitignore();
+
+    const content = await fs.readFile(join(tempDir, '.gitignore'), 'utf-8');
+    // Should not duplicate
+    const matches = content.match(/\/\.rulebook\/\*/g);
+    expect(matches).toHaveLength(1);
+  });
+});

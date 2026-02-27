@@ -28,7 +28,7 @@ npx @hivehub/rulebook init
 ### Step 1: Initialize Ralph for Your Project
 
 ```bash
-# Create task specifications in rulebook/tasks/
+# Create task specifications in .rulebook/tasks/
 rulebook task create my-feature
 
 # Initialize Ralph

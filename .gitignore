@@ -57,8 +57,13 @@ out/
 
 # Memory system database
 .rulebook-memory/
-.rulebook
 
 # MCP debug output
 mcp_stderr.txt
 mcp_tools.txt
+
+# Rulebook - ignore runtime data, keep specs and tasks
+/.rulebook/*
+!/.rulebook/specs/
+!/.rulebook/tasks/
+!/.rulebook/rulebook.json

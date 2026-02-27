@@ -423,8 +423,8 @@ rulebook ralph resume
 
 ## Related Documentation
 
-- See `/rulebook/specs/RULEBOOK.md` for task structure
-- See `/rulebook/specs/QUALITY_ENFORCEMENT.md` for quality gates
+- See `/.rulebook/specs/RULEBOOK.md` for task structure
+- See `/.rulebook/specs/QUALITY_ENFORCEMENT.md` for quality gates
 - See `/rulebook/AGENTS.md` for AI agent integration
 
 <!-- RALPH:END -->

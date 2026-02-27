@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { TaskManager } from '../core/task-manager.js';
 import { SkillsManager, getDefaultTemplatesPath } from '../core/skills-manager.js';
 import { ConfigManager } from '../core/config-manager.js';
-import { join, dirname, resolve } from 'path';
+import { join, dirname, resolve, basename } from 'path';
 import { readFileSync, existsSync, statSync } from 'fs';
 import type { SkillCategory } from '../types.js';
 
@@ -54,15 +54,15 @@ function loadConfig() {
   }
 
   const mcp = config.mcp || {};
-  const tasksDir = resolve(projectRoot, mcp.tasksDir || 'rulebook/tasks');
-  const archiveDir = resolve(projectRoot, mcp.archiveDir || 'rulebook/archive');
+  const tasksDir = resolve(projectRoot, mcp.tasksDir || '.rulebook/tasks');
+  const archiveDir = resolve(projectRoot, mcp.archiveDir || '.rulebook/archive');
 
   return { projectRoot, tasksDir, archiveDir };
 }
 
 export async function startRulebookMcpServer(): Promise<void> {
   const config = loadConfig();
-  const taskManager = new TaskManager(config.projectRoot, 'rulebook');
+  const taskManager = new TaskManager(config.projectRoot, '.rulebook');
   const skillsManager = new SkillsManager(getDefaultTemplatesPath(), config.projectRoot);
   const configManager = new ConfigManager(config.projectRoot);
 
@@ -906,7 +906,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           await ralphManager.initialize(maxIterations, tool);
 
           const prd = await prdGenerator.generatePRD(
-            config.projectRoot.split('/').pop() || 'project'
+            basename(config.projectRoot) || 'project'
           );
 
           const { writeFile } = await import('../utils/file-system.js');
@@ -955,6 +955,8 @@ export async function startRulebookMcpServer(): Promise<void> {
         try {
           const { Logger } = await import('../core/logger.js');
           const { RalphManager } = await import('../core/ralph-manager.js');
+          const { RalphParser } = await import('../agents/ralph-parser.js');
+          const { spawn } = await import('child_process');
 
           const logger = new Logger(config.projectRoot);
           const ralphManager = new RalphManager(config.projectRoot, logger);
@@ -966,35 +968,152 @@ export async function startRulebookMcpServer(): Promise<void> {
             | 'amp'
             | 'gemini';
 
-          await ralphManager.initialize(maxIterations, tool);
+          // Resume existing state if available, otherwise initialize fresh
+          const existingState = await ralphManager.getStatus();
+          if (!existingState) {
+            await ralphManager.initialize(maxIterations, tool);
+          }
 
+          // Helper: run a shell command and return stdout
+          const runCmd = (cmd: string, cmdArgs: string[]): Promise<{ code: number; stdout: string; stderr: string }> =>
+            new Promise((resolve) => {
+              let stdout = '';
+              let stderr = '';
+              const proc = spawn(cmd, cmdArgs, {
+                cwd: config.projectRoot,
+                shell: true,
+                stdio: ['pipe', 'pipe', 'pipe'],
+              });
+              proc.stdout?.on('data', (d: Buffer) => { stdout += d.toString(); });
+              proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
+              proc.on('close', (code: number | null) => resolve({ code: code ?? 1, stdout, stderr }));
+              proc.on('error', (err: Error) => resolve({ code: 1, stdout, stderr: err.message }));
+            });
+
+          // Helper: build prompt for AI agent
+          const buildPrompt = (task: any, prd: any): string => {
+            const criteria = (task.acceptanceCriteria || []).map((c: string) => `- ${c}`).join('\n');
+            return [
+              `You are working on project: ${prd?.project || 'unknown'}`,
+              ``,
+              `## Current Task: ${task.title}`,
+              `ID: ${task.id}`,
+              ``,
+              `## Description`,
+              task.description,
+              ``,
+              `## Acceptance Criteria`,
+              criteria,
+              ``,
+              task.notes ? `## Notes\n${task.notes}\n` : '',
+              `## Instructions`,
+              `1. Implement the changes described above`,
+              `2. Ensure all acceptance criteria are met`,
+              `3. Run quality checks: type-check, lint, tests`,
+              `4. Fix any issues found by quality checks`,
+              `5. When done, summarize what was changed`,
+            ].filter(Boolean).join('\n');
+          };
+
+          // Helper: execute AI agent
+          const executeAgent = (agentTool: string, prompt: string): Promise<string> =>
+            new Promise((resolve, reject) => {
+              let output = '';
+              const toolCmds: Record<string, { cmd: string; args: string[]; stdinPrompt: boolean }> = {
+                claude: { cmd: 'claude', args: ['-p', '--dangerously-skip-permissions', '--verbose'], stdinPrompt: true },
+                amp: { cmd: 'amp', args: ['-p', prompt], stdinPrompt: false },
+                gemini: { cmd: 'gemini', args: ['-p', prompt], stdinPrompt: false },
+              };
+              const cfg = toolCmds[agentTool] || toolCmds.claude;
+              const proc = spawn(cfg.cmd, cfg.args, {
+                cwd: config.projectRoot,
+                shell: true,
+                stdio: ['pipe', 'pipe', 'pipe'],
+              });
+              if (cfg.stdinPrompt && proc.stdin) {
+                proc.stdin.write(prompt);
+                proc.stdin.end();
+              }
+              proc.stdout?.on('data', (d: Buffer) => { output += d.toString(); });
+              proc.stderr?.on('data', () => {});
+              proc.on('close', (code: number | null) => {
+                if (code === 0 || output.length > 0) resolve(output);
+                else reject(new Error(`Agent ${agentTool} exited with code ${code}`));
+              });
+              proc.on('error', (err: Error) => reject(err));
+              setTimeout(() => { proc.kill('SIGTERM'); resolve(output || 'Agent timed out'); }, 600000);
+            });
+
+          // Sync task count from PRD
+          await ralphManager.refreshTaskCount();
+
+          const prd = await ralphManager.loadPRD();
           let iterationCount = 0;
+
           while (ralphManager.canContinue() && iterationCount < maxIterations) {
             iterationCount++;
             const task = await ralphManager.getNextTask();
             if (!task) break;
 
-            // Mark story as complete
-            await ralphManager.markStoryComplete(task.id);
+            const startTime = Date.now();
 
-            // Placeholder result - real execution would use agent manager
-            const result = {
+            // 1. Execute AI agent
+            let agentOutput = '';
+            try {
+              const prompt = buildPrompt(task, prd);
+              agentOutput = await executeAgent(tool, prompt);
+            } catch (agentErr: any) {
+              agentOutput = `Error: ${agentErr.message || agentErr}`;
+            }
+
+            // 2. Run quality gates
+            const [typeCheck, lint, tests] = await Promise.all([
+              runCmd('npm', ['run', 'type-check']).then((r) => r.code === 0),
+              runCmd('npm', ['run', 'lint']).then((r) => r.code === 0),
+              runCmd('npm', ['test']).then((r) => r.code === 0),
+            ]);
+            const qualityChecks = { type_check: typeCheck, lint, tests, coverage_met: tests };
+
+            const allPass = typeCheck && lint && tests;
+            const passCount = Object.values(qualityChecks).filter(Boolean).length;
+            const status: 'success' | 'partial' | 'failed' = allPass
+              ? 'success'
+              : passCount >= 2
+                ? 'partial'
+                : 'failed';
+
+            // 3. Git commit if all gates pass
+            let gitCommit: string | undefined;
+            if (allPass) {
+              await runCmd('git', ['add', '-A']);
+              const commitResult = await runCmd('git', ['commit', '-m', `ralph(${task.id}): ${task.title}\n\nIteration ${iterationCount} - Ralph autonomous loop`]);
+              const hashMatch = commitResult.stdout.match(/\[[\w/.-]+ ([a-f0-9]+)\]/);
+              gitCommit = hashMatch ? hashMatch[1] : undefined;
+              await ralphManager.markStoryComplete(task.id);
+            }
+
+            // 4. Parse output for learnings/errors
+            const parsed = RalphParser.parseAgentOutput(agentOutput, iterationCount, task.id, task.title, tool);
+
+            // 5. Record iteration
+            await ralphManager.recordIteration({
               iteration: iterationCount,
               timestamp: new Date().toISOString(),
               task_id: task.id,
               task_title: task.title,
-              status: 'success' as const,
+              status,
               ai_tool: tool,
-              execution_time_ms: 5000,
-              quality_checks: { type_check: true, lint: true, tests: true, coverage_met: true },
-              output_summary: `Completed ${task.title}`,
-              git_commit: undefined,
-              learnings: [],
-              errors: [],
-              metadata: { context_loss_count: 0, parsed_completion: true },
-            };
-
-            await ralphManager.recordIteration(result);
+              execution_time_ms: Date.now() - startTime,
+              quality_checks: qualityChecks,
+              output_summary: parsed.output_summary || `Iteration ${iterationCount}: ${task.title}`,
+              git_commit: gitCommit,
+              learnings: parsed.learnings,
+              errors: parsed.errors,
+              metadata: {
+                context_loss_count: parsed.metadata.context_loss_count,
+                parsed_completion: parsed.metadata.parsed_completion,
+              },
+            });
           }
 
           const stats = await ralphManager.getTaskStats();

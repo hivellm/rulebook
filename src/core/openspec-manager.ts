@@ -1,4 +1,4 @@
-import { readFile, writeFile, existsSync, mkdirSync, readdirSync } from 'fs';
+import { readFile, writeFile, existsSync, readdirSync } from 'fs';
 import { promisify } from 'util';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
@@ -9,20 +9,17 @@ const writeFileAsync = promisify(writeFile);
 
 const OPENSPEC_DIR = 'openspec';
 const CHANGES_DIR = 'changes';
-const SPECS_DIR = 'specs';
 const TASKS_FILE = 'tasks.md';
 
 export class OpenSpecManager {
   private openspecPath: string;
   private changesPath: string;
-  private specsPath: string;
   private data: OpenSpecData | null = null;
   private onLog?: (type: 'info' | 'success' | 'warning' | 'error', message: string) => void;
 
   constructor(projectRoot: string) {
     this.openspecPath = join(projectRoot, OPENSPEC_DIR);
     this.changesPath = join(this.openspecPath, CHANGES_DIR);
-    this.specsPath = join(this.openspecPath, SPECS_DIR);
   }
 
   /**
@@ -35,18 +32,12 @@ export class OpenSpecManager {
   }
 
   /**
-   * Initialize OpenSpec directory structure
+   * Initialize OpenSpec directory structure (deprecated - no longer creates directories)
+   * OpenSpec is legacy; only operates on existing directories.
    */
   async initialize(): Promise<void> {
-    if (!existsSync(this.openspecPath)) {
-      mkdirSync(this.openspecPath, { recursive: true });
-    }
-    if (!existsSync(this.changesPath)) {
-      mkdirSync(this.changesPath, { recursive: true });
-    }
-    if (!existsSync(this.specsPath)) {
-      mkdirSync(this.specsPath, { recursive: true });
-    }
+    // No-op: OpenSpec is deprecated. Do not create openspec/ directory.
+    // Existing openspec/ directories are handled by the migration system.
   }
 
   /**

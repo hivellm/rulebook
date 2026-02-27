@@ -8,7 +8,7 @@ description: Implement an approved Rulebook task and keep tasks checklist in syn
 **Guardrails**
 - Favor straightforward, minimal implementations first and add complexity only when it is requested or clearly required.
 - Keep changes tightly scoped to the requested outcome.
-- Refer to `/rulebook/specs/RULEBOOK.md` for complete task management guidelines.
+- Refer to `/.rulebook/specs/RULEBOOK.md` for complete task management guidelines.
 - **CRITICAL**: Update `tasks.md` IMMEDIATELY after completing and testing each implementation step.
 
 **Steps**
@@ -62,6 +62,6 @@ Track these steps as TODOs and complete them one by one.
 **Reference**
 - Use `rulebook task show <task-id>` when additional context is required
 - Use `rulebook task validate <task-id>` to check format before archiving
-- See `/rulebook/specs/RULEBOOK.md` for complete task management guidelines and priority order
+- See `/.rulebook/specs/RULEBOOK.md` for complete task management guidelines and priority order
 <!-- RULEBOOK:END -->
 

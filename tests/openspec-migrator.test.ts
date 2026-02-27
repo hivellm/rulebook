@@ -58,7 +58,7 @@ describe('OpenSpec Migrator', () => {
     expect(result.migratedTasks).toContain('test-task-1');
 
     // Verify migrated files
-    const rulebookTaskPath = join(testDir, 'rulebook', 'tasks', 'test-task-1');
+    const rulebookTaskPath = join(testDir, '.rulebook', 'tasks', 'test-task-1');
     expect(
       await fs
         .access(join(rulebookTaskPath, 'proposal.md'))
@@ -86,7 +86,7 @@ describe('OpenSpec Migrator', () => {
     await fs.writeFile(join(openspecPath, 'proposal.md'), '# Proposal\n\n## Why\nTest');
 
     // Create existing Rulebook task
-    const rulebookPath = join(testDir, 'rulebook', 'tasks', 'existing-task');
+    const rulebookPath = join(testDir, '.rulebook', 'tasks', 'existing-task');
     await fs.mkdir(rulebookPath, { recursive: true });
     await fs.writeFile(join(rulebookPath, 'proposal.md'), '# Existing');
 
@@ -134,7 +134,7 @@ describe('OpenSpec Migrator', () => {
 
     expect(result.migrated).toBe(1);
 
-    const rulebookPath = join(testDir, 'rulebook', 'tasks', 'task-with-design');
+    const rulebookPath = join(testDir, '.rulebook', 'tasks', 'task-with-design');
     expect(
       await fs
         .access(join(rulebookPath, 'design.md'))
@@ -178,7 +178,7 @@ describe('OpenSpec Migrator', () => {
 
     expect(result.migrated).toBe(1);
 
-    const rulebookPath = join(testDir, 'rulebook', 'tasks', 'multi-spec-task', 'specs');
+    const rulebookPath = join(testDir, '.rulebook', 'tasks', 'multi-spec-task', 'specs');
     for (const module of specModules) {
       expect(
         await fs
@@ -199,7 +199,7 @@ describe('OpenSpec Migrator', () => {
 
     // Should still migrate
     expect(result.migrated).toBe(1);
-    const rulebookPath = join(testDir, 'rulebook', 'tasks', 'task-no-proposal');
+    const rulebookPath = join(testDir, '.rulebook', 'tasks', 'task-no-proposal');
     expect(
       await fs
         .access(join(rulebookPath, 'tasks.md'))
@@ -243,7 +243,7 @@ describe('migrateOpenSpecArchives', () => {
     // Verify migrated archive
     const rulebookArchivePath = join(
       testDir,
-      'rulebook',
+      '.rulebook',
       'tasks',
       'archive',
       '2025-01-01-archived-task'
@@ -265,7 +265,7 @@ describe('migrateOpenSpecArchives', () => {
     // Create existing Rulebook archive
     const rulebookArchivePath = join(
       testDir,
-      'rulebook',
+      '.rulebook',
       'tasks',
       'archive',
       '2025-01-01-existing'
@@ -318,8 +318,8 @@ describe('removeOpenSpecRulebookFile', () => {
   });
 
   it('should remove OPENSPEC.md when it exists', async () => {
-    const openspecPath = join(testDir, 'rulebook', 'OPENSPEC.md');
-    await fs.mkdir(join(testDir, 'rulebook'), { recursive: true });
+    const openspecPath = join(testDir, '.rulebook', 'OPENSPEC.md');
+    await fs.mkdir(join(testDir, '.rulebook'), { recursive: true });
     await fs.writeFile(openspecPath, '# OpenSpec\n\nContent');
 
     const result = await removeOpenSpecRulebookFile(testDir);
@@ -477,7 +477,7 @@ describe('migrateOpenSpecToRulebook edge cases', () => {
     const result = await migrateOpenSpecToRulebook(testDir);
 
     expect(result.migrated).toBe(1);
-    const rulebookPath = join(testDir, 'rulebook', 'tasks', 'task-no-tasks');
+    const rulebookPath = join(testDir, '.rulebook', 'tasks', 'task-no-tasks');
     expect(
       await fs
         .access(join(rulebookPath, 'proposal.md'))
@@ -495,7 +495,7 @@ describe('migrateOpenSpecToRulebook edge cases', () => {
     const result = await migrateOpenSpecToRulebook(testDir);
 
     expect(result.migrated).toBe(1);
-    const rulebookPath = join(testDir, 'rulebook', 'tasks', 'task-no-design');
+    const rulebookPath = join(testDir, '.rulebook', 'tasks', 'task-no-design');
     expect(
       await fs
         .access(join(rulebookPath, 'design.md'))
@@ -513,7 +513,7 @@ describe('migrateOpenSpecToRulebook edge cases', () => {
     const result = await migrateOpenSpecToRulebook(testDir);
 
     expect(result.migrated).toBe(1);
-    const rulebookPath = join(testDir, 'rulebook', 'tasks', 'task-no-specs');
+    const rulebookPath = join(testDir, '.rulebook', 'tasks', 'task-no-specs');
     expect(
       await fs
         .access(join(rulebookPath, 'specs'))
@@ -533,7 +533,7 @@ describe('migrateOpenSpecToRulebook edge cases', () => {
 
     expect(result.migrated).toBe(1);
     // Specs directory is created even if no spec.md files exist
-    const rulebookPath = join(testDir, 'rulebook', 'tasks', 'task-empty-specs');
+    const rulebookPath = join(testDir, '.rulebook', 'tasks', 'task-empty-specs');
     const specsPath = join(rulebookPath, 'specs');
     // The specs directory should exist (created during migration)
     expect(
@@ -583,7 +583,7 @@ describe('migrateOpenSpecArchives edge cases', () => {
     const result = await migrateOpenSpecArchives(testDir);
 
     expect(result.migrated).toBe(1);
-    const rulebookPath = join(testDir, 'rulebook', 'tasks', 'archive', '2025-01-01-no-proposal');
+    const rulebookPath = join(testDir, '.rulebook', 'tasks', 'archive', '2025-01-01-no-proposal');
     expect(
       await fs
         .access(join(rulebookPath, 'tasks.md'))
@@ -600,7 +600,7 @@ describe('migrateOpenSpecArchives edge cases', () => {
     const result = await migrateOpenSpecArchives(testDir);
 
     expect(result.migrated).toBe(1);
-    const rulebookPath = join(testDir, 'rulebook', 'tasks', 'archive', '2025-01-01-no-tasks');
+    const rulebookPath = join(testDir, '.rulebook', 'tasks', 'archive', '2025-01-01-no-tasks');
     expect(
       await fs
         .access(join(rulebookPath, 'proposal.md'))
@@ -618,7 +618,7 @@ describe('migrateOpenSpecArchives edge cases', () => {
     const result = await migrateOpenSpecArchives(testDir);
 
     expect(result.migrated).toBe(1);
-    const rulebookPath = join(testDir, 'rulebook', 'tasks', 'archive', '2025-01-01-no-design');
+    const rulebookPath = join(testDir, '.rulebook', 'tasks', 'archive', '2025-01-01-no-design');
     expect(
       await fs
         .access(join(rulebookPath, 'design.md'))
@@ -636,7 +636,7 @@ describe('migrateOpenSpecArchives edge cases', () => {
     const result = await migrateOpenSpecArchives(testDir);
 
     expect(result.migrated).toBe(1);
-    const rulebookPath = join(testDir, 'rulebook', 'tasks', 'archive', '2025-01-01-no-specs');
+    const rulebookPath = join(testDir, '.rulebook', 'tasks', 'archive', '2025-01-01-no-specs');
     expect(
       await fs
         .access(join(rulebookPath, 'specs'))
@@ -656,7 +656,7 @@ describe('migrateOpenSpecArchives edge cases', () => {
 
     expect(result.migrated).toBe(1);
     // Specs directory is created even if no spec.md files exist
-    const rulebookPath = join(testDir, 'rulebook', 'tasks', 'archive', '2025-01-01-empty-specs');
+    const rulebookPath = join(testDir, '.rulebook', 'tasks', 'archive', '2025-01-01-empty-specs');
     const specsPath = join(rulebookPath, 'specs');
     // The specs directory should exist (created during migration)
     expect(

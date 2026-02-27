@@ -231,6 +231,9 @@ export async function initCommand(options: {
     await configManager.migrateDirectoryStructure(cwd);
     dirMigrationSpinner.succeed('Directory structure migrated');
 
+    // Ensure .gitignore has .rulebook entries (keep specs/ and tasks/ tracked)
+    await configManager.ensureGitignore();
+
     // Auto-detect and enable skills based on project detection (v2.0)
     let enabledSkills: string[] = [];
     try {
@@ -266,7 +269,7 @@ export async function initCommand(options: {
       modules: config.modules as ModuleDetection['module'][],
       services: config.services as ServiceId[],
       modular: config.modular ?? true,
-      rulebookDir: config.rulebookDir || 'rulebook',
+      rulebookDir: config.rulebookDir || '.rulebook',
       skills: enabledSkills.length > 0 ? { enabled: enabledSkills } : undefined,
       ralph: existingConfig.ralph,
       memory: existingConfig.memory,
@@ -280,7 +283,7 @@ export async function initCommand(options: {
       // Migrate flat layout to specs/ subdirectory if needed
       {
         const { hasFlatLayout, migrateFlatToSpecs } = await import('../core/migrator.js');
-        const rulebookDirForMigration = config.rulebookDir || 'rulebook';
+        const rulebookDirForMigration = config.rulebookDir || '.rulebook';
         if (await hasFlatLayout(cwd, rulebookDirForMigration)) {
           const { migratedFiles } = await migrateFlatToSpecs(cwd, rulebookDirForMigration);
           if (migratedFiles.length > 0) {
@@ -1010,7 +1013,7 @@ export async function taskCreateCommand(taskId: string): Promise<void> {
 
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || 'rulebook';
+    const rulebookDir = config.rulebookDir || '.rulebook';
 
     const taskManager = createTaskManager(cwd, rulebookDir);
     await taskManager.createTask(taskId);
@@ -1037,7 +1040,7 @@ export async function taskListCommand(includeArchived: boolean = false): Promise
 
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || 'rulebook';
+    const rulebookDir = config.rulebookDir || '.rulebook';
 
     const taskManager = createTaskManager(cwd, rulebookDir);
     const tasks = await taskManager.listTasks(includeArchived);
@@ -1093,7 +1096,7 @@ export async function taskShowCommand(taskId: string): Promise<void> {
 
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || 'rulebook';
+    const rulebookDir = config.rulebookDir || '.rulebook';
 
     const taskManager = createTaskManager(cwd, rulebookDir);
     const task = await taskManager.showTask(taskId);
@@ -1143,7 +1146,7 @@ export async function taskValidateCommand(taskId: string): Promise<void> {
 
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || 'rulebook';
+    const rulebookDir = config.rulebookDir || '.rulebook';
 
     const taskManager = createTaskManager(cwd, rulebookDir);
     const validation = await taskManager.validateTask(taskId);
@@ -1187,7 +1190,7 @@ export async function taskArchiveCommand(
 
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || 'rulebook';
+    const rulebookDir = config.rulebookDir || '.rulebook';
 
     const taskManager = createTaskManager(cwd, rulebookDir);
     await taskManager.archiveTask(taskId, skipValidation);
@@ -1205,7 +1208,7 @@ export async function taskArchiveCommand(
  */
 export async function mcpInitCommand(): Promise<void> {
   const { findRulebookConfig } = await import('../mcp/rulebook-server.js');
-  const { existsSync, readFileSync, writeFileSync } = await import('fs');
+  const { existsSync, readFileSync, writeFileSync, statSync } = await import('fs');
   const { join, dirname } = await import('path');
   const { createConfigManager } = await import('../core/config-manager.js');
 
@@ -1215,7 +1218,7 @@ export async function mcpInitCommand(): Promise<void> {
     let rulebookPath = findRulebookConfig(cwd);
 
     if (!rulebookPath) {
-      // Create new .rulebook file
+      // Create new .rulebook directory via ConfigManager
       rulebookPath = join(cwd, '.rulebook');
       const configManager = createConfigManager(cwd);
       await configManager.initializeConfig();
@@ -1223,21 +1226,30 @@ export async function mcpInitCommand(): Promise<void> {
 
     const projectRoot = dirname(rulebookPath);
 
+    // Resolve config file path (handle .rulebook as directory or file)
+    let configFilePath = rulebookPath;
+    if (existsSync(rulebookPath)) {
+      const stats = statSync(rulebookPath);
+      if (stats.isDirectory()) {
+        configFilePath = join(rulebookPath, 'rulebook.json');
+      }
+    }
+
     // Load existing config
     let config: any = {};
-    if (existsSync(rulebookPath)) {
-      const raw = readFileSync(rulebookPath, 'utf8');
+    if (existsSync(configFilePath)) {
+      const raw = readFileSync(configFilePath, 'utf8');
       config = JSON.parse(raw);
     }
 
     // Add/update mcp block
     config.mcp = config.mcp ?? {};
     if (config.mcp.enabled === undefined) config.mcp.enabled = true;
-    if (!config.mcp.tasksDir) config.mcp.tasksDir = 'rulebook/tasks';
-    if (!config.mcp.archiveDir) config.mcp.archiveDir = 'rulebook/archive';
+    if (!config.mcp.tasksDir) config.mcp.tasksDir = '.rulebook/tasks';
+    if (!config.mcp.archiveDir) config.mcp.archiveDir = '.rulebook/archive';
 
     // Save updated config
-    writeFileSync(rulebookPath, JSON.stringify(config, null, 2) + '\n');
+    writeFileSync(configFilePath, JSON.stringify(config, null, 2) + '\n');
 
     // Create/update .cursor/mcp.json if .cursor directory exists
     const cursorDir = join(projectRoot, '.cursor');
@@ -1478,7 +1490,7 @@ export async function updateCommand(options: {
       const { migrateOpenSpecToRulebook, migrateOpenSpecArchives, removeOpenSpecRulebookFile } =
         await import('../core/openspec-migrator.js');
 
-      const rulebookDir = config.rulebookDir || 'rulebook';
+      const rulebookDir = config.rulebookDir || '.rulebook';
       const migrationResult = await migrateOpenSpecToRulebook(cwd, rulebookDir);
       const archiveMigrationResult = await migrateOpenSpecArchives(cwd, rulebookDir);
 
@@ -1507,10 +1519,10 @@ export async function updateCommand(options: {
         }
       }
 
-      // Remove /rulebook/specs/OPENSPEC.md if exists
+      // Remove /.rulebook/specs/OPENSPEC.md if exists
       const removed = await removeOpenSpecRulebookFile(cwd, rulebookDir);
       if (removed) {
-        console.log(chalk.gray('  Removed /rulebook/specs/OPENSPEC.md'));
+        console.log(chalk.gray(`  Removed /${rulebookDir}/specs/OPENSPEC.md`));
       }
 
       // Remove OpenSpec commands from .cursor/commands/
@@ -1694,16 +1706,19 @@ export async function updateCommand(options: {
       modules: config.modules as ModuleDetection['module'][],
       services: config.services as ServiceId[],
       modular: config.modular ?? true,
-      rulebookDir: config.rulebookDir || 'rulebook',
+      rulebookDir: config.rulebookDir || '.rulebook',
       skills: detectedSkills.length > 0 ? { enabled: detectedSkills } : undefined,
       ralph: existingRalph,
       memory: existingConfig.memory,
     });
 
+    // Ensure .rulebook is in .gitignore with exceptions for specs/tasks
+    await configManager.ensureGitignore();
+
     // Migrate flat layout to specs/ subdirectory if needed
     {
       const { hasFlatLayout, migrateFlatToSpecs } = await import('../core/migrator.js');
-      const rulebookDirForMigration = config.rulebookDir || 'rulebook';
+      const rulebookDirForMigration = config.rulebookDir || '.rulebook';
       if (await hasFlatLayout(cwd, rulebookDirForMigration)) {
         const migrationSpinner = ora('Migrating rulebook files to specs/ subdirectory...').start();
         const { migratedFiles } = await migrateFlatToSpecs(cwd, rulebookDirForMigration);
@@ -2544,7 +2559,9 @@ export async function ralphRunCommand(options: {
     const cwd = process.cwd();
     const { Logger } = await import('../core/logger.js');
     const { RalphManager } = await import('../core/ralph-manager.js');
+    const { RalphParser } = await import('../agents/ralph-parser.js');
     const { createConfigManager } = await import('../core/config-manager.js');
+    const childProcess = await import('child_process');
 
     const logger = new Logger(cwd);
     const configManager = createConfigManager(cwd);
@@ -2556,10 +2573,28 @@ export async function ralphRunCommand(options: {
 
     await ralphManager.initialize(maxIterations, tool);
 
+    // Create git branch from PRD
+    const prd = await ralphManager.loadPRD();
+    if (prd?.branchName) {
+      await ralphCreateBranch(cwd, prd.branchName);
+    }
+
+    // Handle Ctrl+C for graceful pause
+    let interrupted = false;
+    const handleInterrupt = async () => {
+      interrupted = true;
+      spinner.warn('Pausing after current iteration...');
+      await ralphManager.pause();
+    };
+    process.on('SIGINT', handleInterrupt);
+
+    // Sync task count from PRD (may have been saved after initialize)
+    await ralphManager.refreshTaskCount();
+
     spinner.text = 'Ralph loop running (Ctrl+C to pause)...';
 
     let iterationCount = 0;
-    while (ralphManager.canContinue()) {
+    while (ralphManager.canContinue() && !interrupted) {
       iterationCount++;
       const task = await ralphManager.getNextTask();
 
@@ -2567,42 +2602,348 @@ export async function ralphRunCommand(options: {
         break;
       }
 
-      spinner.text = `Iteration ${iterationCount}: ${task.title}...`;
+      spinner.stop();
+      console.log(chalk.bold.cyan(`\n  ── Iteration ${iterationCount}: ${task.title} ──\n`));
 
-      // In production, would execute agent here
-      // For now, just mark story as complete
-      await ralphManager.markStoryComplete(task.id);
+      const startTime = Date.now();
 
-      // Simulate iteration result (placeholder)
+      // 1. Execute AI agent with task context
+      const prompt = ralphBuildPrompt(task, prd);
+      let agentOutput = '';
+      try {
+        agentOutput = await ralphExecuteAgent(tool, prompt, cwd, childProcess.spawn);
+      } catch (agentError: any) {
+        agentOutput = `Error executing agent: ${agentError.message || agentError}`;
+        console.log(chalk.red(`  Agent error: ${agentError.message || agentError}`));
+      }
+
+      // 2. Run quality gates
+      spinner.start('Running quality gates...');
+      const qualityResults = await ralphRunQualityGates(cwd, childProcess.spawn);
+      spinner.stop();
+
+      // Print quality gate results
+      const gateIcon = (pass: boolean) => (pass ? chalk.green('✓') : chalk.red('✗'));
+      console.log(`  ${gateIcon(qualityResults.type_check)} type-check`);
+      console.log(`  ${gateIcon(qualityResults.lint)} lint`);
+      console.log(`  ${gateIcon(qualityResults.tests)} tests`);
+      console.log(`  ${gateIcon(qualityResults.coverage_met)} coverage`);
+
+      const executionTime = Date.now() - startTime;
+
+      // 3. Parse agent output for learnings/errors
+      const parsed = RalphParser.parseAgentOutput(
+        agentOutput,
+        iterationCount,
+        task.id,
+        task.title,
+        tool
+      );
+
+      // 4. Determine status from real quality gates
+      const allGatesPass =
+        qualityResults.type_check &&
+        qualityResults.lint &&
+        qualityResults.tests &&
+        qualityResults.coverage_met;
+
+      const passCount = Object.values(qualityResults).filter(Boolean).length;
+      const status: 'success' | 'partial' | 'failed' = allGatesPass
+        ? 'success'
+        : passCount >= 2
+          ? 'partial'
+          : 'failed';
+
+      // 5. Git commit if successful
+      let gitCommit: string | undefined;
+      if (allGatesPass) {
+        gitCommit = await ralphGitCommit(cwd, task, iterationCount, childProcess.spawn);
+        await ralphManager.markStoryComplete(task.id);
+        console.log(chalk.green(`\n  ✅ Story ${task.id} completed`));
+      } else {
+        console.log(chalk.yellow(`\n  ⚠ Story ${task.id} not completed (quality gates failed)`));
+      }
+
+      // 6. Record iteration
       const result = {
         iteration: iterationCount,
         timestamp: new Date().toISOString(),
         task_id: task.id,
         task_title: task.title,
-        status: 'success' as const,
+        status,
         ai_tool: tool,
-        execution_time_ms: 5000,
-        quality_checks: { type_check: true, lint: true, tests: true, coverage_met: true },
-        output_summary: `Completed ${task.title}`,
-        git_commit: undefined,
-        learnings: [],
-        errors: [],
-        metadata: { context_loss_count: 0, parsed_completion: true },
+        execution_time_ms: executionTime,
+        quality_checks: qualityResults,
+        output_summary: parsed.output_summary || `Iteration ${iterationCount}: ${task.title}`,
+        git_commit: gitCommit,
+        learnings: parsed.learnings,
+        errors: parsed.errors,
+        metadata: {
+          context_loss_count: parsed.metadata.context_loss_count,
+          parsed_completion: parsed.metadata.parsed_completion,
+        },
       };
 
       await ralphManager.recordIteration(result);
+      spinner.start('Preparing next iteration...');
     }
+
+    // Cleanup
+    process.removeListener('SIGINT', handleInterrupt);
 
     const stats = await ralphManager.getTaskStats();
     spinner.succeed(`Ralph loop complete: ${stats.completed}/${stats.total} tasks completed`);
     console.log(`\n  ✅ Iterations: ${iterationCount}`);
     console.log(`  📊 Completed: ${stats.completed}/${stats.total}`);
+    if (interrupted) {
+      console.log(
+        chalk.yellow(`  ⏸  Paused by user. Resume: ${chalk.bold('rulebook ralph resume')}`)
+      );
+    }
     console.log(`\n  View history: ${chalk.bold('rulebook ralph history')}\n`);
   } catch (error) {
     spinner.fail('Ralph loop failed');
     console.error(chalk.red(String(error)));
     process.exit(1);
   }
+}
+
+/**
+ * Build prompt for AI agent from user story context
+ */
+function ralphBuildPrompt(task: any, prd: any): string {
+  const criteria = (task.acceptanceCriteria || []).map((c: string) => `- ${c}`).join('\n');
+  return [
+    `You are working on project: ${prd?.project || 'unknown'}`,
+    ``,
+    `## Current Task: ${task.title}`,
+    `ID: ${task.id}`,
+    ``,
+    `## Description`,
+    task.description,
+    ``,
+    `## Acceptance Criteria`,
+    criteria,
+    ``,
+    task.notes ? `## Notes\n${task.notes}\n` : '',
+    `## Instructions`,
+    `1. Implement the changes described above`,
+    `2. Ensure all acceptance criteria are met`,
+    `3. Run quality checks: type-check, lint, tests`,
+    `4. Fix any issues found by quality checks`,
+    `5. When done, summarize what was changed`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+/**
+ * Execute AI agent and capture output
+ */
+async function ralphExecuteAgent(
+  tool: 'claude' | 'amp' | 'gemini',
+  prompt: string,
+  cwd: string,
+  spawn: typeof import('child_process').spawn
+): Promise<string> {
+  // Claude: use -p (print mode) with --dangerously-skip-permissions to allow file edits
+  // Prompt is passed via stdin to avoid shell escaping issues and arg length limits
+  const toolCommands: Record<string, { cmd: string; args: string[]; stdinPrompt: boolean }> = {
+    claude: {
+      cmd: 'claude',
+      args: ['-p', '--dangerously-skip-permissions', '--verbose'],
+      stdinPrompt: true,
+    },
+    amp: { cmd: 'amp', args: ['-p', prompt], stdinPrompt: false },
+    gemini: { cmd: 'gemini', args: ['-p', prompt], stdinPrompt: false },
+  };
+
+  const config = toolCommands[tool] || toolCommands.claude;
+
+  return new Promise((resolve, reject) => {
+    let output = '';
+    let errorOutput = '';
+
+    const proc = spawn(config.cmd, config.args, {
+      cwd,
+      shell: true,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env },
+    });
+
+    // For Claude, write prompt to stdin then close it
+    if (config.stdinPrompt && proc.stdin) {
+      proc.stdin.write(prompt);
+      proc.stdin.end();
+    }
+
+    proc.stdout?.on('data', (data: Buffer) => {
+      const text = data.toString();
+      output += text;
+      process.stdout.write(text);
+    });
+
+    proc.stderr?.on('data', (data: Buffer) => {
+      errorOutput += data.toString();
+    });
+
+    proc.on('close', (code: number | null) => {
+      if (code === 0 || output.length > 0) {
+        resolve(output || errorOutput);
+      } else {
+        reject(new Error(`Agent ${tool} exited with code ${code}: ${errorOutput.slice(0, 500)}`));
+      }
+    });
+
+    proc.on('error', (err: Error) => {
+      reject(new Error(`Failed to start ${tool}: ${err.message}`));
+    });
+
+    // 10 minute timeout per iteration
+    setTimeout(() => {
+      proc.kill('SIGTERM');
+      resolve(output || 'Agent execution timed out after 10 minutes');
+    }, 600000);
+  });
+}
+
+/**
+ * Run quality gates and return results
+ */
+async function ralphRunQualityGates(
+  cwd: string,
+  spawn: typeof import('child_process').spawn
+): Promise<{ type_check: boolean; lint: boolean; tests: boolean; coverage_met: boolean }> {
+  const runGate = (cmd: string, args: string[]): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const proc = spawn(cmd, args, {
+        cwd,
+        shell: true,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      proc.on('close', (code: number | null) => {
+        resolve(code === 0);
+      });
+
+      proc.on('error', () => {
+        resolve(false);
+      });
+
+      // 2 minute timeout per gate
+      setTimeout(() => {
+        proc.kill('SIGTERM');
+        resolve(false);
+      }, 120000);
+    });
+  };
+
+  // Run gates in parallel
+  const [typeCheck, lint, tests] = await Promise.all([
+    runGate('npm', ['run', 'type-check']),
+    runGate('npm', ['run', 'lint']),
+    runGate('npm', ['test']),
+  ]);
+
+  return {
+    type_check: typeCheck,
+    lint: lint,
+    tests: tests,
+    coverage_met: tests,
+  };
+}
+
+/**
+ * Create git branch from PRD branchName
+ */
+async function ralphCreateBranch(cwd: string, branchName: string): Promise<void> {
+  const { readFileSync } = await import('fs');
+  const { spawn } = await import('child_process');
+
+  // Check if already on the branch
+  try {
+    const gitHeadPath = path.join(cwd, '.git', 'HEAD');
+    const head = readFileSync(gitHeadPath, 'utf8').trim();
+    const currentBranch = head.replace('ref: refs/heads/', '');
+
+    if (currentBranch === branchName) {
+      return;
+    }
+  } catch {
+    return;
+  }
+
+  // Create or checkout branch
+  await new Promise<void>((resolve) => {
+    const proc = spawn('git', ['checkout', '-B', branchName], {
+      cwd,
+      shell: true,
+      stdio: 'pipe',
+    });
+    proc.on('close', () => resolve());
+    proc.on('error', () => resolve());
+  });
+}
+
+/**
+ * Commit changes after successful iteration
+ */
+async function ralphGitCommit(
+  cwd: string,
+  task: any,
+  iteration: number,
+  spawn: typeof import('child_process').spawn
+): Promise<string | undefined> {
+  // Stage all changes
+  await new Promise<void>((resolve) => {
+    const proc = spawn('git', ['add', '-A'], { cwd, shell: true, stdio: 'pipe' });
+    proc.on('close', () => resolve());
+    proc.on('error', () => resolve());
+  });
+
+  // Check if there are staged changes
+  const hasChanges = await new Promise<boolean>((resolve) => {
+    let output = '';
+    const proc = spawn('git', ['diff', '--cached', '--stat'], {
+      cwd,
+      shell: true,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    proc.stdout?.on('data', (data: Buffer) => {
+      output += data.toString();
+    });
+    proc.on('close', () => resolve(output.trim().length > 0));
+    proc.on('error', () => resolve(false));
+  });
+
+  if (!hasChanges) {
+    return undefined;
+  }
+
+  // Commit with Ralph message
+  const commitMsg = `ralph(${task.id}): ${task.title}\n\nIteration ${iteration} - Ralph autonomous loop`;
+  const commitHash = await new Promise<string | undefined>((resolve) => {
+    let output = '';
+    const proc = spawn('git', ['commit', '-m', commitMsg], {
+      cwd,
+      shell: true,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    proc.stdout?.on('data', (data: Buffer) => {
+      output += data.toString();
+    });
+    proc.on('close', (code: number | null) => {
+      if (code === 0) {
+        const hashMatch = output.match(/\[[\w/.-]+ ([a-f0-9]+)\]/);
+        resolve(hashMatch ? hashMatch[1] : undefined);
+      } else {
+        resolve(undefined);
+      }
+    });
+    proc.on('error', () => resolve(undefined));
+  });
+
+  return commitHash;
 }
 
 export async function ralphStatusCommand(): Promise<void> {
@@ -2710,6 +3051,14 @@ export async function ralphPauseCommand(): Promise<void> {
 
     const logger = new Logger(cwd);
     const ralphManager = new RalphManager(cwd, logger);
+    const status = await ralphManager.getStatus();
+
+    if (!status) {
+      spinner.fail('Ralph not initialized');
+      console.log(`\n  Run: ${chalk.bold('rulebook ralph init')}\n`);
+      return;
+    }
+
     await ralphManager.pause();
 
     spinner.succeed('Ralph loop paused');
@@ -2733,6 +3082,14 @@ export async function ralphResumeCommand(): Promise<void> {
 
     const logger = new Logger(cwd);
     const ralphManager = new RalphManager(cwd, logger);
+    const status = await ralphManager.getStatus();
+
+    if (!status) {
+      spinner.fail('Ralph not initialized');
+      console.log(`\n  Run: ${chalk.bold('rulebook ralph init')}\n`);
+      return;
+    }
+
     await ralphManager.resume();
 
     spinner.succeed('Ralph loop resumed');
