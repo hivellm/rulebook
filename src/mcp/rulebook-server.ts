@@ -905,9 +905,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
           await ralphManager.initialize(maxIterations, tool);
 
-          const prd = await prdGenerator.generatePRD(
-            basename(config.projectRoot) || 'project'
-          );
+          const prd = await prdGenerator.generatePRD(basename(config.projectRoot) || 'project');
 
           const { writeFile } = await import('../utils/file-system.js');
           const prdPath = join(config.projectRoot, '.rulebook', 'ralph', 'prd.json');
@@ -975,7 +973,10 @@ export async function startRulebookMcpServer(): Promise<void> {
           }
 
           // Helper: run a shell command and return stdout
-          const runCmd = (cmd: string, cmdArgs: string[]): Promise<{ code: number; stdout: string; stderr: string }> =>
+          const runCmd = (
+            cmd: string,
+            cmdArgs: string[]
+          ): Promise<{ code: number; stdout: string; stderr: string }> =>
             new Promise((resolve) => {
               let stdout = '';
               let stderr = '';
@@ -984,15 +985,23 @@ export async function startRulebookMcpServer(): Promise<void> {
                 shell: true,
                 stdio: ['pipe', 'pipe', 'pipe'],
               });
-              proc.stdout?.on('data', (d: Buffer) => { stdout += d.toString(); });
-              proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
-              proc.on('close', (code: number | null) => resolve({ code: code ?? 1, stdout, stderr }));
+              proc.stdout?.on('data', (d: Buffer) => {
+                stdout += d.toString();
+              });
+              proc.stderr?.on('data', (d: Buffer) => {
+                stderr += d.toString();
+              });
+              proc.on('close', (code: number | null) =>
+                resolve({ code: code ?? 1, stdout, stderr })
+              );
               proc.on('error', (err: Error) => resolve({ code: 1, stdout, stderr: err.message }));
             });
 
           // Helper: build prompt for AI agent
           const buildPrompt = (task: any, prd: any): string => {
-            const criteria = (task.acceptanceCriteria || []).map((c: string) => `- ${c}`).join('\n');
+            const criteria = (task.acceptanceCriteria || [])
+              .map((c: string) => `- ${c}`)
+              .join('\n');
             return [
               `You are working on project: ${prd?.project || 'unknown'}`,
               ``,
@@ -1012,15 +1021,24 @@ export async function startRulebookMcpServer(): Promise<void> {
               `3. Run quality checks: type-check, lint, tests`,
               `4. Fix any issues found by quality checks`,
               `5. When done, summarize what was changed`,
-            ].filter(Boolean).join('\n');
+            ]
+              .filter(Boolean)
+              .join('\n');
           };
 
           // Helper: execute AI agent
           const executeAgent = (agentTool: string, prompt: string): Promise<string> =>
             new Promise((resolve, reject) => {
               let output = '';
-              const toolCmds: Record<string, { cmd: string; args: string[]; stdinPrompt: boolean }> = {
-                claude: { cmd: 'claude', args: ['-p', '--dangerously-skip-permissions', '--verbose'], stdinPrompt: true },
+              const toolCmds: Record<
+                string,
+                { cmd: string; args: string[]; stdinPrompt: boolean }
+              > = {
+                claude: {
+                  cmd: 'claude',
+                  args: ['-p', '--dangerously-skip-permissions', '--verbose'],
+                  stdinPrompt: true,
+                },
                 amp: { cmd: 'amp', args: ['-p', prompt], stdinPrompt: false },
                 gemini: { cmd: 'gemini', args: ['-p', prompt], stdinPrompt: false },
               };
@@ -1034,14 +1052,19 @@ export async function startRulebookMcpServer(): Promise<void> {
                 proc.stdin.write(prompt);
                 proc.stdin.end();
               }
-              proc.stdout?.on('data', (d: Buffer) => { output += d.toString(); });
+              proc.stdout?.on('data', (d: Buffer) => {
+                output += d.toString();
+              });
               proc.stderr?.on('data', () => {});
               proc.on('close', (code: number | null) => {
                 if (code === 0 || output.length > 0) resolve(output);
                 else reject(new Error(`Agent ${agentTool} exited with code ${code}`));
               });
               proc.on('error', (err: Error) => reject(err));
-              setTimeout(() => { proc.kill('SIGTERM'); resolve(output || 'Agent timed out'); }, 600000);
+              setTimeout(() => {
+                proc.kill('SIGTERM');
+                resolve(output || 'Agent timed out');
+              }, 600000);
             });
 
           // Sync task count from PRD
@@ -1086,14 +1109,24 @@ export async function startRulebookMcpServer(): Promise<void> {
             let gitCommit: string | undefined;
             if (allPass) {
               await runCmd('git', ['add', '-A']);
-              const commitResult = await runCmd('git', ['commit', '-m', `ralph(${task.id}): ${task.title}\n\nIteration ${iterationCount} - Ralph autonomous loop`]);
+              const commitResult = await runCmd('git', [
+                'commit',
+                '-m',
+                `ralph(${task.id}): ${task.title}\n\nIteration ${iterationCount} - Ralph autonomous loop`,
+              ]);
               const hashMatch = commitResult.stdout.match(/\[[\w/.-]+ ([a-f0-9]+)\]/);
               gitCommit = hashMatch ? hashMatch[1] : undefined;
               await ralphManager.markStoryComplete(task.id);
             }
 
             // 4. Parse output for learnings/errors
-            const parsed = RalphParser.parseAgentOutput(agentOutput, iterationCount, task.id, task.title, tool);
+            const parsed = RalphParser.parseAgentOutput(
+              agentOutput,
+              iterationCount,
+              task.id,
+              task.title,
+              tool
+            );
 
             // 5. Record iteration
             await ralphManager.recordIteration({

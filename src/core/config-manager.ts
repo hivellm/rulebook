@@ -558,17 +558,21 @@ export class ConfigManager {
         if (content.includes('.rulebook')) {
           // Remove old entries (with or without leading /)
           const lines = content.split('\n');
-          const filtered = lines.filter(
-            (line) => {
-              const trimmed = line.trim();
-              return (
-                trimmed !== '.rulebook' && trimmed !== '.rulebook/' && trimmed !== '.rulebook/*' &&
-                trimmed !== '/.rulebook' && trimmed !== '/.rulebook/' && trimmed !== '/.rulebook/*' &&
-                trimmed !== '!.rulebook/specs/' && trimmed !== '!.rulebook/tasks/' && trimmed !== '!.rulebook/rulebook.json' &&
-                trimmed !== '# Rulebook - ignore runtime data, keep specs and tasks'
-              );
-            }
-          );
+          const filtered = lines.filter((line) => {
+            const trimmed = line.trim();
+            return (
+              trimmed !== '.rulebook' &&
+              trimmed !== '.rulebook/' &&
+              trimmed !== '.rulebook/*' &&
+              trimmed !== '/.rulebook' &&
+              trimmed !== '/.rulebook/' &&
+              trimmed !== '/.rulebook/*' &&
+              trimmed !== '!.rulebook/specs/' &&
+              trimmed !== '!.rulebook/tasks/' &&
+              trimmed !== '!.rulebook/rulebook.json' &&
+              trimmed !== '# Rulebook - ignore runtime data, keep specs and tasks'
+            );
+          });
           content = filtered.join('\n');
         }
 

@@ -632,7 +632,13 @@ When something happens
 
     it('should validate task with valid scenario', async () => {
       await taskManager.createTask('task-valid-scenario');
-      const proposalPath = join(testDir, '.rulebook', 'tasks', 'task-valid-scenario', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'task-valid-scenario',
+        'proposal.md'
+      );
       const proposalContent = await fs.readFile(proposalPath, 'utf-8');
       const updatedProposal = proposalContent.replace(
         '[Explain why this change is needed - minimum 20 characters]',

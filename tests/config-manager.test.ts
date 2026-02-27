@@ -462,14 +462,23 @@ describe('migrateRulebookDirectory', () => {
     await configManager.migrateRulebookDirectory();
 
     // New location should have files
-    const specContent = await fs.readFile(join(tempDir, '.rulebook', 'specs', 'TYPESCRIPT.md'), 'utf-8');
+    const specContent = await fs.readFile(
+      join(tempDir, '.rulebook', 'specs', 'TYPESCRIPT.md'),
+      'utf-8'
+    );
     expect(specContent).toBe('# TS');
 
-    const taskContent = await fs.readFile(join(tempDir, '.rulebook', 'tasks', 'my-task', 'tasks.md'), 'utf-8');
+    const taskContent = await fs.readFile(
+      join(tempDir, '.rulebook', 'tasks', 'my-task', 'tasks.md'),
+      'utf-8'
+    );
     expect(taskContent).toBe('- [ ] item');
 
     // Old specs/tasks should be removed
-    const oldSpecsExists = await fs.access(join(tempDir, 'rulebook', 'specs')).then(() => true).catch(() => false);
+    const oldSpecsExists = await fs
+      .access(join(tempDir, 'rulebook', 'specs'))
+      .then(() => true)
+      .catch(() => false);
     expect(oldSpecsExists).toBe(false);
   });
 
@@ -484,7 +493,10 @@ describe('migrateRulebookDirectory', () => {
     await configManager.migrateRulebookDirectory();
 
     // Should keep the new content, not overwrite with old
-    const newExists = await fs.access(join(tempDir, '.rulebook', 'specs', 'NEW.md')).then(() => true).catch(() => false);
+    const newExists = await fs
+      .access(join(tempDir, '.rulebook', 'specs', 'NEW.md'))
+      .then(() => true)
+      .catch(() => false);
     expect(newExists).toBe(true);
   });
 
@@ -496,7 +508,10 @@ describe('migrateRulebookDirectory', () => {
     await configManager.migrateRulebookDirectory();
 
     // Old rulebook/ should be gone
-    const oldDirExists = await fs.access(join(tempDir, 'rulebook')).then(() => true).catch(() => false);
+    const oldDirExists = await fs
+      .access(join(tempDir, 'rulebook'))
+      .then(() => true)
+      .catch(() => false);
     expect(oldDirExists).toBe(false);
   });
 
@@ -545,7 +560,10 @@ describe('ensureGitignore', () => {
   });
 
   it('should skip if .rulebook already in .gitignore', async () => {
-    await fs.writeFile(join(tempDir, '.gitignore'), 'node_modules/\n/.rulebook/*\n!/.rulebook/specs/\n');
+    await fs.writeFile(
+      join(tempDir, '.gitignore'),
+      'node_modules/\n/.rulebook/*\n!/.rulebook/specs/\n'
+    );
 
     await configManager.ensureGitignore();
 
