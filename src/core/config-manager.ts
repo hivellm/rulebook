@@ -539,10 +539,10 @@ export class ConfigManager {
     const rulebookBlock = [
       '',
       '# Rulebook - ignore runtime data, keep specs and tasks',
-      '.rulebook/*',
-      '!.rulebook/specs/',
-      '!.rulebook/tasks/',
-      '!.rulebook/rulebook.json',
+      '/.rulebook/*',
+      '!/.rulebook/specs/',
+      '!/.rulebook/tasks/',
+      '!/.rulebook/rulebook.json',
     ].join('\n');
 
     try {
@@ -550,18 +550,23 @@ export class ConfigManager {
         let content = await readFileAsync(gitignorePath, 'utf-8');
 
         // Already has the correct block with exceptions
-        if (content.includes('!.rulebook/specs/')) {
+        if (content.includes('!/.rulebook/specs/')) {
           return;
         }
 
         // Has old-style entry without exceptions — replace it
         if (content.includes('.rulebook')) {
-          // Remove old entries: .rulebook, .rulebook/, .rulebook/*  (but not .rulebook-memory etc.)
+          // Remove old entries (with or without leading /)
           const lines = content.split('\n');
           const filtered = lines.filter(
             (line) => {
               const trimmed = line.trim();
-              return trimmed !== '.rulebook' && trimmed !== '.rulebook/' && trimmed !== '.rulebook/*';
+              return (
+                trimmed !== '.rulebook' && trimmed !== '.rulebook/' && trimmed !== '.rulebook/*' &&
+                trimmed !== '/.rulebook' && trimmed !== '/.rulebook/' && trimmed !== '/.rulebook/*' &&
+                trimmed !== '!.rulebook/specs/' && trimmed !== '!.rulebook/tasks/' && trimmed !== '!.rulebook/rulebook.json' &&
+                trimmed !== '# Rulebook - ignore runtime data, keep specs and tasks'
+              );
             }
           );
           content = filtered.join('\n');

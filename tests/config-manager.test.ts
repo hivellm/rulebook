@@ -528,10 +528,10 @@ describe('ensureGitignore', () => {
     await configManager.ensureGitignore();
 
     const content = await fs.readFile(join(tempDir, '.gitignore'), 'utf-8');
-    expect(content).toContain('.rulebook/*');
-    expect(content).toContain('!.rulebook/specs/');
-    expect(content).toContain('!.rulebook/tasks/');
-    expect(content).toContain('!.rulebook/rulebook.json');
+    expect(content).toContain('/.rulebook/*');
+    expect(content).toContain('!/.rulebook/specs/');
+    expect(content).toContain('!/.rulebook/tasks/');
+    expect(content).toContain('!/.rulebook/rulebook.json');
   });
 
   it('should append to existing .gitignore', async () => {
@@ -541,17 +541,17 @@ describe('ensureGitignore', () => {
 
     const content = await fs.readFile(join(tempDir, '.gitignore'), 'utf-8');
     expect(content).toContain('node_modules/');
-    expect(content).toContain('.rulebook/*');
+    expect(content).toContain('/.rulebook/*');
   });
 
   it('should skip if .rulebook already in .gitignore', async () => {
-    await fs.writeFile(join(tempDir, '.gitignore'), 'node_modules/\n.rulebook/*\n');
+    await fs.writeFile(join(tempDir, '.gitignore'), 'node_modules/\n/.rulebook/*\n!/.rulebook/specs/\n');
 
     await configManager.ensureGitignore();
 
     const content = await fs.readFile(join(tempDir, '.gitignore'), 'utf-8');
     // Should not duplicate
-    const matches = content.match(/\.rulebook\/\*/g);
+    const matches = content.match(/\/\.rulebook\/\*/g);
     expect(matches).toHaveLength(1);
   });
 });
