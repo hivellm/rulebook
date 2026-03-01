@@ -8,8 +8,8 @@
   - [x] Detect via args containing package name @modelcontextprotocol/server-sequential-thinking
 - [x] Write `templates/modules/sequential-thinking.md` with usage directives
 - [x] Add `sequential_thinking` to allModules list in detector.ts
-- [ ] Add sequential-thinking section generation in `generator.ts`
-- [ ] Add recommendation message in `rulebook init` if not detected
+- [x] Add sequential-thinking section generation in `generator.ts` (kebab-case template lookup)
+- [x] Add recommendation message in `rulebook init` if not detected
 - [ ] Add `--add-sequential-thinking` flag to configure it automatically
 - [x] Write test: mcp.json with key → detected
 - [x] Write test: .cursor/mcp.json with entry → detected

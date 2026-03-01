@@ -50,6 +50,7 @@ import {
   plansInitCommand,
   plansClearCommand,
   continueCommand,
+  modeSetCommand,
   // Setup commands
   setupClaudeCodePlugin,
   migrateMemoryDirectory,
@@ -397,6 +398,19 @@ program
   .command('continue')
   .description('Generate session continuity context for a new AI session')
   .action(() => continueCommand());
+
+// Mode command — set AGENTS.md generation mode
+const modeCommand = program.command('mode').description('Configure AGENTS.md generation mode');
+modeCommand
+  .command('set <mode>')
+  .description('Set AGENTS.md mode: lean (lightweight index) or full (all rules inline)')
+  .action((mode: string) => {
+    if (mode !== 'lean' && mode !== 'full') {
+      console.error(`Invalid mode "${mode}". Use "lean" or "full".`);
+      process.exit(1);
+    }
+    modeSetCommand(mode as 'lean' | 'full');
+  });
 
 // Setup commands
 program

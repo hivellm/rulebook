@@ -35,6 +35,11 @@ export interface DetectionResult {
     preCommitExists: boolean;
     prePushExists: boolean;
   };
+  cursor?: {
+    detected: boolean; // .cursor/ dir or .cursorrules exists
+    hasCursorrules: boolean; // deprecated .cursorrules file present
+    hasMdcRules: boolean; // .cursor/rules/*.mdc files exist
+  };
 }
 
 export interface LanguageDetection {
@@ -248,6 +253,11 @@ export interface RulebookConfig {
       enabled?: boolean; // default: true
       failOn?: 'critical' | 'high' | 'moderate' | 'low'; // default: 'high'
       tool?: 'auto' | 'npm-audit' | 'trivy' | 'semgrep'; // default: 'auto'
+    };
+    contextCompression?: {
+      enabled?: boolean; // default: true
+      recentCount?: number; // default: 3 — how many recent iterations show full detail
+      threshold?: number; // default: 5 — minimum iterations before compression kicks in
     };
   };
   // Skills configuration (v2.0)

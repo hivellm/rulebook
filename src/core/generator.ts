@@ -197,6 +197,8 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
     sections.push(`- \`/${rulebookDir}/specs/GIT.md\` - Git workflow rules`);
   }
 
+  // Reference PLANS.md for session continuity
+  sections.push(`- \`PLANS.md\` - **Session scratchpad** (read at session start for current task context)`);
   sections.push('');
   sections.push(`Language-specific rules are in \`/${rulebookDir}/specs/\`.`);
   sections.push(`Module-specific patterns are in \`/${rulebookDir}/specs/\`.`);
@@ -402,10 +404,16 @@ Framework-specific rules for ${title}.
 
 export async function generateModuleRules(module: string): Promise<string> {
   const templatesDir = path.join(getTemplatesDir(), 'modules');
-  const templatePath = path.join(templatesDir, `${module.toUpperCase()}.md`);
+  // Try UPPERCASE.md first, then kebab-case.md (e.g. sequential_thinking → sequential-thinking.md)
+  const candidates = [
+    path.join(templatesDir, `${module.toUpperCase()}.md`),
+    path.join(templatesDir, `${module.toLowerCase().replace(/_/g, '-')}.md`),
+  ];
 
-  if (await fileExists(templatePath)) {
-    return await readFile(templatePath);
+  for (const templatePath of candidates) {
+    if (await fileExists(templatePath)) {
+      return await readFile(templatePath);
+    }
   }
 
   return `<!-- ${module.toUpperCase()}:START -->\n# ${module.charAt(0).toUpperCase() + module.slice(1)} Instructions\n\nModule-specific instructions for ${module}.\n<!-- ${module.toUpperCase()}:END -->\n`;

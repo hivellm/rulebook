@@ -23,6 +23,7 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
   const existingAgents = await detectExistingAgents(cwd);
   const gitHooks = await detectGitHooks(cwd);
   const monorepo = await detectMonorepo(cwd);
+  const cursor = await detectCursor(cwd);
 
   return {
     languages,
@@ -32,7 +33,33 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
     existingAgents,
     gitHooks,
     monorepo,
+    cursor,
   };
+}
+
+/**
+ * Detect Cursor IDE presence and configuration status.
+ */
+export async function detectCursor(cwd: string): Promise<DetectionResult['cursor']> {
+  const cursorDir = path.join(cwd, '.cursor');
+  const cursorrules = path.join(cwd, '.cursorrules');
+  const rulesDir = path.join(cursorDir, 'rules');
+
+  const hasCursorDir = existsSync(cursorDir);
+  const hasCursorrules = existsSync(cursorrules);
+  const detected = hasCursorDir || hasCursorrules;
+
+  let hasMdcRules = false;
+  if (existsSync(rulesDir)) {
+    try {
+      const files = await readdir(rulesDir);
+      hasMdcRules = files.some((f) => f.endsWith('.mdc'));
+    } catch {
+      // ignore
+    }
+  }
+
+  return { detected, hasCursorrules, hasMdcRules };
 }
 
 /**

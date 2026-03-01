@@ -1,7 +1,7 @@
 # Tasks: AGENTS.md Lean Mode
 
 - [x] Add `agentsMode: "lean" | "full"` to `RulebookConfig` and `ProjectConfig` in `src/types.ts`
-- [ ] Add agentsMode field to config-manager.ts schema with default "full"
+- [x] Add agentsMode field to config-manager.ts schema with default "full"
 - [x] Write `templates/core/AGENTS_LEAN.md` lean template (index-only format)
 - [x] Implement `generateLeanAgents()` in generator.ts (writes spec files + lean index)
 - [x] Lean AGENTS.md SHALL only contain: brief description, spec file index
@@ -10,8 +10,8 @@
 - [x] Add `--lean` flag to `rulebook update` command
 - [x] Store `agentsMode` in `.rulebook/rulebook.json` on init
 - [x] Respect stored `agentsMode` on update (don't require re-specifying)
-- [ ] Add `rulebook mode set lean/full` command for switching modes
-- [ ] Show agentsMode in `rulebook status` output
+- [x] Add `rulebook mode set lean/full` command for switching modes
+- [x] Show agentsMode in `rulebook ralph status` output
 - [x] Wire lean mode through `generateFullAgents()` dispatch
 - [x] Write test: lean mode generates AGENTS.md < 3KB
 - [x] Write test: lean mode includes all spec file references

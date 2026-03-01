@@ -14,5 +14,5 @@
 - [x] Write test: appendPlansHistory adds entries in order
 - [x] Write test: clearPlans resets to template
 - [x] Run full test suite (830 tests passing)
-- [ ] Add reference to PLANS.md in AGENTS.md template
-- [ ] Inject PLANS.md context into Ralph iteration prompt prefix
+- [x] Add reference to PLANS.md in AGENTS.md template (generator.ts + AGENTS_LEAN.md)
+- [x] Inject PLANS.md context into Ralph iteration prompt prefix

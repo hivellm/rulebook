@@ -13,9 +13,9 @@
 - [x] Implement `generateCursorMdcRules(projectRoot, options)` function
 - [x] Implement `isCursorInstalled(projectRoot)` detection helper
 - [x] Add cursor-mdc generation call in `src/core/generator.ts`
-- [ ] Add cursor detection to `src/core/detector.ts`
-- [ ] Add deprecated notice to old `.cursorrules` generation path
-- [ ] Show cursor-mdc output in init/update CLI feedback
+- [x] Add `detectCursor()` to `src/core/detector.ts` (detects .cursor dir, .cursorrules, .mdc rules)
+- [x] Add deprecated notice to old `.cursorrules` generation path in commands.ts
+- [x] Show cursor-mdc output in init/update CLI feedback
 - [x] Write tests: cursor detected → .mdc files generated
 - [x] Write tests: TypeScript project → typescript.mdc with correct globs
 - [x] Write tests: Ralph enabled → ralph.mdc generated

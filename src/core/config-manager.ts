@@ -187,7 +187,18 @@ export class ConfigManager {
         maxIterations: 10,
         tool: 'claude',
         maxContextLoss: 3,
+        securityGate: {
+          enabled: true,
+          failOn: 'high',
+          tool: 'auto',
+        },
+        contextCompression: {
+          enabled: true,
+          recentCount: 3,
+          threshold: 5,
+        },
       },
+      agentsMode: 'full',
     };
 
     await this.saveConfig(defaultConfig);

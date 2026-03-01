@@ -93,6 +93,18 @@ export async function initCommand(options: {
       }
     }
 
+    // Recommend sequential-thinking MCP if not detected
+    const seqThinking = detection.modules.find((m) => m.module === 'sequential_thinking');
+    if (seqThinking && !seqThinking.detected) {
+      console.log(
+        chalk.yellow(
+          '\n💡 Tip: Install sequential-thinking MCP for structured problem solving:\n' +
+            '   npx @modelcontextprotocol/create-server sequential-thinking\n' +
+            '   or add to .mcp.json: { "mcpServers": { "sequential-thinking": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"] } } }'
+        )
+      );
+    }
+
     const detectedFrameworks = detection.frameworks.filter((f) => f.detected);
     if (detectedFrameworks.length > 0) {
       console.log(chalk.green('\n✓ Detected frameworks:'));
@@ -332,6 +344,15 @@ export async function initCommand(options: {
     // Write AGENTS.md
     await writeFile(agentsPath, finalContent);
     console.log(chalk.green(`\n✅ AGENTS.md written to ${agentsPath}`));
+
+    // Show Cursor MDC feedback
+    if (detection.cursor?.detected) {
+      if (detection.cursor.hasMdcRules) {
+        console.log(chalk.gray('  • Cursor .mdc rules updated in .cursor/rules/'));
+      } else {
+        console.log(chalk.gray('  • Cursor .mdc rules generated in .cursor/rules/'));
+      }
+    }
 
     // Generate workflows if requested
     if (config.generateWorkflows) {
@@ -1532,6 +1553,15 @@ export async function updateCommand(options: {
     const cursorCommandsDir = path.join(cwd, '.cursor', 'commands');
     const usesCursor = existsSync(cursorRulesPath) || existsSync(cursorCommandsDir);
 
+    // Deprecated notice: .cursorrules is superseded by .cursor/rules/*.mdc in Cursor v0.45+
+    if (existsSync(cursorRulesPath)) {
+      console.log(
+        chalk.yellow(
+          '  ⚠ .cursorrules is deprecated as of Cursor v0.45. Use .cursor/rules/*.mdc instead.'
+        )
+      );
+    }
+
     if (usesCursor) {
       // Check if commands already exist to avoid duplicate generation
       const existingCommandsDir = path.join(cwd, '.cursor', 'commands');
@@ -2561,6 +2591,7 @@ export async function ralphRunCommand(options: {
     const { RalphManager } = await import('../core/ralph-manager.js');
     const { RalphParser } = await import('../agents/ralph-parser.js');
     const { createConfigManager } = await import('../core/config-manager.js');
+    const { IterationTracker } = await import('../core/iteration-tracker.js');
     const childProcess = await import('child_process');
 
     const logger = new Logger(cwd);
@@ -2570,6 +2601,14 @@ export async function ralphRunCommand(options: {
     const ralphManager = new RalphManager(cwd, logger);
     const maxIterations = options.maxIterations || config.ralph?.maxIterations || 10;
     const tool = options.tool || (config.ralph?.tool as 'claude' | 'amp' | 'gemini') || 'claude';
+
+    // Context compression config
+    const compressionConfig = config.ralph?.contextCompression;
+    const compressionEnabled = compressionConfig?.enabled !== false;
+    const compressionRecentCount = compressionConfig?.recentCount ?? 3;
+    const compressionThreshold = compressionConfig?.threshold ?? 5;
+    const iterationTracker = new IterationTracker(cwd, logger);
+    await iterationTracker.initialize();
 
     await ralphManager.initialize(maxIterations, tool);
 
@@ -2608,7 +2647,29 @@ export async function ralphRunCommand(options: {
       const startTime = Date.now();
 
       // 1. Execute AI agent with task context
-      const prompt = ralphBuildPrompt(task, prd);
+      let contextHistory = '';
+      if (compressionEnabled) {
+        contextHistory = await iterationTracker.buildCompressedContext(
+          compressionRecentCount,
+          compressionThreshold
+        );
+      }
+
+      // Read PLANS.md context for session scratchpad injection
+      let plansContext = '';
+      try {
+        const { readPlans, plansExists } = await import('../core/plans-manager.js');
+        if (plansExists(cwd)) {
+          const plans = await readPlans(cwd);
+          if (plans?.context && plans.context.trim()) {
+            plansContext = plans.context.trim();
+          }
+        }
+      } catch {
+        // PLANS.md injection is optional — skip on error
+      }
+
+      const prompt = ralphBuildPrompt(task, prd, contextHistory, plansContext);
       let agentOutput = '';
       try {
         agentOutput = await ralphExecuteAgent(tool, prompt, cwd, childProcess.spawn);
@@ -2711,11 +2772,15 @@ export async function ralphRunCommand(options: {
 /**
  * Build prompt for AI agent from user story context
  */
-function ralphBuildPrompt(task: any, prd: any): string {
+function ralphBuildPrompt(task: any, prd: any, contextHistory?: string, plansContext?: string): string {
   const criteria = (task.acceptanceCriteria || []).map((c: string) => `- ${c}`).join('\n');
   return [
     `You are working on project: ${prd?.project || 'unknown'}`,
     ``,
+    plansContext ? `## Session Context (PLANS.md)\n${plansContext}\n` : '',
+    contextHistory && contextHistory !== 'No iteration history available.'
+      ? `## Iteration History\n${contextHistory}\n`
+      : '',
     `## Current Task: ${task.title}`,
     `ID: ${task.id}`,
     ``,
@@ -2967,6 +3032,13 @@ export async function ralphStatusCommand(): Promise<void> {
     }
 
     spinner.stop();
+
+    // Show agentsMode from config
+    const { createConfigManager } = await import('../core/config-manager.js');
+    const configManager = createConfigManager(cwd);
+    const cfg = await configManager.loadConfig();
+    const agentsMode = cfg.agentsMode ?? 'full';
+
     console.log(`\n  ${chalk.bold('Ralph Loop Status')}`);
     console.log(`  Iteration:    ${status.current_iteration}/${status.max_iterations}`);
     console.log(`  Tasks:        ${status.completed_tasks}/${status.total_tasks}`);
@@ -2975,6 +3047,7 @@ export async function ralphStatusCommand(): Promise<void> {
     );
     console.log(`  AI Tool:      ${status.tool}`);
     console.log(`  Started:      ${new Date(status.started_at).toLocaleString()}`);
+    console.log(`  Agents Mode:  ${agentsMode === 'lean' ? chalk.cyan('lean') : chalk.gray('full')} (rulebook mode set lean|full)`);
     console.log();
   } catch (error) {
     spinner.fail('Failed to load status');
@@ -3184,6 +3257,34 @@ export async function setupClaudeCodePlugin(): Promise<void> {
 }
 
 // ─── Plans Commands ────────────────────────────────────────────────────────
+
+/**
+ * Set the AGENTS.md generation mode (lean or full).
+ */
+export async function modeSetCommand(mode: 'lean' | 'full'): Promise<void> {
+  const cwd = process.cwd();
+  const { createConfigManager } = await import('../core/config-manager.js');
+  const configManager = createConfigManager(cwd);
+  const config = await configManager.loadConfig();
+  config.agentsMode = mode;
+  await configManager.saveConfig(config);
+  console.log(chalk.green(`✓ AGENTS.md mode set to: ${chalk.bold(mode)}`));
+  if (mode === 'lean') {
+    console.log(
+      chalk.gray(
+        '  Lean mode: AGENTS.md will be a lightweight index (<3KB).\n' +
+          '  Run `rulebook update` to regenerate AGENTS.md.'
+      )
+    );
+  } else {
+    console.log(
+      chalk.gray(
+        '  Full mode: AGENTS.md will include all rules inline.\n' +
+          '  Run `rulebook update` to regenerate AGENTS.md.'
+      )
+    );
+  }
+}
 
 /**
  * Show current PLANS.md content.
