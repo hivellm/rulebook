@@ -354,10 +354,12 @@ ralphCommand
   .description('Execute autonomous iteration loop')
   .option('--max-iterations <n>', 'Maximum iterations', '10')
   .option('--tool <tool>', 'AI CLI tool: claude, amp, gemini', 'claude')
-  .action((options: { maxIterations?: string; tool?: string }) =>
+  .option('--parallel <n>', 'Run N stories concurrently (default: sequential)')
+  .action((options: { maxIterations?: string; tool?: string; parallel?: string }) =>
     ralphRunCommand({
       maxIterations: options.maxIterations ? parseInt(options.maxIterations) : undefined,
       tool: (options.tool as 'claude' | 'amp' | 'gemini') || 'claude',
+      parallel: options.parallel ? parseInt(options.parallel) : undefined,
     })
   );
 

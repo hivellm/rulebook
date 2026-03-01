@@ -1,5 +1,9 @@
 # Proposal: Ralph Parallel Story Execution (--parallel flag)
 
+## Why
+
+To reduce Ralph loop time by executing independent stories concurrently instead of sequentially.
+
 ## Context
 
 Ralph currently solves user stories sequentially (one at a time). For stories that are independent, parallel execution could significantly reduce loop completion time. This is especially valuable for monorepos where different packages can be worked on simultaneously.

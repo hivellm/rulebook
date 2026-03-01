@@ -2,7 +2,7 @@ import { mkdir, readdir, writeFile, appendFile, readFile, unlink } from 'fs/prom
 import { existsSync } from 'fs';
 import path from 'path';
 import { Logger } from './logger.js';
-import { RalphLoopState, RalphIterationMetadata, IterationResult } from '../types.js';
+import { RalphLoopState, RalphIterationMetadata, IterationResult, PRDUserStory } from '../types.js';
 
 /** Minimal interface for memory integration — avoids hard dependency on MemoryManager */
 export interface RalphMemoryAdapter {
@@ -553,6 +553,33 @@ export class RalphManager {
       pending,
       total: prd.userStories.length,
     };
+  }
+
+  /**
+   * Build parallel execution batches for pending stories.
+   *
+   * Uses dependency analysis and file-conflict detection to produce
+   * batches where each batch can be executed concurrently.
+   *
+   * @param maxWorkers - Maximum number of concurrent stories per batch
+   * @returns Array of batches (each batch is an array of stories)
+   */
+  async getParallelBatches(maxWorkers: number): Promise<PRDUserStory[][]> {
+    const prd = await this.loadPRD();
+    if (!prd || !prd.userStories) {
+      return [];
+    }
+
+    const pendingStories: PRDUserStory[] = prd.userStories.filter(
+      (s: PRDUserStory) => !s.passes
+    );
+
+    if (pendingStories.length === 0) {
+      return [];
+    }
+
+    const { buildParallelBatches } = await import('./ralph-parallel.js');
+    return buildParallelBatches(pendingStories, maxWorkers);
   }
 
   /**

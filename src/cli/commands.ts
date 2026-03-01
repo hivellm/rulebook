@@ -2654,6 +2654,7 @@ export async function ralphInitCommand(): Promise<void> {
 export async function ralphRunCommand(options: {
   maxIterations?: number;
   tool?: 'claude' | 'amp' | 'gemini';
+  parallel?: number;
 }): Promise<void> {
   const oraModule = await import('ora');
   const ora = oraModule.default;
@@ -2675,6 +2676,10 @@ export async function ralphRunCommand(options: {
     const ralphManager = new RalphManager(cwd, logger);
     const maxIterations = options.maxIterations || config.ralph?.maxIterations || 10;
     const tool = options.tool || (config.ralph?.tool as 'claude' | 'amp' | 'gemini') || 'claude';
+
+    // Resolve parallel mode — CLI flag takes precedence over config
+    const parallelWorkers =
+      options.parallel ?? (config.ralph?.parallel?.enabled ? config.ralph.parallel.maxWorkers : undefined);
 
     // Context compression config
     const compressionConfig = config.ralph?.contextCompression;
@@ -2704,6 +2709,152 @@ export async function ralphRunCommand(options: {
     // Sync task count from PRD (may have been saved after initialize)
     await ralphManager.refreshTaskCount();
 
+    // ─── Parallel execution mode ───
+    if (parallelWorkers && parallelWorkers > 1) {
+      spinner.text = `Ralph parallel mode (${parallelWorkers} workers)...`;
+      const batches = await ralphManager.getParallelBatches(parallelWorkers);
+
+      spinner.stop();
+      console.log(
+        chalk.bold.cyan(
+          `\n  Parallel mode: ${batches.length} batch(es), max ${parallelWorkers} workers\n`
+        )
+      );
+
+      let iterationCount = 0;
+      for (const batch of batches) {
+        if (interrupted) break;
+
+        console.log(
+          chalk.bold(`  ── Batch: ${batch.map((s) => s.id).join(', ')} (${batch.length} stories) ──`)
+        );
+
+        // Run all stories in the batch concurrently
+        const batchResults = await Promise.allSettled(
+          batch.map(async (task) => {
+            iterationCount++;
+            const localIteration = iterationCount;
+            const startTime = Date.now();
+
+            // Build context (shared — read-only)
+            let contextHistory = '';
+            if (compressionEnabled) {
+              contextHistory = await iterationTracker.buildCompressedContext(
+                compressionRecentCount,
+                compressionThreshold
+              );
+            }
+
+            let plansContext = '';
+            try {
+              const { readPlans, plansExists } = await import('../core/plans-manager.js');
+              if (plansExists(cwd)) {
+                const plans = await readPlans(cwd);
+                if (plans?.context && plans.context.trim()) {
+                  plansContext = plans.context.trim();
+                }
+              }
+            } catch {
+              // PLANS.md injection is optional
+            }
+
+            const prompt = ralphBuildPrompt(task, prd, contextHistory, plansContext);
+            let agentOutput = '';
+            try {
+              agentOutput = await ralphExecuteAgent(tool, prompt, cwd, childProcess.spawn);
+            } catch (agentError: any) {
+              agentOutput = `Error executing agent: ${agentError.message || agentError}`;
+            }
+
+            const qualityResults = await ralphRunQualityGates(cwd, childProcess.spawn);
+            const executionTime = Date.now() - startTime;
+
+            const parsed = RalphParser.parseAgentOutput(
+              agentOutput,
+              localIteration,
+              task.id,
+              task.title,
+              tool
+            );
+
+            const allGatesPass =
+              qualityResults.type_check &&
+              qualityResults.lint &&
+              qualityResults.tests &&
+              qualityResults.coverage_met;
+
+            const passCount = Object.values(qualityResults).filter(Boolean).length;
+            const status: 'success' | 'partial' | 'failed' = allGatesPass
+              ? 'success'
+              : passCount >= 2
+                ? 'partial'
+                : 'failed';
+
+            let gitCommit: string | undefined;
+            if (allGatesPass) {
+              gitCommit = await ralphGitCommit(cwd, task, localIteration, childProcess.spawn);
+              await ralphManager.markStoryComplete(task.id);
+              console.log(chalk.green(`    [parallel] Story ${task.id} completed`));
+            } else {
+              console.log(
+                chalk.yellow(`    [parallel] Story ${task.id} not completed (quality gates failed)`)
+              );
+            }
+
+            const result = {
+              iteration: localIteration,
+              timestamp: new Date().toISOString(),
+              task_id: task.id,
+              task_title: task.title,
+              status,
+              ai_tool: tool,
+              execution_time_ms: executionTime,
+              quality_checks: qualityResults,
+              output_summary: parsed.output_summary || `Iteration ${localIteration}: ${task.title}`,
+              git_commit: gitCommit,
+              learnings: parsed.learnings,
+              errors: parsed.errors,
+              metadata: {
+                context_loss_count: parsed.metadata.context_loss_count,
+                parsed_completion: parsed.metadata.parsed_completion,
+              },
+            };
+
+            await ralphManager.recordIteration(result);
+            return result;
+          })
+        );
+
+        // Log rejected promises
+        for (const [i, result] of batchResults.entries()) {
+          if (result.status === 'rejected') {
+            const story = batch[i];
+            console.log(
+              chalk.red(`    [parallel] Story ${story.id} threw: ${result.reason}`)
+            );
+          }
+        }
+
+        // Check for pause
+        const currentStatus = await ralphManager.getStatus();
+        if (currentStatus?.paused) break;
+      }
+
+      // Cleanup and summary for parallel mode
+      process.removeListener('SIGINT', handleInterrupt);
+      const stats = await ralphManager.getTaskStats();
+      console.log(`\n  Parallel run complete: ${stats.completed}/${stats.total} tasks completed`);
+      console.log(`  Iterations: ${iterationCount}`);
+      if (interrupted) {
+        console.log(
+          chalk.yellow(`  Paused by user. Resume: ${chalk.bold('rulebook ralph resume')}`)
+        );
+      }
+      console.log(`\n  View history: ${chalk.bold('rulebook ralph history')}\n`);
+      return;
+    }
+
+    // ─── Sequential execution (default) ───
     spinner.text = 'Ralph loop running (Ctrl+C to pause)...';
 
     let iterationCount = 0;

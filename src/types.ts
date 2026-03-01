@@ -282,6 +282,7 @@ export interface RulebookConfig {
       recentCount?: number; // default: 3 — how many recent iterations show full detail
       threshold?: number; // default: 5 — minimum iterations before compression kicks in
     };
+    parallel?: ParallelRalphConfig;
   };
   // Skills configuration (v2.0)
   skills?: {
@@ -386,6 +387,13 @@ export interface SkillValidationResult {
   errors: string[];
   warnings: string[];
   conflicts: SkillConflict[];
+}
+
+// Ralph Parallel Execution Types (v4.0)
+
+export interface ParallelRalphConfig {
+  enabled: boolean;
+  maxWorkers: number;
 }
 
 // Ralph Autonomous Loop Types (v3.0)

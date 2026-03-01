@@ -197,6 +197,10 @@ export class ConfigManager {
           recentCount: 3,
           threshold: 5,
         },
+        parallel: {
+          enabled: false,
+          maxWorkers: 3,
+        },
       },
       agentsMode: 'full',
       monorepo: {
@@ -291,6 +295,10 @@ export class ConfigManager {
       if (!migrated.ralph.maxIterations) migrated.ralph.maxIterations = 10;
       if (!migrated.ralph.tool) migrated.ralph.tool = 'claude';
       if (!migrated.ralph.maxContextLoss) migrated.ralph.maxContextLoss = 3;
+      // Add parallel config if missing
+      if (!migrated.ralph.parallel) {
+        migrated.ralph.parallel = { enabled: false, maxWorkers: 3 };
+      }
     }
 
     // v4 migration: ensure .rulebook/scripts/ dir is noted in config
