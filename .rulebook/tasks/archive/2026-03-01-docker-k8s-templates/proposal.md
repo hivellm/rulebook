@@ -1,5 +1,9 @@
 # Proposal: Docker and Kubernetes Templates
 
+## Why
+
+To detect and generate best-practice directives for container and orchestration technologies.
+
 ## Context
 
 Container deployment is the standard for modern applications. AI agents generating code frequently produce non-production-ready Dockerfiles (no multi-stage builds, running as root, no health checks) and Kubernetes manifests without resource limits, readiness probes, or security contexts.

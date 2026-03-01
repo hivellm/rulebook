@@ -1,0 +1,25 @@
+# Tasks: Docker and Kubernetes Templates
+
+- [x] Add container types to `src/types.ts` (Docker, DockerCompose, Kubernetes, Helm)
+- [x] Implement detection in `src/core/detector.ts`:
+  - [x] Detect `Dockerfile` in project root
+  - [x] Detect `docker-compose.yml` or `docker-compose.yaml`
+  - [x] Detect `k8s/` or `kubernetes/` directory
+  - [x] Detect YAML files with `kind: Deployment` pattern
+  - [x] Detect `Chart.yaml` → Helm
+- [x] Write `templates/services/docker.md` template:
+  - [x] Multi-stage build pattern
+  - [x] Non-root user requirement
+  - [x] HEALTHCHECK instruction
+  - [x] .dockerignore requirements
+- [x] Write `templates/services/docker-compose.md` template
+- [x] Write `templates/services/kubernetes.md` template:
+  - [x] Resource limits requirement
+  - [x] Readiness/liveness probe pattern
+  - [x] Security context (runAsNonRoot)
+- [x] Write `templates/services/helm.md` template
+- [x] Add container spec generation to `src/core/generator.ts`
+- [x] Write tests: Dockerfile detection
+- [x] Write tests: k8s YAML detection
+- [x] Write tests: spec generated when detected
+- [x] Run full test suite

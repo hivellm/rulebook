@@ -123,7 +123,11 @@ export type ServiceId =
   | 's3'
   | 'azure_blob'
   | 'gcs'
-  | 'minio';
+  | 'minio'
+  | 'docker'
+  | 'docker-compose'
+  | 'kubernetes'
+  | 'helm';
 
 export interface ServiceDetection {
   service: ServiceId;

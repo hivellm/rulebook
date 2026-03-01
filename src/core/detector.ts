@@ -1718,6 +1718,98 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
     }
   }
 
+  // Detect container/orchestration services (Docker, Docker Compose, Kubernetes, Helm)
+  const dockerfile = path.join(cwd, 'Dockerfile');
+  const dockerignore = path.join(cwd, '.dockerignore');
+  const k8sDir = path.join(cwd, 'k8s');
+  const kubernetesDir = path.join(cwd, 'kubernetes');
+  const chartYaml = path.join(cwd, 'Chart.yaml');
+  const chartsDir = path.join(cwd, 'charts');
+
+  // Docker
+  if ((await fileExists(dockerfile)) || (await fileExists(dockerignore))) {
+    const indicators: string[] = [];
+    if (await fileExists(dockerfile)) indicators.push('Dockerfile');
+    if (await fileExists(dockerignore)) indicators.push('.dockerignore');
+    services.push({
+      service: 'docker',
+      detected: true,
+      confidence: 0.95,
+      indicators,
+      source: indicators[0],
+    });
+  }
+
+  // Docker Compose
+  if ((await fileExists(dockerCompose)) || (await fileExists(dockerComposeYaml))) {
+    const indicators: string[] = [];
+    if (await fileExists(dockerCompose)) indicators.push('docker-compose.yml');
+    if (await fileExists(dockerComposeYaml)) indicators.push('docker-compose.yaml');
+    services.push({
+      service: 'docker-compose',
+      detected: true,
+      confidence: 0.95,
+      indicators,
+      source: indicators[0],
+    });
+  }
+
+  // Kubernetes
+  const k8sDirExists = existsSync(k8sDir);
+  const kubernetesDirExists = existsSync(kubernetesDir);
+  let k8sYamlDetected = false;
+
+  if (!k8sDirExists && !kubernetesDirExists) {
+    // Scan root-level YAML files for Kubernetes resource kinds
+    try {
+      const rootFiles = await readdir(cwd);
+      const yamlFiles = rootFiles.filter(
+        (f) => f.endsWith('.yml') || f.endsWith('.yaml')
+      );
+      for (const yamlFile of yamlFiles) {
+        const content = await readFile(path.join(cwd, yamlFile));
+        if (
+          content.includes('kind: Deployment') ||
+          content.includes('kind: Service') ||
+          content.includes('kind: Ingress')
+        ) {
+          k8sYamlDetected = true;
+          break;
+        }
+      }
+    } catch {
+      // Ignore read errors
+    }
+  }
+
+  if (k8sDirExists || kubernetesDirExists || k8sYamlDetected) {
+    const indicators: string[] = [];
+    if (k8sDirExists) indicators.push('k8s/ directory');
+    if (kubernetesDirExists) indicators.push('kubernetes/ directory');
+    if (k8sYamlDetected) indicators.push('YAML with kind: Deployment/Service/Ingress');
+    services.push({
+      service: 'kubernetes',
+      detected: true,
+      confidence: 0.9,
+      indicators,
+    });
+  }
+
+  // Helm
+  const chartYamlExists = await fileExists(chartYaml);
+  const chartsDirExists = existsSync(chartsDir);
+  if (chartYamlExists || chartsDirExists) {
+    const indicators: string[] = [];
+    if (chartYamlExists) indicators.push('Chart.yaml');
+    if (chartsDirExists) indicators.push('charts/ directory');
+    services.push({
+      service: 'helm',
+      detected: true,
+      confidence: 0.9,
+      indicators,
+    });
+  }
+
   // Add undetected services (for manual selection)
   const detectedServices = new Set(services.map((s) => s.service));
   const allServices: ServiceId[] = [
@@ -1741,6 +1833,10 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
     'azure_blob',
     'gcs',
     'minio',
+    'docker',
+    'docker-compose',
+    'kubernetes',
+    'helm',
   ];
 
   for (const service of allServices) {
