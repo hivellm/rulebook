@@ -1,0 +1,23 @@
+# Tasks: Generate .cursor/rules/*.mdc Files
+
+- [ ] Research final .mdc format spec (frontmatter fields: description, globs, alwaysApply)
+- [ ] Create `templates/ides/cursor-mdc/` directory with template files
+- [ ] Write `rulebook.mdc` template (core directives, alwaysApply: true)
+- [ ] Write `quality.mdc` template (quality enforcement, alwaysApply: true)
+- [ ] Write `ralph.mdc` template (ralph directives, alwaysApply: false, ralph-only)
+- [ ] Write `typescript.mdc` template (glob: **/*.{ts,tsx})
+- [ ] Write `python.mdc` template (glob: **/*.py)
+- [ ] Write `rust.mdc` template (glob: **/*.rs)
+- [ ] Write `go.mdc` template (glob: **/*.go)
+- [ ] Create `src/core/cursor-mdc-generator.ts` module
+- [ ] Implement `generateCursorMdcRules(projectRoot, detection, config)` function
+- [ ] Implement `isCursorInstalled(projectRoot)` detection helper
+- [ ] Add cursor-mdc generation call in `src/core/generator.ts`
+- [ ] Add cursor detection to `src/core/detector.ts`
+- [ ] Add deprecated notice to old `.cursorrules` generation path
+- [ ] Show cursor-mdc output in init/update CLI feedback
+- [ ] Write tests: cursor detected → .mdc files generated
+- [ ] Write tests: TypeScript project → typescript.mdc with correct globs
+- [ ] Write tests: Ralph enabled → ralph.mdc generated
+- [ ] Write tests: no cursor → no .mdc files generated
+- [ ] Run full test suite

@@ -1,0 +1,22 @@
+# Tasks: Real Monorepo Support
+
+- [ ] Add `MonorepoDetection` type to `src/types.ts`
+- [ ] Implement monorepo detection in `src/core/detector.ts`
+  - [ ] Detect `turbo.json` → Turborepo
+  - [ ] Detect `nx.json` → Nx
+  - [ ] Detect `pnpm-workspace.yaml` → pnpm workspaces
+  - [ ] Detect `lerna.json` → Lerna
+  - [ ] Auto-discover packages from `packages/*/package.json`
+  - [ ] Auto-discover packages from `apps/*/package.json`
+- [ ] Add `monorepo` section to rulebook.json schema in config-manager.ts
+- [ ] Implement `generatePackageAgentsMd(packageRoot, detection)` in generator.ts
+- [ ] Update root AGENTS.md generation to include monorepo package index
+- [ ] Generate per-package `.rulebook/specs/` relative references
+- [ ] Add monorepo quality gate: run `turbo run test` / `nx run-many` when detected
+- [ ] Add `rulebook init --package <name>` flag for single-package init in monorepo
+- [ ] Show monorepo detection output in init/update CLI
+- [ ] Write tests: turbo.json detection → MonorepoDetection.tool === 'turborepo'
+- [ ] Write tests: pnpm-workspace.yaml → packages discovered correctly
+- [ ] Write tests: per-package AGENTS.md generated for each package
+- [ ] Write tests: root AGENTS.md includes package index
+- [ ] Run full test suite
