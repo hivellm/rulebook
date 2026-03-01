@@ -1,5 +1,9 @@
 # Proposal: Generate .cursor/rules/*.mdc Files (Replace Deprecated .cursorrules)
 
+## Why
+
+To standardize AI project setup with consistent, scalable patterns.
+
 ## Context
 
 Cursor IDE deprecated `.cursorrules` in v0.45+ in favor of `.cursor/rules/*.mdc` files. The new format supports:

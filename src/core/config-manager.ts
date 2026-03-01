@@ -199,6 +199,11 @@ export class ConfigManager {
         },
       },
       agentsMode: 'full',
+      monorepo: {
+        detected: false,
+        tool: null,
+        packages: [],
+      },
     };
 
     await this.saveConfig(defaultConfig);

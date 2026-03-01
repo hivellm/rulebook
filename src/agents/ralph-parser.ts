@@ -419,6 +419,52 @@ export class RalphParser {
   }
 
   /**
+   * Parse trivy JSON output (`trivy fs --format json`) for the highest severity found.
+   */
+  static parseTrivySeverity(jsonOutput: string): 'critical' | 'high' | 'moderate' | 'low' | 'none' {
+    try {
+      const parsed = JSON.parse(jsonOutput) as {
+        Results?: Array<{ Vulnerabilities?: Array<{ Severity?: string }> }>;
+      };
+      const severities = (parsed.Results ?? [])
+        .flatMap((r) => r.Vulnerabilities ?? [])
+        .map((v) => (v.Severity ?? '').toLowerCase());
+
+      if (severities.includes('critical')) return 'critical';
+      if (severities.includes('high')) return 'high';
+      if (severities.includes('medium')) return 'moderate'; // trivy uses MEDIUM
+      if (severities.includes('moderate')) return 'moderate';
+      if (severities.includes('low')) return 'low';
+      return 'none';
+    } catch {
+      return this.parseSecurityOutputText(jsonOutput);
+    }
+  }
+
+  /**
+   * Parse semgrep JSON output (`semgrep --json`) for the highest severity found.
+   */
+  static parseSemgrepSeverity(jsonOutput: string): 'critical' | 'high' | 'moderate' | 'low' | 'none' {
+    try {
+      const parsed = JSON.parse(jsonOutput) as {
+        results?: Array<{ extra?: { severity?: string; metadata?: { severity?: string } } }>;
+      };
+      const severities = (parsed.results ?? []).map((r) => {
+        const sev = (r.extra?.severity ?? r.extra?.metadata?.severity ?? '').toLowerCase();
+        return sev;
+      });
+
+      if (severities.includes('critical') || severities.includes('error')) return 'high'; // semgrep ERROR ≈ high
+      if (severities.includes('high')) return 'high';
+      if (severities.includes('warning') || severities.includes('medium') || severities.includes('moderate')) return 'moderate';
+      if (severities.includes('info') || severities.includes('low')) return 'low';
+      return severities.length > 0 ? 'low' : 'none';
+    } catch {
+      return this.parseSecurityOutputText(jsonOutput);
+    }
+  }
+
+  /**
    * Determine if a security gate passes given the found severity and the configured failOn threshold.
    * Severity order: none < low < moderate < high < critical
    */

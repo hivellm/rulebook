@@ -1,5 +1,9 @@
 # Proposal: AGENTS.md Standard Lean Mode
 
+## Why
+
+To standardize AI project setup with consistent, scalable patterns.
+
 ## Context
 
 The AGENTS.md standard (adopted by 60k+ projects) has two distinct usage patterns:

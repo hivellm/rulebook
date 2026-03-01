@@ -1,5 +1,9 @@
 # Proposal: PLANS.md Session Scratchpad Pattern
 
+## Why
+
+To standardize AI project setup with consistent, scalable patterns.
+
 ## Context
 
 The PLANS.md pattern (also called "session scratchpad") has emerged as a top-tier context engineering technique for AI agents. It works as follows:

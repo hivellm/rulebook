@@ -111,4 +111,75 @@ describe('RalphParser — Security Gate', () => {
       expect(RalphParser.securityGatePasses('none', 'low')).toBe(true);
     });
   });
+
+  describe('parseTrivySeverity', () => {
+    it('returns "none" when no vulnerabilities', () => {
+      const json = JSON.stringify({ Results: [] });
+      expect(RalphParser.parseTrivySeverity(json)).toBe('none');
+    });
+
+    it('returns "critical" when critical vuln present', () => {
+      const json = JSON.stringify({
+        Results: [{ Vulnerabilities: [{ Severity: 'CRITICAL' }, { Severity: 'LOW' }] }],
+      });
+      expect(RalphParser.parseTrivySeverity(json)).toBe('critical');
+    });
+
+    it('returns "high" when only high vulns present', () => {
+      const json = JSON.stringify({
+        Results: [{ Vulnerabilities: [{ Severity: 'HIGH' }] }],
+      });
+      expect(RalphParser.parseTrivySeverity(json)).toBe('high');
+    });
+
+    it('returns "moderate" for MEDIUM severity (trivy naming)', () => {
+      const json = JSON.stringify({
+        Results: [{ Vulnerabilities: [{ Severity: 'MEDIUM' }] }],
+      });
+      expect(RalphParser.parseTrivySeverity(json)).toBe('moderate');
+    });
+
+    it('returns "low" when only low vulns present', () => {
+      const json = JSON.stringify({
+        Results: [{ Vulnerabilities: [{ Severity: 'LOW' }] }],
+      });
+      expect(RalphParser.parseTrivySeverity(json)).toBe('low');
+    });
+
+    it('falls back to text parsing for invalid JSON', () => {
+      expect(RalphParser.parseTrivySeverity('CRITICAL vulnerability found')).toBe('critical');
+    });
+  });
+
+  describe('parseSemgrepSeverity', () => {
+    it('returns "none" when no results', () => {
+      const json = JSON.stringify({ results: [] });
+      expect(RalphParser.parseSemgrepSeverity(json)).toBe('none');
+    });
+
+    it('returns "high" for ERROR severity', () => {
+      const json = JSON.stringify({
+        results: [{ extra: { severity: 'ERROR' } }],
+      });
+      expect(RalphParser.parseSemgrepSeverity(json)).toBe('high');
+    });
+
+    it('returns "moderate" for WARNING severity', () => {
+      const json = JSON.stringify({
+        results: [{ extra: { severity: 'WARNING' } }],
+      });
+      expect(RalphParser.parseSemgrepSeverity(json)).toBe('moderate');
+    });
+
+    it('returns "low" for INFO severity', () => {
+      const json = JSON.stringify({
+        results: [{ extra: { severity: 'INFO' } }],
+      });
+      expect(RalphParser.parseSemgrepSeverity(json)).toBe('low');
+    });
+
+    it('falls back to text parsing for invalid JSON', () => {
+      expect(RalphParser.parseSemgrepSeverity('critical severity issue found')).toBe('critical');
+    });
+  });
 });

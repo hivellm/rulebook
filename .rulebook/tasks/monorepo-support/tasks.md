@@ -12,16 +12,16 @@
   - [x] Auto-discover packages from `libs/*/package.json`
 - [x] Export `detectMonorepo()` as standalone function
 - [x] Add `monorepo` to `DetectionResult` return value
-- [ ] Add `monorepo` section to rulebook.json schema in config-manager.ts
-- [ ] Implement `generatePackageAgentsMd(packageRoot, detection)` in generator.ts
+- [x] Add `monorepo` section to rulebook.json schema in config-manager.ts
+- [x] Implement `generatePackageAgentsMd(packageRoot, rootConfig, monorepoRoot)` in generator.ts
 - [x] Update root AGENTS.md generation to include monorepo package index
-- [ ] Generate per-package AGENTS.md files for each discovered package
-- [ ] Add monorepo quality gate: run `turbo run test` / `nx run-many` when detected
-- [ ] Add `rulebook init --package <name>` flag for single-package init in monorepo
-- [ ] Show monorepo detection output in init/update CLI
+- [x] Generate per-package AGENTS.md files for each discovered package
+- [x] Add monorepo quality gate: run `turbo run test` / `nx run-many` when detected
+- [x] Add `rulebook init --package <name>` flag for single-package init in monorepo
+- [x] Show monorepo detection output in init/update CLI
 - [x] Write tests: turbo.json detection → MonorepoDetection.tool === 'turborepo'
 - [x] Write tests: pnpm-workspace.yaml → packages discovered correctly
 - [x] Write tests: manual monorepo with 2+ packages detected
 - [x] Write tests: single package not detected as monorepo
 - [x] Write tests: packages in apps/ and libs/ directories discovered
-- [x] Run full test suite (887 tests passing)
+- [x] Run full test suite (914 tests passing)

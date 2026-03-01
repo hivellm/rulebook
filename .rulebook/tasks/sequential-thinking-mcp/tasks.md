@@ -10,9 +10,9 @@
 - [x] Add `sequential_thinking` to allModules list in detector.ts
 - [x] Add sequential-thinking section generation in `generator.ts` (kebab-case template lookup)
 - [x] Add recommendation message in `rulebook init` if not detected
-- [ ] Add `--add-sequential-thinking` flag to configure it automatically
+- [x] Add `--add-sequential-thinking` flag to `rulebook init` (auto-adds to mcp.json)
 - [x] Write test: mcp.json with key → detected
 - [x] Write test: .cursor/mcp.json with entry → detected
 - [x] Write test: args-based detection
 - [x] Write test: not present → not detected
-- [x] Run full test suite (894 tests passing)
+- [x] Run full test suite (914 tests passing)

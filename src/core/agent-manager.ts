@@ -389,16 +389,74 @@ export class AgentManager {
       // Detect available tool
       let tool = secConfig?.tool ?? 'auto';
       if (tool === 'auto') {
-        // Try npm audit first (always available in Node projects)
+        // Auto-detect: trivy > semgrep > npm audit
         try {
-          execSync('npm audit --version', { cwd: projectRoot, stdio: 'ignore', timeout: 5000 });
-          tool = 'npm-audit';
+          execSync('trivy --version', { stdio: 'ignore', timeout: 5000 });
+          tool = 'trivy';
         } catch {
-          // npm audit not available (non-Node project)
+          try {
+            execSync('semgrep --version', { stdio: 'ignore', timeout: 5000 });
+            tool = 'semgrep';
+          } catch {
+            try {
+              execSync('npm audit --version', { cwd: projectRoot, stdio: 'ignore', timeout: 5000 });
+              tool = 'npm-audit';
+            } catch {
+              // no tool available
+            }
+          }
         }
       }
 
-      if (tool === 'npm-audit' || tool === 'auto') {
+      if (tool === 'trivy') {
+        try {
+          const output = execSync(`trivy fs --exit-code 0 --format json ${projectRoot}`, {
+            encoding: 'utf-8',
+            stdio: ['ignore', 'pipe', 'ignore'],
+            timeout: 60000,
+          });
+          const severity = RalphParser.parseTrivySeverity(output);
+          const passes = RalphParser.securityGatePasses(severity, failOn);
+          if (!passes) {
+            const msg = `🔒 Security gate (trivy) failed: ${severity} vulnerabilities found (failOn: ${failOn})`;
+            if (this.onLog) this.onLog('warning', msg);
+            else console.log(chalk.yellow(msg));
+          }
+          return passes;
+        } catch (err: unknown) {
+          const execError = err as { stdout?: string };
+          if (execError.stdout) {
+            const severity = RalphParser.parseTrivySeverity(execError.stdout);
+            return RalphParser.securityGatePasses(severity, failOn);
+          }
+        }
+      }
+
+      if (tool === 'semgrep') {
+        try {
+          const output = execSync(`semgrep --config auto --json ${projectRoot}`, {
+            encoding: 'utf-8',
+            stdio: ['ignore', 'pipe', 'ignore'],
+            timeout: 60000,
+          });
+          const severity = RalphParser.parseSemgrepSeverity(output);
+          const passes = RalphParser.securityGatePasses(severity, failOn);
+          if (!passes) {
+            const msg = `🔒 Security gate (semgrep) failed: ${severity} issues found (failOn: ${failOn})`;
+            if (this.onLog) this.onLog('warning', msg);
+            else console.log(chalk.yellow(msg));
+          }
+          return passes;
+        } catch (err: unknown) {
+          const execError = err as { stdout?: string };
+          if (execError.stdout) {
+            const severity = RalphParser.parseSemgrepSeverity(execError.stdout);
+            return RalphParser.securityGatePasses(severity, failOn);
+          }
+        }
+      }
+
+      if (tool === 'npm-audit') {
         try {
           const output = execSync('npm audit --json', {
             cwd: projectRoot,

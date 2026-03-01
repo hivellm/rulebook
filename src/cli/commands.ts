@@ -66,6 +66,8 @@ export async function initCommand(options: {
   minimal?: boolean;
   light?: boolean;
   lean?: boolean;
+  package?: string;
+  addSequentialThinking?: boolean;
 }): Promise<void> {
   try {
     const cwd = process.cwd();
@@ -90,6 +92,18 @@ export async function initCommand(options: {
       console.log(chalk.green('\n✓ Detected modules:'));
       for (const module of detection.modules.filter((m) => m.detected)) {
         console.log(`  - ${module.module} (${module.source})`);
+      }
+    }
+
+    // Show monorepo detection
+    if (detection.monorepo?.detected) {
+      const mono = detection.monorepo;
+      console.log(chalk.green(`\n✓ Monorepo detected: ${chalk.bold(mono.tool ?? 'manual')}`));
+      if (mono.packages.length > 0) {
+        console.log(`  Packages (${mono.packages.length}): ${mono.packages.slice(0, 5).join(', ')}${mono.packages.length > 5 ? ` +${mono.packages.length - 5} more` : ''}`);
+      }
+      if (options.package) {
+        console.log(chalk.cyan(`  → Initializing package: ${options.package}`));
       }
     }
 
@@ -296,6 +310,15 @@ export async function initCommand(options: {
       memory: existingConfig.memory,
     });
 
+    // --package: generate only the specified package's AGENTS.md and exit
+    if (options.package) {
+      const packageRoot = path.join(cwd, options.package);
+      const { generatePackageAgentsMd } = await import('../core/generator.js');
+      await generatePackageAgentsMd(packageRoot, config, cwd);
+      console.log(chalk.green(`\n✅ AGENTS.md generated for package: ${options.package}`));
+      return;
+    }
+
     // Generate or merge AGENTS.md
     const agentsPath = path.join(cwd, 'AGENTS.md');
     let finalContent: string;
@@ -466,6 +489,16 @@ export async function initCommand(options: {
       }
     } catch {
       // Non-blocking
+    }
+
+    // --add-sequential-thinking: inject into mcp.json if not already present
+    if (options.addSequentialThinking) {
+      try {
+        await addSequentialThinkingMcp(cwd);
+        console.log(chalk.gray('  • sequential-thinking MCP added to mcp.json'));
+      } catch {
+        console.log(chalk.yellow('  ⚠ Could not add sequential-thinking MCP'));
+      }
     }
 
     if (minimalMode && minimalArtifacts.length > 0) {
@@ -2903,11 +2936,21 @@ async function ralphRunQualityGates(
     });
   };
 
+  // Detect monorepo to choose the right test command
+  const { detectMonorepo } = await import('../core/detector.js');
+  const monorepo = await detectMonorepo(cwd).catch(() => ({ detected: false, tool: null, packages: [] }));
+
+  let testCmd: [string, string[]] = ['npm', ['test']];
+  if (monorepo.detected) {
+    if (monorepo.tool === 'turborepo') testCmd = ['turbo', ['run', 'test']];
+    else if (monorepo.tool === 'nx') testCmd = ['nx', ['run-many', '--target=test']];
+  }
+
   // Run gates in parallel
   const [typeCheck, lint, tests] = await Promise.all([
     runGate('npm', ['run', 'type-check']),
     runGate('npm', ['run', 'lint']),
-    runGate('npm', ['test']),
+    runGate(testCmd[0], testCmd[1]),
   ]);
 
   return {
@@ -3257,6 +3300,55 @@ export async function setupClaudeCodePlugin(): Promise<void> {
 }
 
 // ─── Plans Commands ────────────────────────────────────────────────────────
+
+/**
+ * Add sequential-thinking MCP server entry to mcp.json (or .cursor/mcp.json).
+ * Non-destructive: skips if already present.
+ */
+async function addSequentialThinkingMcp(cwd: string): Promise<void> {
+  const { readFileSync, writeFileSync, existsSync } = await import('fs');
+  const { mkdirSync } = await import('fs');
+
+  const seqEntry = {
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
+  };
+
+  const candidates = [
+    path.join(cwd, 'mcp.json'),
+    path.join(cwd, '.cursor', 'mcp.json'),
+    path.join(cwd, '.mcp.json'),
+  ];
+
+  // Find existing mcp.json or default to mcp.json
+  let mcpPath = candidates.find((p) => existsSync(p)) ?? path.join(cwd, 'mcp.json');
+
+  let mcpConfig: { mcpServers?: Record<string, unknown> } = {};
+  if (existsSync(mcpPath)) {
+    try {
+      mcpConfig = JSON.parse(readFileSync(mcpPath, 'utf8'));
+    } catch {
+      mcpConfig = {};
+    }
+  }
+
+  mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
+
+  // Already configured under any key variant
+  const keys = Object.keys(mcpConfig.mcpServers);
+  const alreadyPresent = keys.some((k) =>
+    ['sequential-thinking', 'sequential_thinking', 'sequentialThinking'].includes(k)
+  );
+  if (alreadyPresent) return;
+
+  mcpConfig.mcpServers['sequential-thinking'] = seqEntry;
+
+  // Ensure directory exists
+  const dir = path.dirname(mcpPath);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+
+  writeFileSync(mcpPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+}
 
 /**
  * Set the AGENTS.md generation mode (lean or full).

@@ -1,5 +1,9 @@
 # Proposal: `rulebook continue` — Session Continuity Command
 
+## Why
+
+To standardize AI project setup with consistent, scalable patterns.
+
 ## Context
 
 When an AI session ends (context limit, restart, new conversation), the agent loses all context about what was being worked on. Users must manually explain the situation again.

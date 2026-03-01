@@ -86,6 +86,8 @@ program
   .option('--minimal', 'Enable essentials-only setup mode')
   .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
   .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
+  .option('--package <name>', 'Initialize only a single package inside a monorepo')
+  .option('--add-sequential-thinking', 'Auto-add sequential-thinking MCP to .mcp.json')
   .action(initCommand);
 
 program

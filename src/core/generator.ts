@@ -883,7 +883,7 @@ export async function generateModularAgents(
     // Skills not configured or error loading - skip silently
   }
 
-  // Add monorepo package index if monorepo detected
+  // Add monorepo package index and generate per-package AGENTS.md if monorepo detected
   try {
     const { detectMonorepo } = await import('./detector.js');
     const monorepo = await detectMonorepo(projectRoot);
@@ -897,6 +897,15 @@ export async function generateModularAgents(
         sections.push(`- \`${pkg}/\` — see \`${pkg}/AGENTS.md\` for package-specific rules`);
       }
       sections.push('');
+
+      // Generate per-package AGENTS.md files
+      for (const pkg of monorepo.packages) {
+        await generatePackageAgentsMd(path.join(projectRoot, pkg), mergedConfig, projectRoot).catch(
+          () => {
+            /* skip on error */
+          }
+        );
+      }
     }
   } catch {
     // Monorepo detection failed — skip silently
@@ -922,6 +931,55 @@ export async function generateModularAgents(
   }
 
   return sections.join('\n').trim() + '\n';
+}
+
+/**
+ * Generate a minimal AGENTS.md for an individual package inside a monorepo.
+ * Inherits language detection from the package root and links back to the root AGENTS.md.
+ */
+export async function generatePackageAgentsMd(
+  packageRoot: string,
+  rootConfig: ProjectConfig,
+  monorepoRoot: string
+): Promise<void> {
+  const { existsSync } = await import('fs');
+  const { detectProject } = await import('./detector.js');
+  const agentsPath = path.join(packageRoot, 'AGENTS.md');
+
+  // Don't overwrite if already customized (has RULEBOOK markers)
+  if (existsSync(agentsPath)) {
+    const existing = await readFile(agentsPath).catch(() => '');
+    if (existing.includes('<!-- RULEBOOK:START -->')) return;
+  }
+
+  // Detect languages specific to this package
+  const pkgDetection = await detectProject(packageRoot).catch(() => null);
+  const langList: string[] = pkgDetection
+    ? pkgDetection.languages.map((l) => l.language as string)
+    : rootConfig.languages;
+  const relRoot = path.relative(packageRoot, monorepoRoot) || '..';
+
+  const content = [
+    '<!-- RULEBOOK:START -->',
+    `# Package Agent Directives`,
+    '',
+    `> Part of a monorepo. Root rules: [\`${relRoot}/AGENTS.md\`](${relRoot}/AGENTS.md)`,
+    '',
+    '## Languages',
+    '',
+    langList.length > 0
+      ? langList.map((l) => `- ${l.toUpperCase()}`).join('\n')
+      : '- (inherits from root)',
+    '',
+    '## Rules',
+    '',
+    `- Follow root AGENTS.md for task management and quality gates`,
+    `- Package-specific overrides go in \`AGENTS.override.md\` (if present)`,
+    '<!-- RULEBOOK:END -->',
+    '',
+  ].join('\n');
+
+  await writeFile(agentsPath, content);
 }
 
 /**

@@ -94,10 +94,35 @@ Ralph automatically checks these gates after each iteration:
 | **lint** | ESLint code quality | No errors |
 | **tests** | Unit tests | All passing |
 | **coverage** | Code coverage | ≥95% |
+| **security** | Vulnerability scan | No findings above `failOn` severity |
+
+**Security Gate** scans for vulnerabilities using the first available tool:
+1. **trivy** — container and filesystem scanning (`trivy fs --format json`)
+2. **semgrep** — static analysis (`semgrep --config auto --json`)
+3. **npm audit** — Node.js dependency audit (always available in Node projects)
+
+Configure via `.rulebook` file:
+```json
+{
+  "ralph": {
+    "securityGate": {
+      "enabled": true,
+      "failOn": "high",
+      "tool": "auto"
+    }
+  }
+}
+```
+
+| Setting | Default | Options | Description |
+|---------|---------|---------|-------------|
+| `enabled` | `true` | `true`/`false` | Enable/disable security gate |
+| `failOn` | `"high"` | `critical`/`high`/`moderate`/`low` | Minimum severity to fail |
+| `tool` | `"auto"` | `auto`/`npm-audit`/`trivy`/`semgrep` | Scanner to use |
 
 **Iteration Status:**
-- ✅ **success** - All 4 gates pass
-- ⚠️ **partial** - 2-3 gates pass
+- ✅ **success** - All 5 gates pass
+- ⚠️ **partial** - 2-4 gates pass
 - ❌ **failed** - 0-1 gates pass
 
 ### Fresh Context Strategy
@@ -177,7 +202,17 @@ Acceptance Criteria:
     "enabled": true,
     "maxIterations": 10,
     "tool": "claude",
-    "maxContextLoss": 3
+    "maxContextLoss": 3,
+    "securityGate": {
+      "enabled": true,
+      "failOn": "high",
+      "tool": "auto"
+    },
+    "contextCompression": {
+      "enabled": true,
+      "recentCount": 3,
+      "threshold": 5
+    }
   }
 }
 ```
@@ -186,8 +221,14 @@ Acceptance Criteria:
 |---------|---------|-------------|
 | `enabled` | `true` | Enable Ralph features |
 | `maxIterations` | `10` | Max iterations per run |
-| `tool` | `claude` | Default AI tool |
+| `tool` | `claude` | Default AI tool: `claude`, `amp`, `gemini` |
 | `maxContextLoss` | `3` | Allow 3 context loss events before stopping |
+| `securityGate.enabled` | `true` | Enable 5th quality gate (vulnerability scan) |
+| `securityGate.failOn` | `"high"` | Fail on: `critical`, `high`, `moderate`, `low` |
+| `securityGate.tool` | `"auto"` | Scanner: `auto`, `npm-audit`, `trivy`, `semgrep` |
+| `contextCompression.enabled` | `true` | Compress old iteration history in prompts |
+| `contextCompression.recentCount` | `3` | Iterations shown in full detail |
+| `contextCompression.threshold` | `5` | Min iterations before compression activates |
 
 ## MCP Integration
 

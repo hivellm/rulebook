@@ -2,20 +2,24 @@
 
 - [x] Add `ralph.securityGate` type to `src/types.ts` (enabled, failOn, tool fields)
 - [x] Add `security?` field to `IterationResult.quality_checks`
-- [ ] Add `ralph.securityGate` schema to config-manager.ts with defaults
+- [x] Add `ralph.securityGate` schema to config-manager.ts with defaults
 - [x] Implement `runSecurityGate(projectRoot)` in agent-manager.ts
 - [x] Implement `npm audit --json` runner and CRITICAL/HIGH/MODERATE parser
-- [ ] Implement trivy runner and parser (if trivy available)
-- [ ] Implement semgrep runner and parser (if semgrep available)
+- [x] Implement trivy runner and parser (if trivy available)
+- [x] Implement semgrep runner and parser (if semgrep available)
 - [x] Add `parseNpmAuditSeverity(output)` to `ralph-parser.ts`
+- [x] Add `parseTrivySeverity(output)` to `ralph-parser.ts`
+- [x] Add `parseSemgrepSeverity(output)` to `ralph-parser.ts`
 - [x] Add `parseSecurityOutputText(output)` text fallback to `ralph-parser.ts`
 - [x] Add `securityGatePasses(severity, failOn)` to `ralph-parser.ts`
 - [x] Wire security gate as 5th gate in Ralph iteration flow
 - [x] Add `ralph.securityGate.enabled` config option (default: true)
 - [x] Add `ralph.securityGate.failOn` config option (default: "high")
 - [x] Skip gate gracefully if no security tool available (warn, don't fail)
-- [ ] Update RALPH.md template to document security gate
+- [x] Update RALPH.md template to document security gate
 - [x] Write tests: npm audit HIGH → gate fails (22 tests)
 - [x] Write tests: npm audit MODERATE only → gate passes (default config)
+- [x] Write tests: trivy JSON parsing (CRITICAL/HIGH/MEDIUM/LOW)
+- [x] Write tests: semgrep JSON parsing (ERROR/WARNING/INFO)
 - [x] Write tests: security severity ordering
-- [x] Run full test suite (869 tests passing)
+- [x] Run full test suite (903 tests passing)
