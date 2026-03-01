@@ -1,7 +1,6 @@
 import chalk from 'chalk';
 import ora from 'ora';
 import { detectProject } from '../core/detector.js';
-import { promptProjectConfig, promptSimplifiedConfig, promptMergeStrategy } from './prompts.js';
 import { generateFullAgents } from '../core/generator.js';
 import { mergeFullAgents } from '../core/merger.js';
 import {
@@ -141,45 +140,28 @@ export async function initCommand(options: {
       }
     }
 
-    // Get project configuration
-    let config: ProjectConfig;
+    // Get project configuration — auto-setup from detection, no prompts
     const cliMinimal = Boolean(options.minimal);
     const cliLight = Boolean(options.light);
-    const cliQuick = Boolean(options.quick);
     const cliLean = Boolean(options.lean);
 
-    if (options.yes) {
-      // Full auto mode - no prompts at all
-      config = {
-        languages: detection.languages.map((l) => l.language),
-        modules: cliMinimal ? [] : detection.modules.filter((m) => m.detected).map((m) => m.module),
-        frameworks: detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
-        ides: cliMinimal ? [] : ['cursor'],
-        projectType: 'application' as const,
-        coverageThreshold: 95,
-        strictDocs: true,
-        generateWorkflows: true,
-        includeGitWorkflow: true,
-        gitPushMode: 'manual',
-        installGitHooks: false,
-        minimal: cliMinimal,
-        lightMode: cliLight,
-        modular: true, // Enable modular /rulebook directory by default
-      };
-      console.log(chalk.blue('\nUsing detected defaults...'));
-    } else if (cliQuick) {
-      // Quick mode - minimal prompts (language, MCP, hooks only)
-      config = await promptSimplifiedConfig(detection);
-      config.lightMode = cliLight;
-      config.minimal = cliMinimal;
-    } else {
-      // Full interactive mode
-      console.log('');
-      config = await promptProjectConfig(detection, {
-        defaultMode: cliMinimal ? 'minimal' : 'full',
-      });
-      config.lightMode = cliLight;
-    }
+    const config: ProjectConfig = {
+      languages: detection.languages.map((l) => l.language),
+      modules: cliMinimal ? [] : detection.modules.filter((m) => m.detected).map((m) => m.module),
+      frameworks: detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
+      ides: cliMinimal ? [] : ['cursor'],
+      projectType: 'application' as const,
+      coverageThreshold: 95,
+      strictDocs: true,
+      generateWorkflows: true,
+      includeGitWorkflow: true,
+      gitPushMode: 'manual',
+      installGitHooks: false,
+      minimal: cliMinimal,
+      lightMode: cliLight,
+      modular: true,
+    };
+    console.log(chalk.blue('\nAuto-configuring from detection results...'));
 
     const minimalMode = config.minimal ?? cliMinimal;
     config.minimal = minimalMode;
@@ -340,24 +322,11 @@ export async function initCommand(options: {
         }
       }
 
-      const strategy = options.yes ? 'merge' : await promptMergeStrategy();
-
-      if (strategy === 'merge') {
-        const mergeSpinner = ora('Merging with existing AGENTS.md...').start();
-        finalContent = await mergeFullAgents(detection.existingAgents, config, cwd);
-
-        // Create backup
-        const backupPath = await createBackup(agentsPath);
-        mergeSpinner.succeed(`Backup created: ${path.basename(backupPath)}`);
-      } else {
-        const backupSpinner = ora('Creating backup...').start();
-        const backupPath = await createBackup(agentsPath);
-        backupSpinner.succeed(`Backup created: ${path.basename(backupPath)}`);
-
-        const genSpinner = ora('Generating new AGENTS.md...').start();
-        finalContent = await generateFullAgents(config, cwd);
-        genSpinner.succeed('AGENTS.md generated');
-      }
+      // Always merge — preserve existing customizations
+      const mergeSpinner = ora('Merging with existing AGENTS.md...').start();
+      finalContent = await mergeFullAgents(detection.existingAgents, config, cwd);
+      const backupPath = await createBackup(agentsPath);
+      mergeSpinner.succeed(`Backup created: ${path.basename(backupPath)}`);
     } else {
       const genSpinner = ora('Generating AGENTS.md...').start();
       finalContent = await generateFullAgents(config, cwd);

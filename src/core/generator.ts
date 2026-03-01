@@ -198,7 +198,7 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   }
 
   // Reference PLANS.md for session continuity
-  sections.push(`- \`PLANS.md\` - **Session scratchpad** (read at session start for current task context)`);
+  sections.push(`- \`/${rulebookDir}/PLANS.md\` - **Session scratchpad** (read at session start for current task context)`);
   sections.push('');
   sections.push(`Language-specific rules are in \`/${rulebookDir}/specs/\`.`);
   sections.push(`Module-specific patterns are in \`/${rulebookDir}/specs/\`.`);

@@ -27,10 +27,10 @@ export interface PlansContent {
 }
 
 /**
- * Get the path to PLANS.md in the project root.
+ * Get the path to PLANS.md inside the .rulebook directory.
  */
 export function getPlansPath(projectRoot: string): string {
-  return join(projectRoot, PLANS_FILE);
+  return join(projectRoot, '.rulebook', PLANS_FILE);
 }
 
 /**
@@ -69,6 +69,7 @@ export async function initPlans(projectRoot: string): Promise<boolean> {
     return false; // Already exists
   }
 
+  await mkdir(join(projectRoot, '.rulebook'), { recursive: true });
   const template = await loadTemplate();
   await writeFile(plansPath, template, 'utf-8');
   return true;
@@ -79,6 +80,7 @@ export async function initPlans(projectRoot: string): Promise<boolean> {
  */
 export async function updatePlansContext(projectRoot: string, context: string): Promise<void> {
   const plansPath = getPlansPath(projectRoot);
+  await mkdir(join(projectRoot, '.rulebook'), { recursive: true });
   let content = existsSync(plansPath) ? await readFile(plansPath, 'utf-8') : await loadTemplate();
   content = replaceSection(content, CONTEXT_START, CONTEXT_END, context);
   await writeFile(plansPath, content, 'utf-8');
@@ -89,6 +91,7 @@ export async function updatePlansContext(projectRoot: string, context: string): 
  */
 export async function updatePlansTask(projectRoot: string, task: string): Promise<void> {
   const plansPath = getPlansPath(projectRoot);
+  await mkdir(join(projectRoot, '.rulebook'), { recursive: true });
   let content = existsSync(plansPath) ? await readFile(plansPath, 'utf-8') : await loadTemplate();
   content = replaceSection(content, TASK_START, TASK_END, task);
   await writeFile(plansPath, content, 'utf-8');
@@ -99,6 +102,7 @@ export async function updatePlansTask(projectRoot: string, task: string): Promis
  */
 export async function appendPlansHistory(projectRoot: string, entry: string): Promise<void> {
   const plansPath = getPlansPath(projectRoot);
+  await mkdir(join(projectRoot, '.rulebook'), { recursive: true });
   let content = existsSync(plansPath) ? await readFile(plansPath, 'utf-8') : await loadTemplate();
 
   const existing = extractSection(content, HISTORY_START, HISTORY_END);
@@ -116,7 +120,7 @@ export async function appendPlansHistory(projectRoot: string, entry: string): Pr
 export async function clearPlans(projectRoot: string): Promise<void> {
   const plansPath = getPlansPath(projectRoot);
   const template = await loadTemplate();
-  await mkdir(projectRoot, { recursive: true });
+  await mkdir(join(projectRoot, '.rulebook'), { recursive: true });
   await writeFile(plansPath, template, 'utf-8');
 }
 

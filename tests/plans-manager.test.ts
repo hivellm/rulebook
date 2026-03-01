@@ -36,6 +36,7 @@ describe('PlansManager — PLANS.md session scratchpad', () => {
 
     it('does not overwrite existing PLANS.md', async () => {
       const plansPath = getPlansPath(tempDir);
+      await mkdir(join(tempDir, '.rulebook'), { recursive: true });
       await writeFile(plansPath, '# Custom Content\nMy custom plans.');
 
       const created = await initPlans(tempDir);

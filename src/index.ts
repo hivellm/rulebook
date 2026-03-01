@@ -414,7 +414,7 @@ plansCommand
 
 plansCommand
   .command('init')
-  .description('Create PLANS.md in project root')
+  .description('Create PLANS.md in .rulebook/')
   .action(() => plansInitCommand());
 
 plansCommand
