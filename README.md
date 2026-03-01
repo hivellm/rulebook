@@ -50,172 +50,36 @@ npx @hivehub/rulebook@latest update
 
 ## What's New
 
-### v4.0.0
+See the full [CHANGELOG](CHANGELOG.md) for details.
 
-- 🚀 **Zero-prompt `init`**: `rulebook init` auto-configures from detection — no questionnaires, no choices. Existing AGENTS.md is always merged automatically
-- 🛡️ **AGENTS.override.md**: Project-specific rules that survive every `init` and `update`. Never overwritten. Add team conventions, custom constraints, or framework-specific rules here
-- 📊 **Health Scorer v2**: 9-category scoring (Documentation, Testing, Code Quality, Security, CI/CD, Dependencies, AGENTS.md, Ralph, Memory) with letter grade A–F and per-category breakdown
-- 🐳 **Docker / Kubernetes / Helm**: Auto-detection + 4 best-practice templates for container-based projects
-- 🔍 **AI Code Review**: `rulebook review` runs AI code review on your current diff and generates a GitHub Actions workflow for PR review automation
-- 📥 **GitHub Issues → Ralph**: `rulebook ralph import-issues` converts GitHub Issues into Ralph user stories via `gh` CLI
-- 🛠️ **Multi-tool configs**: Auto-generate configs for Gemini CLI, Continue.dev, Windsurf, and GitHub Copilot from a single `rulebook init`
-- 📡 **Observability templates**: Sentry, OpenTelemetry, Datadog, Pino, Winston, Prometheus — detected from `package.json` and env vars
-- ⚡ **Ralph parallel execution**: `--parallel` flag processes independent stories concurrently
-- ✅ **Ralph plan checkpoint**: `--plan-first` pauses for human-in-the-loop plan approval before implementation
-- 🗜️ **Ralph context compression**: Two-tier history (full recent + summarized older) prevents context window exhaustion in long loops
-- 🔒 **Ralph security gate**: 5th quality gate via `npm audit` / `trivy` / `semgrep`
-- 📝 **PLANS.md in `.rulebook/`**: Session scratchpad moved from project root to `.rulebook/PLANS.md` for cleaner project layout
-- 🪶 **Lean mode**: `rulebook mode set lean` generates a <3KB AGENTS.md index instead of embedding all rules inline
-- 🏗️ **Monorepo support**: Detects Turborepo, Nx, pnpm workspaces, Lerna; `--package` flag for per-package AGENTS.md
-- 🧠 **Sequential-thinking MCP**: Detection, template, and `--add-sequential-thinking` flag
-- 🎯 **Ralph Shell Scripts**: Cross-platform `.sh`/`.bat` scripts in `.rulebook/scripts/` for invoking Ralph without MCP
-- 🔌 **MCP Deduplication**: Single entry per workspace with `--project-root`; auto-upgrades legacy entries
-- 💾 **Memory reliability**: DB saved on first write, `rulebook memory verify` diagnostic, per-project isolation
-- 👥 **Multi-agent teams**: `MULTI_AGENT.md` template + 4 agent definitions + auto-enable Claude Code teams
-- 📊 **1,086 tests passing** across 59 test files — all quality gates: type-check ✓ lint ✓ tests ✓ coverage ✓
+### v4.0.0 — AI-first DX & Ralph maturity
 
-### v3.1.0
+- 🚀 **Zero-prompt `init`**: auto-configures from detection, no questionnaires
+- 🛡️ **AGENTS.override.md**: project rules that survive every update
+- 📊 **Health Scorer v2**: 9-category scoring with letter grade A–F
+- 🤖 **Ralph v2**: parallel execution, plan checkpoint, context compression, security gate, GitHub Issues import
+- 🐳 **Container + Observability**: Docker, K8s, Helm, Sentry, OTel, Datadog, Pino, Winston, Prometheus
+- 🛠️ **Multi-tool**: Gemini CLI, Continue.dev, Windsurf, Copilot configs auto-generated
+- 🔍 **AI Code Review**: `rulebook review` + GitHub Actions workflow
+- 👥 **Multi-agent teams**: Claude Code agent definitions + team auto-configuration
 
-- 🤖 **Ralph Autonomous Loop Integration**: Multi-iteration AI agent task solving with fresh context per iteration
-  - Autonomous iteration loop with configurable max iterations
-  - Fresh context per iteration to avoid context window exhaustion
-  - Quality gates: type-check, lint, tests, coverage verification
-  - Detailed iteration tracking with history and metrics
-  - PRD (Product Requirements Document) generation from rulebook tasks
-  - 6 CLI commands: `rulebook ralph init|run|status|history|pause|resume`
-  - 4 MCP tools: `rulebook_ralph_init|run|status|get_iteration_history`
-  - Graceful pause/resume capabilities for long-running loops
-  - Automatic directory migration from old structure to new `.rulebook/` layout
-- 📁 **Consolidated Directory Structure**: Single `.rulebook/` directory for all rulebook data
-  - `memory/` subdirectory for persistent memory system
-  - `ralph/` subdirectory for autonomous loop state and history
-  - Automatic migration from `rulebook/`, `.rulebook-memory/`, and `.rulebook-ralph/` during `init` and `update`
-- 📖 **Comprehensive Ralph Documentation**: 450+ lines of guides, examples, and best practices
-  - Complete Ralph usage guide with task sizing guidelines
-  - Configuration reference and MCP integration examples
-  - Real-world workflows and troubleshooting strategies
+### v3.0.0 — Persistent Memory & Skills
 
-### v3.0.0
+- 🧠 **Persistent Memory**: zero-dependency BM25+HNSW hybrid search, SQLite/WASM, 7 memory types
+- 🧩 **Skills System**: 244 skills across 10 categories with auto-detection and YAML frontmatter
+- 🤖 **Ralph Autonomous Loop**: multi-iteration AI agent with quality gates, PRD, pause/resume
 
-- 🧠 **Persistent Memory System**: Zero-dependency persistent context across AI sessions
-  - Hybrid search: BM25 keyword + HNSW vector with Reciprocal Rank Fusion
-  - TF-IDF embeddings with FNV1a feature hashing (256-dim, pure TypeScript)
-  - SQLite persistence via sql.js WASM (zero native compilation)
-  - LRU cache eviction (500MB default, protects decision memories)
-  - Privacy filter: auto-redacts `<private>...</private>` tags
-  - 7 memory types: bugfix, feature, refactor, decision, discovery, change, observation
-  - 6 MCP tools + 6 CLI commands for complete memory management
-- 🧩 **119 Skills with YAML Frontmatter**: All 106 legacy templates converted to proper SKILL.md format
-  - 28 languages, 17 frameworks, 13 modules, 20 services, 8 IDEs, 15 CLI, 5 core + git/hooks
-- 🔌 **Claude Code Commands**: Memory + task commands auto-installed to `.claude/commands/`
-- 🔧 **Update Preserves Config**: `rulebook update` no longer resets custom `.rulebook` fields (memory, skills, timeouts, etc.)
-- 🛡️ **MCP Config Safety**: `.mcp.json` entry preserved if already configured (no more overwriting)
+### v2.0.0 — Multi-tool & MCP
 
-### v2.1.0
+- 🔌 **MCP Server**: 19 functions for task management, skills, and memory
+- 🤖 **AI CLI configs**: CLAUDE.md, CODEX.md, GEMINI.md auto-generated
+- 🧩 **Skills**: modular enable/disable architecture
 
-- 🔒 **Claude Code Critical Directives**: New mandatory rules for Claude Code CLI
-  - **Sequential File Editing**: Files must be edited one at a time to prevent failures from parallel edits
-  - **Complete Test Implementation**: Strict rules against simplifying tests, placeholder assertions, or skipping test cases
-  - Updated `CLAUDE.md` generation with comprehensive guidelines and examples
-- 🪟 **Windows Test Suite Fix**: Tests no longer hang on Windows (705 tests passing, 11x faster)
+### v1.0.0 — Foundation
 
-### v2.0.0
-
-- 🧩 **Skills System**: New modular skills architecture for AI-assisted development
-  - Skills are YAML-frontmatter Markdown files with enable/disable functionality
-  - 10 skill categories: languages, frameworks, modules, services, workflows, ides, core, cli, git, hooks
-  - Auto-detection of skills based on project configuration
-  - CLI commands: `rulebook skill list|add|remove|show|search`
-  - MCP functions: `rulebook_skill_list|show|enable|disable|search|validate`
-- 🤖 **AI CLI Configuration Files**: Auto-generated files for AI CLI tools
-  - `CLAUDE.md` - Claude Code CLI configuration
-  - `CODEX.md` - OpenAI Codex CLI configuration
-  - `GEMINI.md` - Google Gemini CLI configuration
-  - `gemini-extension.json` - Gemini CLI extension manifest
-- 🔌 **Claude Code Plugin**: `marketplace.json` + `.claude-plugin/` structure for marketplace distribution
-  - `marketplace.json` - Marketplace manifest for plugin discovery
-  - Plugin manifest, MCP configuration, slash commands, and skills
-
-### v1.1.5
-
-- 🗄️ **Service Integration Templates**: Added comprehensive service integration templates
-  - 20 service templates: PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, SQLite, MongoDB, Cassandra, DynamoDB, Redis, Memcached, Elasticsearch, Neo4j, InfluxDB, RabbitMQ, Kafka, S3, Azure Blob, GCS, MinIO
-  - Automatic service detection from `package.json`, `.env`, and `docker-compose.yml`
-  - Service-specific integration instructions with connection setup, operations, best practices, and configuration
-  - Templates generated in `/rulebook/[SERVICE].md` with references in `AGENTS.md`
-  - Interactive CLI prompt to select which services to include templates for
-
-### v1.1.4
-
-- 🔧 **Cross-platform Git Hooks**: Git hooks now work on both Windows and Linux
-  - Hooks are now generated as Node.js scripts with shell wrappers
-  - Shell wrapper detects Node.js in common locations (Windows and Linux)
-  - Node.js scripts use native `child_process.spawn` for cross-platform command execution
-  - Pre-commit and pre-push hooks now function correctly on Windows (Git Bash) and Linux
-- 🔄 **Git Hooks Architecture**: Refactored hook generation system
-  - Hooks are now generated as two files: shell wrapper + Node.js script
-  - Shell templates (`.sh`) are automatically converted to Node.js scripts
-  - Improved command parsing from shell templates to Node.js
-  - Better error handling and cross-platform compatibility
-
-### v1.1.3
-
-- 🗑️ **MCP Tool: `rulebook_task_delete`**: Delete tasks permanently
-  - New tool to permanently delete tasks from the filesystem
-  - Removes task directory recursively
-  - Useful for cleaning up test tasks or removing unwanted tasks
-  - Total of 7 MCP functions now available
-
-### v1.1.2
-
-- 🔧 **ESLint v9 Migration**: Updated to ESLint flat config format
-  - Migrated from `.eslintrc.json` to `eslint.config.js`
-  - Updated to ESLint 9.37.0 with TypeScript ESLint 8.47.0
-  - Added proper Node.js global type definitions
-  - Linting now shows only errors (warnings suppressed with `--quiet`)
-
-### v1.0.3
-
-- 🔧 **Zod v3 Compatibility**: Using Zod v3.25.76 for full MCP SDK compatibility
-  - MCP SDK v1.22.0 requires Zod v3 (see [Issue #1429](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1429))
-  - Will upgrade to Zod v4 when MCP SDK officially supports it
-- 🔄 **Dependency Updates**: All dependencies updated to latest versions
-  - TypeScript tooling (ESLint 8.47.0, Vitest 4.0.13)
-  - Node.js types updated to support Node.js 24.x
-  - CLI tools and build utilities updated
-- 🐛 **Windows CI Fix**: Fixed PowerShell compatibility in GitHub Actions workflows
-  - Removed bash-specific syntax from Windows runners
-  - Cross-platform compatibility improved
-
-### v1.0.2
-
-- 🔌 **MCP Server for Task Management**: New MCP server enables AI models to manage tasks programmatically
-  - 7 MCP functions: create, list, show, update, validate, archive, delete tasks
-  - Available via `npx @hivellm/rulebook@latest mcp-server` or `npx rulebook-mcp`
-  - Better integration with MCP-compatible AI assistants
-- ⚡ **Faster Pre-commit Hooks**: Tests removed from pre-commit for faster backup commits
-  - Pre-commit now runs only: format check, lint, type-check
-  - Tests moved to pre-push hook for comprehensive validation
-- 🏗️ **Build Verification**: Build check now mandatory before push (runs first)
-- 📦 **pnpm Recommendation**: Added pnpm as preferred package manager with `.npmrc` configuration
-- 🚀 **Rust Build Optimization**: Comprehensive guide for faster Rust builds
-  - sccache configuration, incremental compilation, lld linker
-  - Anti-pattern documentation for `pub use big_crate::*;`
-- 📋 **Enhanced Task Management**: Strengthened OpenSpec format compliance and archiving rules
-- 📁 **Strict Markdown Organization**: UPPERCASE naming and `/docs` directory requirements
-
-### v1.0.0
-
-- 🎉 **First Stable Release**: Production-ready with comprehensive features
-- 🔒 **Apache 2.0 License**: Changed from MIT to Apache License 2.0 for better compatibility
-- 🛡️ **Git Hooks Enforcement**: Pre-commit and pre-push hooks now block commits with lint/test errors
-- 📋 **Task File Structure Rules**: Enhanced directives in AGENTS.md about correct task structure
-- 🎯 **Built-in Task Management**: OpenSpec deprecated and integrated into Rulebook's native task system
-- 📋 **RULEBOOK.md Template**: Core template with task management directives and Context7 MCP requirements
-- 🚫 **Automatic .gitignore**: `npx @hivellm/rulebook@latest init` now creates/updates `.gitignore` automatically for 28 languages
-- 🔄 **Migration Support**: Existing OpenSpec tasks automatically migrated to `/.rulebook/tasks/` format
-
-> **Breaking Change**: OpenSpec module removed. Use `npx @hivellm/rulebook@latest task` commands instead. See [Migration Guide](docs/guides/OPENSPEC_MIGRATION.md).
+- 📋 **Task management**: OpenSpec-compatible format with full lifecycle
+- 🛡️ **Git hooks**: pre-commit (format, lint, type-check) + pre-push (build, tests)
+- 🌍 **28 languages, 17 frameworks**, auto-detection with confidence scores
 
 ---
 
