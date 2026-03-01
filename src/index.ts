@@ -35,6 +35,7 @@ import {
   memorySaveCommand,
   memoryListCommand,
   memoryStatsCommand,
+  memoryVerifyCommand,
   memoryCleanupCommand,
   memoryExportCommand,
   // Ralph commands (v3.0)
@@ -44,6 +45,19 @@ import {
   ralphHistoryCommand,
   ralphPauseCommand,
   ralphResumeCommand,
+  ralphImportIssuesCommand,
+  // Plans commands (v4.0)
+  plansShowCommand,
+  plansInitCommand,
+  plansClearCommand,
+  continueCommand,
+  modeSetCommand,
+  // Override commands (v4.0)
+  overrideShowCommand,
+  overrideEditCommand,
+  overrideClearCommand,
+  // Review command (v4.0)
+  reviewCommand,
   // Setup commands
   setupClaudeCodePlugin,
   migrateMemoryDirectory,
@@ -78,6 +92,9 @@ program
   .option('-q, --quick', 'Quick setup with minimal prompts (language, MCP, hooks only)')
   .option('--minimal', 'Enable essentials-only setup mode')
   .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
+  .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
+  .option('--package <name>', 'Initialize only a single package inside a monorepo')
+  .option('--add-sequential-thinking', 'Auto-add sequential-thinking MCP to .mcp.json')
   .action(initCommand);
 
 program
@@ -221,6 +238,7 @@ program
   .option('-y, --yes', 'Skip confirmation prompt')
   .option('--minimal', 'Regenerate using minimal mode (essentials only)')
   .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
+  .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
   .action(updateCommand);
 
 // MCP commands
@@ -306,6 +324,11 @@ memoryCommand
   .action(() => memoryStatsCommand());
 
 memoryCommand
+  .command('verify')
+  .description('Verify memory system configuration and persistence')
+  .action(() => memoryVerifyCommand());
+
+memoryCommand
   .command('cleanup')
   .description('Run memory cleanup and eviction')
   .option('--force', 'Force cleanup regardless of size')
@@ -331,10 +354,14 @@ ralphCommand
   .description('Execute autonomous iteration loop')
   .option('--max-iterations <n>', 'Maximum iterations', '10')
   .option('--tool <tool>', 'AI CLI tool: claude, amp, gemini', 'claude')
-  .action((options: { maxIterations?: string; tool?: string }) =>
+  .option('--parallel <n>', 'Run N stories concurrently (default: sequential)')
+  .option('--plan-first', 'Require plan approval before each story implementation')
+  .action((options: { maxIterations?: string; tool?: string; parallel?: string; planFirst?: boolean }) =>
     ralphRunCommand({
       maxIterations: options.maxIterations ? parseInt(options.maxIterations) : undefined,
       tool: (options.tool as 'claude' | 'amp' | 'gemini') || 'claude',
+      parallel: options.parallel ? parseInt(options.parallel) : undefined,
+      planFirst: options.planFirst,
     })
   );
 
@@ -360,6 +387,96 @@ ralphCommand
   .command('resume')
   .description('Resume from paused state')
   .action(() => ralphResumeCommand());
+
+ralphCommand
+  .command('import-issues')
+  .description('Import GitHub issues as Ralph user stories')
+  .option('--label <label>', 'Filter by label')
+  .option('--milestone <milestone>', 'Filter by milestone')
+  .option('--limit <n>', 'Maximum issues to import', '20')
+  .option('--dry-run', 'Preview without writing to PRD')
+  .action((options) =>
+    ralphImportIssuesCommand({
+      label: options.label,
+      milestone: options.milestone,
+      limit: options.limit ? parseInt(options.limit) : 20,
+      dryRun: options.dryRun,
+    })
+  );
+
+// Plans commands (v4.0) — PLANS.md session scratchpad
+const plansCommand = program.command('plans').description('Manage PLANS.md session scratchpad');
+
+plansCommand
+  .command('show')
+  .description('Display current PLANS.md context and history')
+  .action(() => plansShowCommand());
+
+plansCommand
+  .command('init')
+  .description('Create PLANS.md in .rulebook/')
+  .action(() => plansInitCommand());
+
+plansCommand
+  .command('clear')
+  .description('Reset PLANS.md to empty template')
+  .action(() => plansClearCommand());
+
+// Continue command — generate session continuity context
+program
+  .command('continue')
+  .description('Generate session continuity context for a new AI session')
+  .action(() => continueCommand());
+
+// Mode command — set AGENTS.md generation mode
+const modeCommand = program.command('mode').description('Configure AGENTS.md generation mode');
+modeCommand
+  .command('set <mode>')
+  .description('Set AGENTS.md mode: lean (lightweight index) or full (all rules inline)')
+  .action((mode: string) => {
+    if (mode !== 'lean' && mode !== 'full') {
+      console.error(`Invalid mode "${mode}". Use "lean" or "full".`);
+      process.exit(1);
+    }
+    modeSetCommand(mode as 'lean' | 'full');
+  });
+
+// Override commands (v4.0) — AGENTS.override.md management
+const overrideCommand = program
+  .command('override')
+  .description('Manage AGENTS.override.md — project-specific rules that survive updates');
+
+overrideCommand
+  .command('show')
+  .description('Display current override content')
+  .action(() => overrideShowCommand());
+
+overrideCommand
+  .command('edit')
+  .description('Open AGENTS.override.md in $EDITOR (or print path)')
+  .action(() => overrideEditCommand());
+
+overrideCommand
+  .command('clear')
+  .description('Reset AGENTS.override.md to empty template')
+  .action(() => overrideClearCommand());
+
+// Review command — AI-powered code review
+program
+  .command('review')
+  .description('Run AI code review on current changes vs base branch')
+  .option('--output <format>', 'Output format: terminal, github-comment, json', 'terminal')
+  .option('--fail-on <severity>', 'Fail with exit 1 if issues of this severity or higher: critical, major, minor')
+  .option('--base-branch <branch>', 'Base branch to diff against', 'main')
+  .option('--tool <tool>', 'AI tool to use: claude, gemini, amp', 'claude')
+  .action((options) =>
+    reviewCommand({
+      output: options.output as 'terminal' | 'github-comment' | 'json',
+      failOn: options.failOn as 'critical' | 'major' | 'minor' | undefined,
+      baseBranch: options.baseBranch,
+      tool: options.tool,
+    })
+  );
 
 // Setup commands
 program

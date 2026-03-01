@@ -1,0 +1,28 @@
+# Tasks: Health Scorer v2
+
+- [x] Read full `src/core/health-scorer.ts` to understand current scoring
+- [x] Update `HealthScore` type in `src/types.ts` with detailed breakdown fields
+- [x] Implement `measureAgentsMdQuality(agentsMdPath)`:
+  - [x] Word count → score
+  - [x] Count `.rulebook/specs/` references → bonus
+  - [x] Check for required sections (ralph, quality, git) → bonus
+- [x] Implement `measureTestQuality(projectRoot)`:
+  - [x] Count test files and individual test cases
+  - [x] Read vitest coverage summary if available
+  - [x] Score based on test count and coverage %
+- [x] Implement `measureReadmeQuality(readmePath)`:
+  - [x] Count sections (## headings)
+  - [x] Check for required sections (install, usage, contributing)
+  - [x] Detect placeholder content ("TODO", "Coming soon")
+- [x] Implement `measureRalphQuality(projectRoot)`:
+  - [x] Count completed stories vs total
+  - [x] Score based on pass rate
+- [x] Implement `measureMemoryActivity(projectRoot)`:
+  - [x] Check memory.db exists and has records
+  - [x] Score based on memory count
+- [x] Rewrite `calculateHealthScore()` to use new metrics
+- [x] Add letter grade calculation (A=90+, B=80+, C=70+, D=60+, F=<60)
+- [x] Add actionable recommendations array based on low scores
+- [x] Update `rulebook health` CLI output to show breakdown
+- [x] Update all health-scorer tests to match new scoring
+- [x] Run full test suite

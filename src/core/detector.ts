@@ -1,4 +1,6 @@
 import path from 'path';
+import { existsSync } from 'fs';
+import { readdir } from 'fs/promises';
 import { fileExists, findFiles, readFile, readJsonFile } from '../utils/file-system.js';
 import type {
   DetectionResult,
@@ -10,6 +12,7 @@ import type {
   ServiceId,
   ExistingAgentsInfo,
   AgentBlock,
+  MonorepoDetection,
 } from '../types.js';
 
 export async function detectProject(cwd: string = process.cwd()): Promise<DetectionResult> {
@@ -19,6 +22,12 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
   const services = await detectServices(cwd);
   const existingAgents = await detectExistingAgents(cwd);
   const gitHooks = await detectGitHooks(cwd);
+  const monorepo = await detectMonorepo(cwd);
+  const cursor = await detectCursor(cwd);
+  const geminiCli = await detectGeminiCli(cwd);
+  const continueDev = await detectContinueDev(cwd);
+  const windsurf = await detectWindsurf(cwd);
+  const githubCopilot = await detectGithubCopilot(cwd);
 
   return {
     languages,
@@ -27,7 +36,140 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
     services,
     existingAgents,
     gitHooks,
+    monorepo,
+    cursor,
+    geminiCli,
+    continueDev,
+    windsurf,
+    githubCopilot,
   };
+}
+
+/**
+ * Detect Cursor IDE presence and configuration status.
+ */
+export async function detectCursor(cwd: string): Promise<DetectionResult['cursor']> {
+  const cursorDir = path.join(cwd, '.cursor');
+  const cursorrules = path.join(cwd, '.cursorrules');
+  const rulesDir = path.join(cursorDir, 'rules');
+
+  const hasCursorDir = existsSync(cursorDir);
+  const hasCursorrules = existsSync(cursorrules);
+  const detected = hasCursorDir || hasCursorrules;
+
+  let hasMdcRules = false;
+  if (existsSync(rulesDir)) {
+    try {
+      const files = await readdir(rulesDir);
+      hasMdcRules = files.some((f) => f.endsWith('.mdc'));
+    } catch {
+      // ignore
+    }
+  }
+
+  return { detected, hasCursorrules, hasMdcRules };
+}
+
+/**
+ * Detect Gemini CLI presence by checking for GEMINI.md in the project root.
+ */
+export async function detectGeminiCli(cwd: string): Promise<NonNullable<DetectionResult['geminiCli']>> {
+  const geminiMd = path.join(cwd, 'GEMINI.md');
+  const detected = existsSync(geminiMd);
+  return { detected };
+}
+
+/**
+ * Detect Continue.dev IDE extension by checking for the .continue/ directory.
+ */
+export async function detectContinueDev(cwd: string): Promise<NonNullable<DetectionResult['continueDev']>> {
+  const continueDir = path.join(cwd, '.continue');
+  const rulesDir = path.join(continueDir, 'rules');
+  const detected = existsSync(continueDir);
+  return { detected, rulesDir };
+}
+
+/**
+ * Detect Windsurf IDE by checking for .windsurfrules in the project root.
+ */
+export async function detectWindsurf(cwd: string): Promise<NonNullable<DetectionResult['windsurf']>> {
+  const windsurfrules = path.join(cwd, '.windsurfrules');
+  const detected = existsSync(windsurfrules);
+  return { detected };
+}
+
+/**
+ * Detect GitHub Copilot by checking for .github/copilot-instructions.md.
+ */
+export async function detectGithubCopilot(cwd: string): Promise<NonNullable<DetectionResult['githubCopilot']>> {
+  const copilotInstructions = path.join(cwd, '.github', 'copilot-instructions.md');
+  const detected = existsSync(copilotInstructions);
+  return { detected };
+}
+
+/**
+ * Detect monorepo structure: Turborepo, Nx, pnpm workspaces, Lerna, or manual.
+ */
+export async function detectMonorepo(cwd: string): Promise<MonorepoDetection> {
+  // Turborepo
+  if (existsSync(path.join(cwd, 'turbo.json'))) {
+    const packages = await discoverPackages(cwd);
+    return { detected: true, tool: 'turborepo', packages };
+  }
+
+  // Nx
+  if (existsSync(path.join(cwd, 'nx.json'))) {
+    const packages = await discoverPackages(cwd);
+    return { detected: true, tool: 'nx', packages };
+  }
+
+  // pnpm workspaces
+  if (existsSync(path.join(cwd, 'pnpm-workspace.yaml'))) {
+    const packages = await discoverPackages(cwd);
+    return { detected: true, tool: 'pnpm', packages };
+  }
+
+  // Lerna
+  if (existsSync(path.join(cwd, 'lerna.json'))) {
+    const packages = await discoverPackages(cwd);
+    return { detected: true, tool: 'lerna', packages };
+  }
+
+  // Manual monorepo — packages/ or apps/ directory with multiple package.json files
+  const packages = await discoverPackages(cwd);
+  if (packages.length >= 2) {
+    return { detected: true, tool: 'manual', packages };
+  }
+
+  return { detected: false, tool: null, packages: [] };
+}
+
+/**
+ * Discover package directories by looking for package.json in packages/ and apps/.
+ */
+async function discoverPackages(cwd: string): Promise<string[]> {
+  const packageDirs: string[] = [];
+  const searchDirs = ['packages', 'apps', 'libs', 'services'];
+
+  for (const searchDir of searchDirs) {
+    const absDir = path.join(cwd, searchDir);
+    if (!existsSync(absDir)) continue;
+
+    try {
+      const entries = await readdir(absDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const pkgJson = path.join(absDir, entry.name, 'package.json');
+        if (existsSync(pkgJson)) {
+          packageDirs.push(`${searchDir}/${entry.name}`);
+        }
+      }
+    } catch {
+      // ignore unreadable dirs
+    }
+  }
+
+  return packageDirs;
 }
 
 async function detectLanguages(cwd: string): Promise<LanguageDetection[]> {
@@ -876,6 +1018,27 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
               source: mcpPath,
             });
           }
+
+          // Check for Sequential Thinking MCP Server (various key names)
+          const seqKeys = ['sequential-thinking', 'sequential_thinking', 'sequentialThinking'];
+          const hasSeqThinking =
+            seqKeys.some((k) => config.mcpServers?.[k] || config.servers?.[k]) ||
+            Object.entries(config.mcpServers ?? {}).some(([, v]) =>
+              typeof v === 'object' &&
+              v !== null &&
+              'args' in v &&
+              Array.isArray((v as { args?: unknown }).args) &&
+              ((v as { args: string[] }).args).some((a) =>
+                typeof a === 'string' && a.includes('sequential-thinking')
+              )
+            );
+          if (hasSeqThinking) {
+            modules.push({
+              module: 'sequential_thinking',
+              detected: true,
+              source: mcpPath,
+            });
+          }
         }
       } catch {
         // Ignore JSON parse errors
@@ -886,8 +1049,8 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
   // Add undetected modules
   const detectedModules = new Set(modules.map((m) => m.module));
   const allModules: Array<
-    'vectorizer' | 'synap' | 'context7' | 'github' | 'playwright' | 'rulebook_mcp'
-  > = ['vectorizer', 'synap', 'context7', 'github', 'playwright', 'rulebook_mcp'];
+    'vectorizer' | 'synap' | 'context7' | 'github' | 'playwright' | 'rulebook_mcp' | 'sequential_thinking'
+  > = ['vectorizer', 'synap', 'context7', 'github', 'playwright', 'rulebook_mcp', 'sequential_thinking'];
 
   for (const module of allModules) {
     if (!detectedModules.has(module)) {
@@ -1195,6 +1358,89 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
           detected: true,
           confidence: 0.9,
           indicators: ['oracledb'],
+          source: packageJson,
+        });
+      }
+
+      // Sentry
+      if (
+        allDeps['@sentry/node'] ||
+        allDeps['@sentry/react'] ||
+        allDeps['@sentry/nextjs'] ||
+        allDeps['@sentry/browser']
+      ) {
+        services.push({
+          service: 'sentry',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['@sentry/node', '@sentry/react', '@sentry/nextjs', '@sentry/browser'].filter(
+            (dep) => allDeps[dep]
+          ),
+          source: packageJson,
+        });
+      }
+
+      // OpenTelemetry
+      if (
+        allDeps['@opentelemetry/sdk-node'] ||
+        allDeps['@opentelemetry/api'] ||
+        allDeps['@opentelemetry/auto-instrumentations-node']
+      ) {
+        services.push({
+          service: 'opentelemetry',
+          detected: true,
+          confidence: 0.9,
+          indicators: [
+            '@opentelemetry/sdk-node',
+            '@opentelemetry/api',
+            '@opentelemetry/auto-instrumentations-node',
+          ].filter((dep) => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Datadog
+      if (allDeps['dd-trace'] || allDeps['datadog-lambda-js']) {
+        services.push({
+          service: 'datadog',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['dd-trace', 'datadog-lambda-js'].filter((dep) => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Pino
+      if (allDeps['pino'] || allDeps['pino-http']) {
+        services.push({
+          service: 'pino',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['pino', 'pino-http'].filter((dep) => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Winston
+      if (allDeps['winston'] || allDeps['winston-transport']) {
+        services.push({
+          service: 'winston',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['winston', 'winston-transport'].filter((dep) => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Prometheus
+      if (allDeps['prom-client'] || allDeps['express-prometheus-middleware']) {
+        services.push({
+          service: 'prometheus',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['prom-client', 'express-prometheus-middleware'].filter(
+            (dep) => allDeps[dep]
+          ),
           source: packageJson,
         });
       }
@@ -1600,6 +1846,98 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
     }
   }
 
+  // Detect container/orchestration services (Docker, Docker Compose, Kubernetes, Helm)
+  const dockerfile = path.join(cwd, 'Dockerfile');
+  const dockerignore = path.join(cwd, '.dockerignore');
+  const k8sDir = path.join(cwd, 'k8s');
+  const kubernetesDir = path.join(cwd, 'kubernetes');
+  const chartYaml = path.join(cwd, 'Chart.yaml');
+  const chartsDir = path.join(cwd, 'charts');
+
+  // Docker
+  if ((await fileExists(dockerfile)) || (await fileExists(dockerignore))) {
+    const indicators: string[] = [];
+    if (await fileExists(dockerfile)) indicators.push('Dockerfile');
+    if (await fileExists(dockerignore)) indicators.push('.dockerignore');
+    services.push({
+      service: 'docker',
+      detected: true,
+      confidence: 0.95,
+      indicators,
+      source: indicators[0],
+    });
+  }
+
+  // Docker Compose
+  if ((await fileExists(dockerCompose)) || (await fileExists(dockerComposeYaml))) {
+    const indicators: string[] = [];
+    if (await fileExists(dockerCompose)) indicators.push('docker-compose.yml');
+    if (await fileExists(dockerComposeYaml)) indicators.push('docker-compose.yaml');
+    services.push({
+      service: 'docker-compose',
+      detected: true,
+      confidence: 0.95,
+      indicators,
+      source: indicators[0],
+    });
+  }
+
+  // Kubernetes
+  const k8sDirExists = existsSync(k8sDir);
+  const kubernetesDirExists = existsSync(kubernetesDir);
+  let k8sYamlDetected = false;
+
+  if (!k8sDirExists && !kubernetesDirExists) {
+    // Scan root-level YAML files for Kubernetes resource kinds
+    try {
+      const rootFiles = await readdir(cwd);
+      const yamlFiles = rootFiles.filter(
+        (f) => f.endsWith('.yml') || f.endsWith('.yaml')
+      );
+      for (const yamlFile of yamlFiles) {
+        const content = await readFile(path.join(cwd, yamlFile));
+        if (
+          content.includes('kind: Deployment') ||
+          content.includes('kind: Service') ||
+          content.includes('kind: Ingress')
+        ) {
+          k8sYamlDetected = true;
+          break;
+        }
+      }
+    } catch {
+      // Ignore read errors
+    }
+  }
+
+  if (k8sDirExists || kubernetesDirExists || k8sYamlDetected) {
+    const indicators: string[] = [];
+    if (k8sDirExists) indicators.push('k8s/ directory');
+    if (kubernetesDirExists) indicators.push('kubernetes/ directory');
+    if (k8sYamlDetected) indicators.push('YAML with kind: Deployment/Service/Ingress');
+    services.push({
+      service: 'kubernetes',
+      detected: true,
+      confidence: 0.9,
+      indicators,
+    });
+  }
+
+  // Helm
+  const chartYamlExists = await fileExists(chartYaml);
+  const chartsDirExists = existsSync(chartsDir);
+  if (chartYamlExists || chartsDirExists) {
+    const indicators: string[] = [];
+    if (chartYamlExists) indicators.push('Chart.yaml');
+    if (chartsDirExists) indicators.push('charts/ directory');
+    services.push({
+      service: 'helm',
+      detected: true,
+      confidence: 0.9,
+      indicators,
+    });
+  }
+
   // Add undetected services (for manual selection)
   const detectedServices = new Set(services.map((s) => s.service));
   const allServices: ServiceId[] = [
@@ -1623,6 +1961,16 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
     'azure_blob',
     'gcs',
     'minio',
+    'docker',
+    'docker-compose',
+    'kubernetes',
+    'helm',
+    'sentry',
+    'opentelemetry',
+    'datadog',
+    'pino',
+    'winston',
+    'prometheus',
   ];
 
   for (const service of allServices) {

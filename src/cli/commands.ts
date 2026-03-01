@@ -1,7 +1,6 @@
 import chalk from 'chalk';
 import ora from 'ora';
 import { detectProject } from '../core/detector.js';
-import { promptProjectConfig, promptSimplifiedConfig, promptMergeStrategy } from './prompts.js';
 import { generateFullAgents } from '../core/generator.js';
 import { mergeFullAgents } from '../core/merger.js';
 import {
@@ -9,7 +8,7 @@ import {
   generateIDEFiles,
   generateAICLIFiles,
 } from '../core/workflow-generator.js';
-import { writeFile, createBackup } from '../utils/file-system.js';
+import { writeFile, createBackup, ensureDir } from '../utils/file-system.js';
 import { existsSync } from 'fs';
 import { parseRulesIgnore } from '../utils/rulesignore.js';
 import { RulebookConfig } from '../types.js';
@@ -65,6 +64,9 @@ export async function initCommand(options: {
   quick?: boolean;
   minimal?: boolean;
   light?: boolean;
+  lean?: boolean;
+  package?: string;
+  addSequentialThinking?: boolean;
 }): Promise<void> {
   try {
     const cwd = process.cwd();
@@ -92,6 +94,30 @@ export async function initCommand(options: {
       }
     }
 
+    // Show monorepo detection
+    if (detection.monorepo?.detected) {
+      const mono = detection.monorepo;
+      console.log(chalk.green(`\n✓ Monorepo detected: ${chalk.bold(mono.tool ?? 'manual')}`));
+      if (mono.packages.length > 0) {
+        console.log(`  Packages (${mono.packages.length}): ${mono.packages.slice(0, 5).join(', ')}${mono.packages.length > 5 ? ` +${mono.packages.length - 5} more` : ''}`);
+      }
+      if (options.package) {
+        console.log(chalk.cyan(`  → Initializing package: ${options.package}`));
+      }
+    }
+
+    // Recommend sequential-thinking MCP if not detected
+    const seqThinking = detection.modules.find((m) => m.module === 'sequential_thinking');
+    if (seqThinking && !seqThinking.detected) {
+      console.log(
+        chalk.yellow(
+          '\n💡 Tip: Install sequential-thinking MCP for structured problem solving:\n' +
+            '   npx @modelcontextprotocol/create-server sequential-thinking\n' +
+            '   or add to .mcp.json: { "mcpServers": { "sequential-thinking": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"] } } }'
+        )
+      );
+    }
+
     const detectedFrameworks = detection.frameworks.filter((f) => f.detected);
     if (detectedFrameworks.length > 0) {
       console.log(chalk.green('\n✓ Detected frameworks:'));
@@ -114,44 +140,28 @@ export async function initCommand(options: {
       }
     }
 
-    // Get project configuration
-    let config: ProjectConfig;
+    // Get project configuration — auto-setup from detection, no prompts
     const cliMinimal = Boolean(options.minimal);
     const cliLight = Boolean(options.light);
-    const cliQuick = Boolean(options.quick);
+    const cliLean = Boolean(options.lean);
 
-    if (options.yes) {
-      // Full auto mode - no prompts at all
-      config = {
-        languages: detection.languages.map((l) => l.language),
-        modules: cliMinimal ? [] : detection.modules.filter((m) => m.detected).map((m) => m.module),
-        frameworks: detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
-        ides: cliMinimal ? [] : ['cursor'],
-        projectType: 'application' as const,
-        coverageThreshold: 95,
-        strictDocs: true,
-        generateWorkflows: true,
-        includeGitWorkflow: true,
-        gitPushMode: 'manual',
-        installGitHooks: false,
-        minimal: cliMinimal,
-        lightMode: cliLight,
-        modular: true, // Enable modular /rulebook directory by default
-      };
-      console.log(chalk.blue('\nUsing detected defaults...'));
-    } else if (cliQuick) {
-      // Quick mode - minimal prompts (language, MCP, hooks only)
-      config = await promptSimplifiedConfig(detection);
-      config.lightMode = cliLight;
-      config.minimal = cliMinimal;
-    } else {
-      // Full interactive mode
-      console.log('');
-      config = await promptProjectConfig(detection, {
-        defaultMode: cliMinimal ? 'minimal' : 'full',
-      });
-      config.lightMode = cliLight;
-    }
+    const config: ProjectConfig = {
+      languages: detection.languages.map((l) => l.language),
+      modules: cliMinimal ? [] : detection.modules.filter((m) => m.detected).map((m) => m.module),
+      frameworks: detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
+      ides: cliMinimal ? [] : ['cursor'],
+      projectType: 'application' as const,
+      coverageThreshold: 95,
+      strictDocs: true,
+      generateWorkflows: true,
+      includeGitWorkflow: true,
+      gitPushMode: 'manual',
+      installGitHooks: false,
+      minimal: cliMinimal,
+      lightMode: cliLight,
+      modular: true,
+    };
+    console.log(chalk.blue('\nAuto-configuring from detection results...'));
 
     const minimalMode = config.minimal ?? cliMinimal;
     config.minimal = minimalMode;
@@ -161,6 +171,9 @@ export async function initCommand(options: {
     config.includeGitWorkflow = config.includeGitWorkflow ?? true;
     config.generateWorkflows = config.generateWorkflows ?? true;
     config.modular = config.modular ?? true; // Enable modular by default
+    if (cliLean) {
+      config.agentsMode = 'lean';
+    }
 
     let minimalArtifacts: string[] = [];
     if (minimalMode) {
@@ -231,6 +244,9 @@ export async function initCommand(options: {
     await configManager.migrateDirectoryStructure(cwd);
     dirMigrationSpinner.succeed('Directory structure migrated');
 
+    // Ensure .rulebook/memory/ directory exists for per-project memory persistence
+    await ensureDir(path.join(cwd, '.rulebook', 'memory'));
+
     // Ensure .gitignore has .rulebook entries (keep specs/ and tasks/ tracked)
     await configManager.ensureGitignore();
 
@@ -270,10 +286,20 @@ export async function initCommand(options: {
       services: config.services as ServiceId[],
       modular: config.modular ?? true,
       rulebookDir: config.rulebookDir || '.rulebook',
+      ...(config.agentsMode ? { agentsMode: config.agentsMode } : {}),
       skills: enabledSkills.length > 0 ? { enabled: enabledSkills } : undefined,
       ralph: existingConfig.ralph,
       memory: existingConfig.memory,
     });
+
+    // --package: generate only the specified package's AGENTS.md and exit
+    if (options.package) {
+      const packageRoot = path.join(cwd, options.package);
+      const { generatePackageAgentsMd } = await import('../core/generator.js');
+      await generatePackageAgentsMd(packageRoot, config, cwd);
+      console.log(chalk.green(`\n✅ AGENTS.md generated for package: ${options.package}`));
+      return;
+    }
 
     // Generate or merge AGENTS.md
     const agentsPath = path.join(cwd, 'AGENTS.md');
@@ -296,24 +322,11 @@ export async function initCommand(options: {
         }
       }
 
-      const strategy = options.yes ? 'merge' : await promptMergeStrategy();
-
-      if (strategy === 'merge') {
-        const mergeSpinner = ora('Merging with existing AGENTS.md...').start();
-        finalContent = await mergeFullAgents(detection.existingAgents, config, cwd);
-
-        // Create backup
-        const backupPath = await createBackup(agentsPath);
-        mergeSpinner.succeed(`Backup created: ${path.basename(backupPath)}`);
-      } else {
-        const backupSpinner = ora('Creating backup...').start();
-        const backupPath = await createBackup(agentsPath);
-        backupSpinner.succeed(`Backup created: ${path.basename(backupPath)}`);
-
-        const genSpinner = ora('Generating new AGENTS.md...').start();
-        finalContent = await generateFullAgents(config, cwd);
-        genSpinner.succeed('AGENTS.md generated');
-      }
+      // Always merge — preserve existing customizations
+      const mergeSpinner = ora('Merging with existing AGENTS.md...').start();
+      finalContent = await mergeFullAgents(detection.existingAgents, config, cwd);
+      const backupPath = await createBackup(agentsPath);
+      mergeSpinner.succeed(`Backup created: ${path.basename(backupPath)}`);
     } else {
       const genSpinner = ora('Generating AGENTS.md...').start();
       finalContent = await generateFullAgents(config, cwd);
@@ -323,6 +336,29 @@ export async function initCommand(options: {
     // Write AGENTS.md
     await writeFile(agentsPath, finalContent);
     console.log(chalk.green(`\n✅ AGENTS.md written to ${agentsPath}`));
+
+    // Show Cursor MDC feedback
+    if (detection.cursor?.detected) {
+      if (detection.cursor.hasMdcRules) {
+        console.log(chalk.gray('  • Cursor .mdc rules updated in .cursor/rules/'));
+      } else {
+        console.log(chalk.gray('  • Cursor .mdc rules generated in .cursor/rules/'));
+      }
+    }
+
+    // Show multi-tool config feedback
+    if (detection.geminiCli?.detected) {
+      console.log(chalk.gray('  • Gemini CLI config generated: GEMINI.md'));
+    }
+    if (detection.continueDev?.detected) {
+      console.log(chalk.gray('  • Continue.dev rules generated in .continue/rules/'));
+    }
+    if (detection.windsurf?.detected) {
+      console.log(chalk.gray('  • Windsurf rules generated: .windsurfrules'));
+    }
+    if (detection.githubCopilot?.detected) {
+      console.log(chalk.gray('  • GitHub Copilot instructions generated in .github/'));
+    }
 
     // Generate workflows if requested
     if (config.generateWorkflows) {
@@ -398,11 +434,64 @@ export async function initCommand(options: {
               )
             );
           }
+          if (result.agentTeamsEnabled) {
+            console.log(chalk.gray('  • Multi-agent teams enabled in .claude/settings.json'));
+          }
+          if (result.agentDefinitionsInstalled.length > 0) {
+            console.log(
+              chalk.gray(
+                `  • ${result.agentDefinitionsInstalled.length} agent definitions installed to .claude/agents/`
+              )
+            );
+          }
         } else {
           claudeSpinner.info('Claude Code not detected (skipped)');
         }
       } catch {
         claudeSpinner.info('Claude Code integration skipped');
+      }
+    }
+
+    // Install Ralph shell scripts
+    try {
+      const { installRalphScripts } = await import('../core/ralph-scripts.js');
+      const scripts = await installRalphScripts(cwd);
+      if (scripts.length > 0) {
+        console.log(chalk.gray(`  • ${scripts.length} Ralph scripts installed to .rulebook/scripts/`));
+      }
+    } catch {
+      // Skip if Ralph scripts installation fails
+    }
+
+    // Create PLANS.md for session continuity
+    try {
+      const { initPlans } = await import('../core/plans-manager.js');
+      const created = await initPlans(cwd);
+      if (created) {
+        console.log(chalk.gray('  • PLANS.md created for session continuity'));
+      }
+    } catch {
+      // Non-blocking
+    }
+
+    // Create AGENTS.override.md (never overwrites existing)
+    try {
+      const { initOverride } = await import('../core/override-manager.js');
+      const created = await initOverride(cwd);
+      if (created) {
+        console.log(chalk.gray('  • AGENTS.override.md created (add project-specific rules here)'));
+      }
+    } catch {
+      // Non-blocking
+    }
+
+    // --add-sequential-thinking: inject into mcp.json if not already present
+    if (options.addSequentialThinking) {
+      try {
+        await addSequentialThinkingMcp(cwd);
+        console.log(chalk.gray('  • sequential-thinking MCP added to mcp.json'));
+      } catch {
+        console.log(chalk.yellow('  ⚠ Could not add sequential-thinking MCP'));
       }
     }
 
@@ -794,7 +883,7 @@ export async function healthCommand(): Promise<void> {
 
     console.log(chalk.bold.blue('\n🏥 Project Health Check\n'));
 
-    const { calculateHealthScore, getHealthGrade } = await import('../core/health-scorer.js');
+    const { calculateHealthScore } = await import('../core/health-scorer.js');
 
     const spinner = ora('Analyzing project health...').start();
 
@@ -803,9 +892,8 @@ export async function healthCommand(): Promise<void> {
     spinner.succeed('Health analysis complete');
 
     console.log('');
-    const grade = getHealthGrade(health.overall);
 
-    console.log(chalk.bold(`Overall Health Score: ${health.overall}/100 (${grade})`));
+    console.log(chalk.bold(`Overall Health Score: ${health.overall}/100 (${health.grade})`));
     console.log('');
 
     console.log(chalk.bold('Category Scores:\n'));
@@ -815,6 +903,9 @@ export async function healthCommand(): Promise<void> {
     console.log(`  🔒 Security: ${health.categories.security}/100`);
     console.log(`  🔄 CI/CD: ${health.categories.cicd}/100`);
     console.log(`  📦 Dependencies: ${health.categories.dependencies}/100`);
+    console.log(`  🤖 AGENTS.md: ${health.categories.agentsMd}/100`);
+    console.log(`  🔁 Ralph: ${health.categories.ralph}/100`);
+    console.log(`  🧠 Memory: ${health.categories.memory}/100`);
     console.log('');
 
     if (health.recommendations.length > 0) {
@@ -1335,6 +1426,7 @@ export async function updateCommand(options: {
   yes?: boolean;
   minimal?: boolean;
   light?: boolean;
+  lean?: boolean;
 }): Promise<void> {
   try {
     const cwd = process.cwd();
@@ -1450,6 +1542,7 @@ export async function updateCommand(options: {
 
     const minimalMode = options.minimal ?? existingMode === 'minimal';
     const lightMode = options.light !== undefined ? options.light : (existingLightMode ?? false);
+    const leanMode = options.lean ?? (existingConfig?.agentsMode === 'lean');
 
     // Build config from detected project
     const config: ProjectConfig = {
@@ -1466,6 +1559,7 @@ export async function updateCommand(options: {
       installGitHooks: installHooksOnUpdate,
       minimal: minimalMode,
       lightMode: lightMode,
+      ...(leanMode ? { agentsMode: 'lean' as const } : {}),
     };
 
     if (minimalMode) {
@@ -1487,6 +1581,15 @@ export async function updateCommand(options: {
     const cursorRulesPath = path.join(cwd, '.cursorrules');
     const cursorCommandsDir = path.join(cwd, '.cursor', 'commands');
     const usesCursor = existsSync(cursorRulesPath) || existsSync(cursorCommandsDir);
+
+    // Deprecated notice: .cursorrules is superseded by .cursor/rules/*.mdc in Cursor v0.45+
+    if (existsSync(cursorRulesPath)) {
+      console.log(
+        chalk.yellow(
+          '  ⚠ .cursorrules is deprecated as of Cursor v0.45. Use .cursor/rules/*.mdc instead.'
+        )
+      );
+    }
 
     if (usesCursor) {
       // Check if commands already exist to avoid duplicate generation
@@ -1602,6 +1705,20 @@ export async function updateCommand(options: {
     await writeFile(agentsPath, mergedContent);
     mergeSpinner.succeed('AGENTS.md updated');
 
+    // Show multi-tool config feedback (update command)
+    if (detection.geminiCli?.detected) {
+      console.log(chalk.gray('  • Gemini CLI config updated: GEMINI.md'));
+    }
+    if (detection.continueDev?.detected) {
+      console.log(chalk.gray('  • Continue.dev rules updated in .continue/rules/'));
+    }
+    if (detection.windsurf?.detected) {
+      console.log(chalk.gray('  • Windsurf rules updated: .windsurfrules'));
+    }
+    if (detection.githubCopilot?.detected) {
+      console.log(chalk.gray('  • GitHub Copilot instructions updated in .github/'));
+    }
+
     if (installHooksOnUpdate) {
       const hookLanguages: LanguageDetection[] =
         detection.languages.length > 0
@@ -1671,6 +1788,7 @@ export async function updateCommand(options: {
       ...(existingConfig.memory ? { memory: existingConfig.memory } : {}),
       ...(existingConfig.ralph ? { ralph: existingConfig.ralph } : {}),
       ...(existingConfig.skills ? { skills: existingConfig.skills } : {}),
+      ...(leanMode ? { agentsMode: 'lean' as const } : existingConfig.agentsMode ? { agentsMode: existingConfig.agentsMode } : {}),
     };
 
     await configManager.saveConfig(rulebookConfig);
@@ -1691,11 +1809,40 @@ export async function updateCommand(options: {
             chalk.gray(`  • ${result.skillsInstalled.length} skills updated in .claude/commands/`)
           );
         }
+        if (result.agentTeamsEnabled) {
+          console.log(chalk.gray('  • Multi-agent teams enabled in .claude/settings.json'));
+        }
+        if (result.agentDefinitionsInstalled.length > 0) {
+          console.log(
+            chalk.gray(
+              `  • ${result.agentDefinitionsInstalled.length} agent definitions updated in .claude/agents/`
+            )
+          );
+        }
       } else {
         claudeSpinner.info('Claude Code not detected (skipped)');
       }
     } catch {
       claudeSpinner.info('Claude Code integration skipped');
+    }
+
+    // Install/update Ralph shell scripts
+    try {
+      const { installRalphScripts } = await import('../core/ralph-scripts.js');
+      const scripts = await installRalphScripts(cwd);
+      if (scripts.length > 0) {
+        console.log(chalk.gray(`  • ${scripts.length} Ralph scripts updated in .rulebook/scripts/`));
+      }
+    } catch {
+      // Skip if Ralph scripts installation fails
+    }
+
+    // Ensure PLANS.md exists (create if missing, never overwrite)
+    try {
+      const { initPlans } = await import('../core/plans-manager.js');
+      await initPlans(cwd);
+    } catch {
+      // Non-blocking
     }
 
     // Migrate memory directory if old structure exists
@@ -2285,6 +2432,69 @@ export async function memoryStatsCommand(): Promise<void> {
   }
 }
 
+export async function memoryVerifyCommand(): Promise<void> {
+  const ora = (await import('ora')).default;
+  const chalk = (await import('chalk')).default;
+  const spinner = ora('Verifying memory system...').start();
+
+  try {
+    const { createConfigManager } = await import('../core/config-manager.js');
+    const cwd = process.cwd();
+    const configManager = createConfigManager(cwd);
+    const config = await configManager.loadConfig();
+
+    const memoryEnabled = config.memory?.enabled ?? false;
+    const dbPathRelative = config.memory?.dbPath ?? '.rulebook/memory/memory.db';
+    const dbPathAbsolute = path.join(cwd, dbPathRelative);
+
+    spinner.succeed('Memory verification');
+
+    // Check enabled status
+    console.log(
+      `\n  ${memoryEnabled ? chalk.green('✓') : chalk.red('✗')} Memory enabled: ${memoryEnabled}`
+    );
+
+    // Check DB path
+    console.log(`  ${chalk.green('✓')} DB path: ${dbPathRelative}`);
+
+    // Check if file exists on disk
+    const fileExists = existsSync(dbPathAbsolute);
+    if (fileExists) {
+      const { statSync } = await import('fs');
+      const fileStat = statSync(dbPathAbsolute);
+      const sizeKB = (fileStat.size / 1024).toFixed(1);
+      console.log(`  ${chalk.green('✓')} File exists: YES (${sizeKB} KB)`);
+    } else {
+      console.log(`  ${chalk.red('✗')} File exists: NO`);
+    }
+
+    // If memory is enabled and file exists, show record count
+    if (memoryEnabled && fileExists) {
+      try {
+        const { createMemoryManager } = await import('../memory/memory-manager.js');
+        const manager = createMemoryManager(cwd, config.memory!);
+        const stats = await manager.getStats();
+        console.log(`  ${chalk.green('✓')} Record count: ${stats.memoryCount} memories`);
+        await manager.close();
+      } catch (error) {
+        console.log(
+          `  ${chalk.yellow('!')} Record count: unable to read (${String(error)})`
+        );
+      }
+    } else if (!memoryEnabled) {
+      console.log(
+        `  ${chalk.yellow('!')} Enable memory with: ${chalk.bold('rulebook config --feature memory --enable')}`
+      );
+    }
+
+    console.log('');
+  } catch (error) {
+    spinner.fail('Memory verification failed');
+    console.error(chalk.red(String(error)));
+    process.exit(1);
+  }
+}
+
 export async function memoryCleanupCommand(options: { force?: boolean }): Promise<void> {
   const ora = (await import('ora')).default;
   const chalk = (await import('chalk')).default;
@@ -2413,6 +2623,8 @@ export async function ralphInitCommand(): Promise<void> {
 export async function ralphRunCommand(options: {
   maxIterations?: number;
   tool?: 'claude' | 'amp' | 'gemini';
+  parallel?: number;
+  planFirst?: boolean;
 }): Promise<void> {
   const oraModule = await import('ora');
   const ora = oraModule.default;
@@ -2424,6 +2636,7 @@ export async function ralphRunCommand(options: {
     const { RalphManager } = await import('../core/ralph-manager.js');
     const { RalphParser } = await import('../agents/ralph-parser.js');
     const { createConfigManager } = await import('../core/config-manager.js');
+    const { IterationTracker } = await import('../core/iteration-tracker.js');
     const childProcess = await import('child_process');
 
     const logger = new Logger(cwd);
@@ -2433,6 +2646,25 @@ export async function ralphRunCommand(options: {
     const ralphManager = new RalphManager(cwd, logger);
     const maxIterations = options.maxIterations || config.ralph?.maxIterations || 10;
     const tool = options.tool || (config.ralph?.tool as 'claude' | 'amp' | 'gemini') || 'claude';
+
+    // Resolve parallel mode — CLI flag takes precedence over config
+    const parallelWorkers =
+      options.parallel ?? (config.ralph?.parallel?.enabled ? config.ralph.parallel.maxWorkers : undefined);
+
+    // Resolve plan checkpoint config — --plan-first CLI flag takes precedence
+    const planCheckpointConfig = {
+      enabled: options.planFirst ?? config.ralph?.planCheckpoint?.enabled ?? false,
+      autoApproveAfterSeconds: config.ralph?.planCheckpoint?.autoApproveAfterSeconds ?? 0,
+      requireApprovalForStories: config.ralph?.planCheckpoint?.requireApprovalForStories ?? 'all' as const,
+    };
+
+    // Context compression config
+    const compressionConfig = config.ralph?.contextCompression;
+    const compressionEnabled = compressionConfig?.enabled !== false;
+    const compressionRecentCount = compressionConfig?.recentCount ?? 3;
+    const compressionThreshold = compressionConfig?.threshold ?? 5;
+    const iterationTracker = new IterationTracker(cwd, logger);
+    await iterationTracker.initialize();
 
     await ralphManager.initialize(maxIterations, tool);
 
@@ -2454,6 +2686,152 @@ export async function ralphRunCommand(options: {
     // Sync task count from PRD (may have been saved after initialize)
     await ralphManager.refreshTaskCount();
 
+    // ─── Parallel execution mode ───
+    if (parallelWorkers && parallelWorkers > 1) {
+      spinner.text = `Ralph parallel mode (${parallelWorkers} workers)...`;
+      const batches = await ralphManager.getParallelBatches(parallelWorkers);
+
+      spinner.stop();
+      console.log(
+        chalk.bold.cyan(
+          `\n  Parallel mode: ${batches.length} batch(es), max ${parallelWorkers} workers\n`
+        )
+      );
+
+      let iterationCount = 0;
+      for (const batch of batches) {
+        if (interrupted) break;
+
+        console.log(
+          chalk.bold(`  ── Batch: ${batch.map((s) => s.id).join(', ')} (${batch.length} stories) ──`)
+        );
+
+        // Run all stories in the batch concurrently
+        const batchResults = await Promise.allSettled(
+          batch.map(async (task) => {
+            iterationCount++;
+            const localIteration = iterationCount;
+            const startTime = Date.now();
+
+            // Build context (shared — read-only)
+            let contextHistory = '';
+            if (compressionEnabled) {
+              contextHistory = await iterationTracker.buildCompressedContext(
+                compressionRecentCount,
+                compressionThreshold
+              );
+            }
+
+            let plansContext = '';
+            try {
+              const { readPlans, plansExists } = await import('../core/plans-manager.js');
+              if (plansExists(cwd)) {
+                const plans = await readPlans(cwd);
+                if (plans?.context && plans.context.trim()) {
+                  plansContext = plans.context.trim();
+                }
+              }
+            } catch {
+              // PLANS.md injection is optional
+            }
+
+            const prompt = ralphBuildPrompt(task, prd, contextHistory, plansContext);
+            let agentOutput = '';
+            try {
+              agentOutput = await ralphExecuteAgent(tool, prompt, cwd, childProcess.spawn);
+            } catch (agentError: any) {
+              agentOutput = `Error executing agent: ${agentError.message || agentError}`;
+            }
+
+            const qualityResults = await ralphRunQualityGates(cwd, childProcess.spawn);
+            const executionTime = Date.now() - startTime;
+
+            const parsed = RalphParser.parseAgentOutput(
+              agentOutput,
+              localIteration,
+              task.id,
+              task.title,
+              tool
+            );
+
+            const allGatesPass =
+              qualityResults.type_check &&
+              qualityResults.lint &&
+              qualityResults.tests &&
+              qualityResults.coverage_met;
+
+            const passCount = Object.values(qualityResults).filter(Boolean).length;
+            const status: 'success' | 'partial' | 'failed' = allGatesPass
+              ? 'success'
+              : passCount >= 2
+                ? 'partial'
+                : 'failed';
+
+            let gitCommit: string | undefined;
+            if (allGatesPass) {
+              gitCommit = await ralphGitCommit(cwd, task, localIteration, childProcess.spawn);
+              await ralphManager.markStoryComplete(task.id);
+              console.log(chalk.green(`    [parallel] Story ${task.id} completed`));
+            } else {
+              console.log(
+                chalk.yellow(`    [parallel] Story ${task.id} not completed (quality gates failed)`)
+              );
+            }
+
+            const result = {
+              iteration: localIteration,
+              timestamp: new Date().toISOString(),
+              task_id: task.id,
+              task_title: task.title,
+              status,
+              ai_tool: tool,
+              execution_time_ms: executionTime,
+              quality_checks: qualityResults,
+              output_summary: parsed.output_summary || `Iteration ${localIteration}: ${task.title}`,
+              git_commit: gitCommit,
+              learnings: parsed.learnings,
+              errors: parsed.errors,
+              metadata: {
+                context_loss_count: parsed.metadata.context_loss_count,
+                parsed_completion: parsed.metadata.parsed_completion,
+              },
+            };
+
+            await ralphManager.recordIteration(result);
+            return result;
+          })
+        );
+
+        // Log rejected promises
+        for (const [i, result] of batchResults.entries()) {
+          if (result.status === 'rejected') {
+            const story = batch[i];
+            console.log(
+              chalk.red(`    [parallel] Story ${story.id} threw: ${result.reason}`)
+            );
+          }
+        }
+
+        // Check for pause
+        const currentStatus = await ralphManager.getStatus();
+        if (currentStatus?.paused) break;
+      }
+
+      // Cleanup and summary for parallel mode
+      process.removeListener('SIGINT', handleInterrupt);
+      const stats = await ralphManager.getTaskStats();
+      console.log(`\n  Parallel run complete: ${stats.completed}/${stats.total} tasks completed`);
+      console.log(`  Iterations: ${iterationCount}`);
+      if (interrupted) {
+        console.log(
+          chalk.yellow(`  Paused by user. Resume: ${chalk.bold('rulebook ralph resume')}`)
+        );
+      }
+      console.log(`\n  View history: ${chalk.bold('rulebook ralph history')}\n`);
+      return;
+    }
+
+    // ─── Sequential execution (default) ───
     spinner.text = 'Ralph loop running (Ctrl+C to pause)...';
 
     let iterationCount = 0;
@@ -2470,8 +2848,43 @@ export async function ralphRunCommand(options: {
 
       const startTime = Date.now();
 
+      // 0. Plan checkpoint — require approval before implementation
+      if (planCheckpointConfig.enabled) {
+        const checkpoint = await ralphManager.runCheckpoint(task, tool, planCheckpointConfig);
+        if (!checkpoint.proceed) {
+          console.log(chalk.yellow(`  Plan rejected for ${task.id}. Skipping implementation.`));
+          if (checkpoint.feedback) {
+            console.log(chalk.gray(`  Feedback: ${checkpoint.feedback}`));
+          }
+          spinner.start('Preparing next iteration...');
+          continue;
+        }
+      }
+
       // 1. Execute AI agent with task context
-      const prompt = ralphBuildPrompt(task, prd);
+      let contextHistory = '';
+      if (compressionEnabled) {
+        contextHistory = await iterationTracker.buildCompressedContext(
+          compressionRecentCount,
+          compressionThreshold
+        );
+      }
+
+      // Read PLANS.md context for session scratchpad injection
+      let plansContext = '';
+      try {
+        const { readPlans, plansExists } = await import('../core/plans-manager.js');
+        if (plansExists(cwd)) {
+          const plans = await readPlans(cwd);
+          if (plans?.context && plans.context.trim()) {
+            plansContext = plans.context.trim();
+          }
+        }
+      } catch {
+        // PLANS.md injection is optional — skip on error
+      }
+
+      const prompt = ralphBuildPrompt(task, prd, contextHistory, plansContext);
       let agentOutput = '';
       try {
         agentOutput = await ralphExecuteAgent(tool, prompt, cwd, childProcess.spawn);
@@ -2574,11 +2987,15 @@ export async function ralphRunCommand(options: {
 /**
  * Build prompt for AI agent from user story context
  */
-function ralphBuildPrompt(task: any, prd: any): string {
+function ralphBuildPrompt(task: any, prd: any, contextHistory?: string, plansContext?: string): string {
   const criteria = (task.acceptanceCriteria || []).map((c: string) => `- ${c}`).join('\n');
   return [
     `You are working on project: ${prd?.project || 'unknown'}`,
     ``,
+    plansContext ? `## Session Context (PLANS.md)\n${plansContext}\n` : '',
+    contextHistory && contextHistory !== 'No iteration history available.'
+      ? `## Iteration History\n${contextHistory}\n`
+      : '',
     `## Current Task: ${task.title}`,
     `ID: ${task.id}`,
     ``,
@@ -2701,11 +3118,21 @@ async function ralphRunQualityGates(
     });
   };
 
+  // Detect monorepo to choose the right test command
+  const { detectMonorepo } = await import('../core/detector.js');
+  const monorepo = await detectMonorepo(cwd).catch(() => ({ detected: false, tool: null, packages: [] }));
+
+  let testCmd: [string, string[]] = ['npm', ['test']];
+  if (monorepo.detected) {
+    if (monorepo.tool === 'turborepo') testCmd = ['turbo', ['run', 'test']];
+    else if (monorepo.tool === 'nx') testCmd = ['nx', ['run-many', '--target=test']];
+  }
+
   // Run gates in parallel
   const [typeCheck, lint, tests] = await Promise.all([
     runGate('npm', ['run', 'type-check']),
     runGate('npm', ['run', 'lint']),
-    runGate('npm', ['test']),
+    runGate(testCmd[0], testCmd[1]),
   ]);
 
   return {
@@ -2830,6 +3257,13 @@ export async function ralphStatusCommand(): Promise<void> {
     }
 
     spinner.stop();
+
+    // Show agentsMode from config
+    const { createConfigManager } = await import('../core/config-manager.js');
+    const configManager = createConfigManager(cwd);
+    const cfg = await configManager.loadConfig();
+    const agentsMode = cfg.agentsMode ?? 'full';
+
     console.log(`\n  ${chalk.bold('Ralph Loop Status')}`);
     console.log(`  Iteration:    ${status.current_iteration}/${status.max_iterations}`);
     console.log(`  Tasks:        ${status.completed_tasks}/${status.total_tasks}`);
@@ -2838,6 +3272,7 @@ export async function ralphStatusCommand(): Promise<void> {
     );
     console.log(`  AI Tool:      ${status.tool}`);
     console.log(`  Started:      ${new Date(status.started_at).toLocaleString()}`);
+    console.log(`  Agents Mode:  ${agentsMode === 'lean' ? chalk.cyan('lean') : chalk.gray('full')} (rulebook mode set lean|full)`);
     console.log();
   } catch (error) {
     spinner.fail('Failed to load status');
@@ -3046,6 +3481,341 @@ export async function setupClaudeCodePlugin(): Promise<void> {
   }
 }
 
+// ─── Plans Commands ────────────────────────────────────────────────────────
+
+/**
+ * Add sequential-thinking MCP server entry to mcp.json (or .cursor/mcp.json).
+ * Non-destructive: skips if already present.
+ */
+async function addSequentialThinkingMcp(cwd: string): Promise<void> {
+  const { readFileSync, writeFileSync, existsSync } = await import('fs');
+  const { mkdirSync } = await import('fs');
+
+  const seqEntry = {
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
+  };
+
+  const candidates = [
+    path.join(cwd, 'mcp.json'),
+    path.join(cwd, '.cursor', 'mcp.json'),
+    path.join(cwd, '.mcp.json'),
+  ];
+
+  // Find existing mcp.json or default to mcp.json
+  let mcpPath = candidates.find((p) => existsSync(p)) ?? path.join(cwd, 'mcp.json');
+
+  let mcpConfig: { mcpServers?: Record<string, unknown> } = {};
+  if (existsSync(mcpPath)) {
+    try {
+      mcpConfig = JSON.parse(readFileSync(mcpPath, 'utf8'));
+    } catch {
+      mcpConfig = {};
+    }
+  }
+
+  mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
+
+  // Already configured under any key variant
+  const keys = Object.keys(mcpConfig.mcpServers);
+  const alreadyPresent = keys.some((k) =>
+    ['sequential-thinking', 'sequential_thinking', 'sequentialThinking'].includes(k)
+  );
+  if (alreadyPresent) return;
+
+  mcpConfig.mcpServers['sequential-thinking'] = seqEntry;
+
+  // Ensure directory exists
+  const dir = path.dirname(mcpPath);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+
+  writeFileSync(mcpPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+}
+
+/**
+ * Show contents of AGENTS.override.md.
+ */
+export async function overrideShowCommand(): Promise<void> {
+  const cwd = process.cwd();
+  const { overrideExists, getOverridePath, readOverrideContent } = await import('../core/override-manager.js');
+  if (!overrideExists(cwd)) {
+    console.log(chalk.yellow('AGENTS.override.md does not exist. Run `rulebook override edit` or `rulebook init` to create it.'));
+    return;
+  }
+  const content = await readOverrideContent(cwd);
+  if (!content) {
+    console.log(chalk.gray('AGENTS.override.md exists but has no custom content yet.'));
+    console.log(chalk.gray(`  Path: ${getOverridePath(cwd)}`));
+    return;
+  }
+  console.log(chalk.bold('\n📄 AGENTS.override.md\n'));
+  console.log(content);
+  console.log();
+}
+
+/**
+ * Open AGENTS.override.md in $EDITOR, or print path if no EDITOR.
+ */
+export async function overrideEditCommand(): Promise<void> {
+  const cwd = process.cwd();
+  const { initOverride, getOverridePath } = await import('../core/override-manager.js');
+  await initOverride(cwd); // create if missing
+  const overridePath = getOverridePath(cwd);
+  const editor = process.env.EDITOR || process.env.VISUAL;
+  if (editor) {
+    const { spawn } = await import('child_process');
+    const proc = spawn(editor, [overridePath], { stdio: 'inherit', shell: true });
+    await new Promise<void>((resolve) => proc.on('close', () => resolve()));
+  } else {
+    console.log(chalk.gray(`No $EDITOR set. Edit the file directly:`));
+    console.log(chalk.cyan(`  ${overridePath}`));
+  }
+}
+
+/**
+ * Reset AGENTS.override.md to empty template.
+ */
+export async function overrideClearCommand(): Promise<void> {
+  const cwd = process.cwd();
+  const { clearOverride } = await import('../core/override-manager.js');
+  await clearOverride(cwd);
+  console.log(chalk.green('✓ AGENTS.override.md reset to empty template'));
+}
+
+/**
+ * Set the AGENTS.md generation mode (lean or full).
+ */
+export async function modeSetCommand(mode: 'lean' | 'full'): Promise<void> {
+  const cwd = process.cwd();
+  const { createConfigManager } = await import('../core/config-manager.js');
+  const configManager = createConfigManager(cwd);
+  const config = await configManager.loadConfig();
+  config.agentsMode = mode;
+  await configManager.saveConfig(config);
+  console.log(chalk.green(`✓ AGENTS.md mode set to: ${chalk.bold(mode)}`));
+  if (mode === 'lean') {
+    console.log(
+      chalk.gray(
+        '  Lean mode: AGENTS.md will be a lightweight index (<3KB).\n' +
+          '  Run `rulebook update` to regenerate AGENTS.md.'
+      )
+    );
+  } else {
+    console.log(
+      chalk.gray(
+        '  Full mode: AGENTS.md will include all rules inline.\n' +
+          '  Run `rulebook update` to regenerate AGENTS.md.'
+      )
+    );
+  }
+}
+
+/**
+ * Show current PLANS.md content.
+ */
+export async function plansShowCommand(): Promise<void> {
+  const { readPlans, getPlansPath } = await import('../core/plans-manager.js');
+  const cwd = process.cwd();
+
+  const plans = await readPlans(cwd);
+  if (!plans) {
+    console.log(chalk.yellow(`No PLANS.md found at ${getPlansPath(cwd)}`));
+    console.log(chalk.gray('Run `rulebook plans init` to create one.'));
+    return;
+  }
+
+  console.log(chalk.bold.blue('\n📋 PLANS.md — Session Scratchpad\n'));
+
+  if (plans.context && plans.context !== '_No active context. Start a session to populate this section._') {
+    console.log(chalk.bold('Active Context:'));
+    console.log(chalk.white(plans.context));
+  }
+
+  if (plans.currentTask && plans.currentTask !== '_No task in progress._') {
+    console.log(chalk.bold('\nCurrent Task:'));
+    console.log(chalk.cyan(plans.currentTask));
+  }
+
+  if (plans.history) {
+    console.log(chalk.bold('\nSession History:'));
+    console.log(chalk.gray(plans.history));
+  }
+
+  console.log('');
+}
+
+/**
+ * Initialize PLANS.md in project root.
+ */
+export async function plansInitCommand(): Promise<void> {
+  const { initPlans, getPlansPath } = await import('../core/plans-manager.js');
+  const cwd = process.cwd();
+
+  const created = await initPlans(cwd);
+  if (created) {
+    console.log(chalk.green(`✓ Created ${getPlansPath(cwd)}`));
+    console.log(chalk.gray('  AI agents will use this file for session continuity.'));
+  } else {
+    console.log(chalk.yellow(`PLANS.md already exists at ${getPlansPath(cwd)}`));
+  }
+}
+
+/**
+ * Reset PLANS.md to the empty template.
+ */
+export async function plansClearCommand(): Promise<void> {
+  const { clearPlans, getPlansPath } = await import('../core/plans-manager.js');
+  const cwd = process.cwd();
+  await clearPlans(cwd);
+  console.log(chalk.green(`✓ Cleared ${getPlansPath(cwd)}`));
+  console.log(chalk.gray('  Session history and context have been reset.'));
+}
+
+// ─── Continue Command ───────────────────────────────────────────────────────
+
+/**
+ * `rulebook continue` — Print orientations to resume work in a new AI session.
+ *
+ * Aggregates context from:
+ * 1. PLANS.md (session scratchpad)
+ * 2. Active rulebook tasks (pending items in tasks.md)
+ * 3. Recent git commits (last 5)
+ * 4. Ralph status (if running)
+ *
+ * Outputs a structured prompt that the AI agent can paste at the start of a session.
+ */
+export async function continueCommand(): Promise<void> {
+  const cwd = process.cwd();
+  const { readPlans } = await import('../core/plans-manager.js');
+  const { exec } = await import('child_process');
+  const { promisify } = await import('util');
+  const execAsync = promisify(exec);
+  const fs = await import('fs/promises');
+
+  console.log(chalk.bold.blue('\n🔄 Generating session continuity context...\n'));
+
+  const sections: string[] = [];
+
+  // ── 1. PLANS.md context ──
+  const plans = await readPlans(cwd);
+  if (plans && (plans.context || plans.currentTask)) {
+    const plansParts: string[] = ['## Active Plans'];
+    if (plans.context && !plans.context.includes('_No active context')) {
+      plansParts.push(plans.context);
+    }
+    if (plans.currentTask && !plans.currentTask.includes('_No task')) {
+      plansParts.push(`**Current Task:** ${plans.currentTask}`);
+    }
+    sections.push(plansParts.join('\n'));
+  }
+
+  // ── 2. Active tasks (pending checklist items) ──
+  const tasksDir = path.join(cwd, '.rulebook', 'tasks');
+  if (existsSync(tasksDir)) {
+    const taskSummaries: string[] = [];
+    try {
+      const entries = await fs.readdir(tasksDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory() || entry.name === 'archive') continue;
+        const tasksPath = path.join(tasksDir, entry.name, 'tasks.md');
+        if (!existsSync(tasksPath)) continue;
+        const content = await fs.readFile(tasksPath, 'utf-8');
+        const pending = content
+          .split('\n')
+          .filter((l) => l.match(/^- \[ \]/))
+          .map((l) => l.replace(/^- \[ \]\s*/, '').trim())
+          .slice(0, 3);
+        if (pending.length > 0) {
+          taskSummaries.push(`**${entry.name}** (${pending.length}+ pending):`);
+          pending.forEach((p) => taskSummaries.push(`  - ${p}`));
+        }
+      }
+    } catch {
+      // ignore
+    }
+    if (taskSummaries.length > 0) {
+      sections.push('## Pending Tasks\n' + taskSummaries.join('\n'));
+    }
+  }
+
+  // ── 3. Recent git commits ──
+  try {
+    const { stdout } = await execAsync('git log --oneline -8', { cwd });
+    if (stdout.trim()) {
+      sections.push('## Recent Commits\n```\n' + stdout.trim() + '\n```');
+    }
+  } catch {
+    // not a git repo or git not available
+  }
+
+  // ── 4. Ralph status ──
+  const ralphStatePath = path.join(cwd, '.rulebook', 'ralph', 'state.json');
+  if (existsSync(ralphStatePath)) {
+    try {
+      const state = JSON.parse(await fs.readFile(ralphStatePath, 'utf-8'));
+      if (state.enabled) {
+        const prdPath = path.join(cwd, '.rulebook', 'ralph', 'prd.json');
+        let prdInfo = '';
+        if (existsSync(prdPath)) {
+          const prd = JSON.parse(await fs.readFile(prdPath, 'utf-8'));
+          const pending = (prd.userStories ?? []).filter((s: any) => !s.passes).length;
+          const total = (prd.userStories ?? []).length;
+          prdInfo = ` | ${total - pending}/${total} stories complete`;
+        }
+        sections.push(
+          `## Ralph Status\n` +
+          `Iteration ${state.current_iteration}/${state.max_iterations}${prdInfo} | Tool: ${state.tool} | Paused: ${state.paused}`
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // ── 5. Current branch ──
+  try {
+    const { stdout } = await execAsync('git rev-parse --abbrev-ref HEAD', { cwd });
+    const branch = stdout.trim();
+    if (branch) {
+      sections.unshift(`## Branch\n\`${branch}\``);
+    }
+  } catch {
+    // ignore
+  }
+
+  // ── Render ──
+  if (sections.length === 0) {
+    console.log(chalk.yellow('No session context found. Create tasks, a PLANS.md, or make some commits.'));
+    return;
+  }
+
+  const output = [
+    '─'.repeat(60),
+    chalk.bold('📋 SESSION CONTINUITY CONTEXT'),
+    chalk.gray('Paste this at the start of a new AI session:'),
+    '─'.repeat(60),
+    '',
+    sections.join('\n\n'),
+    '',
+    '─'.repeat(60),
+  ].join('\n');
+
+  console.log(output);
+
+  // Also write to PLANS.md if it exists
+  if (plans !== null) {
+    const { appendPlansHistory } = await import('../core/plans-manager.js');
+    try {
+      await appendPlansHistory(
+        cwd,
+        `Session context generated. Branch: current. Pending tasks summarized.`
+      );
+    } catch {
+      // non-critical
+    }
+  }
+}
+
 export async function migrateMemoryDirectory(): Promise<void> {
   const oraModule = await import('ora');
   const ora = oraModule.default;
@@ -3103,6 +3873,187 @@ export async function migrateMemoryDirectory(): Promise<void> {
     const spinner2 = ora();
     spinner2.fail('Failed to migrate memory directory');
     console.error(chalk.red(String(error)));
+    process.exit(1);
+  }
+}
+
+// ─── Review Command ─────────────────────────────────────────────────────────
+
+/**
+ * `rulebook review` — Run AI-powered code review on changes vs a base branch.
+ *
+ * Retrieves the git diff, builds a structured prompt, sends it to an AI tool,
+ * parses the result, and outputs in the requested format.
+ */
+export async function reviewCommand(options: {
+  output?: 'terminal' | 'github-comment' | 'json';
+  failOn?: 'critical' | 'major' | 'minor';
+  baseBranch?: string;
+  tool?: string;
+}): Promise<void> {
+  const cwd = process.cwd();
+  const baseBranch = options.baseBranch ?? 'main';
+  const outputFormat = options.output ?? 'terminal';
+  const tool = (options.tool ?? 'claude') as import('../core/review-manager.js').ReviewTool;
+
+  const {
+    getDiffContext,
+    buildReviewPrompt,
+    runAIReview,
+    parseReviewOutput,
+    formatReviewTerminal,
+    postGitHubComment,
+    readAgentsMd,
+    hasFailingIssues,
+  } = await import('../core/review-manager.js');
+
+  // 1. Get diff
+  const diff = await getDiffContext(cwd, baseBranch);
+  if (!diff) {
+    console.log(chalk.yellow(`No changes detected vs ${baseBranch}`));
+    return;
+  }
+
+  // 2. Read AGENTS.md (optional context)
+  const agentsMdContent = await readAgentsMd(cwd);
+
+  // 3. Build prompt
+  const projectName = path.basename(cwd);
+  const prompt = buildReviewPrompt(diff, { agentsMdContent, projectName });
+
+  // 4. Run AI review
+  const spinner = ora('Running AI review...').start();
+  const rawOutput = await runAIReview(prompt, tool);
+  if (!rawOutput) {
+    spinner.fail('AI review returned no output. Is the AI tool installed and configured?');
+    process.exit(1);
+  }
+  spinner.succeed('AI review complete');
+
+  // 5. Parse result
+  const result = parseReviewOutput(rawOutput);
+
+  // 6. Output
+  switch (outputFormat) {
+    case 'terminal':
+      console.log(formatReviewTerminal(result));
+      break;
+    case 'json':
+      console.log(JSON.stringify(result, null, 2));
+      break;
+    case 'github-comment':
+      try {
+        await postGitHubComment(result);
+        console.log(chalk.green('Review posted as PR comment'));
+      } catch (error) {
+        console.error(chalk.red(`Failed to post comment: ${error}`));
+        process.exit(1);
+      }
+      break;
+  }
+
+  // 7. Exit code
+  if (options.failOn && hasFailingIssues(result.issues, options.failOn)) {
+    console.log(
+      chalk.red(`\nFailing: found issues at or above "${options.failOn}" severity`),
+    );
+    process.exit(1);
+  }
+}
+
+// ─── Ralph Import Issues Command ───
+
+export async function ralphImportIssuesCommand(options: {
+  label?: string;
+  milestone?: string;
+  limit?: number;
+  dryRun?: boolean;
+}): Promise<void> {
+  const oraModule = await import('ora');
+  const ora = oraModule.default;
+
+  try {
+    const {
+      checkGhCliAvailable,
+      fetchGithubIssues,
+      convertIssueToStory,
+      mergeStoriesIntoExistingPrd,
+    } = await import('../core/github-issues-importer.js');
+
+    // 1. Check gh CLI availability
+    const ghAvailable = await checkGhCliAvailable();
+    if (!ghAvailable) {
+      console.error(
+        chalk.red(
+          'GitHub CLI (gh) is not installed. Install it from: https://cli.github.com',
+        ),
+      );
+      return;
+    }
+
+    // 2. Fetch issues
+    const spinner = ora('Fetching GitHub issues...').start();
+
+    const issues = await fetchGithubIssues({
+      label: options.label,
+      milestone: options.milestone,
+      limit: options.limit ?? 20,
+    });
+
+    if (issues.length === 0) {
+      spinner.info('No open issues found matching the given filters.');
+      return;
+    }
+
+    spinner.text = `Converting ${issues.length} issues to Ralph stories...`;
+
+    // 3. Load existing PRD (may not exist yet)
+    const cwd = process.cwd();
+    let existingPrd = null;
+    try {
+      const { RalphManager } = await import('../core/ralph-manager.js');
+      const { Logger } = await import('../core/logger.js');
+      const logger = new Logger(cwd);
+      const manager = new RalphManager(cwd, logger);
+      existingPrd = await manager.loadPRD();
+    } catch {
+      // PRD not initialized — will create a new one
+    }
+
+    // 4. Convert issues to stories
+    const newStories = issues.map((issue) => convertIssueToStory(issue));
+
+    // 5. Merge into existing PRD
+    const { prd: mergedPrd, result } = mergeStoriesIntoExistingPrd(existingPrd, newStories);
+
+    // 6. Dry run — preview only
+    if (options.dryRun) {
+      spinner.stop();
+      console.log(
+        chalk.yellow(
+          `Dry run — would import ${result.imported} stories, update ${result.updated}, skip ${result.skipped}`,
+        ),
+      );
+      console.log('');
+      for (const story of mergedPrd.userStories) {
+        const marker = story.passes ? chalk.green('[PASS]') : chalk.gray('[    ]');
+        console.log(`  ${marker} ${story.id}: ${story.title}`);
+      }
+      return;
+    }
+
+    // 7. Save PRD
+    const prdPath = path.join(cwd, '.rulebook', 'ralph', 'prd.json');
+    await ensureDir(path.join(cwd, '.rulebook', 'ralph'));
+    await writeFile(prdPath, JSON.stringify(mergedPrd, null, 2));
+
+    spinner.succeed(
+      `Imported ${result.imported} new stories, updated ${result.updated} existing, ${result.skipped} skipped`,
+    );
+    console.log(`\n  PRD saved to: ${prdPath}`);
+    console.log(`  Total stories: ${mergedPrd.userStories.length}\n`);
+  } catch (error) {
+    console.error(chalk.red(`Failed to import GitHub issues: ${String(error)}`));
     process.exit(1);
   }
 }

@@ -4,6 +4,7 @@ import { createLogger, initializeLogger } from './logger.js';
 import { createConfigManager } from './config-manager.js';
 import { createCLIBridge } from './cli-bridge.js';
 import type { RulebookConfig } from '../types.js';
+import { RalphParser } from '../agents/ralph-parser.js';
 
 export interface AgentTask {
   id: string;
@@ -31,8 +32,10 @@ export class AgentManager {
   private onLog?: AgentOptions['onLog'];
   private onTaskStatusChange?: AgentOptions['onTaskStatusChange'];
   private initializePromise?: Promise<void>;
+  private projectRoot: string;
 
   constructor(projectRoot: string) {
+    this.projectRoot = projectRoot;
     this.logger = initializeLogger(projectRoot);
     this.configManager = createConfigManager(projectRoot);
     this.config = {} as RulebookConfig;
@@ -184,14 +187,15 @@ export class AgentManager {
         iteration++;
         this.logger.info(`Workflow iteration ${iteration}/${maxIterations}`);
 
-        const msg = `✅ Agent workflow iteration ${iteration}/${maxIterations} (use Ralph for task-driven automation)`;
+        const msg = `🔄 Agent workflow iteration ${iteration}/${maxIterations} (use Ralph for task-driven automation)`;
         if (this.onLog) {
           this.onLog('info', msg);
         } else {
           console.log(chalk.gray(msg));
         }
 
-        break;
+        // Continue iterating — no unconditional break
+        // Loop exits naturally when: isRunning=false, maxIterations reached
       } catch (error) {
         this.logger.error(`Workflow iteration ${iteration} failed`, { error: String(error) });
         const msg = `❌ Iteration ${iteration} failed: ${error}`;
@@ -270,6 +274,11 @@ export class AgentManager {
         throw new Error('Coverage below threshold');
       }
 
+      const securitySuccess = await this.runSecurityGate(this.projectRoot);
+      if (!securitySuccess) {
+        throw new Error('Security gate failed');
+      }
+
       await this.commitChanges(task);
 
       const duration = Date.now() - startTime;
@@ -342,12 +351,149 @@ export class AgentManager {
   }
 
   private async checkCoverage(): Promise<boolean> {
-    const coverage = 95;
     const threshold = this.config.coverageThreshold;
 
-    this.logger.coverageCheck(coverage, threshold);
+    // Run tests with coverage to get real output
+    const coverageResponse = await this.cliBridge.sendTestCommand(this.currentTool!);
+    const output = coverageResponse.output ?? '';
 
+    const coverage = RalphParser.parseCoveragePercentage(output);
+
+    if (coverage === null) {
+      // Coverage output not parseable — warn but don't fail the gate
+      process.stderr.write('[rulebook] Coverage output could not be parsed; skipping coverage gate\n');
+      return true;
+    }
+
+    this.logger.coverageCheck(coverage, threshold);
     return coverage >= threshold;
+  }
+
+  /**
+   * Run the security gate using npm audit (or other available tools).
+   * Returns true if the gate passes, false if it fails.
+   * If no tool is available, logs a warning and returns true (skip).
+   */
+  private async runSecurityGate(projectRoot: string): Promise<boolean> {
+    const secConfig = (this.config as { ralph?: { securityGate?: { enabled?: boolean; failOn?: string; tool?: string } } }).ralph?.securityGate;
+    const enabled = secConfig?.enabled !== false; // default: true
+    if (!enabled) {
+      return true;
+    }
+
+    const failOn = (secConfig?.failOn ?? 'high') as 'critical' | 'high' | 'moderate' | 'low';
+
+    try {
+      const { execSync } = await import('child_process');
+
+      // Detect available tool
+      let tool = secConfig?.tool ?? 'auto';
+      if (tool === 'auto') {
+        // Auto-detect: trivy > semgrep > npm audit
+        try {
+          execSync('trivy --version', { stdio: 'ignore', timeout: 5000 });
+          tool = 'trivy';
+        } catch {
+          try {
+            execSync('semgrep --version', { stdio: 'ignore', timeout: 5000 });
+            tool = 'semgrep';
+          } catch {
+            try {
+              execSync('npm audit --version', { cwd: projectRoot, stdio: 'ignore', timeout: 5000 });
+              tool = 'npm-audit';
+            } catch {
+              // no tool available
+            }
+          }
+        }
+      }
+
+      if (tool === 'trivy') {
+        try {
+          const output = execSync(`trivy fs --exit-code 0 --format json ${projectRoot}`, {
+            encoding: 'utf-8',
+            stdio: ['ignore', 'pipe', 'ignore'],
+            timeout: 60000,
+          });
+          const severity = RalphParser.parseTrivySeverity(output);
+          const passes = RalphParser.securityGatePasses(severity, failOn);
+          if (!passes) {
+            const msg = `🔒 Security gate (trivy) failed: ${severity} vulnerabilities found (failOn: ${failOn})`;
+            if (this.onLog) this.onLog('warning', msg);
+            else console.log(chalk.yellow(msg));
+          }
+          return passes;
+        } catch (err: unknown) {
+          const execError = err as { stdout?: string };
+          if (execError.stdout) {
+            const severity = RalphParser.parseTrivySeverity(execError.stdout);
+            return RalphParser.securityGatePasses(severity, failOn);
+          }
+        }
+      }
+
+      if (tool === 'semgrep') {
+        try {
+          const output = execSync(`semgrep --config auto --json ${projectRoot}`, {
+            encoding: 'utf-8',
+            stdio: ['ignore', 'pipe', 'ignore'],
+            timeout: 60000,
+          });
+          const severity = RalphParser.parseSemgrepSeverity(output);
+          const passes = RalphParser.securityGatePasses(severity, failOn);
+          if (!passes) {
+            const msg = `🔒 Security gate (semgrep) failed: ${severity} issues found (failOn: ${failOn})`;
+            if (this.onLog) this.onLog('warning', msg);
+            else console.log(chalk.yellow(msg));
+          }
+          return passes;
+        } catch (err: unknown) {
+          const execError = err as { stdout?: string };
+          if (execError.stdout) {
+            const severity = RalphParser.parseSemgrepSeverity(execError.stdout);
+            return RalphParser.securityGatePasses(severity, failOn);
+          }
+        }
+      }
+
+      if (tool === 'npm-audit') {
+        try {
+          const output = execSync('npm audit --json', {
+            cwd: projectRoot,
+            encoding: 'utf-8',
+            stdio: ['ignore', 'pipe', 'ignore'],
+            timeout: 30000,
+          });
+          const severity = RalphParser.parseNpmAuditSeverity(output);
+          const passes = RalphParser.securityGatePasses(severity, failOn);
+          if (!passes) {
+            const msg = `🔒 Security gate failed: found ${severity} severity vulnerabilities (failOn: ${failOn})`;
+            if (this.onLog) {
+              this.onLog('warning', msg);
+            } else {
+              console.log(chalk.yellow(msg));
+            }
+          }
+          return passes;
+        } catch (err: unknown) {
+          // npm audit exits with non-zero when vulnerabilities found
+          const execError = err as { stdout?: string };
+          if (execError.stdout) {
+            const severity = RalphParser.parseNpmAuditSeverity(execError.stdout);
+            return RalphParser.securityGatePasses(severity, failOn);
+          }
+        }
+      }
+
+      // No scanner available — skip gate with warning
+      const skipMsg = '[rulebook] No security scanner available; skipping security gate';
+      process.stderr.write(skipMsg + '\n');
+      return true;
+    } catch {
+      // Gate itself threw — skip rather than fail
+      process.stderr.write('[rulebook] Security gate error; skipping\n');
+      return true;
+    }
   }
 
   private async commitChanges(task: AgentTask): Promise<void> {

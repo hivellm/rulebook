@@ -1,0 +1,24 @@
+---
+description: Rust coding standards and best practices
+globs: ["**/*.rs"]
+alwaysApply: false
+---
+
+# Rust Rules
+
+See `/.rulebook/specs/RUST.md` for full requirements.
+
+## Key Rules
+
+- Prefer `Result<T, E>` over `unwrap()` / `expect()`
+- Use `thiserror` for library errors, `anyhow` for application errors
+- Minimize `clone()` — prefer borrows and lifetimes
+- Use `clippy` with `#![deny(clippy::all)]`
+- Document public API with `///` doc comments
+- Prefer iterator adapters over manual loops
+
+## Error Handling
+
+- Propagate errors with `?` operator
+- Define domain error enums with `thiserror`
+- Never `panic!` in library code

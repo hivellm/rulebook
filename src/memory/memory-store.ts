@@ -52,6 +52,11 @@ export class MemoryStore {
 
     this.createSchema();
     this.initialized = true;
+
+    // Force save to disk immediately after initialization to ensure the .db file exists.
+    // Without this, the DB only persists after AUTO_SAVE_THRESHOLD writes or explicit close(),
+    // which means sessions that end early never create the file on disk.
+    this.saveToDisk();
   }
 
   private createSchema(): void {

@@ -1,0 +1,25 @@
+---
+description: TypeScript coding standards and best practices
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
+---
+
+# TypeScript Rules
+
+See `/.rulebook/specs/TYPESCRIPT.md` for full requirements.
+
+## Key Rules
+
+- Strict mode enabled — all types must be explicit
+- No `any` without justification comment
+- Use `interface` for public API shapes, `type` for unions/aliases
+- Prefer `async/await` over raw Promises
+- Use `readonly` for immutable data
+- `path.join()` for file paths (never string concatenation)
+- Export only what is needed (avoid barrel re-exports)
+
+## Error Handling
+
+- Validate at system boundaries (user input, external APIs)
+- Use typed error classes for domain errors
+- Never swallow errors silently

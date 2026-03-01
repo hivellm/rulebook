@@ -4,6 +4,15 @@ import path from 'path';
 import { Logger } from './logger.js';
 import { RalphIterationMetadata, IterationResult } from '../types.js';
 
+/** Minimal interface for memory search — avoids hard dependency on MemoryManager */
+export interface IterationMemoryAdapter {
+  searchMemory(input: {
+    query: string;
+    limit?: number;
+    mode?: 'bm25' | 'vector' | 'hybrid';
+  }): Promise<Array<{ title: string; content: string; tags?: string[] }>>;
+}
+
 /**
  * Tracks iteration history, metrics, and learnings across autonomous runs
  */
@@ -11,11 +20,20 @@ export class IterationTracker {
   private ralphDir: string;
   private historyDir: string;
   private logger: Logger;
+  private memoryAdapter: IterationMemoryAdapter | null = null;
 
   constructor(projectRoot: string, logger: Logger) {
     this.logger = logger;
     this.ralphDir = path.join(projectRoot, '.rulebook', 'ralph');
     this.historyDir = path.join(this.ralphDir, 'history');
+  }
+
+  /**
+   * Attach a memory adapter for retrieving relevant past learnings.
+   * Optional — context compression still works without it.
+   */
+  setMemoryAdapter(adapter: IterationMemoryAdapter): void {
+    this.memoryAdapter = adapter;
   }
 
   /**
@@ -261,5 +279,95 @@ export class IterationTracker {
       average_duration_ms: avgDuration,
       quality_trend: qualityTrend,
     };
+  }
+
+  /**
+   * Build a compressed context string for injecting into iteration prompts.
+   * Recent iterations (default: last 3) appear in full detail.
+   * Older iterations are summarized to one line each.
+   *
+   * @param recentCount  How many recent iterations to show in full (default: 3)
+   * @param threshold    Minimum total iterations before compression applies (default: 5)
+   */
+  async buildCompressedContext(recentCount = 3, threshold = 5): Promise<string> {
+    const iterations = await this.getHistory();
+
+    if (iterations.length === 0) {
+      return 'No iteration history available.';
+    }
+
+    // Sort ascending by iteration number
+    const sorted = [...iterations].sort((a, b) => a.iteration - b.iteration);
+
+    if (sorted.length < threshold) {
+      // Below threshold — return full history (not yet compressed)
+      return this.formatFullHistory(sorted);
+    }
+
+    const recent = sorted.slice(-recentCount);
+    const historical = sorted.slice(0, sorted.length - recentCount);
+
+    const lines: string[] = [];
+
+    // Memory-backed retrieval: search for relevant past learnings
+    if (this.memoryAdapter) {
+      try {
+        const currentTask = recent.at(-1)?.task_title ?? '';
+        const query = currentTask
+          ? `Ralph iteration learnings ${currentTask}`
+          : 'Ralph iteration learnings errors fixes';
+        const memories = await this.memoryAdapter.searchMemory({ query, limit: 3, mode: 'hybrid' });
+        if (memories.length > 0) {
+          lines.push('## Relevant Past Learnings (from memory)');
+          for (const mem of memories) {
+            lines.push(`- **${mem.title}**: ${mem.content.slice(0, 200).replace(/\n/g, ' ')}`);
+          }
+          lines.push('');
+        }
+      } catch {
+        // Memory retrieval is optional — skip on error
+      }
+    }
+
+    // Compressed historical summary
+    if (historical.length > 0) {
+      lines.push(`## Iteration History Summary (iterations 1–${historical.at(-1)!.iteration})`);
+      for (const iter of historical) {
+        const qualFlags = [
+          iter.quality_checks.type_check ? '✓ts' : '✗ts',
+          iter.quality_checks.lint ? '✓lint' : '✗lint',
+          iter.quality_checks.tests ? '✓test' : '✗test',
+          iter.quality_checks.coverage_met ? '✓cov' : '✗cov',
+        ].join(' ');
+        lines.push(
+          `- Iter ${iter.iteration}: [${iter.status}] ${iter.task_title} | ${qualFlags}`
+        );
+      }
+      lines.push('');
+    }
+
+    // Full detail for recent iterations
+    if (recent.length > 0) {
+      lines.push(`## Recent Iterations (last ${recent.length})`);
+      lines.push(this.formatFullHistory(recent));
+    }
+
+    return lines.join('\n');
+  }
+
+  private formatFullHistory(iterations: RalphIterationMetadata[]): string {
+    return iterations
+      .map((iter) => {
+        const qc = iter.quality_checks;
+        return [
+          `### Iteration ${iter.iteration}: ${iter.task_title}`,
+          `Status: ${iter.status}`,
+          `Quality: type-check=${qc.type_check ? 'PASS' : 'FAIL'} lint=${qc.lint ? 'PASS' : 'FAIL'} tests=${qc.tests ? 'PASS' : 'FAIL'} coverage=${qc.coverage_met ? 'PASS' : 'FAIL'}`,
+          iter.git_commit ? `Commit: ${iter.git_commit}` : '',
+        ]
+          .filter(Boolean)
+          .join('\n');
+      })
+      .join('\n\n');
   }
 }

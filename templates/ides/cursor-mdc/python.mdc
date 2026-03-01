@@ -1,0 +1,24 @@
+---
+description: Python coding standards and best practices
+globs: ["**/*.py"]
+alwaysApply: false
+---
+
+# Python Rules
+
+See `/.rulebook/specs/PYTHON.md` for full requirements.
+
+## Key Rules
+
+- Type hints required for all function signatures
+- Use `dataclasses` or `pydantic` for structured data
+- Prefer `pathlib.Path` over `os.path`
+- Use `async/await` for I/O-bound operations
+- Black formatting, ruff linting
+- `__all__` in modules to control public API
+
+## Error Handling
+
+- Use specific exception types (not bare `except`)
+- Validate inputs at module boundaries
+- Log errors with context before re-raising

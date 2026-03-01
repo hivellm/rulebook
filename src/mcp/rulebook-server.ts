@@ -28,7 +28,14 @@ export function findRulebookConfig(startDir: string): string | null {
 
 // Load configuration
 function loadConfig() {
-  const rulebookPath = findRulebookConfig(process.cwd());
+  // Use --project-root flag as starting directory when provided
+  const projectRootFlagIndex = process.argv.indexOf('--project-root');
+  const startDir =
+    projectRootFlagIndex !== -1 && process.argv[projectRootFlagIndex + 1]
+      ? process.argv[projectRootFlagIndex + 1]
+      : process.cwd();
+
+  const rulebookPath = findRulebookConfig(startDir);
   if (!rulebookPath) {
     console.error('[rulebook-mcp] .rulebook not found. Run `rulebook mcp init` in your project.');
     process.exit(1);
@@ -68,7 +75,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '2.0.0',
+    version: '4.0.0',
   });
 
   // Register tool: rulebook_task_create
@@ -636,6 +643,11 @@ export async function startRulebookMcpServer(): Promise<void> {
   if (rulebookConfig.memory?.enabled) {
     try {
       const { createMemoryManager } = await import('../memory/memory-manager.js');
+      const memoryDbPath = join(
+        config.projectRoot,
+        rulebookConfig.memory.dbPath ?? '.rulebook/memory/memory.db'
+      );
+      console.error(`[rulebook-mcp] Memory DB: ${memoryDbPath}`);
       memoryManager = createMemoryManager(config.projectRoot, rulebookConfig.memory);
       autoCaptureEnabled = rulebookConfig.memory.autoCapture !== false; // enabled by default when memory is on
     } catch {

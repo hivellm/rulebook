@@ -197,6 +197,8 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
     sections.push(`- \`/${rulebookDir}/specs/GIT.md\` - Git workflow rules`);
   }
 
+  // Reference PLANS.md for session continuity
+  sections.push(`- \`/${rulebookDir}/PLANS.md\` - **Session scratchpad** (read at session start for current task context)`);
   sections.push('');
   sections.push(`Language-specific rules are in \`/${rulebookDir}/specs/\`.`);
   sections.push(`Module-specific patterns are in \`/${rulebookDir}/specs/\`.`);
@@ -402,10 +404,16 @@ Framework-specific rules for ${title}.
 
 export async function generateModuleRules(module: string): Promise<string> {
   const templatesDir = path.join(getTemplatesDir(), 'modules');
-  const templatePath = path.join(templatesDir, `${module.toUpperCase()}.md`);
+  // Try UPPERCASE.md first, then kebab-case.md (e.g. sequential_thinking → sequential-thinking.md)
+  const candidates = [
+    path.join(templatesDir, `${module.toUpperCase()}.md`),
+    path.join(templatesDir, `${module.toLowerCase().replace(/_/g, '-')}.md`),
+  ];
 
-  if (await fileExists(templatePath)) {
-    return await readFile(templatePath);
+  for (const templatePath of candidates) {
+    if (await fileExists(templatePath)) {
+      return await readFile(templatePath);
+    }
   }
 
   return `<!-- ${module.toUpperCase()}:START -->\n# ${module.charAt(0).toUpperCase() + module.slice(1)} Instructions\n\nModule-specific instructions for ${module}.\n<!-- ${module.toUpperCase()}:END -->\n`;
@@ -755,10 +763,17 @@ export async function generateModularAgents(
     await writeModularFile(projectRoot, 'AGENT_AUTOMATION', agentAutomation, rulebookDir);
   }
 
+  // Write MULTI_AGENT directives (after AGENT_AUTOMATION)
+  if (!mergedConfig.minimal) {
+    const multiAgentContent = await generateCoreRules('MULTI_AGENT');
+    await writeModularFile(projectRoot, 'MULTI_AGENT', multiAgentContent, rulebookDir);
+  }
+
   // Then handle all modules together
   const allModules: string[] = [];
   if (!mergedConfig.minimal) {
     allModules.push('agent_automation');
+    allModules.push('multi_agent');
   }
   allModules.push(...mergedConfig.modules);
 
@@ -779,6 +794,7 @@ export async function generateModularAgents(
     // Then add all references together
     if (!mergedConfig.minimal) {
       sections.push(generateModuleReference('agent_automation', rulebookDir));
+      sections.push(generateModuleReference('multi_agent', rulebookDir));
     }
     for (const module of mergedConfig.modules) {
       sections.push(generateModuleReference(module, rulebookDir));
@@ -867,7 +883,185 @@ export async function generateModularAgents(
     // Skills not configured or error loading - skip silently
   }
 
+  // Add monorepo package index and generate per-package AGENTS.md if monorepo detected
+  try {
+    const { detectMonorepo } = await import('./detector.js');
+    const monorepo = await detectMonorepo(projectRoot);
+    if (monorepo.detected && monorepo.packages.length > 0) {
+      sections.push('## Monorepo Package Index');
+      sections.push('');
+      sections.push(`Monorepo tool: **${monorepo.tool}**`);
+      sections.push('');
+      sections.push('Packages:');
+      for (const pkg of monorepo.packages) {
+        sections.push(`- \`${pkg}/\` — see \`${pkg}/AGENTS.md\` for package-specific rules`);
+      }
+      sections.push('');
+
+      // Generate per-package AGENTS.md files
+      for (const pkg of monorepo.packages) {
+        await generatePackageAgentsMd(path.join(projectRoot, pkg), mergedConfig, projectRoot).catch(
+          () => {
+            /* skip on error */
+          }
+        );
+      }
+    }
+  } catch {
+    // Monorepo detection failed — skip silently
+  }
+
+  // Generate .cursor/rules/*.mdc files if Cursor is detected
+  try {
+    const { isCursorInstalled, generateCursorMdcRules } = await import('./cursor-mdc-generator.js');
+    if (isCursorInstalled(projectRoot)) {
+      const { createConfigManager } = await import('./config-manager.js');
+      const configManager = createConfigManager(projectRoot);
+      const rulebookConfig = await configManager.loadConfig();
+      const ralphEnabled = rulebookConfig.ralph?.enabled ?? false;
+
+      await generateCursorMdcRules(projectRoot, {
+        languages: mergedConfig.languages,
+        ralphEnabled,
+        rulebookDir: rulebookDir,
+      });
+    }
+  } catch {
+    // Cursor MDC generation failed - skip silently
+  }
+
+  // Generate multi-tool IDE config files (GEMINI.md, .windsurfrules, etc.)
+  try {
+    const { detectGeminiCli, detectContinueDev, detectWindsurf, detectGithubCopilot } =
+      await import('./detector.js');
+    const { generateMultiToolConfigs } = await import('./multi-tool-generator.js');
+
+    const [geminiCli, continueDev, windsurf, githubCopilot] = await Promise.all([
+      detectGeminiCli(projectRoot),
+      detectContinueDev(projectRoot),
+      detectWindsurf(projectRoot),
+      detectGithubCopilot(projectRoot),
+    ]);
+
+    await generateMultiToolConfigs(projectRoot, {
+      languages: [],
+      modules: [],
+      frameworks: [],
+      services: [],
+      existingAgents: null,
+      geminiCli,
+      continueDev,
+      windsurf,
+      githubCopilot,
+    });
+  } catch {
+    // Multi-tool generation failed - skip silently
+  }
+
+  // Append AGENTS.override.md content if present and non-empty
+  try {
+    const { readOverrideContent } = await import('./override-manager.js');
+    const overrideContent = await readOverrideContent(projectRoot);
+    if (overrideContent) {
+      sections.push('');
+      sections.push('## Project-Specific Overrides');
+      sections.push('');
+      sections.push(overrideContent);
+    }
+  } catch {
+    // Override reading failed — skip silently
+  }
+
   return sections.join('\n').trim() + '\n';
+}
+
+/**
+ * Generate a minimal AGENTS.md for an individual package inside a monorepo.
+ * Inherits language detection from the package root and links back to the root AGENTS.md.
+ */
+export async function generatePackageAgentsMd(
+  packageRoot: string,
+  rootConfig: ProjectConfig,
+  monorepoRoot: string
+): Promise<void> {
+  const { existsSync } = await import('fs');
+  const { detectProject } = await import('./detector.js');
+  const agentsPath = path.join(packageRoot, 'AGENTS.md');
+
+  // Don't overwrite if already customized (has RULEBOOK markers)
+  if (existsSync(agentsPath)) {
+    const existing = await readFile(agentsPath).catch(() => '');
+    if (existing.includes('<!-- RULEBOOK:START -->')) return;
+  }
+
+  // Detect languages specific to this package
+  const pkgDetection = await detectProject(packageRoot).catch(() => null);
+  const langList: string[] = pkgDetection
+    ? pkgDetection.languages.map((l) => l.language as string)
+    : rootConfig.languages;
+  const relRoot = path.relative(packageRoot, monorepoRoot) || '..';
+
+  const content = [
+    '<!-- RULEBOOK:START -->',
+    `# Package Agent Directives`,
+    '',
+    `> Part of a monorepo. Root rules: [\`${relRoot}/AGENTS.md\`](${relRoot}/AGENTS.md)`,
+    '',
+    '## Languages',
+    '',
+    langList.length > 0
+      ? langList.map((l) => `- ${l.toUpperCase()}`).join('\n')
+      : '- (inherits from root)',
+    '',
+    '## Rules',
+    '',
+    `- Follow root AGENTS.md for task management and quality gates`,
+    `- Package-specific overrides go in \`AGENTS.override.md\` (if present)`,
+    '<!-- RULEBOOK:END -->',
+    '',
+  ].join('\n');
+
+  await writeFile(agentsPath, content);
+}
+
+/**
+ * Generate lean AGENTS.md — a lightweight index (< 3KB) referencing spec files.
+ * All spec files are still written to .rulebook/specs/ by generateModularAgents.
+ */
+export async function generateLeanAgents(
+  config: ProjectConfig,
+  projectRoot: string = process.cwd()
+): Promise<string> {
+  // First run modular generation to ensure all spec files are up to date
+  await generateModularAgents(config, projectRoot);
+
+  const rulebookDir = config.rulebookDir || '.rulebook';
+
+  // Load lean template
+  const templatesDir = path.join(getTemplatesDir(), 'core');
+  const leanTemplatePath = path.join(templatesDir, 'AGENTS_LEAN.md');
+  let template = '';
+  if (await fileExists(leanTemplatePath)) {
+    template = await readFile(leanTemplatePath);
+  } else {
+    template = `<!-- RULEBOOK:START -->\n# Project Agent Directives\n\nSee \`/${rulebookDir}/specs/\` for all rules.\n\n- **Task Management**: \`/${rulebookDir}/specs/RULEBOOK.md\`\n- **Quality Gates**: \`/${rulebookDir}/specs/QUALITY_ENFORCEMENT.md\`\n- **Git Workflow**: \`/${rulebookDir}/specs/GIT.md\`\n<!-- RULEBOOK:END -->\n`;
+  }
+
+  // Build language refs
+  const langRefs = config.languages
+    .map((lang) => `- **${lang.toUpperCase()}**: \`/${rulebookDir}/specs/${lang.toUpperCase()}.md\``)
+    .join('\n');
+  template = template.replace('LANGUAGE_REFS', langRefs || '_None configured_');
+
+  // Build module refs (core + user modules)
+  const coreModules = config.minimal ? [] : ['agent_automation', 'multi_agent'];
+  const allModules = [...coreModules, ...(config.modules || [])];
+  const moduleRefs = allModules
+    .map((mod) => `- **${mod.toUpperCase()}**: \`/${rulebookDir}/specs/${mod.toUpperCase()}.md\``)
+    .join('\n');
+  template = template.replace('MODULE_REFS', moduleRefs || '_None configured_');
+
+  return template;
 }
 
 /**
@@ -877,6 +1071,11 @@ export async function generateFullAgents(
   config: ProjectConfig,
   projectRoot: string = process.cwd()
 ): Promise<string> {
+  // Lean mode: generate a lightweight index AGENTS.md
+  if (config.agentsMode === 'lean') {
+    return await generateLeanAgents(config, projectRoot);
+  }
+
   // Use modular generation by default (unless explicitly disabled)
   if (config.modular !== false) {
     return await generateModularAgents(config, projectRoot);

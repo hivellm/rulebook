@@ -71,7 +71,7 @@ describe('health-scorer', () => {
     it('should give low score for empty project', async () => {
       const health = await calculateHealthScore(testDir);
 
-      expect(health.overall).toBeLessThan(50);
+      expect(health.overall).toBeLessThan(60);
       expect(health.recommendations.length).toBeGreaterThan(0);
     }, 10000); // 10 second timeout
 
@@ -120,7 +120,164 @@ describe('health-scorer', () => {
       const health = await calculateHealthScore(testDir);
 
       expect(health.recommendations.length).toBeGreaterThan(0);
-      expect(health.recommendations.some((r) => r.includes('documentation'))).toBe(true);
+      expect(health.recommendations.some((r) => r.toLowerCase().includes('documentation'))).toBe(
+        true
+      );
+    });
+
+    it('should include grade as a string', async () => {
+      const health = await calculateHealthScore(testDir);
+
+      expect(health.grade).toBeDefined();
+      expect(typeof health.grade).toBe('string');
+      expect(['A+', 'A', 'B', 'C', 'D', 'F']).toContain(health.grade);
+    });
+
+    it('should include breakdown object', async () => {
+      const health = await calculateHealthScore(testDir);
+
+      expect(health.breakdown).toBeDefined();
+      expect(health.breakdown.agentsMdQuality).toBeDefined();
+      expect(health.breakdown.readmeQuality).toBeDefined();
+      expect(health.breakdown.ralphProgress).toBeDefined();
+      expect(health.breakdown.memoryActivity).toBeDefined();
+    });
+
+    it('should return agentsMdQuality score of 0 for empty dir', async () => {
+      const health = await calculateHealthScore(testDir);
+
+      expect(health.breakdown.agentsMdQuality.score).toBe(0);
+      expect(health.breakdown.agentsMdQuality.wordCount).toBe(0);
+      expect(health.breakdown.agentsMdQuality.specReferences).toBe(0);
+      expect(health.breakdown.agentsMdQuality.requiredSections).toBe(0);
+    });
+
+    it('should return ralphProgress score of 0 for empty dir', async () => {
+      const health = await calculateHealthScore(testDir);
+
+      expect(health.breakdown.ralphProgress.score).toBe(0);
+      expect(health.breakdown.ralphProgress.totalStories).toBe(0);
+      expect(health.breakdown.ralphProgress.completedStories).toBe(0);
+      expect(health.breakdown.ralphProgress.passRate).toBe(0);
+    });
+
+    it('should include new category fields', async () => {
+      const health = await calculateHealthScore(testDir);
+
+      expect(health.categories.agentsMd).toBeDefined();
+      expect(typeof health.categories.agentsMd).toBe('number');
+      expect(health.categories.ralph).toBeDefined();
+      expect(typeof health.categories.ralph).toBe('number');
+      expect(health.categories.memory).toBeDefined();
+      expect(typeof health.categories.memory).toBe('number');
+    });
+
+    it('should score agentsMd when AGENTS.md has rich content', async () => {
+      // Create AGENTS.md with >500 words, 3+ spec references, all required sections
+      const agentsContent = [
+        '# AGENTS.md',
+        '',
+        '## Ralph Autonomous Loop',
+        'This section covers the ralph autonomous loop configuration. ' +
+          'It is important to set up correctly for the project to work.',
+        '',
+        '## Quality Enforcement',
+        'All code must pass quality gates. Linting, type checking, and testing ' +
+          'are enforced by pre-commit hooks.',
+        '',
+        '## Git Workflow',
+        'Follow the git branching strategy outlined below.',
+        '',
+        '## Spec References',
+        'See .rulebook/specs/TYPESCRIPT.md for TypeScript standards.',
+        'See .rulebook/specs/QUALITY.md for quality gates.',
+        'See .rulebook/specs/GIT.md for git workflow.',
+        '',
+        // Pad to exceed 500 words
+        ...Array(60).fill(
+          'Additional context about the project structure and conventions used throughout.'
+        ),
+      ].join('\n');
+
+      await fs.writeFile(path.join(testDir, 'AGENTS.md'), agentsContent);
+
+      const health = await calculateHealthScore(testDir);
+
+      expect(health.categories.agentsMd).toBeGreaterThan(50);
+      expect(health.breakdown.agentsMdQuality.wordCount).toBeGreaterThan(500);
+      expect(health.breakdown.agentsMdQuality.specReferences).toBeGreaterThanOrEqual(3);
+      expect(health.breakdown.agentsMdQuality.requiredSections).toBe(3);
+    });
+
+    it('should score ralph when PRD has completed stories', async () => {
+      const prdDir = path.join(testDir, '.rulebook', 'ralph');
+      await fs.mkdir(prdDir, { recursive: true });
+
+      const prd = {
+        project: 'test',
+        branchName: 'ralph/test',
+        description: 'Test project',
+        userStories: [
+          { id: 'US-001', title: 'Story 1', passes: true },
+          { id: 'US-002', title: 'Story 2', passes: true },
+          { id: 'US-003', title: 'Story 3', passes: false },
+          { id: 'US-004', title: 'Story 4', passes: true },
+        ],
+      };
+
+      await fs.writeFile(path.join(prdDir, 'prd.json'), JSON.stringify(prd));
+
+      const health = await calculateHealthScore(testDir);
+
+      expect(health.categories.ralph).toBe(75);
+      expect(health.breakdown.ralphProgress.totalStories).toBe(4);
+      expect(health.breakdown.ralphProgress.completedStories).toBe(3);
+      expect(health.breakdown.ralphProgress.passRate).toBe(0.75);
+    });
+
+    it('should score memory when database exists', async () => {
+      const memoryDir = path.join(testDir, '.rulebook', 'memory');
+      await fs.mkdir(memoryDir, { recursive: true });
+
+      // Create a fake DB file (10KB -> ~20 estimated records)
+      const fakeDb = Buffer.alloc(10000, 0);
+      await fs.writeFile(path.join(memoryDir, 'memory.db'), fakeDb);
+
+      const health = await calculateHealthScore(testDir);
+
+      expect(health.categories.memory).toBeGreaterThan(50);
+      expect(health.breakdown.memoryActivity.dbExists).toBe(true);
+      expect(health.breakdown.memoryActivity.recordCount).toBeGreaterThan(0);
+    });
+
+    it('should score readmeQuality breakdown for rich README', async () => {
+      const readmeContent = [
+        '# Test Project',
+        '',
+        '## Installation',
+        'Run npm install to get started.',
+        '',
+        '## Usage',
+        'Use the CLI to run commands.',
+        '',
+        '## Contributing',
+        'Contributions are welcome!',
+        '',
+        '## License',
+        'MIT',
+        '',
+        '## FAQ',
+        'Frequently asked questions.',
+      ].join('\n');
+
+      await fs.writeFile(path.join(testDir, 'README.md'), readmeContent);
+
+      const health = await calculateHealthScore(testDir);
+
+      expect(health.breakdown.readmeQuality.sectionCount).toBeGreaterThanOrEqual(5);
+      expect(health.breakdown.readmeQuality.hasRequiredSections).toBe(true);
+      expect(health.breakdown.readmeQuality.hasPlaceholders).toBe(false);
+      expect(health.breakdown.readmeQuality.score).toBeGreaterThanOrEqual(70);
     });
   });
 });

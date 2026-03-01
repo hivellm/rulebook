@@ -1,0 +1,39 @@
+---
+description: Ralph autonomous loop directives for AI-driven task completion
+alwaysApply: false
+---
+
+# Ralph Autonomous Loop
+
+See `/.rulebook/specs/AGENT_AUTOMATION.md` for full directives.
+
+## Ralph Commands
+
+```bash
+rulebook ralph init     # Initialize autonomous loop
+rulebook ralph run      # Start iterating on tasks
+rulebook ralph status   # Check progress
+rulebook ralph pause    # Pause for manual intervention
+rulebook ralph history  # View past iterations
+```
+
+## PRD Format
+
+Ralph uses `.rulebook/ralph/prd.json` with `userStories[]`:
+
+```json
+{
+  "id": "US-001",
+  "title": "Story Title",
+  "description": "What needs to be done",
+  "acceptanceCriteria": ["Must compile", "Tests pass"],
+  "passes": false
+}
+```
+
+## Quality Gates
+
+All 4 gates MUST pass per iteration:
+- type-check ✓, lint ✓, tests ✓, coverage ✓
+
+Failed gates mark the story `passes: false` for retry.

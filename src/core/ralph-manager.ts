@@ -2,7 +2,17 @@ import { mkdir, readdir, writeFile, appendFile, readFile, unlink } from 'fs/prom
 import { existsSync } from 'fs';
 import path from 'path';
 import { Logger } from './logger.js';
-import { RalphLoopState, RalphIterationMetadata, IterationResult } from '../types.js';
+import { RalphLoopState, RalphIterationMetadata, IterationResult, PRDUserStory, PlanCheckpointConfig } from '../types.js';
+
+/** Minimal interface for memory integration — avoids hard dependency on MemoryManager */
+export interface RalphMemoryAdapter {
+  saveMemory(input: {
+    type: string;
+    title: string;
+    content: string;
+    tags: string[];
+  }): Promise<unknown>;
+}
 
 export interface RalphLockInfo {
   pid: number;
@@ -19,6 +29,7 @@ export class RalphManager {
   private lockPath: string;
   private loopState: RalphLoopState | null = null;
   private logger: Logger;
+  private memoryAdapter: RalphMemoryAdapter | null = null;
 
   constructor(projectRoot: string, logger: Logger) {
     this.logger = logger;
@@ -26,6 +37,14 @@ export class RalphManager {
     this.ralphDir = path.join(projectRoot, '.rulebook', 'ralph');
     this.historyDir = path.join(this.ralphDir, 'history');
     this.lockPath = path.join(this.ralphDir, 'ralph.lock');
+  }
+
+  /**
+   * Attach a memory adapter for auto-saving iteration learnings.
+   * Call before running the loop. Safe to skip — all memory ops are fire-and-forget.
+   */
+  setMemoryAdapter(adapter: RalphMemoryAdapter): void {
+    this.memoryAdapter = adapter;
   }
 
   // ─── Lock Management ───
@@ -299,9 +318,63 @@ export class RalphManager {
     // Save updated loop state
     await this.saveLoopState();
 
+    // Auto-save to memory system (fire-and-forget — never blocks or fails the iteration)
+    this.saveIterationToMemory(result).catch(() => {
+      // Memory failures are non-blocking
+    });
+
     this.logger.info(
       `Recorded iteration ${result.iteration}: ${result.task_id} - ${result.status}`
     );
+  }
+
+  /**
+   * Save iteration data to the memory system for cross-session learning.
+   * Runs fire-and-forget — failures are silently ignored.
+   */
+  private async saveIterationToMemory(result: IterationResult): Promise<void> {
+    if (!this.memoryAdapter) return;
+
+    const tags = ['ralph', 'autonomous-loop', result.task_id, result.ai_tool];
+
+    // Save learnings
+    if (result.learnings && result.learnings.length > 0) {
+      await this.memoryAdapter.saveMemory({
+        type: 'learning',
+        title: `Ralph: ${result.task_id} iteration ${result.iteration}`,
+        content: result.learnings.join('\n'),
+        tags,
+      });
+    }
+
+    // Save quality gate failures as bugs
+    const failedGates = Object.entries(result.quality_checks)
+      .filter(([, passed]) => !passed)
+      .map(([gate]) => gate);
+
+    if (failedGates.length > 0) {
+      const errorContent = [
+        `Failed gates: ${failedGates.join(', ')}`,
+        ...(result.errors ?? []),
+      ].join('\n');
+
+      await this.memoryAdapter.saveMemory({
+        type: 'bug',
+        title: `Ralph: ${result.task_id} gate failures (iteration ${result.iteration})`,
+        content: errorContent,
+        tags: [...tags, 'quality-gate-failure'],
+      });
+    }
+
+    // Save story completion summary
+    if (result.status === 'success') {
+      await this.memoryAdapter.saveMemory({
+        type: 'observation',
+        title: `Ralph: ${result.task_title} completed`,
+        content: result.output_summary || `Story ${result.task_id} passed all quality gates.`,
+        tags: [...tags, 'story-complete'],
+      });
+    }
   }
 
   /**
@@ -480,6 +553,84 @@ export class RalphManager {
       pending,
       total: prd.userStories.length,
     };
+  }
+
+  /**
+   * Build parallel execution batches for pending stories.
+   *
+   * Uses dependency analysis and file-conflict detection to produce
+   * batches where each batch can be executed concurrently.
+   *
+   * @param maxWorkers - Maximum number of concurrent stories per batch
+   * @returns Array of batches (each batch is an array of stories)
+   */
+  async getParallelBatches(maxWorkers: number): Promise<PRDUserStory[][]> {
+    const prd = await this.loadPRD();
+    if (!prd || !prd.userStories) {
+      return [];
+    }
+
+    const pendingStories: PRDUserStory[] = prd.userStories.filter(
+      (s: PRDUserStory) => !s.passes
+    );
+
+    if (pendingStories.length === 0) {
+      return [];
+    }
+
+    const { buildParallelBatches } = await import('./ralph-parallel.js');
+    return buildParallelBatches(pendingStories, maxWorkers);
+  }
+
+  /**
+   * Run a plan checkpoint for the given story.
+   *
+   * Generates an implementation plan via the AI CLI tool and requests
+   * interactive approval from the user. Returns whether to proceed with
+   * implementation and any feedback from the reviewer.
+   *
+   * @param story - The user story to plan for
+   * @param tool - AI CLI tool to use for plan generation
+   * @param checkpointConfig - Plan checkpoint configuration
+   * @returns Object with `proceed` (boolean) and optional `feedback` string
+   */
+  async runCheckpoint(
+    story: PRDUserStory,
+    tool: 'claude' | 'amp' | 'gemini',
+    checkpointConfig: PlanCheckpointConfig,
+  ): Promise<{ proceed: boolean; feedback?: string }> {
+    const {
+      shouldRunCheckpoint,
+      generateIterationPlan,
+      requestPlanApproval,
+    } = await import('./ralph-plan-checkpoint.js');
+
+    if (!shouldRunCheckpoint(checkpointConfig, story, false)) {
+      return { proceed: true };
+    }
+
+    this.logger.info(`Running plan checkpoint for story ${story.id}: ${story.title}`);
+
+    const plan = await generateIterationPlan(story, tool, this.projectRoot);
+
+    if (!plan) {
+      this.logger.warn('Plan generation returned empty output — skipping checkpoint');
+      return { proceed: true };
+    }
+
+    const approval = await requestPlanApproval(
+      plan,
+      story,
+      checkpointConfig.autoApproveAfterSeconds,
+    );
+
+    if (approval.approved) {
+      this.logger.info(`Plan approved for story ${story.id}`);
+      return { proceed: true };
+    }
+
+    this.logger.info(`Plan rejected for story ${story.id}: ${approval.feedback ?? '(no reason)'}`);
+    return { proceed: false, feedback: approval.feedback };
   }
 
   /**

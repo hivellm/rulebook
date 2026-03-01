@@ -1,0 +1,25 @@
+---
+description: Quality enforcement rules — type safety, linting, testing, coverage
+alwaysApply: true
+---
+
+# Quality Enforcement
+
+See `/.rulebook/specs/QUALITY_ENFORCEMENT.md` for full requirements.
+
+## Mandatory Quality Gates
+
+Every change MUST pass all quality gates before merge:
+
+1. **Type Check** — `npm run type-check` (zero TypeScript errors)
+2. **Lint** — `npm run lint` (zero ESLint errors)
+3. **Tests** — `npm test` (all tests pass)
+4. **Coverage** — Meet configured threshold (default 75%)
+
+## Code Standards
+
+- No `any` types without explicit justification
+- No unused variables or imports
+- Error handling at system boundaries only
+- No over-engineering: minimum complexity for the task
+- No backwards-compatibility hacks for unused code

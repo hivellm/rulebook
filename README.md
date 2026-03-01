@@ -50,6 +50,33 @@ npx @hivehub/rulebook@latest update
 
 ## What's New
 
+### v4.0.0
+
+- 🎯 **Ralph Shell Scripts**: Cross-platform shell scripts for autonomous loop control
+  - 5 pairs of scripts (.sh for Unix, .bat for Windows): init, run, status, pause, history
+  - Installed to `.rulebook/scripts/` during `init` and `update` commands
+  - AI agents can invoke Ralph without MCP dependency using direct shell access
+- 🔌 **MCP Plugin Deduplication**: Eliminate duplicate plugins when using multiple projects
+  - Auto-detects multiple Rulebook projects and prevents duplicate MCP registration
+  - `--project-root` flag ensures correct project context in multi-workspace setups
+  - Automatic upgrade of legacy `.mcp.json` entries without `--project-root`
+- 💾 **Memory Per-Project Persistence**: Fixed memory.db reliability and per-project isolation
+  - Memory database saved immediately on first write (not waiting for 50 writes)
+  - `rulebook memory verify` command for diagnosing memory storage
+  - Guaranteed `.rulebook/memory/` directory creation during init
+  - Per-project memory isolation with correct path resolution for `npx` execution
+- 👥 **Multi-Agent Development Directives**: Full support for Claude Code agent teams
+  - New `MULTI_AGENT.md` template with team structure patterns and coordination rules
+  - 4 pre-configured agent definitions: team-lead, researcher, implementer, tester
+  - Auto-configuration of `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in `.claude/settings.json`
+  - Agent definitions installed to `.claude/agents/` for Claude Code teams
+- 📊 **794 Tests Passing**: 100% test coverage for new features
+  - Ralph scripts installation and cross-platform verification
+  - MCP deduplication logic and legacy migration
+  - Memory persistence and per-project isolation
+  - Multi-agent directives and settings configuration
+  - All quality gates: type-check ✓, lint ✓, tests ✓, coverage ✓
+
 ### v3.1.0
 
 - 🤖 **Ralph Autonomous Loop Integration**: Multi-iteration AI agent task solving with fresh context per iteration

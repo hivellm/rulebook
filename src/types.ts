@@ -17,6 +17,12 @@ export type FrameworkId =
   | 'flutter'
   | 'electron';
 
+export interface MonorepoDetection {
+  detected: boolean;
+  tool: 'turborepo' | 'nx' | 'pnpm' | 'lerna' | 'manual' | null;
+  packages: string[]; // relative paths to package roots
+}
+
 export interface DetectionResult {
   languages: LanguageDetection[];
   modules: ModuleDetection[];
@@ -24,9 +30,28 @@ export interface DetectionResult {
   services: ServiceDetection[];
   existingAgents: ExistingAgentsInfo | null;
   projectType?: 'monorepo' | 'library' | 'application' | 'cli';
+  monorepo?: MonorepoDetection;
   gitHooks?: {
     preCommitExists: boolean;
     prePushExists: boolean;
+  };
+  cursor?: {
+    detected: boolean; // .cursor/ dir or .cursorrules exists
+    hasCursorrules: boolean; // deprecated .cursorrules file present
+    hasMdcRules: boolean; // .cursor/rules/*.mdc files exist
+  };
+  geminiCli?: {
+    detected: boolean; // GEMINI.md exists or gemini-cli in cliTools
+  };
+  continueDev?: {
+    detected: boolean; // .continue/ directory exists
+    rulesDir: string; // path to .continue/rules/
+  };
+  windsurf?: {
+    detected: boolean; // .windsurfrules file exists
+  };
+  githubCopilot?: {
+    detected: boolean; // .github/copilot-instructions.md exists
   };
 }
 
@@ -77,7 +102,8 @@ export interface ModuleDetection {
     | 'serena'
     | 'figma'
     | 'grafana'
-    | 'rulebook_mcp';
+    | 'rulebook_mcp'
+    | 'sequential_thinking';
   detected: boolean;
   source?: string;
 }
@@ -110,7 +136,17 @@ export type ServiceId =
   | 's3'
   | 'azure_blob'
   | 'gcs'
-  | 'minio';
+  | 'minio'
+  | 'docker'
+  | 'docker-compose'
+  | 'kubernetes'
+  | 'helm'
+  | 'sentry'
+  | 'opentelemetry'
+  | 'datadog'
+  | 'pino'
+  | 'winston'
+  | 'prometheus';
 
 export interface ServiceDetection {
   service: ServiceId;
@@ -151,6 +187,7 @@ export interface ProjectConfig {
   lightMode?: boolean;
   modular?: boolean; // Enable modular /.rulebook directory structure
   rulebookDir?: string; // Custom rulebook directory (default: '.rulebook')
+  agentsMode?: 'full' | 'lean'; // AGENTS.md generation mode: full (default) or lean (index-only)
 }
 
 export interface RuleConfig {
@@ -208,6 +245,13 @@ export interface RulebookConfig {
   services?: ServiceId[];
   modular?: boolean; // Enable modular /.rulebook directory structure
   rulebookDir?: string; // Custom rulebook directory (default: '.rulebook')
+  agentsMode?: 'full' | 'lean'; // AGENTS.md generation mode: full (default) or lean (index-only)
+  // Monorepo configuration (v4.0)
+  monorepo?: {
+    detected?: boolean;
+    tool?: 'turborepo' | 'nx' | 'pnpm' | 'lerna' | 'manual' | null;
+    packages?: string[]; // relative paths to package roots
+  };
   // MCP server configuration
   mcp?: {
     enabled?: boolean;
@@ -228,6 +272,18 @@ export interface RulebookConfig {
     maxIterations?: number; // default: 10
     tool?: 'claude' | 'amp' | 'gemini'; // default: 'claude'
     maxContextLoss?: number; // default: 3
+    securityGate?: {
+      enabled?: boolean; // default: true
+      failOn?: 'critical' | 'high' | 'moderate' | 'low'; // default: 'high'
+      tool?: 'auto' | 'npm-audit' | 'trivy' | 'semgrep'; // default: 'auto'
+    };
+    contextCompression?: {
+      enabled?: boolean; // default: true
+      recentCount?: number; // default: 3 — how many recent iterations show full detail
+      threshold?: number; // default: 5 — minimum iterations before compression kicks in
+    };
+    parallel?: ParallelRalphConfig;
+    planCheckpoint?: PlanCheckpointConfig;
   };
   // Skills configuration (v2.0)
   skills?: {
@@ -334,6 +390,21 @@ export interface SkillValidationResult {
   conflicts: SkillConflict[];
 }
 
+// Ralph Plan Checkpoint Types (v4.0)
+
+export interface PlanCheckpointConfig {
+  enabled: boolean;
+  autoApproveAfterSeconds: number; // 0 = never auto-approve
+  requireApprovalForStories: 'all' | 'failed' | 'none';
+}
+
+// Ralph Parallel Execution Types (v4.0)
+
+export interface ParallelRalphConfig {
+  enabled: boolean;
+  maxWorkers: number;
+}
+
 // Ralph Autonomous Loop Types (v3.0)
 
 export interface PRDUserStory {
@@ -367,6 +438,7 @@ export interface IterationResult {
     lint: boolean;
     tests: boolean;
     coverage_met: boolean;
+    security?: boolean; // optional — only present when gate ran
   };
   output_summary: string;
   git_commit?: string;
