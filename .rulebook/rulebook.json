@@ -1,7 +1,7 @@
 {
   "version": "4.0.0",
-  "installedAt": "2026-02-27T10:18:49.059Z",
-  "updatedAt": "2026-03-01T13:22:42.018Z",
+  "installedAt": "2026-03-01T20:16:07.363Z",
+  "updatedAt": "2026-03-01T20:16:31.708Z",
   "projectId": "rulebook",
   "mode": "full",
   "features": {
@@ -41,7 +41,16 @@
     "enabled": true,
     "maxIterations": 10,
     "tool": "claude",
-    "maxContextLoss": 3
+    "maxContextLoss": 3,
+    "parallel": {
+      "enabled": false,
+      "maxWorkers": 3
+    },
+    "planCheckpoint": {
+      "enabled": false,
+      "autoApproveAfterSeconds": 0,
+      "requireApprovalForStories": "all"
+    }
   },
   "skills": {
     "enabled": [
