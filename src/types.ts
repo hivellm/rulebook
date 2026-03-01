@@ -140,7 +140,13 @@ export type ServiceId =
   | 'docker'
   | 'docker-compose'
   | 'kubernetes'
-  | 'helm';
+  | 'helm'
+  | 'sentry'
+  | 'opentelemetry'
+  | 'datadog'
+  | 'pino'
+  | 'winston'
+  | 'prometheus';
 
 export interface ServiceDetection {
   service: ServiceId;

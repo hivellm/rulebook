@@ -1,5 +1,9 @@
 # Proposal: Observability Templates (Sentry, OpenTelemetry, Datadog)
 
+## Why
+
+To generate best-practice observability directives for projects using Sentry, OTel, Datadog, Pino, Winston, and Prometheus.
+
 ## Context
 
 Modern production applications require observability: error tracking, distributed tracing, and metrics. AI-generated code frequently omits observability instrumentation, leading to undebuggable production issues.

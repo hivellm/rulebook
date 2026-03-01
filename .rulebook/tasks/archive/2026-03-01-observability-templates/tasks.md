@@ -1,0 +1,21 @@
+# Tasks: Observability Templates
+
+- [x] Add observability service types to `src/types.ts`:
+  - [x] Sentry, OpenTelemetry, Datadog, Pino, Winston, Prometheus
+- [x] Implement detection in `src/core/detector.ts`:
+  - [x] Detect `@sentry/node` or `@sentry/react` in package.json
+  - [x] Detect `@opentelemetry/sdk-node` or `@opentelemetry/api`
+  - [x] Detect `dd-trace` in package.json
+  - [x] Detect `pino` or `winston` in package.json
+  - [x] Detect `prom-client` in package.json
+- [x] Write `templates/services/SENTRY.md` template
+- [x] Write `templates/services/OPENTELEMETRY.md` template
+- [x] Write `templates/services/DATADOG.md` template
+- [x] Write `templates/services/PINO.md` template
+- [x] Write `templates/services/WINSTON.md` template
+- [x] Write `templates/services/PROMETHEUS.md` template
+- [x] Add observability spec generation to `src/core/generator.ts`
+- [x] Add Sentry/OTel/Datadog to service detection list
+- [x] Write tests: each tool detected from package.json dependencies
+- [x] Write tests: spec file generated when tool detected
+- [x] Run full test suite

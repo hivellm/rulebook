@@ -1361,6 +1361,89 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
           source: packageJson,
         });
       }
+
+      // Sentry
+      if (
+        allDeps['@sentry/node'] ||
+        allDeps['@sentry/react'] ||
+        allDeps['@sentry/nextjs'] ||
+        allDeps['@sentry/browser']
+      ) {
+        services.push({
+          service: 'sentry',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['@sentry/node', '@sentry/react', '@sentry/nextjs', '@sentry/browser'].filter(
+            (dep) => allDeps[dep]
+          ),
+          source: packageJson,
+        });
+      }
+
+      // OpenTelemetry
+      if (
+        allDeps['@opentelemetry/sdk-node'] ||
+        allDeps['@opentelemetry/api'] ||
+        allDeps['@opentelemetry/auto-instrumentations-node']
+      ) {
+        services.push({
+          service: 'opentelemetry',
+          detected: true,
+          confidence: 0.9,
+          indicators: [
+            '@opentelemetry/sdk-node',
+            '@opentelemetry/api',
+            '@opentelemetry/auto-instrumentations-node',
+          ].filter((dep) => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Datadog
+      if (allDeps['dd-trace'] || allDeps['datadog-lambda-js']) {
+        services.push({
+          service: 'datadog',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['dd-trace', 'datadog-lambda-js'].filter((dep) => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Pino
+      if (allDeps['pino'] || allDeps['pino-http']) {
+        services.push({
+          service: 'pino',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['pino', 'pino-http'].filter((dep) => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Winston
+      if (allDeps['winston'] || allDeps['winston-transport']) {
+        services.push({
+          service: 'winston',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['winston', 'winston-transport'].filter((dep) => allDeps[dep]),
+          source: packageJson,
+        });
+      }
+
+      // Prometheus
+      if (allDeps['prom-client'] || allDeps['express-prometheus-middleware']) {
+        services.push({
+          service: 'prometheus',
+          detected: true,
+          confidence: 0.9,
+          indicators: ['prom-client', 'express-prometheus-middleware'].filter(
+            (dep) => allDeps[dep]
+          ),
+          source: packageJson,
+        });
+      }
     } catch {
       // Ignore JSON parse errors
     }
@@ -1882,6 +1965,12 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
     'docker-compose',
     'kubernetes',
     'helm',
+    'sentry',
+    'opentelemetry',
+    'datadog',
+    'pino',
+    'winston',
+    'prometheus',
   ];
 
   for (const service of allServices) {
