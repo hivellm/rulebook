@@ -99,7 +99,9 @@ export async function initCommand(options: {
       const mono = detection.monorepo;
       console.log(chalk.green(`\n✓ Monorepo detected: ${chalk.bold(mono.tool ?? 'manual')}`));
       if (mono.packages.length > 0) {
-        console.log(`  Packages (${mono.packages.length}): ${mono.packages.slice(0, 5).join(', ')}${mono.packages.length > 5 ? ` +${mono.packages.length - 5} more` : ''}`);
+        console.log(
+          `  Packages (${mono.packages.length}): ${mono.packages.slice(0, 5).join(', ')}${mono.packages.length > 5 ? ` +${mono.packages.length - 5} more` : ''}`
+        );
       }
       if (options.package) {
         console.log(chalk.cyan(`  → Initializing package: ${options.package}`));
@@ -457,7 +459,9 @@ export async function initCommand(options: {
       const { installRalphScripts } = await import('../core/ralph-scripts.js');
       const scripts = await installRalphScripts(cwd);
       if (scripts.length > 0) {
-        console.log(chalk.gray(`  • ${scripts.length} Ralph scripts installed to .rulebook/scripts/`));
+        console.log(
+          chalk.gray(`  • ${scripts.length} Ralph scripts installed to .rulebook/scripts/`)
+        );
       }
     } catch {
       // Skip if Ralph scripts installation fails
@@ -1542,7 +1546,7 @@ export async function updateCommand(options: {
 
     const minimalMode = options.minimal ?? existingMode === 'minimal';
     const lightMode = options.light !== undefined ? options.light : (existingLightMode ?? false);
-    const leanMode = options.lean ?? (existingConfig?.agentsMode === 'lean');
+    const leanMode = options.lean ?? existingConfig?.agentsMode === 'lean';
 
     // Build config from detected project
     const config: ProjectConfig = {
@@ -1788,7 +1792,11 @@ export async function updateCommand(options: {
       ...(existingConfig.memory ? { memory: existingConfig.memory } : {}),
       ...(existingConfig.ralph ? { ralph: existingConfig.ralph } : {}),
       ...(existingConfig.skills ? { skills: existingConfig.skills } : {}),
-      ...(leanMode ? { agentsMode: 'lean' as const } : existingConfig.agentsMode ? { agentsMode: existingConfig.agentsMode } : {}),
+      ...(leanMode
+        ? { agentsMode: 'lean' as const }
+        : existingConfig.agentsMode
+          ? { agentsMode: existingConfig.agentsMode }
+          : {}),
     };
 
     await configManager.saveConfig(rulebookConfig);
@@ -1831,7 +1839,9 @@ export async function updateCommand(options: {
       const { installRalphScripts } = await import('../core/ralph-scripts.js');
       const scripts = await installRalphScripts(cwd);
       if (scripts.length > 0) {
-        console.log(chalk.gray(`  • ${scripts.length} Ralph scripts updated in .rulebook/scripts/`));
+        console.log(
+          chalk.gray(`  • ${scripts.length} Ralph scripts updated in .rulebook/scripts/`)
+        );
       }
     } catch {
       // Skip if Ralph scripts installation fails
@@ -2477,9 +2487,7 @@ export async function memoryVerifyCommand(): Promise<void> {
         console.log(`  ${chalk.green('✓')} Record count: ${stats.memoryCount} memories`);
         await manager.close();
       } catch (error) {
-        console.log(
-          `  ${chalk.yellow('!')} Record count: unable to read (${String(error)})`
-        );
+        console.log(`  ${chalk.yellow('!')} Record count: unable to read (${String(error)})`);
       }
     } else if (!memoryEnabled) {
       console.log(
@@ -2649,13 +2657,15 @@ export async function ralphRunCommand(options: {
 
     // Resolve parallel mode — CLI flag takes precedence over config
     const parallelWorkers =
-      options.parallel ?? (config.ralph?.parallel?.enabled ? config.ralph.parallel.maxWorkers : undefined);
+      options.parallel ??
+      (config.ralph?.parallel?.enabled ? config.ralph.parallel.maxWorkers : undefined);
 
     // Resolve plan checkpoint config — --plan-first CLI flag takes precedence
     const planCheckpointConfig = {
       enabled: options.planFirst ?? config.ralph?.planCheckpoint?.enabled ?? false,
       autoApproveAfterSeconds: config.ralph?.planCheckpoint?.autoApproveAfterSeconds ?? 0,
-      requireApprovalForStories: config.ralph?.planCheckpoint?.requireApprovalForStories ?? 'all' as const,
+      requireApprovalForStories:
+        config.ralph?.planCheckpoint?.requireApprovalForStories ?? ('all' as const),
     };
 
     // Context compression config
@@ -2703,7 +2713,9 @@ export async function ralphRunCommand(options: {
         if (interrupted) break;
 
         console.log(
-          chalk.bold(`  ── Batch: ${batch.map((s) => s.id).join(', ')} (${batch.length} stories) ──`)
+          chalk.bold(
+            `  ── Batch: ${batch.map((s) => s.id).join(', ')} (${batch.length} stories) ──`
+          )
         );
 
         // Run all stories in the batch concurrently
@@ -2806,9 +2818,7 @@ export async function ralphRunCommand(options: {
         for (const [i, result] of batchResults.entries()) {
           if (result.status === 'rejected') {
             const story = batch[i];
-            console.log(
-              chalk.red(`    [parallel] Story ${story.id} threw: ${result.reason}`)
-            );
+            console.log(chalk.red(`    [parallel] Story ${story.id} threw: ${result.reason}`));
           }
         }
 
@@ -2987,7 +2997,12 @@ export async function ralphRunCommand(options: {
 /**
  * Build prompt for AI agent from user story context
  */
-function ralphBuildPrompt(task: any, prd: any, contextHistory?: string, plansContext?: string): string {
+function ralphBuildPrompt(
+  task: any,
+  prd: any,
+  contextHistory?: string,
+  plansContext?: string
+): string {
   const criteria = (task.acceptanceCriteria || []).map((c: string) => `- ${c}`).join('\n');
   return [
     `You are working on project: ${prd?.project || 'unknown'}`,
@@ -3120,7 +3135,11 @@ async function ralphRunQualityGates(
 
   // Detect monorepo to choose the right test command
   const { detectMonorepo } = await import('../core/detector.js');
-  const monorepo = await detectMonorepo(cwd).catch(() => ({ detected: false, tool: null, packages: [] }));
+  const monorepo = await detectMonorepo(cwd).catch(() => ({
+    detected: false,
+    tool: null,
+    packages: [],
+  }));
 
   let testCmd: [string, string[]] = ['npm', ['test']];
   if (monorepo.detected) {
@@ -3272,7 +3291,9 @@ export async function ralphStatusCommand(): Promise<void> {
     );
     console.log(`  AI Tool:      ${status.tool}`);
     console.log(`  Started:      ${new Date(status.started_at).toLocaleString()}`);
-    console.log(`  Agents Mode:  ${agentsMode === 'lean' ? chalk.cyan('lean') : chalk.gray('full')} (rulebook mode set lean|full)`);
+    console.log(
+      `  Agents Mode:  ${agentsMode === 'lean' ? chalk.cyan('lean') : chalk.gray('full')} (rulebook mode set lean|full)`
+    );
     console.log();
   } catch (error) {
     spinner.fail('Failed to load status');
@@ -3537,9 +3558,15 @@ async function addSequentialThinkingMcp(cwd: string): Promise<void> {
  */
 export async function overrideShowCommand(): Promise<void> {
   const cwd = process.cwd();
-  const { overrideExists, getOverridePath, readOverrideContent } = await import('../core/override-manager.js');
+  const { overrideExists, getOverridePath, readOverrideContent } = await import(
+    '../core/override-manager.js'
+  );
   if (!overrideExists(cwd)) {
-    console.log(chalk.yellow('AGENTS.override.md does not exist. Run `rulebook override edit` or `rulebook init` to create it.'));
+    console.log(
+      chalk.yellow(
+        'AGENTS.override.md does not exist. Run `rulebook override edit` or `rulebook init` to create it.'
+      )
+    );
     return;
   }
   const content = await readOverrideContent(cwd);
@@ -3626,7 +3653,10 @@ export async function plansShowCommand(): Promise<void> {
 
   console.log(chalk.bold.blue('\n📋 PLANS.md — Session Scratchpad\n'));
 
-  if (plans.context && plans.context !== '_No active context. Start a session to populate this section._') {
+  if (
+    plans.context &&
+    plans.context !== '_No active context. Start a session to populate this section._'
+  ) {
     console.log(chalk.bold('Active Context:'));
     console.log(chalk.white(plans.context));
   }
@@ -3764,7 +3794,7 @@ export async function continueCommand(): Promise<void> {
         }
         sections.push(
           `## Ralph Status\n` +
-          `Iteration ${state.current_iteration}/${state.max_iterations}${prdInfo} | Tool: ${state.tool} | Paused: ${state.paused}`
+            `Iteration ${state.current_iteration}/${state.max_iterations}${prdInfo} | Tool: ${state.tool} | Paused: ${state.paused}`
         );
       }
     } catch {
@@ -3785,7 +3815,9 @@ export async function continueCommand(): Promise<void> {
 
   // ── Render ──
   if (sections.length === 0) {
-    console.log(chalk.yellow('No session context found. Create tasks, a PLANS.md, or make some commits.'));
+    console.log(
+      chalk.yellow('No session context found. Create tasks, a PLANS.md, or make some commits.')
+    );
     return;
   }
 
@@ -3954,9 +3986,7 @@ export async function reviewCommand(options: {
 
   // 7. Exit code
   if (options.failOn && hasFailingIssues(result.issues, options.failOn)) {
-    console.log(
-      chalk.red(`\nFailing: found issues at or above "${options.failOn}" severity`),
-    );
+    console.log(chalk.red(`\nFailing: found issues at or above "${options.failOn}" severity`));
     process.exit(1);
   }
 }
@@ -3984,9 +4014,7 @@ export async function ralphImportIssuesCommand(options: {
     const ghAvailable = await checkGhCliAvailable();
     if (!ghAvailable) {
       console.error(
-        chalk.red(
-          'GitHub CLI (gh) is not installed. Install it from: https://cli.github.com',
-        ),
+        chalk.red('GitHub CLI (gh) is not installed. Install it from: https://cli.github.com')
       );
       return;
     }
@@ -4031,8 +4059,8 @@ export async function ralphImportIssuesCommand(options: {
       spinner.stop();
       console.log(
         chalk.yellow(
-          `Dry run — would import ${result.imported} stories, update ${result.updated}, skip ${result.skipped}`,
-        ),
+          `Dry run — would import ${result.imported} stories, update ${result.updated}, skip ${result.skipped}`
+        )
       );
       console.log('');
       for (const story of mergedPrd.userStories) {
@@ -4048,7 +4076,7 @@ export async function ralphImportIssuesCommand(options: {
     await writeFile(prdPath, JSON.stringify(mergedPrd, null, 2));
 
     spinner.succeed(
-      `Imported ${result.imported} new stories, updated ${result.updated} existing, ${result.skipped} skipped`,
+      `Imported ${result.imported} new stories, updated ${result.updated} existing, ${result.skipped} skipped`
     );
     console.log(`\n  PRD saved to: ${prdPath}`);
     console.log(`  Total stories: ${mergedPrd.userStories.length}\n`);

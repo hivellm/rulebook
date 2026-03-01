@@ -50,7 +50,7 @@ export type ReviewTool = 'claude' | 'gemini' | 'amp';
  */
 export async function getDiffContext(
   projectRoot: string,
-  baseBranch: string = 'main',
+  baseBranch: string = 'main'
 ): Promise<string> {
   try {
     const [statResult, diffResult] = await Promise.all([
@@ -88,7 +88,7 @@ export async function getDiffContext(
  */
 export function buildReviewPrompt(
   diff: string,
-  context: { agentsMdContent?: string; projectName?: string },
+  context: { agentsMdContent?: string; projectName?: string }
 ): string {
   const projectLine = context.projectName
     ? `Project: ${context.projectName}`
@@ -146,9 +146,7 @@ export function parseReviewOutput(output: string): ReviewResult {
   const issues = parseIssues(issuesRaw);
   const suggestions = parseBulletList(suggestionsRaw);
 
-  const approved = !issues.some(
-    (i) => i.severity === 'critical' || i.severity === 'major',
-  );
+  const approved = !issues.some((i) => i.severity === 'critical' || i.severity === 'major');
 
   return { summary, issues, suggestions, approved };
 }
@@ -160,10 +158,7 @@ export function parseReviewOutput(output: string): ReviewResult {
  * or the end of the string.
  */
 function extractSection(text: string, heading: string): string {
-  const pattern = new RegExp(
-    `##\\s+${heading}\\s*\\n([\\s\\S]*?)(?=\\n##\\s|$)`,
-    'i',
-  );
+  const pattern = new RegExp(`##\\s+${heading}\\s*\\n([\\s\\S]*?)(?=\\n##\\s|$)`, 'i');
   const match = pattern.exec(text);
   return match ? match[1].trim() : '';
 }
@@ -182,8 +177,7 @@ function parseIssues(raw: string): ReviewIssue[] {
   const issues: ReviewIssue[] = [];
   const lines = raw.split('\n');
 
-  const issuePattern =
-    /^[-*]\s*\[(CRITICAL|MAJOR|MINOR|SUGGESTION)]\s*(.*)/i;
+  const issuePattern = /^[-*]\s*\[(CRITICAL|MAJOR|MINOR|SUGGESTION)]\s*(.*)/i;
 
   for (const line of lines) {
     const match = issuePattern.exec(line.trim());
@@ -237,10 +231,7 @@ function parseBulletList(raw: string): string[] {
  * Returns the tool's stdout. On any error (timeout, missing tool, etc.)
  * returns an empty string.
  */
-export async function runAIReview(
-  prompt: string,
-  tool: ReviewTool = 'claude',
-): Promise<string> {
+export async function runAIReview(prompt: string, tool: ReviewTool = 'claude'): Promise<string> {
   const commands: Record<ReviewTool, string> = {
     claude: 'claude',
     gemini: 'gemini',
@@ -325,11 +316,7 @@ export function formatReviewTerminal(result: ReviewResult): string {
     for (const issue of result.issues) {
       const colorFn = SEVERITY_COLORS[issue.severity];
       const label = SEVERITY_LABELS[issue.severity];
-      const location = issue.file
-        ? issue.line
-          ? `${issue.file}:${issue.line}`
-          : issue.file
-        : '';
+      const location = issue.file ? (issue.line ? `${issue.file}:${issue.line}` : issue.file) : '';
       const locationStr = location ? ` ${chalk.gray(location)}` : '';
       lines.push(`  ${colorFn(`[${label}]`)}${locationStr} ${issue.message}`);
     }
@@ -351,9 +338,7 @@ export function formatReviewTerminal(result: ReviewResult): string {
 /**
  * Count issues grouped by severity.
  */
-function countBySeverity(
-  issues: readonly ReviewIssue[],
-): Record<ReviewIssue['severity'], number> {
+function countBySeverity(issues: readonly ReviewIssue[]): Record<ReviewIssue['severity'], number> {
   const counts: Record<ReviewIssue['severity'], number> = {
     critical: 0,
     major: 0,
@@ -420,10 +405,7 @@ export function formatReviewMarkdown(result: ReviewResult): string {
  * When `prNumber` is omitted the `gh` CLI auto-detects the current PR
  * from the branch.
  */
-export async function postGitHubComment(
-  result: ReviewResult,
-  prNumber?: string,
-): Promise<void> {
+export async function postGitHubComment(result: ReviewResult, prNumber?: string): Promise<void> {
   const markdown = formatReviewMarkdown(result);
   const prArg = prNumber ? ` ${prNumber}` : '';
   const escapedBody = markdown.replace(/'/g, "'\\''");
@@ -453,7 +435,7 @@ const SEVERITY_RANK: Record<ReviewIssue['severity'], number> = {
  */
 export function hasFailingIssues(
   issues: readonly ReviewIssue[],
-  failOn: ReviewFailOnSeverity,
+  failOn: ReviewFailOnSeverity
 ): boolean {
   const threshold = SEVERITY_RANK[failOn];
   return issues.some((i) => SEVERITY_RANK[i.severity] >= threshold);

@@ -2,7 +2,13 @@ import { mkdir, readdir, writeFile, appendFile, readFile, unlink } from 'fs/prom
 import { existsSync } from 'fs';
 import path from 'path';
 import { Logger } from './logger.js';
-import { RalphLoopState, RalphIterationMetadata, IterationResult, PRDUserStory, PlanCheckpointConfig } from '../types.js';
+import {
+  RalphLoopState,
+  RalphIterationMetadata,
+  IterationResult,
+  PRDUserStory,
+  PlanCheckpointConfig,
+} from '../types.js';
 
 /** Minimal interface for memory integration — avoids hard dependency on MemoryManager */
 export interface RalphMemoryAdapter {
@@ -570,9 +576,7 @@ export class RalphManager {
       return [];
     }
 
-    const pendingStories: PRDUserStory[] = prd.userStories.filter(
-      (s: PRDUserStory) => !s.passes
-    );
+    const pendingStories: PRDUserStory[] = prd.userStories.filter((s: PRDUserStory) => !s.passes);
 
     if (pendingStories.length === 0) {
       return [];
@@ -597,13 +601,11 @@ export class RalphManager {
   async runCheckpoint(
     story: PRDUserStory,
     tool: 'claude' | 'amp' | 'gemini',
-    checkpointConfig: PlanCheckpointConfig,
+    checkpointConfig: PlanCheckpointConfig
   ): Promise<{ proceed: boolean; feedback?: string }> {
-    const {
-      shouldRunCheckpoint,
-      generateIterationPlan,
-      requestPlanApproval,
-    } = await import('./ralph-plan-checkpoint.js');
+    const { shouldRunCheckpoint, generateIterationPlan, requestPlanApproval } = await import(
+      './ralph-plan-checkpoint.js'
+    );
 
     if (!shouldRunCheckpoint(checkpointConfig, story, false)) {
       return { proceed: true };
@@ -621,7 +623,7 @@ export class RalphManager {
     const approval = await requestPlanApproval(
       plan,
       story,
-      checkpointConfig.autoApproveAfterSeconds,
+      checkpointConfig.autoApproveAfterSeconds
     );
 
     if (approval.approved) {

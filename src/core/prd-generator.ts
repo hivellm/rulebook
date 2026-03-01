@@ -102,9 +102,7 @@ export class PRDGenerator {
 
     // Build notes: include spec file references for traceability
     const specSources = await this.listSpecFiles(task.path);
-    const notes = specSources.length > 0
-      ? `Spec files: ${specSources.join(', ')}`
-      : '';
+    const notes = specSources.length > 0 ? `Spec files: ${specSources.join(', ')}` : '';
 
     return {
       id: `US-${String(priority).padStart(3, '0')}`,
@@ -189,7 +187,9 @@ export class PRDGenerator {
       const entries = await readdir(specsDir, { withFileTypes: true });
       for (const entry of entries) {
         if (entry.isDirectory()) {
-          const subEntries = await readdir(path.join(specsDir, entry.name), { withFileTypes: true });
+          const subEntries = await readdir(path.join(specsDir, entry.name), {
+            withFileTypes: true,
+          });
           for (const sub of subEntries) {
             if (sub.isFile() && sub.name.endsWith('.md')) {
               files.push(`specs/${entry.name}/${sub.name}`);

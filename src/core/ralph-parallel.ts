@@ -18,7 +18,8 @@ const STORY_ID_PATTERN = /(US|GH)-\d+/g;
  * Regex pattern that matches file-like paths in text.
  * Captures patterns such as `src/core/auth.ts`, `lib/utils.js`, `index.ts`, etc.
  */
-const FILE_PATH_PATTERN = /(?:^|\s|`|"|')([a-zA-Z0-9._/-]+\.(?:ts|js|tsx|jsx|json|css|scss|html|vue|svelte|py|go|rs|java|rb|php))\b/g;
+const FILE_PATH_PATTERN =
+  /(?:^|\s|`|"|')([a-zA-Z0-9._/-]+\.(?:ts|js|tsx|jsx|json|css|scss|html|vue|svelte|py|go|rs|java|rb|php))\b/g;
 
 /**
  * Extract all story ID references from a text string.

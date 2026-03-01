@@ -89,13 +89,16 @@ export class RalphParser {
     const lintExplicitPass = lines.some(
       (l) =>
         (l.includes('eslint') || l.includes('lint')) &&
-        (l.includes('pass') || l.includes('success') || l.includes('✓') ||
-          l.includes('0 problems') || l.includes('no problems'))
+        (l.includes('pass') ||
+          l.includes('success') ||
+          l.includes('✓') ||
+          l.includes('0 problems') ||
+          l.includes('no problems'))
     );
     const lintExplicitFail = lines.some(
       (l) => (l.includes('eslint') || l.includes('lint')) && l.includes('fail')
     );
-    const lintPass = lintExplicitFail ? false : (lintExplicitPass || lintErrorCount === 0);
+    const lintPass = lintExplicitFail ? false : lintExplicitPass || lintErrorCount === 0;
 
     // Tests: parse "X failed" — fail only if count > 0
     // "0 errors", "passing", "✓ X tests" are all success
@@ -103,8 +106,13 @@ export class RalphParser {
     const testExplicitPass = lines.some(
       (l) =>
         (l.includes('test') || l.includes('vitest') || l.includes('jest')) &&
-        (l.includes('pass') || l.includes('passed') || l.includes('✓') || l.includes('success') ||
-          l.includes('0 errors') || l.includes('no errors') || l.includes('0 failed'))
+        (l.includes('pass') ||
+          l.includes('passed') ||
+          l.includes('✓') ||
+          l.includes('success') ||
+          l.includes('0 errors') ||
+          l.includes('no errors') ||
+          l.includes('0 failed'))
     );
     const testExplicitFail = lines.some(
       (l) =>
@@ -112,7 +120,7 @@ export class RalphParser {
         l.includes('fail') &&
         !l.includes('0 fail')
     );
-    const testsPass = testExplicitFail ? false : (testExplicitPass || testFailCount === 0);
+    const testsPass = testExplicitFail ? false : testExplicitPass || testFailCount === 0;
 
     // Coverage: parse actual percentage or explicit pass/fail
     const covPct = this.parseCoveragePercentage(output);
@@ -387,10 +395,14 @@ export class RalphParser {
    * Parse `npm audit --json` output.
    * Returns the highest severity found: 'critical' | 'high' | 'moderate' | 'low' | 'none'
    */
-  static parseNpmAuditSeverity(jsonOutput: string): 'critical' | 'high' | 'moderate' | 'low' | 'none' {
+  static parseNpmAuditSeverity(
+    jsonOutput: string
+  ): 'critical' | 'high' | 'moderate' | 'low' | 'none' {
     try {
       const parsed = JSON.parse(jsonOutput) as {
-        metadata?: { vulnerabilities?: { critical?: number; high?: number; moderate?: number; low?: number } };
+        metadata?: {
+          vulnerabilities?: { critical?: number; high?: number; moderate?: number; low?: number };
+        };
       };
       const v = parsed?.metadata?.vulnerabilities;
       if (!v) return 'none';
@@ -409,7 +421,9 @@ export class RalphParser {
    * Parse text-based security tool output (trivy, semgrep, or npm audit without --json).
    * Returns the highest severity found: 'critical' | 'high' | 'moderate' | 'low' | 'none'
    */
-  static parseSecurityOutputText(output: string): 'critical' | 'high' | 'moderate' | 'low' | 'none' {
+  static parseSecurityOutputText(
+    output: string
+  ): 'critical' | 'high' | 'moderate' | 'low' | 'none' {
     const lower = output.toLowerCase();
     if (lower.includes('critical')) return 'critical';
     if (lower.includes(' high')) return 'high';
@@ -444,7 +458,9 @@ export class RalphParser {
   /**
    * Parse semgrep JSON output (`semgrep --json`) for the highest severity found.
    */
-  static parseSemgrepSeverity(jsonOutput: string): 'critical' | 'high' | 'moderate' | 'low' | 'none' {
+  static parseSemgrepSeverity(
+    jsonOutput: string
+  ): 'critical' | 'high' | 'moderate' | 'low' | 'none' {
     try {
       const parsed = JSON.parse(jsonOutput) as {
         results?: Array<{ extra?: { severity?: string; metadata?: { severity?: string } } }>;
@@ -456,7 +472,12 @@ export class RalphParser {
 
       if (severities.includes('critical') || severities.includes('error')) return 'high'; // semgrep ERROR ≈ high
       if (severities.includes('high')) return 'high';
-      if (severities.includes('warning') || severities.includes('medium') || severities.includes('moderate')) return 'moderate';
+      if (
+        severities.includes('warning') ||
+        severities.includes('medium') ||
+        severities.includes('moderate')
+      )
+        return 'moderate';
       if (severities.includes('info') || severities.includes('low')) return 'low';
       return severities.length > 0 ? 'low' : 'none';
     } catch {

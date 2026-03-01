@@ -29,9 +29,7 @@ describe('parseReviewOutput', () => {
 
     const result = parseReviewOutput(output);
 
-    expect(result.summary).toBe(
-      'The PR adds a new authentication module with some issues.',
-    );
+    expect(result.summary).toBe('The PR adds a new authentication module with some issues.');
     expect(result.issues).toHaveLength(4);
     expect(result.suggestions).toHaveLength(2);
     expect(result.approved).toBe(false);
@@ -159,9 +157,7 @@ describe('parseReviewOutput', () => {
     expect(result.issues).toHaveLength(1);
     expect(result.issues[0].file).toBeUndefined();
     expect(result.issues[0].line).toBeUndefined();
-    expect(result.issues[0].message).toBe(
-      'Consider improving error messages overall',
-    );
+    expect(result.issues[0].message).toBe('Consider improving error messages overall');
   });
 
   it('should handle missing sections gracefully', () => {
@@ -292,9 +288,7 @@ describe('formatReviewTerminal', () => {
   it('should show rejected indicator when approved=false', () => {
     const result: ReviewResult = {
       summary: 'Problems found.',
-      issues: [
-        { severity: 'critical', message: 'Bad thing', file: 'x.ts', line: 1 },
-      ],
+      issues: [{ severity: 'critical', message: 'Bad thing', file: 'x.ts', line: 1 }],
       suggestions: [],
       approved: false,
     };
@@ -308,9 +302,7 @@ describe('formatReviewTerminal', () => {
   it('should display summary and suggestions', () => {
     const result: ReviewResult = {
       summary: 'Decent code with room for improvement.',
-      issues: [
-        { severity: 'minor', message: 'Unused variable', file: 'a.ts', line: 5 },
-      ],
+      issues: [{ severity: 'minor', message: 'Unused variable', file: 'a.ts', line: 5 }],
       suggestions: ['Run the formatter', 'Add JSDoc comments'],
       approved: true,
     };
@@ -363,17 +355,12 @@ describe('hasFailingIssues', () => {
   });
 
   it('should return true for critical when critical issue is present', () => {
-    const withCritical: ReviewIssue[] = [
-      ...issues,
-      { severity: 'critical', message: 'C' },
-    ];
+    const withCritical: ReviewIssue[] = [...issues, { severity: 'critical', message: 'C' }];
     expect(hasFailingIssues(withCritical, 'critical')).toBe(true);
   });
 
   it('should return true for major when critical issue is present', () => {
-    const withCritical: ReviewIssue[] = [
-      { severity: 'critical', message: 'C' },
-    ];
+    const withCritical: ReviewIssue[] = [{ severity: 'critical', message: 'C' }];
     expect(hasFailingIssues(withCritical, 'major')).toBe(true);
   });
 
@@ -404,9 +391,7 @@ describe('formatReviewMarkdown', () => {
   it('should produce valid markdown with rejection icon', () => {
     const result: ReviewResult = {
       summary: 'Not good.',
-      issues: [
-        { severity: 'critical', file: 'a.ts', line: 1, message: 'Problem' },
-      ],
+      issues: [{ severity: 'critical', file: 'a.ts', line: 1, message: 'Problem' }],
       suggestions: ['Fix it'],
       approved: false,
     };

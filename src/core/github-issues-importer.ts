@@ -136,10 +136,7 @@ export function extractAcceptanceCriteria(body: string): string[] {
  * If the issue body has no extractable acceptance criteria a sensible
  * default is used.
  */
-export function convertIssueToStory(
-  issue: GitHubIssue,
-  existingPriority?: number,
-): PRDUserStory {
+export function convertIssueToStory(issue: GitHubIssue, existingPriority?: number): PRDUserStory {
   const body = issue.body ?? '';
   const acceptanceCriteria = extractAcceptanceCriteria(body);
 
@@ -171,7 +168,7 @@ export function convertIssueToStory(
  */
 export function mergeStoriesIntoExistingPrd(
   prd: RalphPRD | null,
-  newStories: PRDUserStory[],
+  newStories: PRDUserStory[]
 ): { prd: RalphPRD; result: ImportResult } {
   const projectName = path.basename(process.cwd());
 

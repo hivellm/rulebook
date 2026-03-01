@@ -339,9 +339,7 @@ export class IterationTracker {
           iter.quality_checks.tests ? '✓test' : '✗test',
           iter.quality_checks.coverage_met ? '✓cov' : '✗cov',
         ].join(' ');
-        lines.push(
-          `- Iter ${iter.iteration}: [${iter.status}] ${iter.task_title} | ${qualFlags}`
-        );
+        lines.push(`- Iter ${iter.iteration}: [${iter.status}] ${iter.task_title} | ${qualFlags}`);
       }
       lines.push('');
     }

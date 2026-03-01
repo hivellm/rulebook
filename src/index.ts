@@ -356,13 +356,14 @@ ralphCommand
   .option('--tool <tool>', 'AI CLI tool: claude, amp, gemini', 'claude')
   .option('--parallel <n>', 'Run N stories concurrently (default: sequential)')
   .option('--plan-first', 'Require plan approval before each story implementation')
-  .action((options: { maxIterations?: string; tool?: string; parallel?: string; planFirst?: boolean }) =>
-    ralphRunCommand({
-      maxIterations: options.maxIterations ? parseInt(options.maxIterations) : undefined,
-      tool: (options.tool as 'claude' | 'amp' | 'gemini') || 'claude',
-      parallel: options.parallel ? parseInt(options.parallel) : undefined,
-      planFirst: options.planFirst,
-    })
+  .action(
+    (options: { maxIterations?: string; tool?: string; parallel?: string; planFirst?: boolean }) =>
+      ralphRunCommand({
+        maxIterations: options.maxIterations ? parseInt(options.maxIterations) : undefined,
+        tool: (options.tool as 'claude' | 'amp' | 'gemini') || 'claude',
+        parallel: options.parallel ? parseInt(options.parallel) : undefined,
+        planFirst: options.planFirst,
+      })
   );
 
 ralphCommand
@@ -466,7 +467,10 @@ program
   .command('review')
   .description('Run AI code review on current changes vs base branch')
   .option('--output <format>', 'Output format: terminal, github-comment, json', 'terminal')
-  .option('--fail-on <severity>', 'Fail with exit 1 if issues of this severity or higher: critical, major, minor')
+  .option(
+    '--fail-on <severity>',
+    'Fail with exit 1 if issues of this severity or higher: critical, major, minor'
+  )
   .option('--base-branch <branch>', 'Base branch to diff against', 'main')
   .option('--tool <tool>', 'AI tool to use: claude, gemini, amp', 'claude')
   .action((options) =>

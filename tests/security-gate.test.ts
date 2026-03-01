@@ -50,7 +50,9 @@ describe('RalphParser — Security Gate', () => {
 
   describe('parseSecurityOutputText', () => {
     it('detects critical severity from text', () => {
-      expect(RalphParser.parseSecurityOutputText('1 critical vulnerability found')).toBe('critical');
+      expect(RalphParser.parseSecurityOutputText('1 critical vulnerability found')).toBe(
+        'critical'
+      );
     });
 
     it('detects high severity from text', () => {

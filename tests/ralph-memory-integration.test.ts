@@ -53,9 +53,7 @@ describe('Ralph Memory Auto-Integration', () => {
     // Give fire-and-forget a tick to run
     await new Promise((r) => setTimeout(r, 50));
 
-    const learningCall = saveMemory.mock.calls.find(
-      ([input]) => input.type === 'learning'
-    );
+    const learningCall = saveMemory.mock.calls.find(([input]) => input.type === 'learning');
     expect(learningCall).toBeDefined();
     expect(learningCall![0].content).toContain('Use async/await');
     expect(learningCall![0].tags).toContain('ralph');

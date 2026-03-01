@@ -8,7 +8,7 @@ const defaultExecAsync = promisify(exec);
 /** Signature for the async exec function used by plan generation. */
 export type ExecAsyncFn = (
   command: string,
-  options: { timeout: number },
+  options: { timeout: number }
 ) => Promise<{ stdout: string }>;
 
 /** AI tool type accepted by the plan generation step. */
@@ -55,7 +55,7 @@ export async function generateIterationPlan(
   story: PRDUserStory,
   tool: PlanTool,
   _projectRoot: string,
-  execFn: ExecAsyncFn = defaultExecAsync,
+  execFn: ExecAsyncFn = defaultExecAsync
 ): Promise<string> {
   const prompt = buildPlanPrompt(story);
 
@@ -128,16 +128,14 @@ export interface PlanApprovalResult {
 export async function requestPlanApproval(
   plan: string,
   story: PRDUserStory,
-  autoApproveAfterSeconds: number,
+  autoApproveAfterSeconds: number
 ): Promise<PlanApprovalResult> {
   displayPlan(plan, story.title);
 
   // Auto-approve path
   if (autoApproveAfterSeconds > 0) {
     console.log(
-      chalk.yellow(
-        `  Auto-approving in ${autoApproveAfterSeconds} seconds... (Ctrl+C to abort)`,
-      ),
+      chalk.yellow(`  Auto-approving in ${autoApproveAfterSeconds} seconds... (Ctrl+C to abort)`)
     );
 
     await new Promise<void>((resolve) => setTimeout(resolve, autoApproveAfterSeconds * 1000));
@@ -165,8 +163,7 @@ export async function requestPlanApproval(
     return { approved: true };
   }
 
-  const feedbackMessage =
-    action === 'reject' ? 'Reason for rejection?' : 'What needs to change?';
+  const feedbackMessage = action === 'reject' ? 'Reason for rejection?' : 'What needs to change?';
 
   const { feedback } = await inquirer.prompt<{ feedback: string }>([
     {
@@ -193,7 +190,7 @@ export async function requestPlanApproval(
 export function shouldRunCheckpoint(
   config: PlanCheckpointConfig,
   story: PRDUserStory,
-  isNonInteractive: boolean,
+  isNonInteractive: boolean
 ): boolean {
   if (!config.enabled) {
     return false;

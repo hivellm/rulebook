@@ -43,8 +43,12 @@ describe('PRDGenerator — specs/*.md context reading', () => {
     const story = prd.userStories[0];
 
     expect(story.acceptanceCriteria.some((c) => c.includes('SHALL validate input'))).toBe(true);
-    expect(story.acceptanceCriteria.some((c) => c.includes('MUST NOT expose credentials'))).toBe(true);
-    expect(story.acceptanceCriteria.some((c) => c.includes('SHALL return structured error'))).toBe(true);
+    expect(story.acceptanceCriteria.some((c) => c.includes('MUST NOT expose credentials'))).toBe(
+      true
+    );
+    expect(story.acceptanceCriteria.some((c) => c.includes('SHALL return structured error'))).toBe(
+      true
+    );
   });
 
   it('includes spec file paths in story notes', async () => {
@@ -80,7 +84,10 @@ describe('PRDGenerator — specs/*.md context reading', () => {
 
     await writeFile(join(taskDir, 'proposal.md'), '# Merged\n\nTask.');
     await writeFile(join(taskDir, 'tasks.md'), '- [ ] Implement endpoint\n- [ ] Write tests');
-    await writeFile(join(specsDir, 'spec.md'), '- SHALL return 200 on success\n- MUST validate auth token');
+    await writeFile(
+      join(specsDir, 'spec.md'),
+      '- SHALL return 200 on success\n- MUST validate auth token'
+    );
 
     const prd = await generator.generatePRD('test');
     const criteria = prd.userStories[0].acceptanceCriteria;

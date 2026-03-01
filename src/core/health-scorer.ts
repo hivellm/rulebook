@@ -544,8 +544,7 @@ async function measureReadmeQuality(projectRoot: string): Promise<{
   const hasRequiredSections = ['install', 'usage', 'contribut'].every((k) =>
     lowerContent.includes(k)
   );
-  const hasPlaceholders =
-    lowerContent.includes('todo') || lowerContent.includes('coming soon');
+  const hasPlaceholders = lowerContent.includes('todo') || lowerContent.includes('coming soon');
 
   // Section count scoring
   if (sectionCount >= 5) {
@@ -613,9 +612,7 @@ async function measureRalphQuality(projectRoot: string): Promise<{
     const passRate = totalStories > 0 ? completedStories / totalStories : 0;
     const score = Math.round(passRate * 100);
 
-    details.push(
-      `Ralph: ${completedStories}/${totalStories} stories passing (${score}%)`
-    );
+    details.push(`Ralph: ${completedStories}/${totalStories} stories passing (${score}%)`);
 
     return {
       score,
@@ -704,13 +701,13 @@ export async function calculateHealthScore(projectDir: string): Promise<HealthSc
   // Weighted average (total = 1.0)
   const overall = Math.round(
     documentation.score * 0.15 +
-      testing.score * 0.20 +
-      quality.score * 0.10 +
-      security.score * 0.10 +
-      cicd.score * 0.10 +
-      dependencies.score * 0.10 +
-      agentsMd.score * 0.10 +
-      ralph.score * 0.10 +
+      testing.score * 0.2 +
+      quality.score * 0.1 +
+      security.score * 0.1 +
+      cicd.score * 0.1 +
+      dependencies.score * 0.1 +
+      agentsMd.score * 0.1 +
+      ralph.score * 0.1 +
       memory.score * 0.05
   );
 
@@ -742,14 +739,10 @@ export async function calculateHealthScore(projectDir: string): Promise<HealthSc
     );
   }
   if (ralph.score < 70) {
-    recommendations.push(
-      'Improve Ralph progress (initialize PRD and complete user stories)'
-    );
+    recommendations.push('Improve Ralph progress (initialize PRD and complete user stories)');
   }
   if (memory.score < 70) {
-    recommendations.push(
-      'Enable persistent memory (initialize memory database via MCP server)'
-    );
+    recommendations.push('Enable persistent memory (initialize memory database via MCP server)');
   }
 
   return {

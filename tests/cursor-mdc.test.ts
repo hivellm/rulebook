@@ -3,10 +3,7 @@ import { mkdtemp, rm, mkdir, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import {
-  isCursorInstalled,
-  generateCursorMdcRules,
-} from '../src/core/cursor-mdc-generator.js';
+import { isCursorInstalled, generateCursorMdcRules } from '../src/core/cursor-mdc-generator.js';
 
 let tmpDir: string;
 

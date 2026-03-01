@@ -149,7 +149,7 @@ describe('convertIssueToStory', () => {
     });
     const story = convertIssueToStory(issue);
     expect(story.notes).toBe(
-      'Imported from GitHub Issue #99: https://github.com/org/repo/issues/99',
+      'Imported from GitHub Issue #99: https://github.com/org/repo/issues/99'
     );
   });
 
@@ -204,7 +204,7 @@ describe('mergeStoriesIntoExistingPrd', () => {
           number: 10,
           title: 'Updated title',
           body: '- [ ] New criterion',
-        }),
+        })
       ),
     ];
 
@@ -241,9 +241,7 @@ describe('mergeStoriesIntoExistingPrd', () => {
       ],
     };
 
-    const newStories = [
-      convertIssueToStory(makeIssue({ number: 2, title: 'Brand new story' })),
-    ];
+    const newStories = [convertIssueToStory(makeIssue({ number: 2, title: 'Brand new story' }))];
 
     const { prd, result } = mergeStoriesIntoExistingPrd(existingPrd, newStories);
 
@@ -270,9 +268,7 @@ describe('mergeStoriesIntoExistingPrd', () => {
       ],
     };
 
-    const newStories = [
-      convertIssueToStory(makeIssue({ number: 5, title: 'New' })),
-    ];
+    const newStories = [convertIssueToStory(makeIssue({ number: 5, title: 'New' }))];
 
     mergeStoriesIntoExistingPrd(existingPrd, newStories);
 

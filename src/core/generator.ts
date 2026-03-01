@@ -198,7 +198,9 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   }
 
   // Reference PLANS.md for session continuity
-  sections.push(`- \`/${rulebookDir}/PLANS.md\` - **Session scratchpad** (read at session start for current task context)`);
+  sections.push(
+    `- \`/${rulebookDir}/PLANS.md\` - **Session scratchpad** (read at session start for current task context)`
+  );
   sections.push('');
   sections.push(`Language-specific rules are in \`/${rulebookDir}/specs/\`.`);
   sections.push(`Module-specific patterns are in \`/${rulebookDir}/specs/\`.`);
@@ -1049,7 +1051,9 @@ export async function generateLeanAgents(
 
   // Build language refs
   const langRefs = config.languages
-    .map((lang) => `- **${lang.toUpperCase()}**: \`/${rulebookDir}/specs/${lang.toUpperCase()}.md\``)
+    .map(
+      (lang) => `- **${lang.toUpperCase()}**: \`/${rulebookDir}/specs/${lang.toUpperCase()}.md\``
+    )
     .join('\n');
   template = template.replace('LANGUAGE_REFS', langRefs || '_None configured_');
 

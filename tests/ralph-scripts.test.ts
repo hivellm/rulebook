@@ -77,10 +77,7 @@ describe('Ralph Scripts', () => {
   it('should contain correct content in .bat scripts', async () => {
     await installRalphScripts(tempDir);
 
-    const initBat = readFileSync(
-      join(tempDir, '.rulebook', 'scripts', 'ralph-init.bat'),
-      'utf-8'
-    );
+    const initBat = readFileSync(join(tempDir, '.rulebook', 'scripts', 'ralph-init.bat'), 'utf-8');
     expect(initBat).toContain('@echo off');
     expect(initBat).toContain('npx @hivehub/rulebook@latest ralph init');
   });

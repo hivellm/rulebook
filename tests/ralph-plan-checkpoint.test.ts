@@ -151,9 +151,7 @@ describe('generateIterationPlan', () => {
   });
 
   it('should return empty string when the AI tool fails', async () => {
-    const mockExec: ExecAsyncFn = vi.fn().mockRejectedValue(
-      new Error('command not found: claude'),
-    );
+    const mockExec: ExecAsyncFn = vi.fn().mockRejectedValue(new Error('command not found: claude'));
 
     const story = makeStory({ id: 'US-021', title: 'Failing Story' });
     const plan = await generateIterationPlan(story, 'claude', '/tmp/nonexistent', mockExec);

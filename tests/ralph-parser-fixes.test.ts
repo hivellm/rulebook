@@ -21,7 +21,7 @@ All files |   87.50 |   75.00 |   80.00 |   87.50 |
       expect(RalphParser.parseCoveragePercentage(output)).toBe(78);
     });
 
-    it('returns null for unparseable output', () => {
+    it('returns null for unparsable output', () => {
       expect(RalphParser.parseCoveragePercentage('no coverage info here')).toBeNull();
     });
 

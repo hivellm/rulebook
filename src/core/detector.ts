@@ -73,7 +73,9 @@ export async function detectCursor(cwd: string): Promise<DetectionResult['cursor
 /**
  * Detect Gemini CLI presence by checking for GEMINI.md in the project root.
  */
-export async function detectGeminiCli(cwd: string): Promise<NonNullable<DetectionResult['geminiCli']>> {
+export async function detectGeminiCli(
+  cwd: string
+): Promise<NonNullable<DetectionResult['geminiCli']>> {
   const geminiMd = path.join(cwd, 'GEMINI.md');
   const detected = existsSync(geminiMd);
   return { detected };
@@ -82,7 +84,9 @@ export async function detectGeminiCli(cwd: string): Promise<NonNullable<Detectio
 /**
  * Detect Continue.dev IDE extension by checking for the .continue/ directory.
  */
-export async function detectContinueDev(cwd: string): Promise<NonNullable<DetectionResult['continueDev']>> {
+export async function detectContinueDev(
+  cwd: string
+): Promise<NonNullable<DetectionResult['continueDev']>> {
   const continueDir = path.join(cwd, '.continue');
   const rulesDir = path.join(continueDir, 'rules');
   const detected = existsSync(continueDir);
@@ -92,7 +96,9 @@ export async function detectContinueDev(cwd: string): Promise<NonNullable<Detect
 /**
  * Detect Windsurf IDE by checking for .windsurfrules in the project root.
  */
-export async function detectWindsurf(cwd: string): Promise<NonNullable<DetectionResult['windsurf']>> {
+export async function detectWindsurf(
+  cwd: string
+): Promise<NonNullable<DetectionResult['windsurf']>> {
   const windsurfrules = path.join(cwd, '.windsurfrules');
   const detected = existsSync(windsurfrules);
   return { detected };
@@ -101,7 +107,9 @@ export async function detectWindsurf(cwd: string): Promise<NonNullable<Detection
 /**
  * Detect GitHub Copilot by checking for .github/copilot-instructions.md.
  */
-export async function detectGithubCopilot(cwd: string): Promise<NonNullable<DetectionResult['githubCopilot']>> {
+export async function detectGithubCopilot(
+  cwd: string
+): Promise<NonNullable<DetectionResult['githubCopilot']>> {
   const copilotInstructions = path.join(cwd, '.github', 'copilot-instructions.md');
   const detected = existsSync(copilotInstructions);
   return { detected };
@@ -1023,14 +1031,15 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
           const seqKeys = ['sequential-thinking', 'sequential_thinking', 'sequentialThinking'];
           const hasSeqThinking =
             seqKeys.some((k) => config.mcpServers?.[k] || config.servers?.[k]) ||
-            Object.entries(config.mcpServers ?? {}).some(([, v]) =>
-              typeof v === 'object' &&
-              v !== null &&
-              'args' in v &&
-              Array.isArray((v as { args?: unknown }).args) &&
-              ((v as { args: string[] }).args).some((a) =>
-                typeof a === 'string' && a.includes('sequential-thinking')
-              )
+            Object.entries(config.mcpServers ?? {}).some(
+              ([, v]) =>
+                typeof v === 'object' &&
+                v !== null &&
+                'args' in v &&
+                Array.isArray((v as { args?: unknown }).args) &&
+                (v as { args: string[] }).args.some(
+                  (a) => typeof a === 'string' && a.includes('sequential-thinking')
+                )
             );
           if (hasSeqThinking) {
             modules.push({
@@ -1049,8 +1058,22 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
   // Add undetected modules
   const detectedModules = new Set(modules.map((m) => m.module));
   const allModules: Array<
-    'vectorizer' | 'synap' | 'context7' | 'github' | 'playwright' | 'rulebook_mcp' | 'sequential_thinking'
-  > = ['vectorizer', 'synap', 'context7', 'github', 'playwright', 'rulebook_mcp', 'sequential_thinking'];
+    | 'vectorizer'
+    | 'synap'
+    | 'context7'
+    | 'github'
+    | 'playwright'
+    | 'rulebook_mcp'
+    | 'sequential_thinking'
+  > = [
+    'vectorizer',
+    'synap',
+    'context7',
+    'github',
+    'playwright',
+    'rulebook_mcp',
+    'sequential_thinking',
+  ];
 
   for (const module of allModules) {
     if (!detectedModules.has(module)) {
@@ -1891,9 +1914,7 @@ async function detectServices(cwd: string): Promise<ServiceDetection[]> {
     // Scan root-level YAML files for Kubernetes resource kinds
     try {
       const rootFiles = await readdir(cwd);
-      const yamlFiles = rootFiles.filter(
-        (f) => f.endsWith('.yml') || f.endsWith('.yaml')
-      );
+      const yamlFiles = rootFiles.filter((f) => f.endsWith('.yml') || f.endsWith('.yaml'));
       for (const yamlFile of yamlFiles) {
         const content = await readFile(path.join(cwd, yamlFile));
         if (

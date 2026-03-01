@@ -187,10 +187,7 @@ describe('partitionForParallel', () => {
   });
 
   it('should handle circular dependencies by placing them in a fallback batch', () => {
-    const stories = [
-      makeStory({ id: 'US-001' }),
-      makeStory({ id: 'US-002' }),
-    ];
+    const stories = [makeStory({ id: 'US-001' }), makeStory({ id: 'US-002' })];
 
     // Circular: US-001 depends on US-002 and vice versa
     const deps = new Map<string, string[]>([

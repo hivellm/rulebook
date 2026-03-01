@@ -97,9 +97,13 @@ describe('claude-mcp', () => {
       expect(result).toBe(false);
       const content = JSON.parse(await fs.readFile(mcpJsonPath, 'utf8'));
       // Args should now include --project-root
-      expect(content.mcpServers.rulebook.args).toEqual(
-        ['-y', '@hivehub/rulebook@latest', 'mcp-server', '--project-root', testDir]
-      );
+      expect(content.mcpServers.rulebook.args).toEqual([
+        '-y',
+        '@hivehub/rulebook@latest',
+        'mcp-server',
+        '--project-root',
+        testDir,
+      ]);
     });
 
     it('should not modify existing rulebook entry that already has --project-root', async () => {
@@ -119,9 +123,13 @@ describe('claude-mcp', () => {
       expect(result).toBe(false);
       const content = JSON.parse(await fs.readFile(mcpJsonPath, 'utf8'));
       // Should remain unchanged
-      expect(content.mcpServers.rulebook.args).toEqual(
-        ['-y', '@hivehub/rulebook@latest', 'mcp-server', '--project-root', testDir]
-      );
+      expect(content.mcpServers.rulebook.args).toEqual([
+        '-y',
+        '@hivehub/rulebook@latest',
+        'mcp-server',
+        '--project-root',
+        testDir,
+      ]);
     });
 
     it('should handle .mcp.json with no mcpServers key', async () => {

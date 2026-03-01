@@ -100,10 +100,7 @@ describe('Docker and Kubernetes detection', () => {
 
     it('should detect kubernetes/ directory', async () => {
       await fs.mkdir(path.join(testDir, 'kubernetes'), { recursive: true });
-      await fs.writeFile(
-        path.join(testDir, 'kubernetes', 'service.yaml'),
-        'apiVersion: v1\n'
-      );
+      await fs.writeFile(path.join(testDir, 'kubernetes', 'service.yaml'), 'apiVersion: v1\n');
 
       const result = await detectProject(testDir);
 
@@ -127,18 +124,13 @@ describe('Docker and Kubernetes detection', () => {
       const k8sService = result.services.find((s) => s.service === 'kubernetes');
       expect(k8sService).toBeDefined();
       expect(k8sService!.detected).toBe(true);
-      expect(k8sService!.indicators).toContain(
-        'YAML with kind: Deployment/Service/Ingress'
-      );
+      expect(k8sService!.indicators).toContain('YAML with kind: Deployment/Service/Ingress');
     });
 
     it('should detect YAML with kind: Service in root', async () => {
-      const yamlContent = [
-        'apiVersion: v1',
-        'kind: Service',
-        'metadata:',
-        '  name: my-svc',
-      ].join('\n');
+      const yamlContent = ['apiVersion: v1', 'kind: Service', 'metadata:', '  name: my-svc'].join(
+        '\n'
+      );
       await fs.writeFile(path.join(testDir, 'service.yml'), yamlContent);
 
       const result = await detectProject(testDir);
@@ -183,10 +175,7 @@ describe('Docker and Kubernetes detection', () => {
 
     it('should detect charts/ directory for Helm', async () => {
       await fs.mkdir(path.join(testDir, 'charts'), { recursive: true });
-      await fs.writeFile(
-        path.join(testDir, 'charts', 'subchart.tgz'),
-        'placeholder'
-      );
+      await fs.writeFile(path.join(testDir, 'charts', 'subchart.tgz'), 'placeholder');
 
       const result = await detectProject(testDir);
 
@@ -211,11 +200,7 @@ describe('Docker and Kubernetes detection', () => {
     });
 
     it('should not detect Kubernetes from non-k8s YAML files', async () => {
-      const yamlContent = [
-        'name: my-config',
-        'settings:',
-        '  debug: true',
-      ].join('\n');
+      const yamlContent = ['name: my-config', 'settings:', '  debug: true'].join('\n');
       await fs.writeFile(path.join(testDir, 'config.yaml'), yamlContent);
 
       const result = await detectProject(testDir);

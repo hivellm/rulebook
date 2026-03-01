@@ -101,7 +101,9 @@ describe('generateLeanAgents', () => {
     try {
       const content = await generateLeanAgents(baseConfig, dir);
       // Lean mode should not contain the verbose inline rules
-      expect(content).not.toContain('MANDATORY: All task creation MUST follow Rulebook task management system');
+      expect(content).not.toContain(
+        'MANDATORY: All task creation MUST follow Rulebook task management system'
+      );
     } finally {
       await teardown();
     }

@@ -219,7 +219,10 @@ export async function setupClaudeCodeIntegration(
   const mcpConfigured = await configureMcpJson(projectRoot);
   const skillsInstalled = await installClaudeCodeSkills(projectRoot, resolvedTemplatesPath);
   const agentTeamsEnabled = await configureClaudeSettings(projectRoot);
-  const agentDefinitionsInstalled = await installAgentDefinitions(projectRoot, resolvedTemplatesPath);
+  const agentDefinitionsInstalled = await installAgentDefinitions(
+    projectRoot,
+    resolvedTemplatesPath
+  );
 
   return {
     detected: true,

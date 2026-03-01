@@ -128,7 +128,11 @@ describe('IterationTracker.buildCompressedContext', () => {
     const mockAdapter = {
       searchMemory: async () => [
         { title: 'Fix lint errors', content: 'Always run lint before commit', tags: ['lint'] },
-        { title: 'Test coverage tip', content: 'Mock external dependencies for coverage', tags: [] },
+        {
+          title: 'Test coverage tip',
+          content: 'Mock external dependencies for coverage',
+          tags: [],
+        },
       ],
     };
     tracker.setMemoryAdapter(mockAdapter);

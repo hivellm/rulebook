@@ -361,7 +361,9 @@ export class AgentManager {
 
     if (coverage === null) {
       // Coverage output not parseable — warn but don't fail the gate
-      process.stderr.write('[rulebook] Coverage output could not be parsed; skipping coverage gate\n');
+      process.stderr.write(
+        '[rulebook] Coverage output could not be parsed; skipping coverage gate\n'
+      );
       return true;
     }
 
@@ -375,7 +377,11 @@ export class AgentManager {
    * If no tool is available, logs a warning and returns true (skip).
    */
   private async runSecurityGate(projectRoot: string): Promise<boolean> {
-    const secConfig = (this.config as { ralph?: { securityGate?: { enabled?: boolean; failOn?: string; tool?: string } } }).ralph?.securityGate;
+    const secConfig = (
+      this.config as {
+        ralph?: { securityGate?: { enabled?: boolean; failOn?: string; tool?: string } };
+      }
+    ).ralph?.securityGate;
     const enabled = secConfig?.enabled !== false; // default: true
     if (!enabled) {
       return true;
