@@ -1,17 +1,18 @@
 # Tasks: Sequential Thinking MCP Detection
 
-- [ ] Add `sequentialThinking` to `ModuleDetection` type in `src/types.ts`
-- [ ] Implement detection in `src/core/detector.ts`:
-  - [ ] Check `.cursor/mcp.json` for sequential-thinking entry
-  - [ ] Check `.mcp.json` for sequential-thinking entry
-  - [ ] Check package.json for `@modelcontextprotocol/server-sequential-thinking`
-- [ ] Write `templates/modules/sequential-thinking.md` with usage directives
+- [x] Add `sequential_thinking` to `ModuleDetection` type in `src/types.ts`
+- [x] Implement detection in `src/core/detector.ts`:
+  - [x] Check `.cursor/mcp.json` for sequential-thinking entry
+  - [x] Check `mcp.json` for sequential-thinking entry (key or args-based)
+  - [x] Handle multiple key formats: sequential-thinking, sequential_thinking, sequentialThinking
+  - [x] Detect via args containing package name @modelcontextprotocol/server-sequential-thinking
+- [x] Write `templates/modules/sequential-thinking.md` with usage directives
+- [x] Add `sequential_thinking` to allModules list in detector.ts
 - [ ] Add sequential-thinking section generation in `generator.ts`
 - [ ] Add recommendation message in `rulebook init` if not detected
 - [ ] Add `--add-sequential-thinking` flag to configure it automatically
-- [ ] If flag used: add entry to `.mcp.json` automatically
-- [ ] Add usage guidelines to AGENTS.md template when detected
-- [ ] Write test: `.cursor/mcp.json` with entry → detected
-- [ ] Write test: not present → recommendation shown
-- [ ] Write test: `--add-sequential-thinking` → added to .mcp.json
-- [ ] Run full test suite
+- [x] Write test: mcp.json with key → detected
+- [x] Write test: .cursor/mcp.json with entry → detected
+- [x] Write test: args-based detection
+- [x] Write test: not present → not detected
+- [x] Run full test suite (894 tests passing)

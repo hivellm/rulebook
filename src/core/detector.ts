@@ -946,6 +946,27 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
               source: mcpPath,
             });
           }
+
+          // Check for Sequential Thinking MCP Server (various key names)
+          const seqKeys = ['sequential-thinking', 'sequential_thinking', 'sequentialThinking'];
+          const hasSeqThinking =
+            seqKeys.some((k) => config.mcpServers?.[k] || config.servers?.[k]) ||
+            Object.entries(config.mcpServers ?? {}).some(([, v]) =>
+              typeof v === 'object' &&
+              v !== null &&
+              'args' in v &&
+              Array.isArray((v as { args?: unknown }).args) &&
+              ((v as { args: string[] }).args).some((a) =>
+                typeof a === 'string' && a.includes('sequential-thinking')
+              )
+            );
+          if (hasSeqThinking) {
+            modules.push({
+              module: 'sequential_thinking',
+              detected: true,
+              source: mcpPath,
+            });
+          }
         }
       } catch {
         // Ignore JSON parse errors
@@ -956,8 +977,8 @@ async function detectModules(cwd: string): Promise<ModuleDetection[]> {
   // Add undetected modules
   const detectedModules = new Set(modules.map((m) => m.module));
   const allModules: Array<
-    'vectorizer' | 'synap' | 'context7' | 'github' | 'playwright' | 'rulebook_mcp'
-  > = ['vectorizer', 'synap', 'context7', 'github', 'playwright', 'rulebook_mcp'];
+    'vectorizer' | 'synap' | 'context7' | 'github' | 'playwright' | 'rulebook_mcp' | 'sequential_thinking'
+  > = ['vectorizer', 'synap', 'context7', 'github', 'playwright', 'rulebook_mcp', 'sequential_thinking'];
 
   for (const module of allModules) {
     if (!detectedModules.has(module)) {

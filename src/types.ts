@@ -84,7 +84,8 @@ export interface ModuleDetection {
     | 'serena'
     | 'figma'
     | 'grafana'
-    | 'rulebook_mcp';
+    | 'rulebook_mcp'
+    | 'sequential_thinking';
   detected: boolean;
   source?: string;
 }
