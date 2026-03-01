@@ -60,7 +60,8 @@ export class RalphParser {
 
   /**
    * Extract quality check results from agent output.
-   * Uses line-level matching to avoid false positives from global keyword presence.
+   * Uses structured count-based detection to avoid false positives.
+   * "0 errors" / "no errors" are treated as success, not failure.
    * Note: In MCP ralph_run, real quality gates are determined by actual command exit codes,
    * not this parser. This is a best-effort extraction for standalone parsing.
    */
@@ -72,35 +73,51 @@ export class RalphParser {
   } {
     const lines = output.split('\n').map((l) => l.toLowerCase().trim());
 
-    // Look for explicit pass/fail patterns on the SAME line as the gate keyword
-    const typeCheckPass = lines.some(
+    // Type-check: pass if no TypeScript error codes (error TS\d+) found
+    const tsErrorCount = (output.match(/error TS\d+/gi) ?? []).length;
+    const typeCheckExplicitPass = lines.some(
       (l) =>
         (l.includes('type-check') || l.includes('tsc')) &&
         (l.includes('pass') || l.includes('success') || l.includes('✓')) &&
-        !l.includes('fail') &&
-        !l.includes('error')
+        !l.includes('fail')
     );
+    const typeCheckPass = typeCheckExplicitPass || tsErrorCount === 0;
 
-    const lintPass = lines.some(
+    // Lint: parse "X problems (Y errors, Z warnings)" — fail only if errors > 0
+    // Also pass on "0 problems", "0 errors", "no problems", explicit pass
+    const lintErrorCount = this.parseLintErrorCount(lines);
+    const lintExplicitPass = lines.some(
       (l) =>
-        (l.includes('eslint') || (l.includes('lint') && !l.includes('linting issues'))) &&
-        (l.includes('pass') ||
-          l.includes('success') ||
-          l.includes('✓') ||
-          l.includes('0 problems')) &&
-        !l.includes('fail') &&
-        !l.includes('error')
+        (l.includes('eslint') || l.includes('lint')) &&
+        (l.includes('pass') || l.includes('success') || l.includes('✓') ||
+          l.includes('0 problems') || l.includes('no problems'))
     );
+    const lintExplicitFail = lines.some(
+      (l) => (l.includes('eslint') || l.includes('lint')) && l.includes('fail')
+    );
+    const lintPass = lintExplicitFail ? false : (lintExplicitPass || lintErrorCount === 0);
 
-    const testsPass = lines.some(
+    // Tests: parse "X failed" — fail only if count > 0
+    // "0 errors", "passing", "✓ X tests" are all success
+    const testFailCount = this.parseTestFailCount(lines);
+    const testExplicitPass = lines.some(
       (l) =>
         (l.includes('test') || l.includes('vitest') || l.includes('jest')) &&
-        (l.includes('pass') || l.includes('passed') || l.includes('✓') || l.includes('success')) &&
-        !l.includes('fail') &&
-        !l.includes('error')
+        (l.includes('pass') || l.includes('passed') || l.includes('✓') || l.includes('success') ||
+          l.includes('0 errors') || l.includes('no errors') || l.includes('0 failed'))
     );
+    const testExplicitFail = lines.some(
+      (l) =>
+        (l.includes('test') || l.includes('vitest') || l.includes('jest')) &&
+        l.includes('fail') &&
+        !l.includes('0 fail')
+    );
+    const testsPass = testExplicitFail ? false : (testExplicitPass || testFailCount === 0);
 
+    // Coverage: parse actual percentage or explicit pass/fail
+    const covPct = this.parseCoveragePercentage(output);
     const coveragePass =
+      (covPct !== null && covPct >= 95) ||
       lines.some((l) => l.includes('coverage') && this.lineHasPercentageAbove(l, 95)) ||
       lines.some(
         (l) =>
@@ -113,6 +130,79 @@ export class RalphParser {
       tests: testsPass,
       coverage_met: coveragePass,
     };
+  }
+
+  /**
+   * Parse lint error count from ESLint output.
+   * Returns 0 if no error count found (treat as passing).
+   */
+  private static parseLintErrorCount(lines: string[]): number {
+    for (const line of lines) {
+      // "X problems (Y errors, Z warnings)"
+      const problemsMatch = line.match(/(\d+)\s+problems?\s+\((\d+)\s+errors?/);
+      if (problemsMatch) {
+        return parseInt(problemsMatch[2], 10);
+      }
+      // "X error" standalone
+      const errorCountMatch = line.match(/^(\d+)\s+errors?$/);
+      if (errorCountMatch) {
+        return parseInt(errorCountMatch[1], 10);
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * Parse test failure count from vitest/jest output.
+   * Returns 0 if no failure count found (treat as passing).
+   */
+  private static parseTestFailCount(lines: string[]): number {
+    for (const line of lines) {
+      // "X failed" — vitest/jest
+      const failMatch = line.match(/(\d+)\s+failed/);
+      if (failMatch) {
+        return parseInt(failMatch[1], 10);
+      }
+      // "Tests: X failed" — jest summary
+      const jestMatch = line.match(/tests:\s+(\d+)\s+failed/);
+      if (jestMatch) {
+        return parseInt(jestMatch[1], 10);
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * Parse real coverage percentage from test runner output.
+   * Supports vitest table format and jest/c8 line format.
+   * Returns null if coverage cannot be determined.
+   */
+  static parseCoveragePercentage(output: string): number | null {
+    // vitest/istanbul table: "All files | 87.50 | ..." or "All files | 87.50 |"
+    const vitestMatch = output.match(/all files\s*\|\s*(\d+(?:\.\d+)?)\s*\|/i);
+    if (vitestMatch) {
+      return parseFloat(vitestMatch[1]);
+    }
+
+    // jest: "Lines : 87.5%" or "Lines                : 87.5 %"
+    const jestLinesMatch = output.match(/lines\s*:\s*(\d+(?:\.\d+)?)\s*%/i);
+    if (jestLinesMatch) {
+      return parseFloat(jestLinesMatch[1]);
+    }
+
+    // c8/nyc: "% Lines  | 87.5"
+    const c8Match = output.match(/%\s*lines\s*\|\s*(\d+(?:\.\d+)?)/i);
+    if (c8Match) {
+      return parseFloat(c8Match[1]);
+    }
+
+    // Generic: "coverage: 87%" or "coverage 87.5%"
+    const genericMatch = output.match(/coverage[:\s]+(\d+(?:\.\d+)?)%/i);
+    if (genericMatch) {
+      return parseFloat(genericMatch[1]);
+    }
+
+    return null;
   }
 
   /**

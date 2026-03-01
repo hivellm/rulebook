@@ -95,18 +95,114 @@ export class PRDGenerator {
     const title = this.extractTitle(task.proposal);
     const description = this.extractDescription(task.proposal);
     const tasksChecklist = await this.loadTasksChecklist(task.path);
+    const specCriteria = await this.loadSpecCriteria(task.path);
+
+    // Merge checklist items with SHALL/MUST requirements from specs
+    const allCriteria = [...tasksChecklist, ...specCriteria];
+
+    // Build notes: include spec file references for traceability
+    const specSources = await this.listSpecFiles(task.path);
+    const notes = specSources.length > 0
+      ? `Spec files: ${specSources.join(', ')}`
+      : '';
 
     return {
       id: `US-${String(priority).padStart(3, '0')}`,
       title: title || task.id,
       description: description || 'Task extracted from rulebook proposal',
       acceptanceCriteria:
-        tasksChecklist.length > 0 ? tasksChecklist.slice(0, 10) : ['Implementation complete'],
+        allCriteria.length > 0 ? allCriteria.slice(0, 15) : ['Implementation complete'],
       priority,
       passes: false,
-      notes: '',
+      notes,
       sourceTaskId: task.id,
     };
+  }
+
+  /**
+   * Load SHALL/MUST requirements from specs/*.md files as acceptance criteria.
+   */
+  private async loadSpecCriteria(taskPath: string): Promise<string[]> {
+    const specsDir = path.join(taskPath, 'specs');
+    if (!existsSync(specsDir)) {
+      return [];
+    }
+
+    const criteria: string[] = [];
+
+    try {
+      const entries = await readdir(specsDir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const entryPath = path.join(specsDir, entry.name);
+
+        if (entry.isDirectory()) {
+          // Recurse one level: specs/<module>/spec.md
+          const subEntries = await readdir(entryPath, { withFileTypes: true });
+          for (const sub of subEntries) {
+            if (sub.isFile() && sub.name.endsWith('.md')) {
+              const content = await readFile(path.join(entryPath, sub.name), 'utf-8');
+              this.extractShallMust(content, criteria);
+            }
+          }
+        } else if (entry.isFile() && entry.name.endsWith('.md')) {
+          const content = await readFile(entryPath, 'utf-8');
+          this.extractShallMust(content, criteria);
+        }
+      }
+    } catch (err) {
+      this.logger.warn(`Failed to read spec files for task at ${taskPath}: ${err}`);
+    }
+
+    return criteria;
+  }
+
+  /**
+   * Extract SHALL/MUST statements from spec content as acceptance criteria.
+   */
+  private extractShallMust(content: string, criteria: string[]): void {
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // Match lines with SHALL or MUST (requirement language)
+      if (/\b(SHALL|MUST)\b/.test(trimmed) && trimmed.length > 10 && trimmed.length < 300) {
+        // Clean up markdown: remove leading dashes, asterisks, backtick code
+        const cleaned = trimmed.replace(/^[-*]\s+/, '').replace(/`[^`]+`/g, (m) => m.slice(1, -1));
+        if (!criteria.includes(cleaned)) {
+          criteria.push(cleaned);
+        }
+      }
+    }
+  }
+
+  /**
+   * List relative paths of spec files for notes/traceability.
+   */
+  private async listSpecFiles(taskPath: string): Promise<string[]> {
+    const specsDir = path.join(taskPath, 'specs');
+    if (!existsSync(specsDir)) {
+      return [];
+    }
+
+    const files: string[] = [];
+    try {
+      const entries = await readdir(specsDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const subEntries = await readdir(path.join(specsDir, entry.name), { withFileTypes: true });
+          for (const sub of subEntries) {
+            if (sub.isFile() && sub.name.endsWith('.md')) {
+              files.push(`specs/${entry.name}/${sub.name}`);
+            }
+          }
+        } else if (entry.isFile() && entry.name.endsWith('.md')) {
+          files.push(`specs/${entry.name}`);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return files;
   }
 
   /**

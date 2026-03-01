@@ -4,6 +4,7 @@ import { createLogger, initializeLogger } from './logger.js';
 import { createConfigManager } from './config-manager.js';
 import { createCLIBridge } from './cli-bridge.js';
 import type { RulebookConfig } from '../types.js';
+import { RalphParser } from '../agents/ralph-parser.js';
 
 export interface AgentTask {
   id: string;
@@ -184,14 +185,15 @@ export class AgentManager {
         iteration++;
         this.logger.info(`Workflow iteration ${iteration}/${maxIterations}`);
 
-        const msg = `✅ Agent workflow iteration ${iteration}/${maxIterations} (use Ralph for task-driven automation)`;
+        const msg = `🔄 Agent workflow iteration ${iteration}/${maxIterations} (use Ralph for task-driven automation)`;
         if (this.onLog) {
           this.onLog('info', msg);
         } else {
           console.log(chalk.gray(msg));
         }
 
-        break;
+        // Continue iterating — no unconditional break
+        // Loop exits naturally when: isRunning=false, maxIterations reached
       } catch (error) {
         this.logger.error(`Workflow iteration ${iteration} failed`, { error: String(error) });
         const msg = `❌ Iteration ${iteration} failed: ${error}`;
@@ -342,11 +344,21 @@ export class AgentManager {
   }
 
   private async checkCoverage(): Promise<boolean> {
-    const coverage = 95;
     const threshold = this.config.coverageThreshold;
 
-    this.logger.coverageCheck(coverage, threshold);
+    // Run tests with coverage to get real output
+    const coverageResponse = await this.cliBridge.sendTestCommand(this.currentTool!);
+    const output = coverageResponse.output ?? '';
 
+    const coverage = RalphParser.parseCoveragePercentage(output);
+
+    if (coverage === null) {
+      // Coverage output not parseable — warn but don't fail the gate
+      process.stderr.write('[rulebook] Coverage output could not be parsed; skipping coverage gate\n');
+      return true;
+    }
+
+    this.logger.coverageCheck(coverage, threshold);
     return coverage >= threshold;
   }
 
