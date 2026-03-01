@@ -382,4 +382,53 @@ export class RalphParser {
     const lowerOutput = output.toLowerCase();
     return completionKeywords.some((kw) => lowerOutput.includes(kw));
   }
+
+  /**
+   * Parse `npm audit --json` output.
+   * Returns the highest severity found: 'critical' | 'high' | 'moderate' | 'low' | 'none'
+   */
+  static parseNpmAuditSeverity(jsonOutput: string): 'critical' | 'high' | 'moderate' | 'low' | 'none' {
+    try {
+      const parsed = JSON.parse(jsonOutput) as {
+        metadata?: { vulnerabilities?: { critical?: number; high?: number; moderate?: number; low?: number } };
+      };
+      const v = parsed?.metadata?.vulnerabilities;
+      if (!v) return 'none';
+      if ((v.critical ?? 0) > 0) return 'critical';
+      if ((v.high ?? 0) > 0) return 'high';
+      if ((v.moderate ?? 0) > 0) return 'moderate';
+      if ((v.low ?? 0) > 0) return 'low';
+      return 'none';
+    } catch {
+      // Not valid JSON — try text-based fallback
+      return this.parseSecurityOutputText(jsonOutput);
+    }
+  }
+
+  /**
+   * Parse text-based security tool output (trivy, semgrep, or npm audit without --json).
+   * Returns the highest severity found: 'critical' | 'high' | 'moderate' | 'low' | 'none'
+   */
+  static parseSecurityOutputText(output: string): 'critical' | 'high' | 'moderate' | 'low' | 'none' {
+    const lower = output.toLowerCase();
+    if (lower.includes('critical')) return 'critical';
+    if (lower.includes(' high')) return 'high';
+    if (lower.includes('moderate')) return 'moderate';
+    if (lower.includes(' low')) return 'low';
+    return 'none';
+  }
+
+  /**
+   * Determine if a security gate passes given the found severity and the configured failOn threshold.
+   * Severity order: none < low < moderate < high < critical
+   */
+  static securityGatePasses(
+    foundSeverity: 'critical' | 'high' | 'moderate' | 'low' | 'none',
+    failOn: 'critical' | 'high' | 'moderate' | 'low'
+  ): boolean {
+    const order = ['none', 'low', 'moderate', 'high', 'critical'];
+    const foundIdx = order.indexOf(foundSeverity);
+    const failIdx = order.indexOf(failOn);
+    return foundIdx < failIdx;
+  }
 }

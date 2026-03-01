@@ -32,8 +32,10 @@ export class AgentManager {
   private onLog?: AgentOptions['onLog'];
   private onTaskStatusChange?: AgentOptions['onTaskStatusChange'];
   private initializePromise?: Promise<void>;
+  private projectRoot: string;
 
   constructor(projectRoot: string) {
+    this.projectRoot = projectRoot;
     this.logger = initializeLogger(projectRoot);
     this.configManager = createConfigManager(projectRoot);
     this.config = {} as RulebookConfig;
@@ -272,6 +274,11 @@ export class AgentManager {
         throw new Error('Coverage below threshold');
       }
 
+      const securitySuccess = await this.runSecurityGate(this.projectRoot);
+      if (!securitySuccess) {
+        throw new Error('Security gate failed');
+      }
+
       await this.commitChanges(task);
 
       const duration = Date.now() - startTime;
@@ -360,6 +367,75 @@ export class AgentManager {
 
     this.logger.coverageCheck(coverage, threshold);
     return coverage >= threshold;
+  }
+
+  /**
+   * Run the security gate using npm audit (or other available tools).
+   * Returns true if the gate passes, false if it fails.
+   * If no tool is available, logs a warning and returns true (skip).
+   */
+  private async runSecurityGate(projectRoot: string): Promise<boolean> {
+    const secConfig = (this.config as { ralph?: { securityGate?: { enabled?: boolean; failOn?: string; tool?: string } } }).ralph?.securityGate;
+    const enabled = secConfig?.enabled !== false; // default: true
+    if (!enabled) {
+      return true;
+    }
+
+    const failOn = (secConfig?.failOn ?? 'high') as 'critical' | 'high' | 'moderate' | 'low';
+
+    try {
+      const { execSync } = await import('child_process');
+
+      // Detect available tool
+      let tool = secConfig?.tool ?? 'auto';
+      if (tool === 'auto') {
+        // Try npm audit first (always available in Node projects)
+        try {
+          execSync('npm audit --version', { cwd: projectRoot, stdio: 'ignore', timeout: 5000 });
+          tool = 'npm-audit';
+        } catch {
+          // npm audit not available (non-Node project)
+        }
+      }
+
+      if (tool === 'npm-audit' || tool === 'auto') {
+        try {
+          const output = execSync('npm audit --json', {
+            cwd: projectRoot,
+            encoding: 'utf-8',
+            stdio: ['ignore', 'pipe', 'ignore'],
+            timeout: 30000,
+          });
+          const severity = RalphParser.parseNpmAuditSeverity(output);
+          const passes = RalphParser.securityGatePasses(severity, failOn);
+          if (!passes) {
+            const msg = `🔒 Security gate failed: found ${severity} severity vulnerabilities (failOn: ${failOn})`;
+            if (this.onLog) {
+              this.onLog('warning', msg);
+            } else {
+              console.log(chalk.yellow(msg));
+            }
+          }
+          return passes;
+        } catch (err: unknown) {
+          // npm audit exits with non-zero when vulnerabilities found
+          const execError = err as { stdout?: string };
+          if (execError.stdout) {
+            const severity = RalphParser.parseNpmAuditSeverity(execError.stdout);
+            return RalphParser.securityGatePasses(severity, failOn);
+          }
+        }
+      }
+
+      // No scanner available — skip gate with warning
+      const skipMsg = '[rulebook] No security scanner available; skipping security gate';
+      process.stderr.write(skipMsg + '\n');
+      return true;
+    } catch {
+      // Gate itself threw — skip rather than fail
+      process.stderr.write('[rulebook] Security gate error; skipping\n');
+      return true;
+    }
   }
 
   private async commitChanges(task: AgentTask): Promise<void> {

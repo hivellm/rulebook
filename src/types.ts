@@ -228,6 +228,11 @@ export interface RulebookConfig {
     maxIterations?: number; // default: 10
     tool?: 'claude' | 'amp' | 'gemini'; // default: 'claude'
     maxContextLoss?: number; // default: 3
+    securityGate?: {
+      enabled?: boolean; // default: true
+      failOn?: 'critical' | 'high' | 'moderate' | 'low'; // default: 'high'
+      tool?: 'auto' | 'npm-audit' | 'trivy' | 'semgrep'; // default: 'auto'
+    };
   };
   // Skills configuration (v2.0)
   skills?: {
@@ -367,6 +372,7 @@ export interface IterationResult {
     lint: boolean;
     tests: boolean;
     coverage_met: boolean;
+    security?: boolean; // optional — only present when gate ran
   };
   output_summary: string;
   git_commit?: string;
