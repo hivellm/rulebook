@@ -1,5 +1,9 @@
 # Proposal: Multi-Tool Config Generation (GEMINI.md, Continue.dev, Windsurf)
 
+## Why
+
+To auto-generate AI assistant config files for all major tools when detected in a project.
+
 ## Context
 
 The AI developer tools ecosystem has fragmented beyond just Claude Code and Cursor. Teams now use:

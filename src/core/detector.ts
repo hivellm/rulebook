@@ -24,6 +24,10 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
   const gitHooks = await detectGitHooks(cwd);
   const monorepo = await detectMonorepo(cwd);
   const cursor = await detectCursor(cwd);
+  const geminiCli = await detectGeminiCli(cwd);
+  const continueDev = await detectContinueDev(cwd);
+  const windsurf = await detectWindsurf(cwd);
+  const githubCopilot = await detectGithubCopilot(cwd);
 
   return {
     languages,
@@ -34,6 +38,10 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
     gitHooks,
     monorepo,
     cursor,
+    geminiCli,
+    continueDev,
+    windsurf,
+    githubCopilot,
   };
 }
 
@@ -60,6 +68,43 @@ export async function detectCursor(cwd: string): Promise<DetectionResult['cursor
   }
 
   return { detected, hasCursorrules, hasMdcRules };
+}
+
+/**
+ * Detect Gemini CLI presence by checking for GEMINI.md in the project root.
+ */
+export async function detectGeminiCli(cwd: string): Promise<NonNullable<DetectionResult['geminiCli']>> {
+  const geminiMd = path.join(cwd, 'GEMINI.md');
+  const detected = existsSync(geminiMd);
+  return { detected };
+}
+
+/**
+ * Detect Continue.dev IDE extension by checking for the .continue/ directory.
+ */
+export async function detectContinueDev(cwd: string): Promise<NonNullable<DetectionResult['continueDev']>> {
+  const continueDir = path.join(cwd, '.continue');
+  const rulesDir = path.join(continueDir, 'rules');
+  const detected = existsSync(continueDir);
+  return { detected, rulesDir };
+}
+
+/**
+ * Detect Windsurf IDE by checking for .windsurfrules in the project root.
+ */
+export async function detectWindsurf(cwd: string): Promise<NonNullable<DetectionResult['windsurf']>> {
+  const windsurfrules = path.join(cwd, '.windsurfrules');
+  const detected = existsSync(windsurfrules);
+  return { detected };
+}
+
+/**
+ * Detect GitHub Copilot by checking for .github/copilot-instructions.md.
+ */
+export async function detectGithubCopilot(cwd: string): Promise<NonNullable<DetectionResult['githubCopilot']>> {
+  const copilotInstructions = path.join(cwd, '.github', 'copilot-instructions.md');
+  const detected = existsSync(copilotInstructions);
+  return { detected };
 }
 
 /**

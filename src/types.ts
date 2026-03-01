@@ -40,6 +40,19 @@ export interface DetectionResult {
     hasCursorrules: boolean; // deprecated .cursorrules file present
     hasMdcRules: boolean; // .cursor/rules/*.mdc files exist
   };
+  geminiCli?: {
+    detected: boolean; // GEMINI.md exists or gemini-cli in cliTools
+  };
+  continueDev?: {
+    detected: boolean; // .continue/ directory exists
+    rulesDir: string; // path to .continue/rules/
+  };
+  windsurf?: {
+    detected: boolean; // .windsurfrules file exists
+  };
+  githubCopilot?: {
+    detected: boolean; // .github/copilot-instructions.md exists
+  };
 }
 
 export interface LanguageDetection {

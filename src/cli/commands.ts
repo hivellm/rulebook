@@ -377,6 +377,20 @@ export async function initCommand(options: {
       }
     }
 
+    // Show multi-tool config feedback
+    if (detection.geminiCli?.detected) {
+      console.log(chalk.gray('  • Gemini CLI config generated: GEMINI.md'));
+    }
+    if (detection.continueDev?.detected) {
+      console.log(chalk.gray('  • Continue.dev rules generated in .continue/rules/'));
+    }
+    if (detection.windsurf?.detected) {
+      console.log(chalk.gray('  • Windsurf rules generated: .windsurfrules'));
+    }
+    if (detection.githubCopilot?.detected) {
+      console.log(chalk.gray('  • GitHub Copilot instructions generated in .github/'));
+    }
+
     // Generate workflows if requested
     if (config.generateWorkflows) {
       const workflowSpinner = ora('Generating GitHub Actions workflows...').start();
@@ -1721,6 +1735,20 @@ export async function updateCommand(options: {
     const mergedContent = await mergeFullAgents(detection.existingAgents, config, cwd);
     await writeFile(agentsPath, mergedContent);
     mergeSpinner.succeed('AGENTS.md updated');
+
+    // Show multi-tool config feedback (update command)
+    if (detection.geminiCli?.detected) {
+      console.log(chalk.gray('  • Gemini CLI config updated: GEMINI.md'));
+    }
+    if (detection.continueDev?.detected) {
+      console.log(chalk.gray('  • Continue.dev rules updated in .continue/rules/'));
+    }
+    if (detection.windsurf?.detected) {
+      console.log(chalk.gray('  • Windsurf rules updated: .windsurfrules'));
+    }
+    if (detection.githubCopilot?.detected) {
+      console.log(chalk.gray('  • GitHub Copilot instructions updated in .github/'));
+    }
 
     if (installHooksOnUpdate) {
       const hookLanguages: LanguageDetection[] =

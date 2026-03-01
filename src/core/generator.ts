@@ -930,6 +930,48 @@ export async function generateModularAgents(
     // Cursor MDC generation failed - skip silently
   }
 
+  // Generate multi-tool IDE config files (GEMINI.md, .windsurfrules, etc.)
+  try {
+    const { detectGeminiCli, detectContinueDev, detectWindsurf, detectGithubCopilot } =
+      await import('./detector.js');
+    const { generateMultiToolConfigs } = await import('./multi-tool-generator.js');
+
+    const [geminiCli, continueDev, windsurf, githubCopilot] = await Promise.all([
+      detectGeminiCli(projectRoot),
+      detectContinueDev(projectRoot),
+      detectWindsurf(projectRoot),
+      detectGithubCopilot(projectRoot),
+    ]);
+
+    await generateMultiToolConfigs(projectRoot, {
+      languages: [],
+      modules: [],
+      frameworks: [],
+      services: [],
+      existingAgents: null,
+      geminiCli,
+      continueDev,
+      windsurf,
+      githubCopilot,
+    });
+  } catch {
+    // Multi-tool generation failed - skip silently
+  }
+
+  // Append AGENTS.override.md content if present and non-empty
+  try {
+    const { readOverrideContent } = await import('./override-manager.js');
+    const overrideContent = await readOverrideContent(projectRoot);
+    if (overrideContent) {
+      sections.push('');
+      sections.push('## Project-Specific Overrides');
+      sections.push('');
+      sections.push(overrideContent);
+    }
+  } catch {
+    // Override reading failed — skip silently
+  }
+
   return sections.join('\n').trim() + '\n';
 }
 
