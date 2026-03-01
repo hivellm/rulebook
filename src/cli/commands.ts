@@ -491,6 +491,17 @@ export async function initCommand(options: {
       // Non-blocking
     }
 
+    // Create AGENTS.override.md (never overwrites existing)
+    try {
+      const { initOverride } = await import('../core/override-manager.js');
+      const created = await initOverride(cwd);
+      if (created) {
+        console.log(chalk.gray('  • AGENTS.override.md created (add project-specific rules here)'));
+      }
+    } catch {
+      // Non-blocking
+    }
+
     // --add-sequential-thinking: inject into mcp.json if not already present
     if (options.addSequentialThinking) {
       try {
@@ -889,7 +900,7 @@ export async function healthCommand(): Promise<void> {
 
     console.log(chalk.bold.blue('\n🏥 Project Health Check\n'));
 
-    const { calculateHealthScore, getHealthGrade } = await import('../core/health-scorer.js');
+    const { calculateHealthScore } = await import('../core/health-scorer.js');
 
     const spinner = ora('Analyzing project health...').start();
 
@@ -898,9 +909,8 @@ export async function healthCommand(): Promise<void> {
     spinner.succeed('Health analysis complete');
 
     console.log('');
-    const grade = getHealthGrade(health.overall);
 
-    console.log(chalk.bold(`Overall Health Score: ${health.overall}/100 (${grade})`));
+    console.log(chalk.bold(`Overall Health Score: ${health.overall}/100 (${health.grade})`));
     console.log('');
 
     console.log(chalk.bold('Category Scores:\n'));
@@ -910,6 +920,9 @@ export async function healthCommand(): Promise<void> {
     console.log(`  🔒 Security: ${health.categories.security}/100`);
     console.log(`  🔄 CI/CD: ${health.categories.cicd}/100`);
     console.log(`  📦 Dependencies: ${health.categories.dependencies}/100`);
+    console.log(`  🤖 AGENTS.md: ${health.categories.agentsMd}/100`);
+    console.log(`  🔁 Ralph: ${health.categories.ralph}/100`);
+    console.log(`  🧠 Memory: ${health.categories.memory}/100`);
     console.log('');
 
     if (health.recommendations.length > 0) {
@@ -3348,6 +3361,56 @@ async function addSequentialThinkingMcp(cwd: string): Promise<void> {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
   writeFileSync(mcpPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+}
+
+/**
+ * Show contents of AGENTS.override.md.
+ */
+export async function overrideShowCommand(): Promise<void> {
+  const cwd = process.cwd();
+  const { overrideExists, getOverridePath, readOverrideContent } = await import('../core/override-manager.js');
+  if (!overrideExists(cwd)) {
+    console.log(chalk.yellow('AGENTS.override.md does not exist. Run `rulebook override edit` or `rulebook init` to create it.'));
+    return;
+  }
+  const content = await readOverrideContent(cwd);
+  if (!content) {
+    console.log(chalk.gray('AGENTS.override.md exists but has no custom content yet.'));
+    console.log(chalk.gray(`  Path: ${getOverridePath(cwd)}`));
+    return;
+  }
+  console.log(chalk.bold('\n📄 AGENTS.override.md\n'));
+  console.log(content);
+  console.log();
+}
+
+/**
+ * Open AGENTS.override.md in $EDITOR, or print path if no EDITOR.
+ */
+export async function overrideEditCommand(): Promise<void> {
+  const cwd = process.cwd();
+  const { initOverride, getOverridePath } = await import('../core/override-manager.js');
+  await initOverride(cwd); // create if missing
+  const overridePath = getOverridePath(cwd);
+  const editor = process.env.EDITOR || process.env.VISUAL;
+  if (editor) {
+    const { spawn } = await import('child_process');
+    const proc = spawn(editor, [overridePath], { stdio: 'inherit', shell: true });
+    await new Promise<void>((resolve) => proc.on('close', () => resolve()));
+  } else {
+    console.log(chalk.gray(`No $EDITOR set. Edit the file directly:`));
+    console.log(chalk.cyan(`  ${overridePath}`));
+  }
+}
+
+/**
+ * Reset AGENTS.override.md to empty template.
+ */
+export async function overrideClearCommand(): Promise<void> {
+  const cwd = process.cwd();
+  const { clearOverride } = await import('../core/override-manager.js');
+  await clearOverride(cwd);
+  console.log(chalk.green('✓ AGENTS.override.md reset to empty template'));
 }
 
 /**

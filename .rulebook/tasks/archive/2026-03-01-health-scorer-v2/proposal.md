@@ -1,5 +1,9 @@
 # Proposal: Health Scorer v2 — Real Content Measurement
 
+## Why
+
+To measure real project health quality rather than just file existence checks.
+
 ## Context
 
 The current health scorer (`src/core/health-scorer.ts`) measures project health by checking if files **exist** (e.g., AGENTS.md exists → +10 points). This is a superficial check that doesn't measure actual quality:
