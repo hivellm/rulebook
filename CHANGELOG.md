@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-03-01
+
+### Added
+- **Ralph Shell Scripts**: `.sh` and `.bat` scripts installed to `.rulebook/scripts/` for invoking Ralph without MCP
+- **MCP Deduplication**: Single MCP entry per workspace with `--project-root` flag
+- **Memory Per-Project Fix**: Memory DB saved immediately on first write for reliable persistence
+- **Multi-Agent Directives**: `MULTI_AGENT.md` template + auto-config of agent teams
+- **Agent Definitions**: Pre-configured agents in `.claude/agents/` (team-lead, researcher, implementer, tester)
+
+### Changed
+- MCP server registration now includes `--project-root` argument for cross-project usage
+- Added `memory verify` CLI command for diagnosing memory storage
+- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` auto-enabled on Claude Code detection
+- MCP server version aligned to 4.0.0
+
+### Migration from v3
+No breaking changes to `rulebook.json` schema. Run `rulebook update` to install new files.
+
 ## [3.4.2] - 2026-02-27
 
 ### Added

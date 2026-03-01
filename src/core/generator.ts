@@ -755,10 +755,17 @@ export async function generateModularAgents(
     await writeModularFile(projectRoot, 'AGENT_AUTOMATION', agentAutomation, rulebookDir);
   }
 
+  // Write MULTI_AGENT directives (after AGENT_AUTOMATION)
+  if (!mergedConfig.minimal) {
+    const multiAgentContent = await generateCoreRules('MULTI_AGENT');
+    await writeModularFile(projectRoot, 'MULTI_AGENT', multiAgentContent, rulebookDir);
+  }
+
   // Then handle all modules together
   const allModules: string[] = [];
   if (!mergedConfig.minimal) {
     allModules.push('agent_automation');
+    allModules.push('multi_agent');
   }
   allModules.push(...mergedConfig.modules);
 
@@ -779,6 +786,7 @@ export async function generateModularAgents(
     // Then add all references together
     if (!mergedConfig.minimal) {
       sections.push(generateModuleReference('agent_automation', rulebookDir));
+      sections.push(generateModuleReference('multi_agent', rulebookDir));
     }
     for (const module of mergedConfig.modules) {
       sections.push(generateModuleReference(module, rulebookDir));

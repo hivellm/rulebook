@@ -277,6 +277,10 @@ export class ConfigManager {
       if (!migrated.ralph.maxContextLoss) migrated.ralph.maxContextLoss = 3;
     }
 
+    // v4 migration: ensure .rulebook/scripts/ dir is noted in config
+    // Scripts dir will be populated on next init/update
+    // No config changes needed — scripts are filesystem-only
+
     // Update version
     migrated.version = getPackageVersion();
 

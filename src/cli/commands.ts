@@ -9,7 +9,7 @@ import {
   generateIDEFiles,
   generateAICLIFiles,
 } from '../core/workflow-generator.js';
-import { writeFile, createBackup } from '../utils/file-system.js';
+import { writeFile, createBackup, ensureDir } from '../utils/file-system.js';
 import { existsSync } from 'fs';
 import { parseRulesIgnore } from '../utils/rulesignore.js';
 import { RulebookConfig } from '../types.js';
@@ -231,6 +231,9 @@ export async function initCommand(options: {
     await configManager.migrateDirectoryStructure(cwd);
     dirMigrationSpinner.succeed('Directory structure migrated');
 
+    // Ensure .rulebook/memory/ directory exists for per-project memory persistence
+    await ensureDir(path.join(cwd, '.rulebook', 'memory'));
+
     // Ensure .gitignore has .rulebook entries (keep specs/ and tasks/ tracked)
     await configManager.ensureGitignore();
 
@@ -404,6 +407,17 @@ export async function initCommand(options: {
       } catch {
         claudeSpinner.info('Claude Code integration skipped');
       }
+    }
+
+    // Install Ralph shell scripts
+    try {
+      const { installRalphScripts } = await import('../core/ralph-scripts.js');
+      const scripts = await installRalphScripts(cwd);
+      if (scripts.length > 0) {
+        console.log(chalk.gray(`  • ${scripts.length} Ralph scripts installed to .rulebook/scripts/`));
+      }
+    } catch {
+      // Skip if Ralph scripts installation fails
     }
 
     if (minimalMode && minimalArtifacts.length > 0) {
@@ -1698,6 +1712,17 @@ export async function updateCommand(options: {
       claudeSpinner.info('Claude Code integration skipped');
     }
 
+    // Install/update Ralph shell scripts
+    try {
+      const { installRalphScripts } = await import('../core/ralph-scripts.js');
+      const scripts = await installRalphScripts(cwd);
+      if (scripts.length > 0) {
+        console.log(chalk.gray(`  • ${scripts.length} Ralph scripts updated in .rulebook/scripts/`));
+      }
+    } catch {
+      // Skip if Ralph scripts installation fails
+    }
+
     // Migrate memory directory if old structure exists
     try {
       await migrateMemoryDirectory();
@@ -2280,6 +2305,69 @@ export async function memoryStatsCommand(): Promise<void> {
     await manager.close();
   } catch (error) {
     spinner.fail('Failed to load stats');
+    console.error(chalk.red(String(error)));
+    process.exit(1);
+  }
+}
+
+export async function memoryVerifyCommand(): Promise<void> {
+  const ora = (await import('ora')).default;
+  const chalk = (await import('chalk')).default;
+  const spinner = ora('Verifying memory system...').start();
+
+  try {
+    const { createConfigManager } = await import('../core/config-manager.js');
+    const cwd = process.cwd();
+    const configManager = createConfigManager(cwd);
+    const config = await configManager.loadConfig();
+
+    const memoryEnabled = config.memory?.enabled ?? false;
+    const dbPathRelative = config.memory?.dbPath ?? '.rulebook/memory/memory.db';
+    const dbPathAbsolute = path.join(cwd, dbPathRelative);
+
+    spinner.succeed('Memory verification');
+
+    // Check enabled status
+    console.log(
+      `\n  ${memoryEnabled ? chalk.green('✓') : chalk.red('✗')} Memory enabled: ${memoryEnabled}`
+    );
+
+    // Check DB path
+    console.log(`  ${chalk.green('✓')} DB path: ${dbPathRelative}`);
+
+    // Check if file exists on disk
+    const fileExists = existsSync(dbPathAbsolute);
+    if (fileExists) {
+      const { statSync } = await import('fs');
+      const fileStat = statSync(dbPathAbsolute);
+      const sizeKB = (fileStat.size / 1024).toFixed(1);
+      console.log(`  ${chalk.green('✓')} File exists: YES (${sizeKB} KB)`);
+    } else {
+      console.log(`  ${chalk.red('✗')} File exists: NO`);
+    }
+
+    // If memory is enabled and file exists, show record count
+    if (memoryEnabled && fileExists) {
+      try {
+        const { createMemoryManager } = await import('../memory/memory-manager.js');
+        const manager = createMemoryManager(cwd, config.memory!);
+        const stats = await manager.getStats();
+        console.log(`  ${chalk.green('✓')} Record count: ${stats.memoryCount} memories`);
+        await manager.close();
+      } catch (error) {
+        console.log(
+          `  ${chalk.yellow('!')} Record count: unable to read (${String(error)})`
+        );
+      }
+    } else if (!memoryEnabled) {
+      console.log(
+        `  ${chalk.yellow('!')} Enable memory with: ${chalk.bold('rulebook config --feature memory --enable')}`
+      );
+    }
+
+    console.log('');
+  } catch (error) {
+    spinner.fail('Memory verification failed');
     console.error(chalk.red(String(error)));
     process.exit(1);
   }

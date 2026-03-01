@@ -35,6 +35,7 @@ import {
   memorySaveCommand,
   memoryListCommand,
   memoryStatsCommand,
+  memoryVerifyCommand,
   memoryCleanupCommand,
   memoryExportCommand,
   // Ralph commands (v3.0)
@@ -304,6 +305,11 @@ memoryCommand
   .command('stats')
   .description('Show memory database statistics')
   .action(() => memoryStatsCommand());
+
+memoryCommand
+  .command('verify')
+  .description('Verify memory system configuration and persistence')
+  .action(() => memoryVerifyCommand());
 
 memoryCommand
   .command('cleanup')
