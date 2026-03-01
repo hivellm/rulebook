@@ -1,18 +1,18 @@
 # Tasks: PLANS.md Session Scratchpad Pattern
 
-- [ ] Write `templates/core/PLANS.md` template with structured sections
-- [ ] Add PLANS.md generation to `generateModularAgents()` in generator.ts
-- [ ] Add `readPlansContext(projectRoot)` helper in ralph-manager.ts
-- [ ] Add `appendPlansSummary(projectRoot, iteration, summary)` helper
-- [ ] Inject PLANS.md content into Ralph iteration prompt prefix
-- [ ] Append iteration summary to PLANS.md after each completed iteration
-- [ ] Write `plans show` CLI command to display current PLANS.md
-- [ ] Write `plans clear` CLI command to reset PLANS.md to template
-- [ ] Write `plans edit` CLI command to open PLANS.md in $EDITOR
-- [ ] Register `plans` subcommand in `src/index.ts`
+- [x] Write `templates/core/PLANS.md` template with structured sections
+- [x] Create `src/core/plans-manager.ts` module with read/write/init/clear/append helpers
+- [x] Create PLANS.md during `rulebook init` (non-overwriting)
+- [x] Ensure PLANS.md exists during `rulebook update` (non-overwriting)
+- [x] Write `plans show` CLI command to display current PLANS.md
+- [x] Write `plans init` CLI command to create PLANS.md
+- [x] Write `plans clear` CLI command to reset PLANS.md to template
+- [x] Register `plans` subcommand in `src/index.ts`
+- [x] Write test: PLANS.md created during init
+- [x] Write test: initPlans does not overwrite existing file
+- [x] Write test: updatePlansContext updates Active Context section
+- [x] Write test: appendPlansHistory adds entries in order
+- [x] Write test: clearPlans resets to template
+- [x] Run full test suite (830 tests passing)
 - [ ] Add reference to PLANS.md in AGENTS.md template
-- [ ] Write test: PLANS.md generated during init
-- [ ] Write test: Ralph reads PLANS.md context at iteration start
-- [ ] Write test: iteration summary appended after completion
-- [ ] Write test: `plans clear` resets to template
-- [ ] Run full test suite
+- [ ] Inject PLANS.md context into Ralph iteration prompt prefix

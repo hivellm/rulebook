@@ -45,6 +45,11 @@ import {
   ralphHistoryCommand,
   ralphPauseCommand,
   ralphResumeCommand,
+  // Plans commands (v4.0)
+  plansShowCommand,
+  plansInitCommand,
+  plansClearCommand,
+  continueCommand,
   // Setup commands
   setupClaudeCodePlugin,
   migrateMemoryDirectory,
@@ -366,6 +371,30 @@ ralphCommand
   .command('resume')
   .description('Resume from paused state')
   .action(() => ralphResumeCommand());
+
+// Plans commands (v4.0) — PLANS.md session scratchpad
+const plansCommand = program.command('plans').description('Manage PLANS.md session scratchpad');
+
+plansCommand
+  .command('show')
+  .description('Display current PLANS.md context and history')
+  .action(() => plansShowCommand());
+
+plansCommand
+  .command('init')
+  .description('Create PLANS.md in project root')
+  .action(() => plansInitCommand());
+
+plansCommand
+  .command('clear')
+  .description('Reset PLANS.md to empty template')
+  .action(() => plansClearCommand());
+
+// Continue command — generate session continuity context
+program
+  .command('continue')
+  .description('Generate session continuity context for a new AI session')
+  .action(() => continueCommand());
 
 // Setup commands
 program

@@ -430,6 +430,17 @@ export async function initCommand(options: {
       // Skip if Ralph scripts installation fails
     }
 
+    // Create PLANS.md for session continuity
+    try {
+      const { initPlans } = await import('../core/plans-manager.js');
+      const created = await initPlans(cwd);
+      if (created) {
+        console.log(chalk.gray('  • PLANS.md created for session continuity'));
+      }
+    } catch {
+      // Non-blocking
+    }
+
     if (minimalMode && minimalArtifacts.length > 0) {
       console.log(chalk.green('\n✅ Essentials created:'));
       for (const artifact of minimalArtifacts) {
@@ -1741,6 +1752,14 @@ export async function updateCommand(options: {
       }
     } catch {
       // Skip if Ralph scripts installation fails
+    }
+
+    // Ensure PLANS.md exists (create if missing, never overwrite)
+    try {
+      const { initPlans } = await import('../core/plans-manager.js');
+      await initPlans(cwd);
+    } catch {
+      // Non-blocking
     }
 
     // Migrate memory directory if old structure exists
@@ -3151,6 +3170,214 @@ export async function setupClaudeCodePlugin(): Promise<void> {
     spinner.fail('Failed to install plugin');
     console.error(chalk.red(String(error)));
     process.exit(1);
+  }
+}
+
+// ─── Plans Commands ────────────────────────────────────────────────────────
+
+/**
+ * Show current PLANS.md content.
+ */
+export async function plansShowCommand(): Promise<void> {
+  const { readPlans, getPlansPath } = await import('../core/plans-manager.js');
+  const cwd = process.cwd();
+
+  const plans = await readPlans(cwd);
+  if (!plans) {
+    console.log(chalk.yellow(`No PLANS.md found at ${getPlansPath(cwd)}`));
+    console.log(chalk.gray('Run `rulebook plans init` to create one.'));
+    return;
+  }
+
+  console.log(chalk.bold.blue('\n📋 PLANS.md — Session Scratchpad\n'));
+
+  if (plans.context && plans.context !== '_No active context. Start a session to populate this section._') {
+    console.log(chalk.bold('Active Context:'));
+    console.log(chalk.white(plans.context));
+  }
+
+  if (plans.currentTask && plans.currentTask !== '_No task in progress._') {
+    console.log(chalk.bold('\nCurrent Task:'));
+    console.log(chalk.cyan(plans.currentTask));
+  }
+
+  if (plans.history) {
+    console.log(chalk.bold('\nSession History:'));
+    console.log(chalk.gray(plans.history));
+  }
+
+  console.log('');
+}
+
+/**
+ * Initialize PLANS.md in project root.
+ */
+export async function plansInitCommand(): Promise<void> {
+  const { initPlans, getPlansPath } = await import('../core/plans-manager.js');
+  const cwd = process.cwd();
+
+  const created = await initPlans(cwd);
+  if (created) {
+    console.log(chalk.green(`✓ Created ${getPlansPath(cwd)}`));
+    console.log(chalk.gray('  AI agents will use this file for session continuity.'));
+  } else {
+    console.log(chalk.yellow(`PLANS.md already exists at ${getPlansPath(cwd)}`));
+  }
+}
+
+/**
+ * Reset PLANS.md to the empty template.
+ */
+export async function plansClearCommand(): Promise<void> {
+  const { clearPlans, getPlansPath } = await import('../core/plans-manager.js');
+  const cwd = process.cwd();
+  await clearPlans(cwd);
+  console.log(chalk.green(`✓ Cleared ${getPlansPath(cwd)}`));
+  console.log(chalk.gray('  Session history and context have been reset.'));
+}
+
+// ─── Continue Command ───────────────────────────────────────────────────────
+
+/**
+ * `rulebook continue` — Print orientations to resume work in a new AI session.
+ *
+ * Aggregates context from:
+ * 1. PLANS.md (session scratchpad)
+ * 2. Active rulebook tasks (pending items in tasks.md)
+ * 3. Recent git commits (last 5)
+ * 4. Ralph status (if running)
+ *
+ * Outputs a structured prompt that the AI agent can paste at the start of a session.
+ */
+export async function continueCommand(): Promise<void> {
+  const cwd = process.cwd();
+  const { readPlans } = await import('../core/plans-manager.js');
+  const { exec } = await import('child_process');
+  const { promisify } = await import('util');
+  const execAsync = promisify(exec);
+  const fs = await import('fs/promises');
+
+  console.log(chalk.bold.blue('\n🔄 Generating session continuity context...\n'));
+
+  const sections: string[] = [];
+
+  // ── 1. PLANS.md context ──
+  const plans = await readPlans(cwd);
+  if (plans && (plans.context || plans.currentTask)) {
+    const plansParts: string[] = ['## Active Plans'];
+    if (plans.context && !plans.context.includes('_No active context')) {
+      plansParts.push(plans.context);
+    }
+    if (plans.currentTask && !plans.currentTask.includes('_No task')) {
+      plansParts.push(`**Current Task:** ${plans.currentTask}`);
+    }
+    sections.push(plansParts.join('\n'));
+  }
+
+  // ── 2. Active tasks (pending checklist items) ──
+  const tasksDir = path.join(cwd, '.rulebook', 'tasks');
+  if (existsSync(tasksDir)) {
+    const taskSummaries: string[] = [];
+    try {
+      const entries = await fs.readdir(tasksDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory() || entry.name === 'archive') continue;
+        const tasksPath = path.join(tasksDir, entry.name, 'tasks.md');
+        if (!existsSync(tasksPath)) continue;
+        const content = await fs.readFile(tasksPath, 'utf-8');
+        const pending = content
+          .split('\n')
+          .filter((l) => l.match(/^- \[ \]/))
+          .map((l) => l.replace(/^- \[ \]\s*/, '').trim())
+          .slice(0, 3);
+        if (pending.length > 0) {
+          taskSummaries.push(`**${entry.name}** (${pending.length}+ pending):`);
+          pending.forEach((p) => taskSummaries.push(`  - ${p}`));
+        }
+      }
+    } catch {
+      // ignore
+    }
+    if (taskSummaries.length > 0) {
+      sections.push('## Pending Tasks\n' + taskSummaries.join('\n'));
+    }
+  }
+
+  // ── 3. Recent git commits ──
+  try {
+    const { stdout } = await execAsync('git log --oneline -8', { cwd });
+    if (stdout.trim()) {
+      sections.push('## Recent Commits\n```\n' + stdout.trim() + '\n```');
+    }
+  } catch {
+    // not a git repo or git not available
+  }
+
+  // ── 4. Ralph status ──
+  const ralphStatePath = path.join(cwd, '.rulebook', 'ralph', 'state.json');
+  if (existsSync(ralphStatePath)) {
+    try {
+      const state = JSON.parse(await fs.readFile(ralphStatePath, 'utf-8'));
+      if (state.enabled) {
+        const prdPath = path.join(cwd, '.rulebook', 'ralph', 'prd.json');
+        let prdInfo = '';
+        if (existsSync(prdPath)) {
+          const prd = JSON.parse(await fs.readFile(prdPath, 'utf-8'));
+          const pending = (prd.userStories ?? []).filter((s: any) => !s.passes).length;
+          const total = (prd.userStories ?? []).length;
+          prdInfo = ` | ${total - pending}/${total} stories complete`;
+        }
+        sections.push(
+          `## Ralph Status\n` +
+          `Iteration ${state.current_iteration}/${state.max_iterations}${prdInfo} | Tool: ${state.tool} | Paused: ${state.paused}`
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // ── 5. Current branch ──
+  try {
+    const { stdout } = await execAsync('git rev-parse --abbrev-ref HEAD', { cwd });
+    const branch = stdout.trim();
+    if (branch) {
+      sections.unshift(`## Branch\n\`${branch}\``);
+    }
+  } catch {
+    // ignore
+  }
+
+  // ── Render ──
+  if (sections.length === 0) {
+    console.log(chalk.yellow('No session context found. Create tasks, a PLANS.md, or make some commits.'));
+    return;
+  }
+
+  const output = [
+    '─'.repeat(60),
+    chalk.bold('📋 SESSION CONTINUITY CONTEXT'),
+    chalk.gray('Paste this at the start of a new AI session:'),
+    '─'.repeat(60),
+    '',
+    sections.join('\n\n'),
+    '',
+    '─'.repeat(60),
+  ].join('\n');
+
+  console.log(output);
+
+  // Also write to PLANS.md if it exists
+  if (plans !== null) {
+    const { appendPlansHistory } = await import('../core/plans-manager.js');
+    try {
+      await appendPlansHistory(
+        cwd,
+        `Session context generated. Branch: current. Pending tasks summarized.`
+      );
+    } catch {
+      // non-critical
+    }
   }
 }
 
