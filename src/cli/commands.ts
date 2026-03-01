@@ -401,6 +401,16 @@ export async function initCommand(options: {
               )
             );
           }
+          if (result.agentTeamsEnabled) {
+            console.log(chalk.gray('  • Multi-agent teams enabled in .claude/settings.json'));
+          }
+          if (result.agentDefinitionsInstalled.length > 0) {
+            console.log(
+              chalk.gray(
+                `  • ${result.agentDefinitionsInstalled.length} agent definitions installed to .claude/agents/`
+              )
+            );
+          }
         } else {
           claudeSpinner.info('Claude Code not detected (skipped)');
         }
@@ -1703,6 +1713,16 @@ export async function updateCommand(options: {
         if (result.skillsInstalled.length > 0) {
           console.log(
             chalk.gray(`  • ${result.skillsInstalled.length} skills updated in .claude/commands/`)
+          );
+        }
+        if (result.agentTeamsEnabled) {
+          console.log(chalk.gray('  • Multi-agent teams enabled in .claude/settings.json'));
+        }
+        if (result.agentDefinitionsInstalled.length > 0) {
+          console.log(
+            chalk.gray(
+              `  • ${result.agentDefinitionsInstalled.length} agent definitions updated in .claude/agents/`
+            )
           );
         }
       } else {

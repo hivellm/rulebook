@@ -7,6 +7,7 @@
  */
 
 import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import { readdir } from 'fs/promises';
 import { fileExists, readFile, writeFile, ensureDir } from '../utils/file-system.js';
@@ -187,7 +188,9 @@ export async function installAgentDefinitions(
  * Get the templates path (same logic as generator.ts getTemplatesDir)
  */
 function getTemplatesPath(): string {
-  return join(dirname(dirname(dirname(import.meta.url.replace('file:///', '')))), 'templates');
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  return join(__dirname, '..', '..', 'templates');
 }
 
 /**
