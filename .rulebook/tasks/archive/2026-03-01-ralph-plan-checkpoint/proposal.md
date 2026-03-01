@@ -1,5 +1,9 @@
 # Proposal: Human-in-the-Loop Planning Checkpoint for Ralph
 
+## Why
+
+To let humans review and approve Ralph's implementation plan before code is generated, reducing wasted iterations.
+
 ## Context
 
 Ralph currently runs fully autonomously without human review between iterations. For complex tasks this can lead to:

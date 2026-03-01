@@ -2655,6 +2655,7 @@ export async function ralphRunCommand(options: {
   maxIterations?: number;
   tool?: 'claude' | 'amp' | 'gemini';
   parallel?: number;
+  planFirst?: boolean;
 }): Promise<void> {
   const oraModule = await import('ora');
   const ora = oraModule.default;
@@ -2680,6 +2681,13 @@ export async function ralphRunCommand(options: {
     // Resolve parallel mode — CLI flag takes precedence over config
     const parallelWorkers =
       options.parallel ?? (config.ralph?.parallel?.enabled ? config.ralph.parallel.maxWorkers : undefined);
+
+    // Resolve plan checkpoint config — --plan-first CLI flag takes precedence
+    const planCheckpointConfig = {
+      enabled: options.planFirst ?? config.ralph?.planCheckpoint?.enabled ?? false,
+      autoApproveAfterSeconds: config.ralph?.planCheckpoint?.autoApproveAfterSeconds ?? 0,
+      requireApprovalForStories: config.ralph?.planCheckpoint?.requireApprovalForStories ?? 'all' as const,
+    };
 
     // Context compression config
     const compressionConfig = config.ralph?.contextCompression;
@@ -2870,6 +2878,19 @@ export async function ralphRunCommand(options: {
       console.log(chalk.bold.cyan(`\n  ── Iteration ${iterationCount}: ${task.title} ──\n`));
 
       const startTime = Date.now();
+
+      // 0. Plan checkpoint — require approval before implementation
+      if (planCheckpointConfig.enabled) {
+        const checkpoint = await ralphManager.runCheckpoint(task, tool, planCheckpointConfig);
+        if (!checkpoint.proceed) {
+          console.log(chalk.yellow(`  Plan rejected for ${task.id}. Skipping implementation.`));
+          if (checkpoint.feedback) {
+            console.log(chalk.gray(`  Feedback: ${checkpoint.feedback}`));
+          }
+          spinner.start('Preparing next iteration...');
+          continue;
+        }
+      }
 
       // 1. Execute AI agent with task context
       let contextHistory = '';

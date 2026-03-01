@@ -1,0 +1,21 @@
+# Tasks: Ralph Human-in-the-Loop Planning Checkpoint
+
+- [x] Add `PlanCheckpointConfig` type to `src/types.ts`
+- [x] Add `ralph.planCheckpoint` to config-manager.ts schema
+- [x] Implement `generateIterationPlan(story, tool)` in ralph-plan-checkpoint.ts
+  - [x] Runs AI tool with plan-only prompt
+  - [x] Captures plan output without executing implementation
+- [x] Implement `requestPlanApproval(plan)` interactive prompt
+  - [x] Display plan to terminal in formatted box
+  - [x] Wait for: `approve` | `reject <reason>` | `edit <feedback>`
+  - [x] Auto-approve after N seconds if autoApproveAfterSeconds > 0
+- [x] Wire planning phase into story iteration loop (before implementation)
+- [x] Add rejection reason to story context for next iteration attempt
+- [x] Add `--plan-first` flag to `ralph run` CLI command
+- [x] Add `rulebook ralph config set planCheckpoint.enabled true` support
+- [x] Skip checkpoint if `--yes` / non-interactive mode
+- [x] Write test: plan generated before implementation
+- [x] Write test: rejection adds reason to next iteration context
+- [x] Write test: auto-approve after timeout
+- [x] Write test: --yes flag skips checkpoint
+- [x] Run full test suite

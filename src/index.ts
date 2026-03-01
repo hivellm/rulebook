@@ -355,11 +355,13 @@ ralphCommand
   .option('--max-iterations <n>', 'Maximum iterations', '10')
   .option('--tool <tool>', 'AI CLI tool: claude, amp, gemini', 'claude')
   .option('--parallel <n>', 'Run N stories concurrently (default: sequential)')
-  .action((options: { maxIterations?: string; tool?: string; parallel?: string }) =>
+  .option('--plan-first', 'Require plan approval before each story implementation')
+  .action((options: { maxIterations?: string; tool?: string; parallel?: string; planFirst?: boolean }) =>
     ralphRunCommand({
       maxIterations: options.maxIterations ? parseInt(options.maxIterations) : undefined,
       tool: (options.tool as 'claude' | 'amp' | 'gemini') || 'claude',
       parallel: options.parallel ? parseInt(options.parallel) : undefined,
+      planFirst: options.planFirst,
     })
   );
 

@@ -201,6 +201,11 @@ export class ConfigManager {
           enabled: false,
           maxWorkers: 3,
         },
+        planCheckpoint: {
+          enabled: false,
+          autoApproveAfterSeconds: 0,
+          requireApprovalForStories: 'all',
+        },
       },
       agentsMode: 'full',
       monorepo: {
@@ -298,6 +303,14 @@ export class ConfigManager {
       // Add parallel config if missing
       if (!migrated.ralph.parallel) {
         migrated.ralph.parallel = { enabled: false, maxWorkers: 3 };
+      }
+      // Add plan checkpoint config if missing
+      if (!migrated.ralph.planCheckpoint) {
+        migrated.ralph.planCheckpoint = {
+          enabled: false,
+          autoApproveAfterSeconds: 0,
+          requireApprovalForStories: 'all',
+        };
       }
     }
 

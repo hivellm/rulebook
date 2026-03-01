@@ -2,7 +2,7 @@ import { mkdir, readdir, writeFile, appendFile, readFile, unlink } from 'fs/prom
 import { existsSync } from 'fs';
 import path from 'path';
 import { Logger } from './logger.js';
-import { RalphLoopState, RalphIterationMetadata, IterationResult, PRDUserStory } from '../types.js';
+import { RalphLoopState, RalphIterationMetadata, IterationResult, PRDUserStory, PlanCheckpointConfig } from '../types.js';
 
 /** Minimal interface for memory integration — avoids hard dependency on MemoryManager */
 export interface RalphMemoryAdapter {
@@ -580,6 +580,57 @@ export class RalphManager {
 
     const { buildParallelBatches } = await import('./ralph-parallel.js');
     return buildParallelBatches(pendingStories, maxWorkers);
+  }
+
+  /**
+   * Run a plan checkpoint for the given story.
+   *
+   * Generates an implementation plan via the AI CLI tool and requests
+   * interactive approval from the user. Returns whether to proceed with
+   * implementation and any feedback from the reviewer.
+   *
+   * @param story - The user story to plan for
+   * @param tool - AI CLI tool to use for plan generation
+   * @param checkpointConfig - Plan checkpoint configuration
+   * @returns Object with `proceed` (boolean) and optional `feedback` string
+   */
+  async runCheckpoint(
+    story: PRDUserStory,
+    tool: 'claude' | 'amp' | 'gemini',
+    checkpointConfig: PlanCheckpointConfig,
+  ): Promise<{ proceed: boolean; feedback?: string }> {
+    const {
+      shouldRunCheckpoint,
+      generateIterationPlan,
+      requestPlanApproval,
+    } = await import('./ralph-plan-checkpoint.js');
+
+    if (!shouldRunCheckpoint(checkpointConfig, story, false)) {
+      return { proceed: true };
+    }
+
+    this.logger.info(`Running plan checkpoint for story ${story.id}: ${story.title}`);
+
+    const plan = await generateIterationPlan(story, tool, this.projectRoot);
+
+    if (!plan) {
+      this.logger.warn('Plan generation returned empty output — skipping checkpoint');
+      return { proceed: true };
+    }
+
+    const approval = await requestPlanApproval(
+      plan,
+      story,
+      checkpointConfig.autoApproveAfterSeconds,
+    );
+
+    if (approval.approved) {
+      this.logger.info(`Plan approved for story ${story.id}`);
+      return { proceed: true };
+    }
+
+    this.logger.info(`Plan rejected for story ${story.id}: ${approval.feedback ?? '(no reason)'}`);
+    return { proceed: false, feedback: approval.feedback };
   }
 
   /**

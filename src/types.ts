@@ -283,6 +283,7 @@ export interface RulebookConfig {
       threshold?: number; // default: 5 — minimum iterations before compression kicks in
     };
     parallel?: ParallelRalphConfig;
+    planCheckpoint?: PlanCheckpointConfig;
   };
   // Skills configuration (v2.0)
   skills?: {
@@ -387,6 +388,14 @@ export interface SkillValidationResult {
   errors: string[];
   warnings: string[];
   conflicts: SkillConflict[];
+}
+
+// Ralph Plan Checkpoint Types (v4.0)
+
+export interface PlanCheckpointConfig {
+  enabled: boolean;
+  autoApproveAfterSeconds: number; // 0 = never auto-approve
+  requireApprovalForStories: 'all' | 'failed' | 'none';
 }
 
 // Ralph Parallel Execution Types (v4.0)
