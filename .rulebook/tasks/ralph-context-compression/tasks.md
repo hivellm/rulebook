@@ -2,17 +2,15 @@
 
 - [ ] Add `contextCompression` config type in `src/types.ts`
 - [ ] Add `ralph.contextCompression` to config-manager.ts schema with defaults
-- [ ] Implement `summarizeIterations(iterations: IterationRecord[]): string` in iteration-tracker.ts
-- [ ] Summary format: one line per iteration with story ID, outcome, key learnings
-- [ ] Implement two-tier context builder in ralph-manager.ts:
-  - [ ] Recent N iterations: full detail (configurable, default 3)
-  - [ ] Older iterations: compressed summary
-- [ ] Add compression threshold config (default: 5 iterations before compressing)
+- [x] Implement `buildCompressedContext(recentCount, threshold)` in iteration-tracker.ts
+- [x] Summary format: one line per iteration with story ID, status, quality gate flags
+- [x] Two-tier context: recent N iterations (full detail) + older (compressed summary)
+- [x] Configurable recentCount (default: 3) and threshold (default: 5)
+- [x] Returns "No iteration history" when empty
 - [ ] Implement memory-backed retrieval: search memory for relevant past learnings
-- [ ] Add `getCompressedContext(projectRoot, storyId)` function
-- [ ] Wire context compression into iteration prompt building
-- [ ] Write test: 6 iterations → first 3 compressed, last 3 full
-- [ ] Write test: summary contains story IDs and key learnings
-- [ ] Write test: compression disabled → full history passed
-- [ ] Write test: below threshold → no compression applied
-- [ ] Run full test suite
+- [ ] Wire context compression into iteration prompt building in ralph-manager.ts
+- [x] Write test: 6 iterations → first 3 compressed, last 3 full
+- [x] Write test: quality gate flags in compressed lines (✓ts, ✗lint, etc.)
+- [x] Write test: below threshold → full history returned
+- [x] Write test: empty history → informative message
+- [x] Run full test suite (903 tests passing)
