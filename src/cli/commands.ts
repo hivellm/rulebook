@@ -3707,3 +3707,87 @@ export async function migrateMemoryDirectory(): Promise<void> {
     process.exit(1);
   }
 }
+
+// ─── Review Command ─────────────────────────────────────────────────────────
+
+/**
+ * `rulebook review` — Run AI-powered code review on changes vs a base branch.
+ *
+ * Retrieves the git diff, builds a structured prompt, sends it to an AI tool,
+ * parses the result, and outputs in the requested format.
+ */
+export async function reviewCommand(options: {
+  output?: 'terminal' | 'github-comment' | 'json';
+  failOn?: 'critical' | 'major' | 'minor';
+  baseBranch?: string;
+  tool?: string;
+}): Promise<void> {
+  const cwd = process.cwd();
+  const baseBranch = options.baseBranch ?? 'main';
+  const outputFormat = options.output ?? 'terminal';
+  const tool = (options.tool ?? 'claude') as import('../core/review-manager.js').ReviewTool;
+
+  const {
+    getDiffContext,
+    buildReviewPrompt,
+    runAIReview,
+    parseReviewOutput,
+    formatReviewTerminal,
+    postGitHubComment,
+    readAgentsMd,
+    hasFailingIssues,
+  } = await import('../core/review-manager.js');
+
+  // 1. Get diff
+  const diff = await getDiffContext(cwd, baseBranch);
+  if (!diff) {
+    console.log(chalk.yellow(`No changes detected vs ${baseBranch}`));
+    return;
+  }
+
+  // 2. Read AGENTS.md (optional context)
+  const agentsMdContent = await readAgentsMd(cwd);
+
+  // 3. Build prompt
+  const projectName = path.basename(cwd);
+  const prompt = buildReviewPrompt(diff, { agentsMdContent, projectName });
+
+  // 4. Run AI review
+  const spinner = ora('Running AI review...').start();
+  const rawOutput = await runAIReview(prompt, tool);
+  if (!rawOutput) {
+    spinner.fail('AI review returned no output. Is the AI tool installed and configured?');
+    process.exit(1);
+  }
+  spinner.succeed('AI review complete');
+
+  // 5. Parse result
+  const result = parseReviewOutput(rawOutput);
+
+  // 6. Output
+  switch (outputFormat) {
+    case 'terminal':
+      console.log(formatReviewTerminal(result));
+      break;
+    case 'json':
+      console.log(JSON.stringify(result, null, 2));
+      break;
+    case 'github-comment':
+      try {
+        await postGitHubComment(result);
+        console.log(chalk.green('Review posted as PR comment'));
+      } catch (error) {
+        console.error(chalk.red(`Failed to post comment: ${error}`));
+        process.exit(1);
+      }
+      break;
+  }
+
+  // 7. Exit code
+  if (options.failOn && hasFailingIssues(result.issues, options.failOn)) {
+    console.log(
+      chalk.red(`\nFailing: found issues at or above "${options.failOn}" severity`),
+    );
+    process.exit(1);
+  }
+}

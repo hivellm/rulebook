@@ -1,5 +1,9 @@
 # Proposal: Agentic Code Review in CI
 
+## Why
+
+To enable AI-powered code review as part of CI, surfacing issues automatically on PRs.
+
 ## Context
 
 Teams want AI code review as part of their CI/CD pipeline. This feature adds a `rulebook review` command that can be run in GitHub Actions to provide AI-powered code review on pull requests.

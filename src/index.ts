@@ -55,6 +55,8 @@ import {
   overrideShowCommand,
   overrideEditCommand,
   overrideClearCommand,
+  // Review command (v4.0)
+  reviewCommand,
   // Setup commands
   setupClaudeCodePlugin,
   migrateMemoryDirectory,
@@ -437,6 +439,23 @@ overrideCommand
   .command('clear')
   .description('Reset AGENTS.override.md to empty template')
   .action(() => overrideClearCommand());
+
+// Review command — AI-powered code review
+program
+  .command('review')
+  .description('Run AI code review on current changes vs base branch')
+  .option('--output <format>', 'Output format: terminal, github-comment, json', 'terminal')
+  .option('--fail-on <severity>', 'Fail with exit 1 if issues of this severity or higher: critical, major, minor')
+  .option('--base-branch <branch>', 'Base branch to diff against', 'main')
+  .option('--tool <tool>', 'AI tool to use: claude, gemini, amp', 'claude')
+  .action((options) =>
+    reviewCommand({
+      output: options.output as 'terminal' | 'github-comment' | 'json',
+      failOn: options.failOn as 'critical' | 'major' | 'minor' | undefined,
+      baseBranch: options.baseBranch,
+      tool: options.tool,
+    })
+  );
 
 // Setup commands
 program
