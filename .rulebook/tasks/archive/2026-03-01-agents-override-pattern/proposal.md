@@ -1,5 +1,9 @@
 # Proposal: AGENTS.override.md Pattern for User Customizations
 
+## Why
+
+To allow project-specific rules that survive rulebook updates without merge conflicts.
+
 ## Context
 
 When `rulebook update` regenerates AGENTS.md, user customizations are currently preserved via merge markers (`<!-- RULEBOOK:START/END -->`). However, this approach has limitations:

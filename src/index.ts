@@ -51,6 +51,10 @@ import {
   plansClearCommand,
   continueCommand,
   modeSetCommand,
+  // Override commands (v4.0)
+  overrideShowCommand,
+  overrideEditCommand,
+  overrideClearCommand,
   // Setup commands
   setupClaudeCodePlugin,
   migrateMemoryDirectory,
@@ -413,6 +417,26 @@ modeCommand
     }
     modeSetCommand(mode as 'lean' | 'full');
   });
+
+// Override commands (v4.0) — AGENTS.override.md management
+const overrideCommand = program
+  .command('override')
+  .description('Manage AGENTS.override.md — project-specific rules that survive updates');
+
+overrideCommand
+  .command('show')
+  .description('Display current override content')
+  .action(() => overrideShowCommand());
+
+overrideCommand
+  .command('edit')
+  .description('Open AGENTS.override.md in $EDITOR (or print path)')
+  .action(() => overrideEditCommand());
+
+overrideCommand
+  .command('clear')
+  .description('Reset AGENTS.override.md to empty template')
+  .action(() => overrideClearCommand());
 
 // Setup commands
 program
