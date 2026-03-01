@@ -84,6 +84,7 @@ program
   .option('-q, --quick', 'Quick setup with minimal prompts (language, MCP, hooks only)')
   .option('--minimal', 'Enable essentials-only setup mode')
   .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
+  .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
   .action(initCommand);
 
 program
@@ -227,6 +228,7 @@ program
   .option('-y, --yes', 'Skip confirmation prompt')
   .option('--minimal', 'Regenerate using minimal mode (essentials only)')
   .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
+  .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
   .action(updateCommand);
 
 // MCP commands

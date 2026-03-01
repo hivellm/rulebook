@@ -898,12 +898,57 @@ export async function generateModularAgents(
 }
 
 /**
+ * Generate lean AGENTS.md — a lightweight index (< 3KB) referencing spec files.
+ * All spec files are still written to .rulebook/specs/ by generateModularAgents.
+ */
+export async function generateLeanAgents(
+  config: ProjectConfig,
+  projectRoot: string = process.cwd()
+): Promise<string> {
+  // First run modular generation to ensure all spec files are up to date
+  await generateModularAgents(config, projectRoot);
+
+  const rulebookDir = config.rulebookDir || '.rulebook';
+
+  // Load lean template
+  const templatesDir = path.join(getTemplatesDir(), 'core');
+  const leanTemplatePath = path.join(templatesDir, 'AGENTS_LEAN.md');
+  let template = '';
+  if (await fileExists(leanTemplatePath)) {
+    template = await readFile(leanTemplatePath);
+  } else {
+    template = `<!-- RULEBOOK:START -->\n# Project Agent Directives\n\nSee \`/${rulebookDir}/specs/\` for all rules.\n\n- **Task Management**: \`/${rulebookDir}/specs/RULEBOOK.md\`\n- **Quality Gates**: \`/${rulebookDir}/specs/QUALITY_ENFORCEMENT.md\`\n- **Git Workflow**: \`/${rulebookDir}/specs/GIT.md\`\n<!-- RULEBOOK:END -->\n`;
+  }
+
+  // Build language refs
+  const langRefs = config.languages
+    .map((lang) => `- **${lang.toUpperCase()}**: \`/${rulebookDir}/specs/${lang.toUpperCase()}.md\``)
+    .join('\n');
+  template = template.replace('LANGUAGE_REFS', langRefs || '_None configured_');
+
+  // Build module refs (core + user modules)
+  const coreModules = config.minimal ? [] : ['agent_automation', 'multi_agent'];
+  const allModules = [...coreModules, ...(config.modules || [])];
+  const moduleRefs = allModules
+    .map((mod) => `- **${mod.toUpperCase()}**: \`/${rulebookDir}/specs/${mod.toUpperCase()}.md\``)
+    .join('\n');
+  template = template.replace('MODULE_REFS', moduleRefs || '_None configured_');
+
+  return template;
+}
+
+/**
  * Generate full AGENTS.md (modular by default, legacy mode available)
  */
 export async function generateFullAgents(
   config: ProjectConfig,
   projectRoot: string = process.cwd()
 ): Promise<string> {
+  // Lean mode: generate a lightweight index AGENTS.md
+  if (config.agentsMode === 'lean') {
+    return await generateLeanAgents(config, projectRoot);
+  }
+
   // Use modular generation by default (unless explicitly disabled)
   if (config.modular !== false) {
     return await generateModularAgents(config, projectRoot);

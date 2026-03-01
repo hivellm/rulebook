@@ -151,6 +151,7 @@ export interface ProjectConfig {
   lightMode?: boolean;
   modular?: boolean; // Enable modular /.rulebook directory structure
   rulebookDir?: string; // Custom rulebook directory (default: '.rulebook')
+  agentsMode?: 'full' | 'lean'; // AGENTS.md generation mode: full (default) or lean (index-only)
 }
 
 export interface RuleConfig {
@@ -208,6 +209,7 @@ export interface RulebookConfig {
   services?: ServiceId[];
   modular?: boolean; // Enable modular /.rulebook directory structure
   rulebookDir?: string; // Custom rulebook directory (default: '.rulebook')
+  agentsMode?: 'full' | 'lean'; // AGENTS.md generation mode: full (default) or lean (index-only)
   // MCP server configuration
   mcp?: {
     enabled?: boolean;

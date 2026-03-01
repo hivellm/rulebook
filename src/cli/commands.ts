@@ -65,6 +65,7 @@ export async function initCommand(options: {
   quick?: boolean;
   minimal?: boolean;
   light?: boolean;
+  lean?: boolean;
 }): Promise<void> {
   try {
     const cwd = process.cwd();
@@ -119,6 +120,7 @@ export async function initCommand(options: {
     const cliMinimal = Boolean(options.minimal);
     const cliLight = Boolean(options.light);
     const cliQuick = Boolean(options.quick);
+    const cliLean = Boolean(options.lean);
 
     if (options.yes) {
       // Full auto mode - no prompts at all
@@ -161,6 +163,9 @@ export async function initCommand(options: {
     config.includeGitWorkflow = config.includeGitWorkflow ?? true;
     config.generateWorkflows = config.generateWorkflows ?? true;
     config.modular = config.modular ?? true; // Enable modular by default
+    if (cliLean) {
+      config.agentsMode = 'lean';
+    }
 
     let minimalArtifacts: string[] = [];
     if (minimalMode) {
@@ -273,6 +278,7 @@ export async function initCommand(options: {
       services: config.services as ServiceId[],
       modular: config.modular ?? true,
       rulebookDir: config.rulebookDir || '.rulebook',
+      ...(config.agentsMode ? { agentsMode: config.agentsMode } : {}),
       skills: enabledSkills.length > 0 ? { enabled: enabledSkills } : undefined,
       ralph: existingConfig.ralph,
       memory: existingConfig.memory,
@@ -1370,6 +1376,7 @@ export async function updateCommand(options: {
   yes?: boolean;
   minimal?: boolean;
   light?: boolean;
+  lean?: boolean;
 }): Promise<void> {
   try {
     const cwd = process.cwd();
@@ -1485,6 +1492,7 @@ export async function updateCommand(options: {
 
     const minimalMode = options.minimal ?? existingMode === 'minimal';
     const lightMode = options.light !== undefined ? options.light : (existingLightMode ?? false);
+    const leanMode = options.lean ?? (existingConfig?.agentsMode === 'lean');
 
     // Build config from detected project
     const config: ProjectConfig = {
@@ -1501,6 +1509,7 @@ export async function updateCommand(options: {
       installGitHooks: installHooksOnUpdate,
       minimal: minimalMode,
       lightMode: lightMode,
+      ...(leanMode ? { agentsMode: 'lean' as const } : {}),
     };
 
     if (minimalMode) {
@@ -1706,6 +1715,7 @@ export async function updateCommand(options: {
       ...(existingConfig.memory ? { memory: existingConfig.memory } : {}),
       ...(existingConfig.ralph ? { ralph: existingConfig.ralph } : {}),
       ...(existingConfig.skills ? { skills: existingConfig.skills } : {}),
+      ...(leanMode ? { agentsMode: 'lean' as const } : existingConfig.agentsMode ? { agentsMode: existingConfig.agentsMode } : {}),
     };
 
     await configManager.saveConfig(rulebookConfig);
