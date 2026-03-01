@@ -8,20 +8,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [4.0.0] - 2026-03-01
 
 ### Added
-- **Ralph Shell Scripts**: `.sh` and `.bat` scripts installed to `.rulebook/scripts/` for invoking Ralph without MCP
-- **MCP Deduplication**: Single MCP entry per workspace with `--project-root` flag
-- **Memory Per-Project Fix**: Memory DB saved immediately on first write for reliable persistence
-- **Multi-Agent Directives**: `MULTI_AGENT.md` template + auto-config of agent teams
-- **Agent Definitions**: Pre-configured agents in `.claude/agents/` (team-lead, researcher, implementer, tester)
+- **AGENTS.override.md**: Project-specific rules file that survives `rulebook init` and `rulebook update` — never overwritten. Managed via `rulebook override show|init|clear` commands
+- **Health Scorer v2**: 9-category content-quality scoring (Documentation, Testing, Code Quality, Security, CI/CD, Dependencies, AGENTS.md, Ralph, Memory) with letter grade and detailed breakdown
+- **Docker / Kubernetes / Helm templates**: Auto-detection of Docker, docker-compose, Kubernetes, and Helm from project files + 4 new service templates
+- **Agentic CI Review**: `rulebook review` command runs AI code review on current diff and generates GitHub Actions workflow (`.github/workflows/ai-review.yml`)
+- **GitHub Issues → Ralph**: `rulebook ralph import-issues` imports GitHub Issues as Ralph user stories via `gh` CLI
+- **Multi-tool config generation**: Auto-generate config files for Gemini CLI (`GEMINI.md`), Continue.dev (`.continue/rules/`), Windsurf (`.windsurfrules`), and GitHub Copilot (`.github/copilot-instructions.md`)
+- **Observability templates**: 6 new service templates — Sentry, OpenTelemetry, Datadog, Pino, Winston, Prometheus — with detection from `package.json` and env vars
+- **Ralph parallel execution**: `rulebook ralph run --parallel` processes independent stories concurrently using `Promise.all` with configurable batch size
+- **Ralph plan checkpoint**: `rulebook ralph run --plan-first` pauses before implementation for human-in-the-loop plan approval
+- **Ralph context compression**: `buildCompressedContext()` two-tier history (full recent + summarized older iterations) to prevent context window exhaustion in long loops
+- **Ralph security gate**: 5th quality gate via `npm audit` / `trivy` / `semgrep` (configurable)
+- **AGENTS.md lean mode**: `rulebook mode set lean` generates a lightweight <3KB index file referencing spec files instead of embedding all rules inline
+- **Monorepo detection**: Auto-detection of Turborepo, Nx, pnpm workspaces, Lerna, and manual monorepos; `--package <name>` flag for per-package AGENTS.md generation
+- **Sequential-thinking MCP**: Detection + template + `--add-sequential-thinking` init flag
+- **PLANS.md session scratchpad**: `rulebook plans show|init|clear` commands; AI agents read and update `.rulebook/PLANS.md` for cross-session continuity
+- **`rulebook continue` command**: Generates session continuity context (plans + pending tasks + recent commits) for pasting into new AI sessions
+- **`.cursor/rules/*.mdc` files**: Cursor IDE v0.45+ rule files auto-generated alongside legacy `.cursorrules`
+- **Ralph Shell Scripts**: Cross-platform `.sh`/`.bat` scripts installed to `.rulebook/scripts/` for invoking Ralph without MCP
+- **MCP Deduplication**: Single MCP entry per workspace with `--project-root` flag; auto-upgrades legacy entries
+- **Memory Per-Project Persistence**: Memory DB saved immediately on first write; `rulebook memory verify` diagnostic command; guaranteed per-project isolation
+- **Multi-Agent Directives**: `MULTI_AGENT.md` template + auto-config of `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` in `.claude/settings.json`
+- **Agent Definitions**: 4 pre-configured agents in `.claude/agents/` (team-lead, researcher, implementer, tester)
+- **1,086 tests passing** across 59 test files
 
 ### Changed
-- MCP server registration now includes `--project-root` argument for cross-project usage
-- Added `memory verify` CLI command for diagnosing memory storage
+- `rulebook init` now **fully prompt-free**: auto-configures from detection results with no questionnaires; existing AGENTS.md is always merged (no merge strategy question)
+- **PLANS.md moved to `.rulebook/PLANS.md`**: was previously at project root; all write helpers ensure `.rulebook/` directory exists
+- AGENTS.md reference updated to `/.rulebook/PLANS.md`
+- MCP server registration includes `--project-root` argument for cross-project usage
 - `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` auto-enabled on Claude Code detection
 - MCP server version aligned to 4.0.0
 
 ### Migration from v3
 No breaking changes to `rulebook.json` schema. Run `rulebook update` to install new files.
+
+If you have an existing `PLANS.md` at project root, move it to `.rulebook/PLANS.md`:
+```bash
+mv PLANS.md .rulebook/PLANS.md
+```
 
 ## [3.4.2] - 2026-02-27
 

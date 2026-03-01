@@ -35,14 +35,14 @@ By giving LLMs a clear "rulebook" to follow, you ensure that every piece of gene
 ## Quick Start
 
 ```bash
-# New project (interactive)
+# New project — auto-detects languages, frameworks, services (no prompts)
 npx @hivehub/rulebook@latest init
 
 # Minimal setup (essentials only)
 npx @hivehub/rulebook@latest init --minimal
 
-# Light mode (prototypes without strict rules)
-npx @hivehub/rulebook@latest init --light
+# Lean mode — AGENTS.md as <3KB index (fast AI loading)
+npx @hivehub/rulebook@latest init --lean
 
 # Update existing project
 npx @hivehub/rulebook@latest update
@@ -52,30 +52,27 @@ npx @hivehub/rulebook@latest update
 
 ### v4.0.0
 
-- 🎯 **Ralph Shell Scripts**: Cross-platform shell scripts for autonomous loop control
-  - 5 pairs of scripts (.sh for Unix, .bat for Windows): init, run, status, pause, history
-  - Installed to `.rulebook/scripts/` during `init` and `update` commands
-  - AI agents can invoke Ralph without MCP dependency using direct shell access
-- 🔌 **MCP Plugin Deduplication**: Eliminate duplicate plugins when using multiple projects
-  - Auto-detects multiple Rulebook projects and prevents duplicate MCP registration
-  - `--project-root` flag ensures correct project context in multi-workspace setups
-  - Automatic upgrade of legacy `.mcp.json` entries without `--project-root`
-- 💾 **Memory Per-Project Persistence**: Fixed memory.db reliability and per-project isolation
-  - Memory database saved immediately on first write (not waiting for 50 writes)
-  - `rulebook memory verify` command for diagnosing memory storage
-  - Guaranteed `.rulebook/memory/` directory creation during init
-  - Per-project memory isolation with correct path resolution for `npx` execution
-- 👥 **Multi-Agent Development Directives**: Full support for Claude Code agent teams
-  - New `MULTI_AGENT.md` template with team structure patterns and coordination rules
-  - 4 pre-configured agent definitions: team-lead, researcher, implementer, tester
-  - Auto-configuration of `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in `.claude/settings.json`
-  - Agent definitions installed to `.claude/agents/` for Claude Code teams
-- 📊 **794 Tests Passing**: 100% test coverage for new features
-  - Ralph scripts installation and cross-platform verification
-  - MCP deduplication logic and legacy migration
-  - Memory persistence and per-project isolation
-  - Multi-agent directives and settings configuration
-  - All quality gates: type-check ✓, lint ✓, tests ✓, coverage ✓
+- 🚀 **Zero-prompt `init`**: `rulebook init` auto-configures from detection — no questionnaires, no choices. Existing AGENTS.md is always merged automatically
+- 🛡️ **AGENTS.override.md**: Project-specific rules that survive every `init` and `update`. Never overwritten. Add team conventions, custom constraints, or framework-specific rules here
+- 📊 **Health Scorer v2**: 9-category scoring (Documentation, Testing, Code Quality, Security, CI/CD, Dependencies, AGENTS.md, Ralph, Memory) with letter grade A–F and per-category breakdown
+- 🐳 **Docker / Kubernetes / Helm**: Auto-detection + 4 best-practice templates for container-based projects
+- 🔍 **AI Code Review**: `rulebook review` runs AI code review on your current diff and generates a GitHub Actions workflow for PR review automation
+- 📥 **GitHub Issues → Ralph**: `rulebook ralph import-issues` converts GitHub Issues into Ralph user stories via `gh` CLI
+- 🛠️ **Multi-tool configs**: Auto-generate configs for Gemini CLI, Continue.dev, Windsurf, and GitHub Copilot from a single `rulebook init`
+- 📡 **Observability templates**: Sentry, OpenTelemetry, Datadog, Pino, Winston, Prometheus — detected from `package.json` and env vars
+- ⚡ **Ralph parallel execution**: `--parallel` flag processes independent stories concurrently
+- ✅ **Ralph plan checkpoint**: `--plan-first` pauses for human-in-the-loop plan approval before implementation
+- 🗜️ **Ralph context compression**: Two-tier history (full recent + summarized older) prevents context window exhaustion in long loops
+- 🔒 **Ralph security gate**: 5th quality gate via `npm audit` / `trivy` / `semgrep`
+- 📝 **PLANS.md in `.rulebook/`**: Session scratchpad moved from project root to `.rulebook/PLANS.md` for cleaner project layout
+- 🪶 **Lean mode**: `rulebook mode set lean` generates a <3KB AGENTS.md index instead of embedding all rules inline
+- 🏗️ **Monorepo support**: Detects Turborepo, Nx, pnpm workspaces, Lerna; `--package` flag for per-package AGENTS.md
+- 🧠 **Sequential-thinking MCP**: Detection, template, and `--add-sequential-thinking` flag
+- 🎯 **Ralph Shell Scripts**: Cross-platform `.sh`/`.bat` scripts in `.rulebook/scripts/` for invoking Ralph without MCP
+- 🔌 **MCP Deduplication**: Single entry per workspace with `--project-root`; auto-upgrades legacy entries
+- 💾 **Memory reliability**: DB saved on first write, `rulebook memory verify` diagnostic, per-project isolation
+- 👥 **Multi-agent teams**: `MULTI_AGENT.md` template + 4 agent definitions + auto-enable Claude Code teams
+- 📊 **1,086 tests passing** across 59 test files — all quality gates: type-check ✓ lint ✓ tests ✓ coverage ✓
 
 ### v3.1.0
 
