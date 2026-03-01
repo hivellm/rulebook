@@ -1,0 +1,24 @@
+---
+description: Go coding standards and best practices
+globs: ["**/*.go"]
+alwaysApply: false
+---
+
+# Go Rules
+
+See `/.rulebook/specs/GO.md` for full requirements.
+
+## Key Rules
+
+- Always check and handle errors (never `_` for error returns)
+- Use `errors.Is()` / `errors.As()` for error comparison
+- Prefer `context.Context` for cancellation and deadlines
+- Use `fmt.Errorf("...: %w", err)` for error wrapping
+- Follow standard Go project layout (`cmd/`, `internal/`, `pkg/`)
+- Run `gofmt` and `golangci-lint` before committing
+
+## Error Handling
+
+- Return errors as last return value
+- Wrap errors with context using `%w`
+- Use sentinel errors for well-known conditions

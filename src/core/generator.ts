@@ -875,6 +875,25 @@ export async function generateModularAgents(
     // Skills not configured or error loading - skip silently
   }
 
+  // Generate .cursor/rules/*.mdc files if Cursor is detected
+  try {
+    const { isCursorInstalled, generateCursorMdcRules } = await import('./cursor-mdc-generator.js');
+    if (isCursorInstalled(projectRoot)) {
+      const { createConfigManager } = await import('./config-manager.js');
+      const configManager = createConfigManager(projectRoot);
+      const rulebookConfig = await configManager.loadConfig();
+      const ralphEnabled = rulebookConfig.ralph?.enabled ?? false;
+
+      await generateCursorMdcRules(projectRoot, {
+        languages: mergedConfig.languages,
+        ralphEnabled,
+        rulebookDir: rulebookDir,
+      });
+    }
+  } catch {
+    // Cursor MDC generation failed - skip silently
+  }
+
   return sections.join('\n').trim() + '\n';
 }
 
