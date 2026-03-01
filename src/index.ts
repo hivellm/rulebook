@@ -45,6 +45,7 @@ import {
   ralphHistoryCommand,
   ralphPauseCommand,
   ralphResumeCommand,
+  ralphImportIssuesCommand,
   // Plans commands (v4.0)
   plansShowCommand,
   plansInitCommand,
@@ -382,6 +383,22 @@ ralphCommand
   .command('resume')
   .description('Resume from paused state')
   .action(() => ralphResumeCommand());
+
+ralphCommand
+  .command('import-issues')
+  .description('Import GitHub issues as Ralph user stories')
+  .option('--label <label>', 'Filter by label')
+  .option('--milestone <milestone>', 'Filter by milestone')
+  .option('--limit <n>', 'Maximum issues to import', '20')
+  .option('--dry-run', 'Preview without writing to PRD')
+  .action((options) =>
+    ralphImportIssuesCommand({
+      label: options.label,
+      milestone: options.milestone,
+      limit: options.limit ? parseInt(options.limit) : 20,
+      dryRun: options.dryRun,
+    })
+  );
 
 // Plans commands (v4.0) — PLANS.md session scratchpad
 const plansCommand = program.command('plans').description('Manage PLANS.md session scratchpad');

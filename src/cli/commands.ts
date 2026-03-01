@@ -3791,3 +3791,100 @@ export async function reviewCommand(options: {
     process.exit(1);
   }
 }
+
+// ─── Ralph Import Issues Command ───
+
+export async function ralphImportIssuesCommand(options: {
+  label?: string;
+  milestone?: string;
+  limit?: number;
+  dryRun?: boolean;
+}): Promise<void> {
+  const oraModule = await import('ora');
+  const ora = oraModule.default;
+
+  try {
+    const {
+      checkGhCliAvailable,
+      fetchGithubIssues,
+      convertIssueToStory,
+      mergeStoriesIntoExistingPrd,
+    } = await import('../core/github-issues-importer.js');
+
+    // 1. Check gh CLI availability
+    const ghAvailable = await checkGhCliAvailable();
+    if (!ghAvailable) {
+      console.error(
+        chalk.red(
+          'GitHub CLI (gh) is not installed. Install it from: https://cli.github.com',
+        ),
+      );
+      return;
+    }
+
+    // 2. Fetch issues
+    const spinner = ora('Fetching GitHub issues...').start();
+
+    const issues = await fetchGithubIssues({
+      label: options.label,
+      milestone: options.milestone,
+      limit: options.limit ?? 20,
+    });
+
+    if (issues.length === 0) {
+      spinner.info('No open issues found matching the given filters.');
+      return;
+    }
+
+    spinner.text = `Converting ${issues.length} issues to Ralph stories...`;
+
+    // 3. Load existing PRD (may not exist yet)
+    const cwd = process.cwd();
+    let existingPrd = null;
+    try {
+      const { RalphManager } = await import('../core/ralph-manager.js');
+      const { Logger } = await import('../core/logger.js');
+      const logger = new Logger(cwd);
+      const manager = new RalphManager(cwd, logger);
+      existingPrd = await manager.loadPRD();
+    } catch {
+      // PRD not initialized — will create a new one
+    }
+
+    // 4. Convert issues to stories
+    const newStories = issues.map((issue) => convertIssueToStory(issue));
+
+    // 5. Merge into existing PRD
+    const { prd: mergedPrd, result } = mergeStoriesIntoExistingPrd(existingPrd, newStories);
+
+    // 6. Dry run — preview only
+    if (options.dryRun) {
+      spinner.stop();
+      console.log(
+        chalk.yellow(
+          `Dry run — would import ${result.imported} stories, update ${result.updated}, skip ${result.skipped}`,
+        ),
+      );
+      console.log('');
+      for (const story of mergedPrd.userStories) {
+        const marker = story.passes ? chalk.green('[PASS]') : chalk.gray('[    ]');
+        console.log(`  ${marker} ${story.id}: ${story.title}`);
+      }
+      return;
+    }
+
+    // 7. Save PRD
+    const prdPath = path.join(cwd, '.rulebook', 'ralph', 'prd.json');
+    await ensureDir(path.join(cwd, '.rulebook', 'ralph'));
+    await writeFile(prdPath, JSON.stringify(mergedPrd, null, 2));
+
+    spinner.succeed(
+      `Imported ${result.imported} new stories, updated ${result.updated} existing, ${result.skipped} skipped`,
+    );
+    console.log(`\n  PRD saved to: ${prdPath}`);
+    console.log(`  Total stories: ${mergedPrd.userStories.length}\n`);
+  } catch (error) {
+    console.error(chalk.red(`Failed to import GitHub issues: ${String(error)}`));
+    process.exit(1);
+  }
+}

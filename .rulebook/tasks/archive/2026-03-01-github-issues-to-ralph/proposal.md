@@ -1,5 +1,9 @@
 # Proposal: GitHub Issues → Ralph Stories Import
 
+## Why
+
+To seed Ralph with real project requirements directly from GitHub Issues without manual data entry.
+
 ## Context
 
 Teams already track work in GitHub Issues. Having to manually transcribe issues into Ralph PRD format is friction that prevents adoption. This feature auto-imports GitHub Issues as Ralph user stories.
