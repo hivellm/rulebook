@@ -875,6 +875,25 @@ export async function generateModularAgents(
     // Skills not configured or error loading - skip silently
   }
 
+  // Add monorepo package index if monorepo detected
+  try {
+    const { detectMonorepo } = await import('./detector.js');
+    const monorepo = await detectMonorepo(projectRoot);
+    if (monorepo.detected && monorepo.packages.length > 0) {
+      sections.push('## Monorepo Package Index');
+      sections.push('');
+      sections.push(`Monorepo tool: **${monorepo.tool}**`);
+      sections.push('');
+      sections.push('Packages:');
+      for (const pkg of monorepo.packages) {
+        sections.push(`- \`${pkg}/\` — see \`${pkg}/AGENTS.md\` for package-specific rules`);
+      }
+      sections.push('');
+    }
+  } catch {
+    // Monorepo detection failed — skip silently
+  }
+
   // Generate .cursor/rules/*.mdc files if Cursor is detected
   try {
     const { isCursorInstalled, generateCursorMdcRules } = await import('./cursor-mdc-generator.js');

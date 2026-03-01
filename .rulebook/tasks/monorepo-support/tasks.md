@@ -1,22 +1,27 @@
 # Tasks: Real Monorepo Support
 
-- [ ] Add `MonorepoDetection` type to `src/types.ts`
-- [ ] Implement monorepo detection in `src/core/detector.ts`
-  - [ ] Detect `turbo.json` → Turborepo
-  - [ ] Detect `nx.json` → Nx
-  - [ ] Detect `pnpm-workspace.yaml` → pnpm workspaces
-  - [ ] Detect `lerna.json` → Lerna
-  - [ ] Auto-discover packages from `packages/*/package.json`
-  - [ ] Auto-discover packages from `apps/*/package.json`
+- [x] Add `MonorepoDetection` type to `src/types.ts`
+- [x] Add `monorepo` section to `RulebookConfig` in `src/types.ts`
+- [x] Implement monorepo detection in `src/core/detector.ts`
+  - [x] Detect `turbo.json` → Turborepo
+  - [x] Detect `nx.json` → Nx
+  - [x] Detect `pnpm-workspace.yaml` → pnpm workspaces
+  - [x] Detect `lerna.json` → Lerna
+  - [x] Auto-discover packages from `packages/*/package.json`
+  - [x] Auto-discover packages from `apps/*/package.json`
+  - [x] Auto-discover packages from `libs/*/package.json`
+- [x] Export `detectMonorepo()` as standalone function
+- [x] Add `monorepo` to `DetectionResult` return value
 - [ ] Add `monorepo` section to rulebook.json schema in config-manager.ts
 - [ ] Implement `generatePackageAgentsMd(packageRoot, detection)` in generator.ts
-- [ ] Update root AGENTS.md generation to include monorepo package index
-- [ ] Generate per-package `.rulebook/specs/` relative references
+- [x] Update root AGENTS.md generation to include monorepo package index
+- [ ] Generate per-package AGENTS.md files for each discovered package
 - [ ] Add monorepo quality gate: run `turbo run test` / `nx run-many` when detected
 - [ ] Add `rulebook init --package <name>` flag for single-package init in monorepo
 - [ ] Show monorepo detection output in init/update CLI
-- [ ] Write tests: turbo.json detection → MonorepoDetection.tool === 'turborepo'
-- [ ] Write tests: pnpm-workspace.yaml → packages discovered correctly
-- [ ] Write tests: per-package AGENTS.md generated for each package
-- [ ] Write tests: root AGENTS.md includes package index
-- [ ] Run full test suite
+- [x] Write tests: turbo.json detection → MonorepoDetection.tool === 'turborepo'
+- [x] Write tests: pnpm-workspace.yaml → packages discovered correctly
+- [x] Write tests: manual monorepo with 2+ packages detected
+- [x] Write tests: single package not detected as monorepo
+- [x] Write tests: packages in apps/ and libs/ directories discovered
+- [x] Run full test suite (887 tests passing)

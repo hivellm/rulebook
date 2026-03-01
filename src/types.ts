@@ -17,6 +17,12 @@ export type FrameworkId =
   | 'flutter'
   | 'electron';
 
+export interface MonorepoDetection {
+  detected: boolean;
+  tool: 'turborepo' | 'nx' | 'pnpm' | 'lerna' | 'manual' | null;
+  packages: string[]; // relative paths to package roots
+}
+
 export interface DetectionResult {
   languages: LanguageDetection[];
   modules: ModuleDetection[];
@@ -24,6 +30,7 @@ export interface DetectionResult {
   services: ServiceDetection[];
   existingAgents: ExistingAgentsInfo | null;
   projectType?: 'monorepo' | 'library' | 'application' | 'cli';
+  monorepo?: MonorepoDetection;
   gitHooks?: {
     preCommitExists: boolean;
     prePushExists: boolean;
@@ -210,6 +217,12 @@ export interface RulebookConfig {
   modular?: boolean; // Enable modular /.rulebook directory structure
   rulebookDir?: string; // Custom rulebook directory (default: '.rulebook')
   agentsMode?: 'full' | 'lean'; // AGENTS.md generation mode: full (default) or lean (index-only)
+  // Monorepo configuration (v4.0)
+  monorepo?: {
+    detected?: boolean;
+    tool?: 'turborepo' | 'nx' | 'pnpm' | 'lerna' | 'manual' | null;
+    packages?: string[]; // relative paths to package roots
+  };
   // MCP server configuration
   mcp?: {
     enabled?: boolean;

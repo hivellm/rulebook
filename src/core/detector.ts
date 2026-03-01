@@ -1,4 +1,6 @@
 import path from 'path';
+import { existsSync } from 'fs';
+import { readdir } from 'fs/promises';
 import { fileExists, findFiles, readFile, readJsonFile } from '../utils/file-system.js';
 import type {
   DetectionResult,
@@ -10,6 +12,7 @@ import type {
   ServiceId,
   ExistingAgentsInfo,
   AgentBlock,
+  MonorepoDetection,
 } from '../types.js';
 
 export async function detectProject(cwd: string = process.cwd()): Promise<DetectionResult> {
@@ -19,6 +22,7 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
   const services = await detectServices(cwd);
   const existingAgents = await detectExistingAgents(cwd);
   const gitHooks = await detectGitHooks(cwd);
+  const monorepo = await detectMonorepo(cwd);
 
   return {
     languages,
@@ -27,7 +31,73 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
     services,
     existingAgents,
     gitHooks,
+    monorepo,
   };
+}
+
+/**
+ * Detect monorepo structure: Turborepo, Nx, pnpm workspaces, Lerna, or manual.
+ */
+export async function detectMonorepo(cwd: string): Promise<MonorepoDetection> {
+  // Turborepo
+  if (existsSync(path.join(cwd, 'turbo.json'))) {
+    const packages = await discoverPackages(cwd);
+    return { detected: true, tool: 'turborepo', packages };
+  }
+
+  // Nx
+  if (existsSync(path.join(cwd, 'nx.json'))) {
+    const packages = await discoverPackages(cwd);
+    return { detected: true, tool: 'nx', packages };
+  }
+
+  // pnpm workspaces
+  if (existsSync(path.join(cwd, 'pnpm-workspace.yaml'))) {
+    const packages = await discoverPackages(cwd);
+    return { detected: true, tool: 'pnpm', packages };
+  }
+
+  // Lerna
+  if (existsSync(path.join(cwd, 'lerna.json'))) {
+    const packages = await discoverPackages(cwd);
+    return { detected: true, tool: 'lerna', packages };
+  }
+
+  // Manual monorepo — packages/ or apps/ directory with multiple package.json files
+  const packages = await discoverPackages(cwd);
+  if (packages.length >= 2) {
+    return { detected: true, tool: 'manual', packages };
+  }
+
+  return { detected: false, tool: null, packages: [] };
+}
+
+/**
+ * Discover package directories by looking for package.json in packages/ and apps/.
+ */
+async function discoverPackages(cwd: string): Promise<string[]> {
+  const packageDirs: string[] = [];
+  const searchDirs = ['packages', 'apps', 'libs', 'services'];
+
+  for (const searchDir of searchDirs) {
+    const absDir = path.join(cwd, searchDir);
+    if (!existsSync(absDir)) continue;
+
+    try {
+      const entries = await readdir(absDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const pkgJson = path.join(absDir, entry.name, 'package.json');
+        if (existsSync(pkgJson)) {
+          packageDirs.push(`${searchDir}/${entry.name}`);
+        }
+      }
+    } catch {
+      // ignore unreadable dirs
+    }
+  }
+
+  return packageDirs;
 }
 
 async function detectLanguages(cwd: string): Promise<LanguageDetection[]> {
