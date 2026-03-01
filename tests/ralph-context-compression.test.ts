@@ -121,4 +121,29 @@ describe('IterationTracker.buildCompressedContext', () => {
     // 5 iterations, threshold is 5: compression applies (sorted.length >= threshold)
     expect(ctx).toContain('History Summary');
   });
+
+  it('memory adapter enriches context with relevant learnings', async () => {
+    const tracker = await setupTracker(6);
+
+    const mockAdapter = {
+      searchMemory: async () => [
+        { title: 'Fix lint errors', content: 'Always run lint before commit', tags: ['lint'] },
+        { title: 'Test coverage tip', content: 'Mock external dependencies for coverage', tags: [] },
+      ],
+    };
+    tracker.setMemoryAdapter(mockAdapter);
+
+    const ctx = await tracker.buildCompressedContext(3, 5);
+    expect(ctx).toContain('Relevant Past Learnings');
+    expect(ctx).toContain('Fix lint errors');
+    expect(ctx).toContain('Test coverage tip');
+  });
+
+  it('missing memory adapter does not break compression', async () => {
+    const tracker = await setupTracker(6);
+    // No adapter set — should work fine without memory enrichment
+    const ctx = await tracker.buildCompressedContext(3, 5);
+    expect(ctx).not.toContain('Relevant Past Learnings');
+    expect(ctx).toContain('History Summary');
+  });
 });

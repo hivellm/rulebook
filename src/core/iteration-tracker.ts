@@ -4,6 +4,15 @@ import path from 'path';
 import { Logger } from './logger.js';
 import { RalphIterationMetadata, IterationResult } from '../types.js';
 
+/** Minimal interface for memory search — avoids hard dependency on MemoryManager */
+export interface IterationMemoryAdapter {
+  searchMemory(input: {
+    query: string;
+    limit?: number;
+    mode?: 'bm25' | 'vector' | 'hybrid';
+  }): Promise<Array<{ title: string; content: string; tags?: string[] }>>;
+}
+
 /**
  * Tracks iteration history, metrics, and learnings across autonomous runs
  */
@@ -11,11 +20,20 @@ export class IterationTracker {
   private ralphDir: string;
   private historyDir: string;
   private logger: Logger;
+  private memoryAdapter: IterationMemoryAdapter | null = null;
 
   constructor(projectRoot: string, logger: Logger) {
     this.logger = logger;
     this.ralphDir = path.join(projectRoot, '.rulebook', 'ralph');
     this.historyDir = path.join(this.ralphDir, 'history');
+  }
+
+  /**
+   * Attach a memory adapter for retrieving relevant past learnings.
+   * Optional — context compression still works without it.
+   */
+  setMemoryAdapter(adapter: IterationMemoryAdapter): void {
+    this.memoryAdapter = adapter;
   }
 
   /**
@@ -290,6 +308,26 @@ export class IterationTracker {
     const historical = sorted.slice(0, sorted.length - recentCount);
 
     const lines: string[] = [];
+
+    // Memory-backed retrieval: search for relevant past learnings
+    if (this.memoryAdapter) {
+      try {
+        const currentTask = recent.at(-1)?.task_title ?? '';
+        const query = currentTask
+          ? `Ralph iteration learnings ${currentTask}`
+          : 'Ralph iteration learnings errors fixes';
+        const memories = await this.memoryAdapter.searchMemory({ query, limit: 3, mode: 'hybrid' });
+        if (memories.length > 0) {
+          lines.push('## Relevant Past Learnings (from memory)');
+          for (const mem of memories) {
+            lines.push(`- **${mem.title}**: ${mem.content.slice(0, 200).replace(/\n/g, ' ')}`);
+          }
+          lines.push('');
+        }
+      } catch {
+        // Memory retrieval is optional — skip on error
+      }
+    }
 
     // Compressed historical summary
     if (historical.length > 0) {
