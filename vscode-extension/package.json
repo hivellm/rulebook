@@ -4,6 +4,11 @@
   "description": "Visual dashboard for Rulebook — monitor tasks, agents, Ralph, memory, and the background indexer",
   "version": "0.1.0",
   "publisher": "hivellm",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hivellm/rulebook"
+  },
+  "license": "Apache-2.0",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -12,7 +17,7 @@
     "workspaceContains:.rulebook"
   ],
   "main": "./dist/extension.js",
-  "icon": "media/icon.png",
+
   "contributes": {
     "viewsContainers": {
       "activitybar": [
