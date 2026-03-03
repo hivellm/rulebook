@@ -160,16 +160,16 @@ export async function startRulebookMcpServer(): Promise<void> {
             text: JSON.stringify({
               task: task
                 ? {
-                  id: task.id,
-                  title: task.title,
-                  status: task.status,
-                  proposal: task.proposal,
-                  tasks: task.tasks,
-                  design: task.design,
-                  specs: task.specs,
-                  createdAt: task.createdAt,
-                  updatedAt: task.updatedAt,
-                }
+                    id: task.id,
+                    title: task.title,
+                    status: task.status,
+                    proposal: task.proposal,
+                    tasks: task.tasks,
+                    design: task.design,
+                    specs: task.specs,
+                    createdAt: task.createdAt,
+                    updatedAt: task.updatedAt,
+                  }
                 : null,
               found: task !== null,
             }),
@@ -667,7 +667,6 @@ export async function startRulebookMcpServer(): Promise<void> {
         if (memoryManager) await memoryManager.close();
         process.exit(0);
       });
-
     } catch (e) {
       console.warn('[rulebook-mcp] Failed to boot Memory/Indexer:', e);
     }
@@ -1408,11 +1407,11 @@ export async function startRulebookMcpServer(): Promise<void> {
                   running,
                   ...(running && lockInfo
                     ? {
-                      runningPid: lockInfo.pid,
-                      runningTask: lockInfo.currentTask || null,
-                      runningIteration: lockInfo.iteration || 0,
-                      runningSince: lockInfo.startedAt,
-                    }
+                        runningPid: lockInfo.pid,
+                        runningTask: lockInfo.currentTask || null,
+                        runningIteration: lockInfo.iteration || 0,
+                        runningSince: lockInfo.startedAt,
+                      }
                     : {}),
                   iteration: status.current_iteration,
                   maxIterations: status.max_iterations,
@@ -1520,14 +1519,16 @@ export async function startRulebookMcpServer(): Promise<void> {
         const results = await memoryManager.searchMemories({
           query: args.query,
           limit: args.limit ?? 10,
-          mode: 'hybrid' // Force hybrid search for best code-chunk matching
+          mode: 'hybrid', // Force hybrid search for best code-chunk matching
         });
 
         // Filter out normal memories, keep only code nodes
         const codeResults = results.filter((r: any) => r.id.startsWith('__code__'));
 
         return {
-          content: [{ type: 'text', text: JSON.stringify({ success: true, results: codeResults }) }],
+          content: [
+            { type: 'text', text: JSON.stringify({ success: true, results: codeResults }) },
+          ],
         };
       } catch (error) {
         return {
@@ -1552,18 +1553,21 @@ export async function startRulebookMcpServer(): Promise<void> {
     async (args) => {
       if (!memoryManager) return memoryNotEnabled();
       try {
-        // Since V1 has limited Graph search implementation in memory-search, 
+        // Since V1 has limited Graph search implementation in memory-search,
         // we'll return a placeholder indicating the edge relations.
         // In a real implementation we would call a memoryManager.getGraphAdjacent(args.filePath)
 
         return {
-          content: [{
-            type: 'text', text: JSON.stringify({
-              success: true,
-              message: `Graph query for ${args.filePath} accepted. (Note: Graph deep-search pending V2 implementation, use codebase_search for now.)`,
-              filePath: args.filePath
-            })
-          }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                message: `Graph query for ${args.filePath} accepted. (Note: Graph deep-search pending V2 implementation, use codebase_search for now.)`,
+                filePath: args.filePath,
+              }),
+            },
+          ],
         };
       } catch (error) {
         return {
@@ -1587,7 +1591,9 @@ export async function startRulebookMcpServer(): Promise<void> {
       try {
         // Because the BackgroundIndexer runs asynchronously, we fetch its global state
         // assuming it was attached to the server context during boot.
-        const status = (global as any).__indexerStatus ? (global as any).__indexerStatus() : { running: false, error: 'Indexer not attached to global context' };
+        const status = (global as any).__indexerStatus
+          ? (global as any).__indexerStatus()
+          : { running: false, error: 'Indexer not attached to global context' };
         return {
           content: [{ type: 'text', text: JSON.stringify({ success: true, status }) }],
         };

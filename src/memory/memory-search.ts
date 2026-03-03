@@ -23,7 +23,7 @@ export class MemorySearch {
     private store: MemoryStore,
     private index: HNSWIndex,
     private dimensions: number = 256
-  ) { }
+  ) {}
 
   /**
    * Search memories using the specified mode

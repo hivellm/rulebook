@@ -284,7 +284,7 @@ export class MemoryManager {
 
   async deleteCodeNodesByFile(filePath: string): Promise<void> {
     await this.ensureInitialized();
-    // In an ideal architecture we would query the store for all nodes belonging to this file, 
+    // In an ideal architecture we would query the store for all nodes belonging to this file,
     // then remove them from HNSW, before deleting from SQLite.
     // For V1, the SQLite triggers delete, but HNSW vectors stay as orphans until a rebuild.
     // A future improvement: add a HNSW delete via batch.

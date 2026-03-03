@@ -20,7 +20,14 @@ export interface CodeNode {
   updatedAt: number; // epoch ms
 }
 
-export type CodeEdgeType = 'imports' | 'exports' | 'implements' | 'calls' | 'extends' | 'instantiates' | 'unknown';
+export type CodeEdgeType =
+  | 'imports'
+  | 'exports'
+  | 'implements'
+  | 'calls'
+  | 'extends'
+  | 'instantiates'
+  | 'unknown';
 
 export interface CodeEdge {
   id: string; // Hash of sourceId + targetId + type
