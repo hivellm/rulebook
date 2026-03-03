@@ -2,6 +2,15 @@ import { execSync } from 'child_process';
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 
+export interface AgentInfo {
+    id: string;
+    name: string;
+    description: string;
+    status: 'active' | 'idle' | 'unknown';
+    hasMemory: boolean;
+    lastActivity: number; // epoch ms, 0 if unknown
+}
+
 export interface TaskInfo {
     id: string;
     status: 'active' | 'completed' | 'archived';
@@ -213,6 +222,71 @@ export class RulebookClient {
             processed: 0,
             errors: 0,
         };
+    }
+
+    /**
+     * List agents from .claude/agents/ and detect activity
+     */
+    listAgents(): AgentInfo[] {
+        const agentsDir = join(this.workspaceRoot, '.claude', 'agents');
+        const agentMemoryDir = join(this.workspaceRoot, '.claude', 'agent-memory');
+        if (!existsSync(agentsDir)) return [];
+
+        const agents: AgentInfo[] = [];
+        const now = Date.now();
+        const ACTIVE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+
+        try {
+            const files = readdirSync(agentsDir).filter(f => f.endsWith('.md'));
+            for (const file of files) {
+                const filePath = join(agentsDir, file);
+                const content = readFileSync(filePath, 'utf-8');
+                const id = basename(file, '.md');
+
+                // Parse YAML frontmatter
+                let name = id;
+                let description = '';
+                const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+                if (fmMatch) {
+                    const fm = fmMatch[1];
+                    const nameMatch = fm.match(/name:\s*(.+)/);
+                    const descMatch = fm.match(/description:\s*(.+)/);
+                    if (nameMatch) name = nameMatch[1].trim();
+                    if (descMatch) description = descMatch[1].trim();
+                }
+
+                // Check agent-memory for activity
+                const memDir = join(agentMemoryDir, id);
+                const hasMemory = existsSync(memDir);
+                let lastActivity = 0;
+
+                if (hasMemory) {
+                    try {
+                        const memFiles = readdirSync(memDir);
+                        for (const mf of memFiles) {
+                            const mfPath = join(memDir, mf);
+                            const mfStat = statSync(mfPath);
+                            if (mfStat.mtimeMs > lastActivity) {
+                                lastActivity = mfStat.mtimeMs;
+                            }
+                        }
+                    } catch { /* ignore */ }
+                }
+
+                // Agent is "active" if its memory was modified in the last 5 minutes
+                const status = lastActivity > 0 && (now - lastActivity) < ACTIVE_THRESHOLD
+                    ? 'active' as const
+                    : lastActivity > 0 ? 'idle' as const : 'unknown' as const;
+
+                agents.push({ id, name, description, status, hasMemory, lastActivity });
+            }
+        } catch { /* ignore */ }
+
+        // Sort: active first, then idle, then unknown
+        const order = { active: 0, idle: 1, unknown: 2 };
+        agents.sort((a, b) => order[a.status] - order[b.status]);
+
+        return agents;
     }
 
     /**

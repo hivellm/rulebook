@@ -2,101 +2,102 @@ import * as vscode from 'vscode';
 import { RulebookClient } from '../services/rulebook-client';
 
 export class DashboardProvider implements vscode.WebviewViewProvider {
-    private view?: vscode.WebviewView;
+  private view?: vscode.WebviewView;
 
-    constructor(
-        private readonly extensionUri: vscode.Uri,
-        private readonly client: RulebookClient,
-        private readonly workspaceRoot: string
-    ) { }
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly client: RulebookClient,
+    private readonly workspaceRoot: string
+  ) { }
 
-    resolveWebviewView(
-        webviewView: vscode.WebviewView,
-        _context: vscode.WebviewViewResolveContext,
-        _token: vscode.CancellationToken
-    ) {
-        this.view = webviewView;
+  resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    _context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken
+  ) {
+    this.view = webviewView;
 
-        webviewView.webview.options = {
-            enableScripts: true,
-            localResourceRoots: [this.extensionUri],
-        };
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [this.extensionUri],
+    };
 
-        webviewView.webview.html = this.getHtmlContent(webviewView.webview);
+    webviewView.webview.html = this.getHtmlContent(webviewView.webview);
 
-        // Handle messages from the webview
-        webviewView.webview.onDidReceiveMessage(async (message) => {
-            switch (message.command) {
-                case 'refresh':
-                    this.sendDataToWebview();
-                    break;
-                case 'getTasks':
-                    this.sendDataToWebview();
-                    break;
-                case 'getTaskDetails': {
-                    const details = this.client.getTaskDetails(message.taskId);
-                    webviewView.webview.postMessage({ type: 'taskDetails', data: details, taskId: message.taskId });
-                    break;
-                }
-                case 'searchMemory': {
-                    const results = this.client.searchMemory(message.query);
-                    webviewView.webview.postMessage({ type: 'memoryResults', data: results });
-                    break;
-                }
-                case 'reindex':
-                    await this.client.reindexCodebase();
-                    vscode.window.showInformationMessage('Rulebook: Reindex triggered');
-                    this.sendDataToWebview();
-                    break;
-                case 'clearMemory':
-                    await this.client.clearMemory();
-                    vscode.window.showInformationMessage('Rulebook: Memory cleared');
-                    this.sendDataToWebview();
-                    break;
-            }
-        });
+    // Handle messages from the webview
+    webviewView.webview.onDidReceiveMessage(async (message) => {
+      switch (message.command) {
+        case 'refresh':
+          this.sendDataToWebview();
+          break;
+        case 'getTasks':
+          this.sendDataToWebview();
+          break;
+        case 'getTaskDetails': {
+          const details = this.client.getTaskDetails(message.taskId);
+          webviewView.webview.postMessage({ type: 'taskDetails', data: details, taskId: message.taskId });
+          break;
+        }
+        case 'searchMemory': {
+          const results = this.client.searchMemory(message.query);
+          webviewView.webview.postMessage({ type: 'memoryResults', data: results });
+          break;
+        }
+        case 'reindex':
+          await this.client.reindexCodebase();
+          vscode.window.showInformationMessage('Rulebook: Reindex triggered');
+          this.sendDataToWebview();
+          break;
+        case 'clearMemory':
+          await this.client.clearMemory();
+          vscode.window.showInformationMessage('Rulebook: Memory cleared');
+          this.sendDataToWebview();
+          break;
+      }
+    });
 
-        // Initial data load
+    // Initial data load
+    this.sendDataToWebview();
+
+    // Auto-refresh every 5 seconds
+    const interval = setInterval(() => {
+      if (this.view?.visible) {
         this.sendDataToWebview();
+      }
+    }, 5000);
 
-        // Auto-refresh every 5 seconds
-        const interval = setInterval(() => {
-            if (this.view?.visible) {
-                this.sendDataToWebview();
-            }
-        }, 5000);
+    webviewView.onDidDispose(() => clearInterval(interval));
+  }
 
-        webviewView.onDidDispose(() => clearInterval(interval));
-    }
+  public refresh() {
+    this.sendDataToWebview();
+  }
 
-    public refresh() {
-        this.sendDataToWebview();
-    }
+  private sendDataToWebview() {
+    if (!this.view) return;
 
-    private sendDataToWebview() {
-        if (!this.view) return;
+    const tasks = this.client.listTasks();
+    const agents = this.client.listAgents();
+    const ralph = this.client.getRalphStatus();
+    const memory = this.client.getMemoryStats();
+    const indexer = this.client.getIndexerStatus();
 
-        const tasks = this.client.listTasks();
-        const ralph = this.client.getRalphStatus();
-        const memory = this.client.getMemoryStats();
-        const indexer = this.client.getIndexerStatus();
+    this.view.webview.postMessage({
+      type: 'fullUpdate',
+      data: { tasks, agents, ralph, memory, indexer },
+    });
+  }
 
-        this.view.webview.postMessage({
-            type: 'fullUpdate',
-            data: { tasks, ralph, memory, indexer },
-        });
-    }
+  private getHtmlContent(webview: vscode.Webview): string {
+    const stylesUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'media', 'dashboard.css')
+    );
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'media', 'dashboard.js')
+    );
+    const nonce = getNonce();
 
-    private getHtmlContent(webview: vscode.Webview): string {
-        const stylesUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'media', 'dashboard.css')
-        );
-        const scriptUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'media', 'dashboard.js')
-        );
-        const nonce = getNonce();
-
-        return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -115,14 +116,25 @@ export class DashboardProvider implements vscode.WebviewViewProvider {
 
     <!-- Tab Bar -->
     <div class="tab-bar">
-      <button class="tab active" data-tab="tasks">📋 Tasks</button>
+      <button class="tab active" data-tab="agents">🤖 Agents</button>
+      <button class="tab" data-tab="tasks">📋 Tasks</button>
       <button class="tab" data-tab="ralph">🔄 Ralph</button>
       <button class="tab" data-tab="memory">🧠 Memory</button>
       <button class="tab" data-tab="indexer">🔍 Indexer</button>
     </div>
 
+    <!-- Agents Tab -->
+    <div class="tab-content active" id="tab-agents">
+      <div class="section-header">
+        <h2>Agent Teams</h2>
+      </div>
+      <div id="agents-list" class="card-list">
+        <div class="loading">Loading agents...</div>
+      </div>
+    </div>
+
     <!-- Tasks Tab -->
-    <div class="tab-content active" id="tab-tasks">
+    <div class="tab-content" id="tab-tasks">
       <div class="section-header">
         <h2>Project Tasks</h2>
       </div>
@@ -174,14 +186,14 @@ export class DashboardProvider implements vscode.WebviewViewProvider {
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
-    }
+  }
 }
 
 function getNonce(): string {
-    let text = '';
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    for (let i = 0; i < 32; i++) {
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-    }
-    return text;
+  let text = '';
+  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  for (let i = 0; i < 32; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
 }
