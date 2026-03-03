@@ -53,18 +53,71 @@ export class DashboardProvider implements vscode.WebviewViewProvider {
           vscode.window.showInformationMessage('Rulebook: Memory cleared');
           this.sendDataToWebview();
           break;
+        case 'archiveTask': {
+          const confirm = await vscode.window.showWarningMessage(
+            `Archive task "${message.taskId}"?`, { modal: true }, 'Archive'
+          );
+          if (confirm === 'Archive') {
+            const ok = this.client.archiveTask(message.taskId);
+            vscode.window.showInformationMessage(
+              ok ? `Task "${message.taskId}" archived` : `Failed to archive task`
+            );
+            this.sendDataToWebview();
+          }
+          break;
+        }
+        case 'updateTask': {
+          const taskId = message.taskId;
+          const terminal = vscode.window.createTerminal({
+            name: `Rulebook: Update ${taskId}`,
+            cwd: this.workspaceRoot,
+          });
+          terminal.show();
+          terminal.sendText(
+            `claude "Read the task at .rulebook/tasks/${taskId}/tasks.md. Review the current codebase state and update the tasks.md checklist to reflect what has actually been completed, what is in progress, and what remains. Mark completed items with [x], in-progress with [/], and pending with [ ]. Be thorough."`
+          );
+          break;
+        }
+        case 'stopAgent': {
+          const { teamName, memberName } = message;
+          const confirm = await vscode.window.showWarningMessage(
+            `Stop agent "${memberName}" in team "${teamName}"?`,
+            { modal: true },
+            'Stop'
+          );
+          if (confirm === 'Stop') {
+            // Write a stop-request sentinel file that the team task system checks
+            const { writeFileSync, mkdirSync } = await import('fs');
+            const { homedir } = await import('os');
+            const { join } = await import('path');
+            try {
+              const stopDir = join(homedir(), '.claude', 'teams', teamName, 'stop-requests');
+              mkdirSync(stopDir, { recursive: true });
+              writeFileSync(
+                join(stopDir, `${memberName}.json`),
+                JSON.stringify({ requestedAt: Date.now(), member: memberName }),
+                'utf-8'
+              );
+              vscode.window.showInformationMessage(`Stop request sent to "${memberName}"`);
+            } catch (e) {
+              vscode.window.showErrorMessage(`Failed to send stop request: ${e}`);
+            }
+            this.sendDataToWebview();
+          }
+          break;
+        }
       }
     });
 
     // Initial data load
     this.sendDataToWebview();
 
-    // Auto-refresh every 5 seconds
+    // Auto-refresh every 3 seconds
     const interval = setInterval(() => {
       if (this.view?.visible) {
         this.sendDataToWebview();
       }
-    }, 5000);
+    }, 3000);
 
     webviewView.onDidDispose(() => clearInterval(interval));
   }

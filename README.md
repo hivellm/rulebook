@@ -194,6 +194,33 @@ Memory is enabled in `.rulebook`:
 - 📦 **Publication Ready**: CI/CD pipelines for npm, crates.io, PyPI, Maven Central, and more
 - 🔄 **Automatic Migration**: Existing projects automatically migrated to modular structure
 
+## VSCode Extension
+
+The **Rulebook Dashboard** extension brings full visibility into your AI-powered workflow directly inside VSCode.
+
+```bash
+# Install from .vsix (local)
+code --install-extension vscode-extension/rulebook-dashboard-*.vsix
+
+# Or build from source
+cd vscode-extension && npm install && npm run compile
+# Press F5 to launch Extension Development Host
+```
+
+| Tab | What it shows |
+|-----|---------------|
+| 🤖 **Agents** | All Claude agent team members with real-time status (active/idle), memory state, last activity |
+| 📋 **Tasks** | Project tasks with progress bars, expandable details, Archive & Update via AI buttons |
+| 🔄 **Ralph** | Autonomous loop status, current iteration, progress tracking |
+| 🧠 **Memory** | Memory stats (count, DB size, types), full-text search, clear/reprocess |
+| 🔍 **Indexer** | Background indexer status, files processed, queue size, reindex button |
+
+**Multi-root workspace support** — scans all open workspace folders for `.claude/agents/`, `.rulebook/tasks/`, and more.
+
+**Status Bar** — `📖 Rulebook` button (opens dashboard), indexer indicator, Ralph running state.
+
+> See [`vscode-extension/README.md`](vscode-extension/README.md) for full documentation.
+
 ## What It Does
 
 **For New Projects:**

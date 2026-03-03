@@ -1,14 +1,55 @@
 import { execSync } from 'child_process';
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
-import { join } from 'path';
+import { homedir } from 'os';
+import { basename, join } from 'path';
 
-export interface AgentInfo {
-    id: string;
+/** Read the last assistant text and tool call count from a subagent JSONL file */
+function readAgentActivity(jsonlPath: string): { text: string | null; timestamp: string | null; toolCallCount: number } {
+    const result = { text: null as string | null, timestamp: null as string | null, toolCallCount: 0 };
+    try {
+        const content = readFileSync(jsonlPath, { encoding: 'utf-8' });
+        const lines = content.split('\n').filter(l => l.trim());
+        for (const line of lines) {
+            try {
+                const d = JSON.parse(line);
+                const msg = d?.message;
+                if (!msg) continue;
+                if (msg.role === 'assistant') {
+                    const blocks: any[] = Array.isArray(msg.content) ? msg.content : [];
+                    for (const block of blocks) {
+                        if (block?.type === 'tool_use') result.toolCallCount++;
+                        if (block?.type === 'text' && typeof block.text === 'string' && block.text.trim()) {
+                            result.text = block.text.trim().replace(/\s+/g, ' ').slice(0, 200);
+                            result.timestamp = d.timestamp ?? null;
+                        }
+                    }
+                }
+            } catch { /* skip malformed lines */ }
+        }
+    } catch { /* file unreadable */ }
+    return result;
+}
+
+export interface AgentMember {
     name: string;
+    agentType: string;
+    currentTask: string | null;
+    taskStatus: string | null;
+    /** Last assistant text snippet from the agent's JSONL transcript (max 200 chars) */
+    lastActivity: string | null;
+    /** ISO timestamp of the last activity */
+    lastActivityAt: string | null;
+    /** Number of tool calls made so far */
+    toolCallCount: number;
+    /** Agent's joinedAt timestamp (ms) — used to locate the JSONL file */
+    joinedAt: number;
+}
+
+export interface AgentTeam {
+    teamName: string;
     description: string;
-    status: 'active' | 'idle' | 'unknown';
-    hasMemory: boolean;
-    lastActivity: number; // epoch ms, 0 if unknown
+    members: AgentMember[];
+    createdAt: number;
 }
 
 export interface TaskInfo {
@@ -48,15 +89,20 @@ export interface MemorySearchResult {
 }
 
 export class RulebookClient {
-    constructor(private workspaceRoot: string) { }
+    private roots: string[];
 
-    /**
-     * Run a rulebook CLI command and return parsed JSON, or null on failure
-     */
-    private exec(args: string): string | null {
+    constructor(workspaceRoots: string[]) {
+        this.roots = workspaceRoots;
+    }
+
+    get primaryRoot(): string {
+        return this.roots[0];
+    }
+
+    private exec(args: string, cwd?: string): string | null {
         try {
             const result = execSync(`npx --no-install rulebook ${args}`, {
-                cwd: this.workspaceRoot,
+                cwd: cwd || this.primaryRoot,
                 timeout: 10000,
                 encoding: 'utf-8',
                 stdio: ['pipe', 'pipe', 'pipe'],
@@ -67,249 +113,267 @@ export class RulebookClient {
         }
     }
 
-    private execJson<T>(args: string): T | null {
-        const raw = this.exec(args);
-        if (!raw) return null;
-        try {
-            return JSON.parse(raw) as T;
-        } catch {
-            return null;
-        }
-    }
-
-    /**
-     * List tasks by reading the filesystem directly (faster than CLI)
-     */
+    /** List tasks from ALL workspace folders */
     listTasks(): TaskInfo[] {
-        const tasksDir = join(this.workspaceRoot, '.rulebook', 'tasks');
-        if (!existsSync(tasksDir)) return [];
-
         const tasks: TaskInfo[] = [];
 
-        try {
-            const entries = readdirSync(tasksDir);
-            for (const entry of entries) {
-                if (entry === 'archive') continue;
-                const taskPath = join(tasksDir, entry);
-                if (!statSync(taskPath).isDirectory()) continue;
+        for (const root of this.roots) {
+            const tasksDir = join(root, '.rulebook', 'tasks');
+            if (!existsSync(tasksDir)) continue;
 
-                const tasksFile = join(taskPath, 'tasks.md');
-                let taskCount = 0;
-                let completedCount = 0;
+            try {
+                const entries = readdirSync(tasksDir);
+                for (const entry of entries) {
+                    if (entry === 'archive') continue;
+                    const taskPath = join(tasksDir, entry);
+                    if (!statSync(taskPath).isDirectory()) continue;
 
-                if (existsSync(tasksFile)) {
-                    const content = readFileSync(tasksFile, 'utf-8');
-                    const lines = content.split('\n');
-                    for (const line of lines) {
-                        if (line.match(/- \[[ x/]\]/)) {
-                            taskCount++;
-                            if (line.includes('[x]')) completedCount++;
+                    const tasksFile = join(taskPath, 'tasks.md');
+                    let taskCount = 0;
+                    let completedCount = 0;
+
+                    if (existsSync(tasksFile)) {
+                        const content = readFileSync(tasksFile, 'utf-8');
+                        for (const line of content.split('\n')) {
+                            if (line.match(/- \[[ x/]\]/)) {
+                                taskCount++;
+                                if (line.includes('[x]')) completedCount++;
+                            }
                         }
                     }
-                }
 
-                tasks.push({
-                    id: entry,
-                    status: completedCount === taskCount && taskCount > 0 ? 'completed' : 'active',
-                    hasProposal: existsSync(join(taskPath, 'proposal.md')),
-                    taskCount,
-                    completedCount,
-                });
-            }
-        } catch {
-            // Ignore errors
+                    tasks.push({
+                        id: entry,
+                        status: completedCount === taskCount && taskCount > 0 ? 'completed' : 'active',
+                        hasProposal: existsSync(join(taskPath, 'proposal.md')),
+                        taskCount,
+                        completedCount,
+                    });
+                }
+            } catch { /* ignore */ }
         }
 
         return tasks;
     }
 
-    /**
-     * Get task details
-     */
+    /** Get task details (searches all roots) */
     getTaskDetails(taskId: string): string | null {
-        const tasksFile = join(this.workspaceRoot, '.rulebook', 'tasks', taskId, 'tasks.md');
-        if (!existsSync(tasksFile)) return null;
-        return readFileSync(tasksFile, 'utf-8');
+        for (const root of this.roots) {
+            const f = join(root, '.rulebook', 'tasks', taskId, 'tasks.md');
+            if (existsSync(f)) return readFileSync(f, 'utf-8');
+        }
+        return null;
     }
 
-    /**
-     * Get Ralph status from filesystem
-     */
+    /** Get Ralph status (aggregated across all roots) */
     getRalphStatus(): RalphStatus {
-        const ralphDir = join(this.workspaceRoot, '.rulebook', 'ralph');
-        const lockFile = join(ralphDir, 'ralph.lock');
-        const stateFile = join(ralphDir, 'state.json');
-
         const status: RalphStatus = {
-            running: false,
-            currentTask: null,
-            iteration: 0,
-            totalTasks: 0,
-            completedTasks: 0,
+            running: false, currentTask: null, iteration: 0, totalTasks: 0, completedTasks: 0,
         };
 
-        if (existsSync(lockFile)) {
-            status.running = true;
-            try {
-                const lock = JSON.parse(readFileSync(lockFile, 'utf-8'));
-                status.currentTask = lock.taskId || null;
-                status.iteration = lock.iteration || 0;
-            } catch { /* ignore */ }
-        }
+        for (const root of this.roots) {
+            const lockFile = join(root, '.rulebook', 'ralph', 'ralph.lock');
+            const stateFile = join(root, '.rulebook', 'ralph', 'state.json');
 
-        if (existsSync(stateFile)) {
-            try {
-                const state = JSON.parse(readFileSync(stateFile, 'utf-8'));
-                status.totalTasks = state.total_tasks || 0;
-                status.completedTasks = state.completed_tasks || 0;
-            } catch { /* ignore */ }
+            if (existsSync(lockFile)) {
+                status.running = true;
+                try {
+                    const lock = JSON.parse(readFileSync(lockFile, 'utf-8'));
+                    status.currentTask = lock.taskId || null;
+                    status.iteration = lock.iteration || 0;
+                } catch { /* ignore */ }
+            }
+
+            if (existsSync(stateFile)) {
+                try {
+                    const state = JSON.parse(readFileSync(stateFile, 'utf-8'));
+                    status.totalTasks += state.total_tasks || 0;
+                    status.completedTasks += state.completed_tasks || 0;
+                } catch { /* ignore */ }
+            }
         }
 
         return status;
     }
 
-    /**
-     * Get memory stats from filesystem
-     */
+    /** Get memory stats (aggregated across all roots) */
     getMemoryStats(): MemoryStats {
-        const dbPath = join(this.workspaceRoot, '.rulebook', 'memory', 'memory.db');
-        const stats: MemoryStats = {
-            totalMemories: 0,
-            dbSizeBytes: 0,
-            types: {},
-        };
+        const stats: MemoryStats = { totalMemories: 0, dbSizeBytes: 0, types: {} };
 
-        if (existsSync(dbPath)) {
-            try {
-                stats.dbSizeBytes = statSync(dbPath).size;
-            } catch { /* ignore */ }
-        }
-
-        // For detailed stats we'd need to query SQLite — use CLI
-        const raw = this.exec('memory stats --json 2>/dev/null');
-        if (raw) {
-            try {
-                const parsed = JSON.parse(raw);
-                stats.totalMemories = parsed.count || 0;
-                stats.types = parsed.types || {};
-            } catch { /* ignore */ }
+        for (const root of this.roots) {
+            const dbPath = join(root, '.rulebook', 'memory', 'memory.db');
+            if (existsSync(dbPath)) {
+                try { stats.dbSizeBytes += statSync(dbPath).size; } catch { /* ignore */ }
+            }
         }
 
         return stats;
     }
 
-    /**
-     * Search memories via CLI
-     */
+    /** Search memories via CLI */
     searchMemory(query: string): MemorySearchResult[] {
         const raw = this.exec(`memory search "${query.replace(/"/g, '\\"')}" --json 2>/dev/null`);
         if (!raw) return [];
-        try {
-            return JSON.parse(raw);
-        } catch {
-            return [];
-        }
+        try { return JSON.parse(raw); } catch { return []; }
     }
 
-    /**
-     * Get indexer status (from memory DB status)
-     */
+    /** Get indexer status (checks all roots) */
     getIndexerStatus(): IndexerStatus {
-        const dbPath = join(this.workspaceRoot, '.rulebook', 'memory', 'memory.db');
-        return {
-            running: existsSync(dbPath),
-            queue: 0,
-            processed: 0,
-            errors: 0,
-        };
+        let hasDb = false;
+        for (const root of this.roots) {
+            if (existsSync(join(root, '.rulebook', 'memory', 'memory.db'))) hasDb = true;
+        }
+        return { running: hasDb, queue: 0, processed: 0, errors: 0 };
     }
 
-    /**
-     * List agents from .claude/agents/ and detect activity
-     */
-    listAgents(): AgentInfo[] {
-        const agentsDir = join(this.workspaceRoot, '.claude', 'agents');
-        const agentMemoryDir = join(this.workspaceRoot, '.claude', 'agent-memory');
-        if (!existsSync(agentsDir)) return [];
+    /** Normalize a path for cross-platform comparison (lowercase, forward slashes) */
+    private normalizePath(p: string): string {
+        return p.replace(/\\/g, '/').toLowerCase();
+    }
 
-        const agents: AgentInfo[] = [];
-        const now = Date.now();
-        const ACTIVE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+    /** Find the project folder name inside ~/.claude/projects/ that contains a given sessionId directory */
+    private findProjectDirForSession(projectsDir: string, sessionId: string): string {
+        if (!existsSync(projectsDir)) return '';
+        try {
+            for (const proj of readdirSync(projectsDir)) {
+                const candidate = join(projectsDir, proj, sessionId, 'subagents');
+                if (existsSync(candidate)) return proj;
+            }
+        } catch { /* ignore */ }
+        return '';
+    }
+
+    /** List active agent teams from ~/.claude/teams/, filtered to current workspace */
+    listAgents(): AgentTeam[] {
+        const teams: AgentTeam[] = [];
+        const teamsDir = join(homedir(), '.claude', 'teams');
+        if (!existsSync(teamsDir)) return teams;
+
+        // Normalize workspace roots for comparison
+        const normalizedRoots = this.roots.map(r => this.normalizePath(r));
 
         try {
-            const files = readdirSync(agentsDir).filter(f => f.endsWith('.md'));
-            for (const file of files) {
-                const filePath = join(agentsDir, file);
-                const content = readFileSync(filePath, 'utf-8');
-                const id = basename(file, '.md');
+            const entries = readdirSync(teamsDir);
+            for (const entry of entries) {
+                const configPath = join(teamsDir, entry, 'config.json');
+                if (!existsSync(configPath)) continue;
 
-                // Parse YAML frontmatter
-                let name = id;
-                let description = '';
-                const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-                if (fmMatch) {
-                    const fm = fmMatch[1];
-                    const nameMatch = fm.match(/name:\s*(.+)/);
-                    const descMatch = fm.match(/description:\s*(.+)/);
-                    if (nameMatch) name = nameMatch[1].trim();
-                    if (descMatch) description = descMatch[1].trim();
-                }
+                try {
+                    const config = JSON.parse(readFileSync(configPath, 'utf-8'));
 
-                // Check agent-memory for activity
-                const memDir = join(agentMemoryDir, id);
-                const hasMemory = existsSync(memDir);
-                let lastActivity = 0;
+                    // Filter: only show teams whose lead or any member cwd matches this workspace
+                    const rawMembers: any[] = config.members || [];
+                    const cwds = rawMembers.map((m: any) => this.normalizePath(m.cwd || ''));
+                    const belongsToWorkspace = cwds.some(cwd =>
+                        normalizedRoots.some(root => cwd.startsWith(root) || root.startsWith(cwd))
+                    );
+                    if (!belongsToWorkspace) continue;
+                    const tasksDir = join(homedir(), '.claude', 'tasks', entry);
 
-                if (hasMemory) {
-                    try {
-                        const memFiles = readdirSync(memDir);
-                        for (const mf of memFiles) {
-                            const mfPath = join(memDir, mf);
-                            const mfStat = statSync(mfPath);
-                            if (mfStat.mtimeMs > lastActivity) {
-                                lastActivity = mfStat.mtimeMs;
+                    // Build task lookup: member name → current task info
+                    const taskByMember = new Map<string, { desc: string; status: string }>();
+                    if (existsSync(tasksDir)) {
+                        try {
+                            for (const tf of readdirSync(tasksDir).filter(f => f.endsWith('.json'))) {
+                                const task = JSON.parse(readFileSync(join(tasksDir, tf), 'utf-8'));
+                                if (task.subject && task.status !== 'completed') {
+                                    // subject is the member name
+                                    taskByMember.set(task.subject, {
+                                        desc: (task.description || '').slice(0, 80).replace(/\n/g, ' '),
+                                        status: task.status || 'unknown',
+                                    });
+                                }
                             }
-                        }
-                    } catch { /* ignore */ }
-                }
+                        } catch { /* ignore */ }
+                    }
 
-                // Agent is "active" if its memory was modified in the last 5 minutes
-                const status = lastActivity > 0 && (now - lastActivity) < ACTIVE_THRESHOLD
-                    ? 'active' as const
-                    : lastActivity > 0 ? 'idle' as const : 'unknown' as const;
+                    // Find subagent JSONL files in the lead session directory
+                    const leadSessionId: string | undefined = config.leadSessionId;
+                    const projectsDir = join(homedir(), '.claude', 'projects');
+                    const subagentDir = leadSessionId
+                        ? join(projectsDir, this.findProjectDirForSession(projectsDir, leadSessionId), leadSessionId, 'subagents')
+                        : '';
 
-                agents.push({ id, name, description, status, hasMemory, lastActivity });
+                    // Build a map: joinedAt(ms) -> JSONL path (sorted by first-line timestamp)
+                    const jsonlByJoinedAt = new Map<number, string>();
+                    if (subagentDir && existsSync(subagentDir)) {
+                        try {
+                            const jsonlFiles = readdirSync(subagentDir).filter(f => f.endsWith('.jsonl'));
+                            for (const jf of jsonlFiles) {
+                                const jfPath = join(subagentDir, jf);
+                                try {
+                                    const firstLine = readFileSync(jfPath, { encoding: 'utf-8' }).split('\n').find(l => l.trim());
+                                    if (firstLine) {
+                                        const d = JSON.parse(firstLine);
+                                        if (d.timestamp) {
+                                            const ms = new Date(d.timestamp).getTime();
+                                            if (!isNaN(ms)) jsonlByJoinedAt.set(ms, jfPath);
+                                        }
+                                    }
+                                } catch { /* skip */ }
+                            }
+                        } catch { /* ignore */ }
+                    }
+
+                    const members: AgentMember[] = rawMembers.map((m: any) => {
+                        const t = taskByMember.get(m.name);
+                        const joinedAt: number = m.joinedAt ?? 0;
+                        const jsonlPath = jsonlByJoinedAt.get(joinedAt);
+                        const activity = jsonlPath ? readAgentActivity(jsonlPath) : { text: null, timestamp: null, toolCallCount: 0 };
+                        return {
+                            name: m.name,
+                            agentType: m.agentType || '',
+                            currentTask: t?.desc ?? null,
+                            taskStatus: t?.status ?? null,
+                            lastActivity: activity.text,
+                            lastActivityAt: activity.timestamp,
+                            toolCallCount: activity.toolCallCount,
+                            joinedAt,
+                        };
+                    });
+
+                    teams.push({
+                        teamName: config.name || entry,
+                        description: config.description || '',
+                        members,
+                        createdAt: config.createdAt || 0,
+                    });
+                } catch { /* ignore */ }
             }
         } catch { /* ignore */ }
 
-        // Sort: active first, then idle, then unknown
-        const order = { active: 0, idle: 1, unknown: 2 };
-        agents.sort((a, b) => order[a.status] - order[b.status]);
-
-        return agents;
+        // Most recently created team first
+        teams.sort((a, b) => b.createdAt - a.createdAt);
+        return teams;
     }
 
-    /**
-     * Trigger reindex
-     */
-    async reindexCodebase(): Promise<boolean> {
-        // Delete the memory DB to force full reindex on next MCP server start
-        const dbPath = join(this.workspaceRoot, '.rulebook', 'memory', 'memory.db');
-        try {
-            if (existsSync(dbPath)) {
-                const { unlinkSync } = await import('fs');
-                unlinkSync(dbPath);
+    /** Archive a task (finds the right root) */
+    archiveTask(taskId: string): boolean {
+        for (const root of this.roots) {
+            if (existsSync(join(root, '.rulebook', 'tasks', taskId))) {
+                return this.exec(`task archive ${taskId}`, root) !== null;
             }
-            return true;
-        } catch {
-            return false;
         }
+        return false;
     }
 
-    /**
-     * Clear memory
-     */
+    /** Trigger reindex (all roots) */
+    async reindexCodebase(): Promise<boolean> {
+        let ok = false;
+        for (const root of this.roots) {
+            const dbPath = join(root, '.rulebook', 'memory', 'memory.db');
+            try {
+                if (existsSync(dbPath)) {
+                    const { unlinkSync } = await import('fs');
+                    unlinkSync(dbPath);
+                    ok = true;
+                }
+            } catch { /* ignore */ }
+        }
+        return ok;
+    }
+
     async clearMemory(): Promise<boolean> {
-        return this.reindexCodebase(); // Same effect — delete DB
+        return this.reindexCodebase();
     }
 }

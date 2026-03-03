@@ -70,53 +70,75 @@
     }
   });
 
-  // ---- Render: Agents ----
-  function renderAgents(agents) {
+  // ---- Render: Agents (Teams) ----
+  function renderAgents(teams) {
     const container = document.getElementById('agents-list');
     if (!container) return;
 
-    if (!agents || agents.length === 0) {
+    if (!teams || teams.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
           <div class="icon">🤖</div>
-          <p>No agents found.<br>Define agents in <code>.claude/agents/</code></p>
+          <p>No active teams.<br>Start a team with the Agent SDK.</p>
         </div>`;
       return;
     }
 
-    const roleIcons = {
-      'team-lead': '👑',
-      'implementer': '⚡',
-      'typescript-implementer': '⚡',
-      'researcher': '🔬',
-      'tester': '🧪',
-      'quality-gatekeeper': '🛡️',
-      'project-manager': '📊',
-    };
+    const statusIcon = { in_progress: '⚡', pending: '○', completed: '✓', blocked: '✗' };
+    const statusBadge = { in_progress: 'badge-running', pending: 'badge-idle', completed: 'badge-completed', blocked: 'badge-active' };
 
-    const activeCount = agents.filter(a => a.status === 'active').length;
-    const totalCount = agents.length;
+    container.innerHTML = teams.map(team => {
+      const activeMembers = team.members.filter(m => m.taskStatus === 'in_progress').length;
 
-    container.innerHTML = `
-      <div class="agent-summary">
-        <span class="agent-count">${activeCount} active</span> / <span>${totalCount} total</span>
-      </div>
-      ${agents.map(agent => `
-        <div class="card agent-card agent-${agent.status}">
+      const rows = team.members.map(m => {
+        const isActive = m.taskStatus === 'in_progress';
+        const timeAgo = m.lastActivityAt ? formatTimeAgo(new Date(m.lastActivityAt).getTime()) : null;
+        const toolInfo = m.toolCallCount > 0 ? `${m.toolCallCount} tool calls` : null;
+
+        return `
+          <div class="member-card ${isActive ? 'member-active' : ''}">
+            <div class="member-header">
+              <div class="member-header-left">
+                <span class="member-name">${escapeHtml(m.name)}</span>
+                <span class="member-type">${escapeHtml(m.agentType || '')}</span>
+              </div>
+              <div class="member-header-right">
+                ${m.taskStatus
+                  ? `<span class="badge ${statusBadge[m.taskStatus] || 'badge-idle'} badge-xs">${statusIcon[m.taskStatus] || '?'} ${m.taskStatus.replace('_', ' ')}</span>`
+                  : '<span class="badge badge-idle badge-xs">idle</span>'
+                }
+                ${isActive ? `<button class="btn-stop" onclick="stopAgent('${escapeHtml(team.teamName)}','${escapeHtml(m.name)}')" title="Send stop request to ${escapeHtml(m.name)}">■ Stop</button>` : ''}
+              </div>
+            </div>
+            ${m.currentTask ? `<div class="member-task">📋 ${escapeHtml(m.currentTask)}</div>` : ''}
+            ${m.lastActivity ? `
+              <div class="member-activity">
+                <div class="activity-text">${escapeHtml(m.lastActivity)}</div>
+                <div class="activity-meta">
+                  ${timeAgo ? `<span>${timeAgo}</span>` : ''}
+                  ${toolInfo ? `<span>· ${toolInfo}</span>` : ''}
+                </div>
+              </div>` : (isActive ? '<div class="activity-waiting">⏳ Starting up…</div>' : '')
+            }
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="card team-card">
           <div class="card-header">
-            <span class="card-title">${roleIcons[agent.id] || '🤖'} ${escapeHtml(agent.name)}</span>
-            <span class="badge badge-${agent.status === 'active' ? 'running' : agent.status === 'idle' ? 'completed' : 'idle'}">
-              ${agent.status === 'active' ? '● Active' : agent.status === 'idle' ? '○ Idle' : '? Unknown'}
+            <span class="card-title">🤝 ${escapeHtml(team.teamName)}</span>
+            <span class="badge ${activeMembers > 0 ? 'badge-running' : 'badge-idle'}">
+              ${activeMembers > 0 ? '● ' + activeMembers + ' active' : '○ idle'}
             </span>
           </div>
-          <div class="card-meta">${escapeHtml(agent.description)}</div>
-          <div class="agent-footer">
-            ${agent.hasMemory ? '<span class="agent-tag">🧠 Has Memory</span>' : ''}
-            ${agent.lastActivity > 0 ? '<span class="agent-tag">🕐 ' + formatTimeAgo(agent.lastActivity) + '</span>' : ''}
-          </div>
-        </div>
-      `).join('')}`;
+          <div class="member-list">${rows}</div>
+        </div>`;
+    }).join('');
   }
+
+  window.stopAgent = function(teamName, memberName) {
+    vscode.postMessage({ command: 'stopAgent', teamName, memberName });
+  };
 
   // ---- Render: Tasks ----
   function renderTasks(tasks) {
@@ -135,8 +157,8 @@
     container.innerHTML = tasks
       .map(
         (task) => `
-      <div class="card" data-task-id="${task.id}" onclick="toggleTaskDetails('${task.id}')">
-        <div class="card-header">
+      <div class="card" data-task-id="${task.id}">
+        <div class="card-header" onclick="toggleTaskDetails('${task.id}')">
           <span class="card-title">${escapeHtml(task.id)}</span>
           <span class="badge ${task.status === 'completed' ? 'badge-completed' : 'badge-active'}">
             ${task.status}
@@ -145,6 +167,10 @@
         <div class="card-meta">${task.completedCount}/${task.taskCount} items done</div>
         <div class="progress-bar">
           <div class="progress-fill" style="width: ${task.taskCount > 0 ? (task.completedCount / task.taskCount) * 100 : 0}%"></div>
+        </div>
+        <div class="task-actions">
+          <button class="btn-action btn-update" onclick="event.stopPropagation(); updateTask('${task.id}')">🤖 Update via AI</button>
+          <button class="btn-action btn-archive" onclick="event.stopPropagation(); archiveTask('${task.id}')">📦 Archive</button>
         </div>
         <div class="task-details" id="details-${task.id}"></div>
       </div>`
@@ -276,6 +302,14 @@
       }
       details.classList.add('open');
     }
+  };
+
+  window.archiveTask = function (taskId) {
+    vscode.postMessage({ command: 'archiveTask', taskId });
+  };
+
+  window.updateTask = function (taskId) {
+    vscode.postMessage({ command: 'updateTask', taskId });
   };
 
   function showTaskDetails(taskId, content) {

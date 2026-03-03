@@ -2,8 +2,8 @@
   "name": "rulebook-dashboard",
   "displayName": "Rulebook Dashboard",
   "description": "Visual dashboard for Rulebook — monitor tasks, agents, Ralph, memory, and the background indexer",
-  "version": "0.1.0",
-  "publisher": "hivellm",
+  "version": "0.6.0",
+  "publisher": "hivehub",
   "repository": {
     "type": "git",
     "url": "https://github.com/hivellm/rulebook"
@@ -17,6 +17,7 @@
     "workspaceContains:.rulebook"
   ],
   "main": "./dist/extension.js",
+  "icon": "media/icon.png",
 
   "contributes": {
     "viewsContainers": {
@@ -59,9 +60,11 @@
     ]
   },
   "scripts": {
+    "vscode:prepublish": "npm run compile -- --minify",
     "compile": "esbuild src/extension.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node --sourcemap",
     "watch": "npm run compile -- --watch",
-    "package": "npx vsce package",
+    "package": "npx @vscode/vsce package --allow-missing-repository",
+    "publish": "npx @vscode/vsce publish",
     "lint": "eslint src --ext ts"
   },
   "devDependencies": {

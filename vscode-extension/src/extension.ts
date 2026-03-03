@@ -7,14 +7,15 @@ let statusBar: StatusBarManager;
 let refreshInterval: NodeJS.Timeout | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    if (!workspaceRoot) {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) {
         vscode.window.showWarningMessage('Rulebook: No workspace folder found');
         return;
     }
 
-    const client = new RulebookClient(workspaceRoot);
-    const dashboardProvider = new DashboardProvider(context.extensionUri, client, workspaceRoot);
+    const allRoots = folders.map(f => f.uri.fsPath);
+    const client = new RulebookClient(allRoots);
+    const dashboardProvider = new DashboardProvider(context.extensionUri, client, allRoots[0]);
 
     // Register the Webview View Provider
     context.subscriptions.push(
@@ -54,10 +55,10 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Periodic refresh every 5 seconds
+    // Periodic refresh every 3 seconds
     refreshInterval = setInterval(() => {
         statusBar.refresh(client);
-    }, 5000);
+    }, 3000);
 
     // Initial refresh
     statusBar.refresh(client);
