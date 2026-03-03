@@ -705,6 +705,24 @@ export async function generateModularAgents(
     await writeModularFile(projectRoot, 'GIT', gitRules.trim(), rulebookDir);
   }
 
+  // If WORKSPACE.md spec exists, add reference in AGENTS.md
+  {
+    const { existsSync } = await import('fs');
+    const wsSpecPath = path.join(projectRoot, rulebookDir, 'specs', 'WORKSPACE.md');
+    if (existsSync(wsSpecPath)) {
+      sections.push('## Workspace Mode');
+      sections.push('');
+      sections.push(
+        `**This project is part of a multi-project workspace.** All MCP tool calls MUST include the correct \`projectId\` parameter.`
+      );
+      sections.push('');
+      sections.push(
+        `**📋 ALWAYS read \`/${rulebookDir}/specs/WORKSPACE.md\` to understand project routing before using any Rulebook MCP tools.**`
+      );
+      sections.push('');
+    }
+  }
+
   // Write language files and add references
   if (mergedConfig.languages.length > 0) {
     sections.push('## Language-Specific Rules');

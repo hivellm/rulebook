@@ -47,7 +47,7 @@ describe('claude-mcp', () => {
       expect(content.mcpServers).toBeDefined();
       expect(content.mcpServers.rulebook).toEqual({
         command: 'npx',
-        args: ['-y', '@hivehub/rulebook@latest', 'mcp-server', '--project-root', testDir],
+        args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
       });
     });
 
@@ -73,40 +73,14 @@ describe('claude-mcp', () => {
         args: ['other-server.js'],
       });
 
-      // Should add rulebook entry with --project-root
+      // Should add rulebook entry without --project-root
       expect(content.mcpServers.rulebook).toEqual({
         command: 'npx',
-        args: ['-y', '@hivehub/rulebook@latest', 'mcp-server', '--project-root', testDir],
+        args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
       });
     });
 
-    it('should upgrade existing rulebook entry without --project-root', async () => {
-      const mcpJsonPath = path.join(testDir, '.mcp.json');
-      const existingConfig = {
-        mcpServers: {
-          rulebook: {
-            command: 'npx',
-            args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
-          },
-        },
-      };
-      await fs.writeFile(mcpJsonPath, JSON.stringify(existingConfig, null, 2));
-
-      const result = await configureMcpJson(testDir);
-
-      expect(result).toBe(false);
-      const content = JSON.parse(await fs.readFile(mcpJsonPath, 'utf8'));
-      // Args should now include --project-root
-      expect(content.mcpServers.rulebook.args).toEqual([
-        '-y',
-        '@hivehub/rulebook@latest',
-        'mcp-server',
-        '--project-root',
-        testDir,
-      ]);
-    });
-
-    it('should not modify existing rulebook entry that already has --project-root', async () => {
+    it('should upgrade existing rulebook entry with legacy --project-root', async () => {
       const mcpJsonPath = path.join(testDir, '.mcp.json');
       const existingConfig = {
         mcpServers: {
@@ -122,13 +96,35 @@ describe('claude-mcp', () => {
 
       expect(result).toBe(false);
       const content = JSON.parse(await fs.readFile(mcpJsonPath, 'utf8'));
+      // Args should now be simplified (no --project-root)
+      expect(content.mcpServers.rulebook.args).toEqual([
+        '-y',
+        '@hivehub/rulebook@latest',
+        'mcp-server',
+      ]);
+    });
+
+    it('should not modify existing rulebook entry that already uses simplified args', async () => {
+      const mcpJsonPath = path.join(testDir, '.mcp.json');
+      const existingConfig = {
+        mcpServers: {
+          rulebook: {
+            command: 'npx',
+            args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
+          },
+        },
+      };
+      await fs.writeFile(mcpJsonPath, JSON.stringify(existingConfig, null, 2));
+
+      const result = await configureMcpJson(testDir);
+
+      expect(result).toBe(false);
+      const content = JSON.parse(await fs.readFile(mcpJsonPath, 'utf8'));
       // Should remain unchanged
       expect(content.mcpServers.rulebook.args).toEqual([
         '-y',
         '@hivehub/rulebook@latest',
         'mcp-server',
-        '--project-root',
-        testDir,
       ]);
     });
 
