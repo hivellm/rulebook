@@ -36,6 +36,7 @@ export default defineConfig({
         'src/core/cli-bridge.ts', // CLI bridge - requires real CLI tools
         'src/core/agent-manager.ts', // Agent manager - requires real CLI tools
         'src/core/watcher.ts', // Watcher - tests skipped due to mock issues
+        'src/core/indexer/background-indexer.ts', // Background indexer - uses fs.watch daemon, tested manually
         'src/agents/**', // Agent parsers - requires real CLI tools
       ],
       thresholds: {
