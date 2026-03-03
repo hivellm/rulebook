@@ -1,0 +1,68 @@
+{
+  "name": "rulebook-dashboard",
+  "displayName": "Rulebook Dashboard",
+  "description": "Visual dashboard for Rulebook — monitor tasks, agents, Ralph, memory, and the background indexer",
+  "version": "0.1.0",
+  "publisher": "hivellm",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "workspaceContains:.rulebook"
+  ],
+  "main": "./dist/extension.js",
+  "icon": "media/icon.png",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "rulebook-dashboard",
+          "title": "Rulebook",
+          "icon": "media/rulebook-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "rulebook-dashboard": [
+        {
+          "type": "webview",
+          "id": "rulebook.dashboardView",
+          "name": "Dashboard"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "rulebook.openDashboard",
+        "title": "Rulebook: Open Dashboard",
+        "icon": "$(book)"
+      },
+      {
+        "command": "rulebook.refreshDashboard",
+        "title": "Rulebook: Refresh Dashboard",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "rulebook.reindexCodebase",
+        "title": "Rulebook: Reindex Codebase"
+      },
+      {
+        "command": "rulebook.clearMemory",
+        "title": "Rulebook: Clear Memory"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "esbuild src/extension.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node --sourcemap",
+    "watch": "npm run compile -- --watch",
+    "package": "npx vsce package",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.0"
+  }
+}
