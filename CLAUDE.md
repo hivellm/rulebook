@@ -148,6 +148,17 @@ npm run dev init -- --yes
 npm run dev task create test-task-id
 npm run dev task list
 npm run dev task show test-task-id
+
+# Test workspace commands
+npm run dev workspace init
+npm run dev workspace add ./frontend
+npm run dev workspace list
+npm run dev workspace status
+
+# Test task commands with workspace project targeting
+npm run dev task list --project frontend
+npm run dev task list --all-projects
+npm run dev task create my-task --project backend
 ```
 
 ## Code Architecture
@@ -178,12 +189,17 @@ The codebase follows a **modular CLI architecture** with clear separation of con
    - **prd-generator.ts**: Generates PRD (Product Requirements Document) from task proposals
    - **iteration-tracker.ts**: Records and analyzes Ralph iterations, statistics, and learnings
    - **ralph-parser.ts**: Parses AI tool output for quality checks, completion status, and learnings
+   - **workspace/workspace-manager.ts**: Orchestrates multi-project workspace with discovery chain
+   - **workspace/project-worker.ts**: Encapsulates per-project managers (TaskManager, MemoryManager, etc.)
+   - **workspace/workspace-types.ts**: WorkspaceConfig, WorkspaceProject, WorkspaceStatus types
+   - **workspace/legacy-migrator.ts**: Migrates .mcp.json with absolute --project-root paths
 
 3. **MCP Server** (`src/mcp/rulebook-server.ts`)
    - Model Context Protocol server using `@modelcontextprotocol/sdk`
-   - Exposes 7 task management functions: create, list, show, update, validate, archive, delete
+   - Exposes 26 MCP functions: task (7), skills (6), memory (6), Ralph (4), workspace (4)
    - Uses stdio transport (no HTTP server)
    - Automatically finds `.rulebook` file by walking up directories (like git)
+   - **Workspace mode** (`--workspace` flag): Routes via `projectId` to isolated ProjectWorkers
 
 4. **Template System** (`templates/`)
    - Templates organized by type: `languages/`, `frameworks/`, `modules/`, `services/`, `core/`, `cli/`, `ides/`
@@ -443,6 +459,24 @@ When modifying MCP server:
 3. Return consistent error structure: `{ success: false, error: string }`
 4. Test with `npm run mcp-server` (stdio transport)
 5. Update `.cursor/mcp.json` if function signatures change
+6. All tools MUST accept optional `projectId` parameter for workspace routing
+7. Use `getTaskMgr(projectId)` / `getConfigMgr(projectId)` helpers for workspace-aware resolution
+
+### Workspace Development
+
+Architecture:
+- **WorkspaceManager** (`src/core/workspace/workspace-manager.ts`): Orchestrates `Map<projectId, ProjectWorker>`, discovery chain, idle-kill timer
+- **ProjectWorker** (`src/core/workspace/project-worker.ts`): In-process instances (NOT child processes) with isolated TaskManager, MemoryManager, SkillsManager per project
+- **Discovery chain**: `.rulebook/workspace.json` > `*.code-workspace` > pnpm/turbo/nx/lerna
+
+Key rules:
+1. Workers are lazily spawned (on-demand) and killed after idle timeout (default 5min)
+2. Each project has its own `.rulebook/` directory — tasks, memory, config are fully isolated
+3. Cross-project operations are explicit: `rulebook_workspace_search`, `rulebook_workspace_tasks`
+4. CLI auto-detects workspace from cwd using `WorkspaceManager.resolveProjectFromCwd()`
+5. `rulebook update` in workspace iterates all projects and injects `WORKSPACE.md` spec
+
+Tests: `tests/workspace-manager.test.ts` (49), `tests/project-worker.test.ts` (26), `tests/legacy-migrator.test.ts` (22), `tests/workspace-cli.test.ts` (13)
 
 ### Cross-Platform Considerations
 

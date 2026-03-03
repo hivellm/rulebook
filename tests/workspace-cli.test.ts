@@ -16,7 +16,7 @@ describe('Workspace CLI Commands', () => {
 
   beforeEach(async () => {
     testDir = join(tmpdir(), `rulebook-ws-cli-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    await fs.mkdir(testDir, { recursive: true });
+    await fs.mkdir(join(testDir, '.rulebook'), { recursive: true });
 
     // Mock process.cwd to return our test directory
     originalCwd = process.cwd;
@@ -37,11 +37,11 @@ describe('Workspace CLI Commands', () => {
   });
 
   describe('workspaceInitCommand', () => {
-    it('should create .rulebook-workspace.json with empty config when no structure detected', async () => {
+    it('should create .rulebook/workspace.json with empty config when no structure detected', async () => {
       const { workspaceInitCommand } = await import('../src/cli/commands.js');
       await workspaceInitCommand();
 
-      const configPath = join(testDir, '.rulebook-workspace.json');
+      const configPath = join(testDir, '.rulebook/workspace.json');
       expect(existsSync(configPath)).toBe(true);
 
       const config = JSON.parse(readFileSync(configPath, 'utf-8'));
@@ -50,8 +50,8 @@ describe('Workspace CLI Commands', () => {
       expect(config.projects).toEqual([]);
     });
 
-    it('should skip if .rulebook-workspace.json already exists', async () => {
-      writeFileSync(join(testDir, '.rulebook-workspace.json'), '{}');
+    it('should skip if .rulebook/workspace.json already exists', async () => {
+      writeFileSync(join(testDir, '.rulebook/workspace.json'), '{}');
 
       const { workspaceInitCommand } = await import('../src/cli/commands.js');
       await workspaceInitCommand();
@@ -71,7 +71,7 @@ describe('Workspace CLI Commands', () => {
       const { workspaceInitCommand } = await import('../src/cli/commands.js');
       await workspaceInitCommand();
 
-      const configPath = join(testDir, '.rulebook-workspace.json');
+      const configPath = join(testDir, '.rulebook/workspace.json');
       const config = JSON.parse(readFileSync(configPath, 'utf-8'));
 
       expect(config.projects.length).toBeGreaterThan(0);
@@ -87,7 +87,7 @@ describe('Workspace CLI Commands', () => {
         projects: [],
       };
       writeFileSync(
-        join(testDir, '.rulebook-workspace.json'),
+        join(testDir, '.rulebook/workspace.json'),
         JSON.stringify(config, null, 2) + '\n'
       );
 
@@ -97,7 +97,7 @@ describe('Workspace CLI Commands', () => {
       const { workspaceAddCommand } = await import('../src/cli/commands.js');
       await workspaceAddCommand('./frontend');
 
-      const updated = JSON.parse(readFileSync(join(testDir, '.rulebook-workspace.json'), 'utf-8'));
+      const updated = JSON.parse(readFileSync(join(testDir, '.rulebook/workspace.json'), 'utf-8'));
       expect(updated.projects).toHaveLength(1);
       expect(updated.projects[0].name).toBe('frontend');
       expect(updated.defaultProject).toBe('frontend');
@@ -125,7 +125,7 @@ describe('Workspace CLI Commands', () => {
         projects: [{ name: 'frontend', path: './frontend' }],
       };
       writeFileSync(
-        join(testDir, '.rulebook-workspace.json'),
+        join(testDir, '.rulebook/workspace.json'),
         JSON.stringify(config) + '\n'
       );
 
@@ -156,14 +156,14 @@ describe('Workspace CLI Commands', () => {
         defaultProject: 'frontend',
       };
       writeFileSync(
-        join(testDir, '.rulebook-workspace.json'),
+        join(testDir, '.rulebook/workspace.json'),
         JSON.stringify(config) + '\n'
       );
 
       const { workspaceRemoveCommand } = await import('../src/cli/commands.js');
       await workspaceRemoveCommand('frontend');
 
-      const updated = JSON.parse(readFileSync(join(testDir, '.rulebook-workspace.json'), 'utf-8'));
+      const updated = JSON.parse(readFileSync(join(testDir, '.rulebook/workspace.json'), 'utf-8'));
       expect(updated.projects).toHaveLength(1);
       expect(updated.projects[0].name).toBe('backend');
       // Default should shift to remaining project
@@ -188,7 +188,7 @@ describe('Workspace CLI Commands', () => {
         projects: [{ name: 'backend', path: './backend' }],
       };
       writeFileSync(
-        join(testDir, '.rulebook-workspace.json'),
+        join(testDir, '.rulebook/workspace.json'),
         JSON.stringify(config) + '\n'
       );
 
@@ -219,7 +219,7 @@ describe('Workspace CLI Commands', () => {
         defaultProject: 'frontend',
       };
       writeFileSync(
-        join(testDir, '.rulebook-workspace.json'),
+        join(testDir, '.rulebook/workspace.json'),
         JSON.stringify(config) + '\n'
       );
 
@@ -251,7 +251,7 @@ describe('Workspace CLI Commands', () => {
         defaultProject: 'frontend',
       };
       writeFileSync(
-        join(testDir, '.rulebook-workspace.json'),
+        join(testDir, '.rulebook/workspace.json'),
         JSON.stringify(config) + '\n'
       );
 

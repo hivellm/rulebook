@@ -52,6 +52,22 @@ npx @hivehub/rulebook@latest update
 
 See the full [CHANGELOG](CHANGELOG.md) for details.
 
+### v4.2.1 — Workspace Config Path Fix
+
+- 📁 **Workspace config moved to `.rulebook/workspace.json`** (was `.rulebook-workspace.json` at root)
+- 🔄 **Backward compatible**: Legacy `.rulebook-workspace.json` still discovered automatically
+- 📝 **Documentation updates** for new config path
+
+### v4.2.0 — Multi-Project Workspace Support
+
+- 🏗️ **Workspace Orchestration**: Manage multiple projects simultaneously (monorepo or independent folders)
+- 🔀 **MCP `--workspace` mode**: Single MCP server manages all projects with `projectId` routing on every tool
+- 🧩 **4 New Workspace MCP Tools**: `rulebook_workspace_list`, `rulebook_workspace_status`, `rulebook_workspace_search`, `rulebook_workspace_tasks`
+- 🔍 **Auto-detection**: Discovers workspace from `.rulebook/workspace.json`, `*.code-workspace`, pnpm/turbo/nx/lerna
+- 📋 **CLI `--project` and `--all-projects` flags** on all task commands
+- 🔄 **`rulebook update` in workspace**: Auto-updates all projects + injects workspace routing instructions
+- 📚 **26 MCP Functions** total (was 22)
+
 ### v4.1.0 — Background Indexer & Codebase Intelligence
 
 - 🔍 **Background Indexer**: Autonomous daemon that continuously indexes your codebase into a searchable vector + graph database
@@ -177,6 +193,126 @@ Memory is enabled in `.rulebook`:
 
 ---
 
+## Multi-Project Workspace
+
+> **NEW in v4.2.0** — Manage multiple projects (monorepo or independent folders) with a single MCP server.
+
+### The Problem
+
+When working on a monorepo or multiple related projects, each project needs its own `.mcp.json` and runs a separate MCP server. This wastes resources and prevents cross-project operations like searching memory across all projects.
+
+### The Solution
+
+Rulebook workspace mode runs **one MCP server** that manages all projects, with fully isolated per-project managers (tasks, memory, skills, config).
+
+```
+┌─────────────────────────────────────────┐
+│     Workspace Orchestrator (1 MCP)      │
+│  - Routes calls via projectId           │
+│  - Cross-project memory search          │
+│  - Idle worker lifecycle management     │
+└──────┬──────────┬──────────┬────────────┘
+       │          │          │
+       v          v          v
+  ┌─────────┐ ┌─────────┐ ┌─────────┐
+  │backend  │ │frontend │ │ panel   │  (on-demand)
+  │.rulebook│ │.rulebook│ │.rulebook│
+  │tasks/   │ │tasks/   │ │tasks/   │
+  │memory.db│ │memory.db│ │memory.db│
+  └─────────┘ └─────────┘ └─────────┘
+```
+
+### Quick Start
+
+```bash
+# 1. Initialize workspace at the monorepo root
+cd my-monorepo
+rulebook workspace init
+
+# 2. Add projects (auto-detected from pnpm/turbo/nx or manually)
+rulebook workspace add ./frontend
+rulebook workspace add ./backend
+rulebook workspace add ./shared-lib
+
+# 3. Setup MCP for workspace mode
+rulebook mcp init --workspace
+
+# 4. Update all projects at once
+rulebook update
+```
+
+### Workspace Discovery
+
+Rulebook auto-discovers workspace config from (in priority order):
+
+1. `.rulebook/workspace.json` — native config (highest priority)
+2. `*.code-workspace` — VSCode workspace format
+3. `pnpm-workspace.yaml` / `turbo.json` / `nx.json` / `lerna.json` — monorepo detection
+
+### CLI Commands
+
+```bash
+# Workspace management
+rulebook workspace init          # Create .rulebook/workspace.json
+rulebook workspace add <path>    # Add project to workspace
+rulebook workspace remove <name> # Remove project
+rulebook workspace list          # List all projects
+rulebook workspace status        # Status with task counts
+
+# Task commands with project targeting
+rulebook task list                        # Auto-detects project from cwd
+rulebook task list --project frontend     # Target specific project
+rulebook task list --all-projects         # List across all projects
+rulebook task create my-task --project backend
+```
+
+### MCP Tools
+
+All existing MCP tools accept an optional `projectId` parameter:
+
+```
+rulebook_task_list({ projectId: "frontend" })     # Tasks from frontend
+rulebook_memory_search({ query: "auth", projectId: "backend" })
+
+# Workspace-specific tools:
+rulebook_workspace_list()      # All projects and paths
+rulebook_workspace_status()    # Active workers, task counts
+rulebook_workspace_search()    # Cross-project memory search
+rulebook_workspace_tasks()     # Tasks from all projects
+```
+
+### Isolation Guarantee
+
+Each project has **completely isolated** managers:
+- **Tasks** → `{project}/.rulebook/tasks/` — never shared
+- **Memory** → `{project}/.rulebook/memory.db` — separate SQLite databases
+- **Config** → `{project}/.rulebook/rulebook.json` — independent settings
+- **Skills** → resolved per project root
+
+Cross-project operations (search, task listing) are explicit and deliberate.
+
+### Configuration
+
+`.rulebook/workspace.json` at the workspace root:
+
+```json
+{
+  "name": "my-workspace",
+  "version": "1.0.0",
+  "projects": [
+    { "name": "frontend", "path": "./frontend" },
+    { "name": "backend", "path": "./backend" },
+    { "name": "shared", "path": "/absolute/path/to/shared-lib" }
+  ],
+  "defaultProject": "backend",
+  "idleTimeoutMs": 300000
+}
+```
+
+> **Tip**: `rulebook workspace init` auto-generates this from your monorepo structure.
+
+---
+
 ## Key Features
 
 - 🤖 **Ralph Autonomous Loop**: Multi-iteration AI task solving with fresh context per iteration (v3.1+)
@@ -188,7 +324,7 @@ Memory is enabled in `.rulebook`:
 - 🔍 **Auto-Detection**: Detects languages, frameworks, MCP modules, and services from your project files
 - 📁 **Modular Architecture**: Templates in `/.rulebook/` directory — smaller AGENTS.md, on-demand loading
 - 🔗 **Git Hook Automation**: Pre-commit/pre-push hooks with language-aware quality checks
-- 🔌 **23 MCP Functions**: Task management (7), skills (6), persistent memory (6), Ralph loop (4) via Model Context Protocol
+- 🔌 **26 MCP Functions**: Task management (7), skills (6), persistent memory (6), Ralph loop (4), workspace (4) via Model Context Protocol
 - 📝 **106+ Templates**: 28 languages, 17 frameworks, 8 IDEs, 20 services, 15 CLI agents
 - 🤖 **AI-Optimized**: Works with 23 AI assistants (Cursor, Claude, Gemini, etc.)
 - 📦 **Publication Ready**: CI/CD pipelines for npm, crates.io, PyPI, Maven Central, and more

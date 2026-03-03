@@ -401,7 +401,7 @@ describe('WorkspaceManager', () => {
       mockExistsSync.mockReturnValue(false);
     });
 
-    it('should find .rulebook-workspace.json first', () => {
+    it('should find .rulebook/workspace.json first', () => {
       const wsConfig: WorkspaceConfig = {
         name: 'ws',
         version: '1.0.0',
@@ -409,7 +409,7 @@ describe('WorkspaceManager', () => {
       };
 
       mockExistsSync.mockImplementation((p: any) => {
-        return String(p).endsWith('.rulebook-workspace.json');
+        return String(p).endsWith('.rulebook/workspace.json');
       });
       mockReadFileSync.mockReturnValue(JSON.stringify(wsConfig));
 
@@ -417,9 +417,9 @@ describe('WorkspaceManager', () => {
       expect(result).toEqual(wsConfig);
     });
 
-    it('should fall through on invalid .rulebook-workspace.json', () => {
+    it('should fall through on invalid .rulebook/workspace.json', () => {
       mockExistsSync.mockImplementation((p: any) => {
-        return String(p).endsWith('.rulebook-workspace.json');
+        return String(p).endsWith('.rulebook/workspace.json');
       });
       mockReadFileSync.mockReturnValue('invalid json{{{');
       mockReaddirSync.mockReturnValue([] as any);
@@ -444,7 +444,7 @@ describe('WorkspaceManager', () => {
     });
 
     it('should detect monorepo as third priority', () => {
-      // No .rulebook-workspace.json, no .code-workspace
+      // No .rulebook/workspace.json, no .code-workspace
       mockReaddirSync.mockImplementation((dir: any) => {
         const d = String(dir);
         if (d.endsWith('/test')) return [] as any; // no .code-workspace

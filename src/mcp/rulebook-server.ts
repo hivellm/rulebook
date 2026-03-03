@@ -91,7 +91,7 @@ export async function startRulebookMcpServer(): Promise<void> {
     const wsConfig = WorkspaceManager.findWorkspaceConfig(startDir);
     if (!wsConfig) {
       console.error(
-        '[rulebook-mcp] No workspace config found. Create .rulebook-workspace.json or use a *.code-workspace file.'
+        '[rulebook-mcp] No workspace config found. Run `rulebook workspace init` to create .rulebook/workspace.json.'
       );
       process.exit(1);
     }
@@ -155,7 +155,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '4.2.0',
+    version: '4.2.1',
   });
 
   // Zod schema reused across tools for workspace project targeting

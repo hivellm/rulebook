@@ -208,11 +208,21 @@ export class WorkspaceManager {
   static findWorkspaceConfig(startDir: string): WorkspaceConfig | null {
     const dir = resolve(startDir);
 
-    // 1. Native rulebook workspace
-    const nativePath = join(dir, '.rulebook-workspace.json');
+    // 1. Native rulebook workspace (.rulebook/workspace.json)
+    const nativePath = join(dir, '.rulebook', 'workspace.json');
     if (existsSync(nativePath)) {
       try {
         return JSON.parse(readFileSync(nativePath, 'utf-8'));
+      } catch {
+        // fall through
+      }
+    }
+
+    // 1b. Legacy location (.rulebook-workspace.json at root) — backward compat
+    const legacyPath = join(dir, '.rulebook-workspace.json');
+    if (existsSync(legacyPath)) {
+      try {
+        return JSON.parse(readFileSync(legacyPath, 'utf-8'));
       } catch {
         // fall through
       }

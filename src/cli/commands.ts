@@ -4323,12 +4323,17 @@ export async function ralphImportIssuesCommand(options: {
 // Workspace Commands (v4.2)
 // ============================================
 
+/** Resolve the workspace config path inside .rulebook/ */
+function getWorkspaceConfigPath(cwd: string): string {
+  return path.join(cwd, '.rulebook', 'workspace.json');
+}
+
 export async function workspaceInitCommand(): Promise<void> {
   const cwd = process.cwd();
-  const configPath = path.join(cwd, '.rulebook-workspace.json');
+  const configPath = getWorkspaceConfigPath(cwd);
 
   if (existsSync(configPath)) {
-    console.log(chalk.yellow('Workspace already initialized at .rulebook-workspace.json'));
+    console.log(chalk.yellow('Workspace already initialized at .rulebook/workspace.json'));
     return;
   }
 
@@ -4352,9 +4357,16 @@ export async function workspaceInitCommand(): Promise<void> {
     };
   }
 
+  // Ensure .rulebook/ directory exists
+  const rulebookDir = path.join(cwd, '.rulebook');
+  if (!existsSync(rulebookDir)) {
+    const { mkdirSync } = await import('fs');
+    mkdirSync(rulebookDir, { recursive: true });
+  }
+
   // Write config
   writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
-  console.log(chalk.green(`\n  Created: ${configPath}`));
+  console.log(chalk.green(`\n  Created: .rulebook/workspace.json`));
 
   // Check for legacy .mcp.json files
   const migration = await migrateLegacyMcpConfigs(cwd);
@@ -4372,7 +4384,7 @@ export async function workspaceInitCommand(): Promise<void> {
 
 export async function workspaceAddCommand(projectPath: string): Promise<void> {
   const cwd = process.cwd();
-  const configPath = path.join(cwd, '.rulebook-workspace.json');
+  const configPath = getWorkspaceConfigPath(cwd);
 
   if (!existsSync(configPath)) {
     console.error(chalk.red('No workspace found. Run `rulebook workspace init` first.'));
@@ -4409,7 +4421,7 @@ export async function workspaceAddCommand(projectPath: string): Promise<void> {
 
 export async function workspaceRemoveCommand(projectName: string): Promise<void> {
   const cwd = process.cwd();
-  const configPath = path.join(cwd, '.rulebook-workspace.json');
+  const configPath = getWorkspaceConfigPath(cwd);
 
   if (!existsSync(configPath)) {
     console.error(chalk.red('No workspace found. Run `rulebook workspace init` first.'));
