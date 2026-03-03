@@ -5,14 +5,14 @@
  * using RRF scoring for hybrid results.
  */
 
-import type { MemoryStore } from './memory-store.js';
 import type { HNSWIndex } from './hnsw-index.js';
+import type { MemoryStore } from './memory-store.js';
 import type {
-  MemorySearchResult,
+  Memory,
   MemorySearchOptions,
+  MemorySearchResult,
   MemoryType,
   TimelineEntry,
-  Memory,
 } from './memory-types.js';
 import { vectorize } from './memory-vectorizer.js';
 
@@ -23,7 +23,7 @@ export class MemorySearch {
     private store: MemoryStore,
     private index: HNSWIndex,
     private dimensions: number = 256
-  ) {}
+  ) { }
 
   /**
    * Search memories using the specified mode
@@ -72,6 +72,26 @@ export class MemorySearch {
 
     const results: MemorySearchResult[] = [];
     for (const candidate of candidates) {
+      // Handle code node vectors (prefixed with __code__)
+      if (candidate.label.startsWith('__code__')) {
+        const codeNodeId = candidate.label.replace('__code__', '');
+        const codeNode = this.store.getCodeNode(codeNodeId);
+        if (!codeNode) continue;
+
+        results.push({
+          id: candidate.label, // Keep __code__ prefix so MCP tool can filter
+          title: `[${codeNode.type}] ${codeNode.name} — ${codeNode.filePath}`,
+          type: 'discovery' as MemoryType, // Map code nodes to 'discovery' type
+          score: 1 - candidate.distance,
+          matchType: 'vector',
+          createdAt: codeNode.updatedAt,
+        });
+
+        if (results.length >= limit) break;
+        continue;
+      }
+
+      // Standard memory vector lookup
       const memory = this.store.getMemory(candidate.label);
       if (!memory) continue;
       if (type && memory.type !== type) continue;

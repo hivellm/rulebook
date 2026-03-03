@@ -559,5 +559,21 @@ export class MemoryStore {
     if (result.length === 0 || result[0].values.length === 0) return null;
     return result[0].values[0][0] as string;
   }
+
+  getCodeNode(id: string): { id: string; type: string; name: string; filePath: string; content: string; hash: string; updatedAt: number } | null {
+    if (!this.db) throw new Error('Database not initialized');
+    const result = this.db.exec(`SELECT id, type, name, file_path, content, hash, updated_at FROM code_nodes WHERE id = '${id.replace(/'/g, "''")}'`);
+    if (result.length === 0 || result[0].values.length === 0) return null;
+    const row = result[0].values[0];
+    return {
+      id: row[0] as string,
+      type: row[1] as string,
+      name: row[2] as string,
+      filePath: row[3] as string,
+      content: row[4] as string,
+      hash: row[5] as string,
+      updatedAt: row[6] as number,
+    };
+  }
 }
 
