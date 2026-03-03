@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2026-03-03
+
+### Added
+- **Background Indexer & Vector Base**: Autonomous background daemon that continuously indexes your entire codebase into a searchable vector and graph database
+  - `src/core/indexer/file-parser.ts` — Regex-based AST parser for TypeScript/JavaScript (classes, functions, imports), Markdown (sections), and naive chunking for all other files
+  - `src/core/indexer/background-indexer.ts` — File system watcher daemon with debounced queue, `.gitignore`-aware filtering, and automatic start/stop lifecycle
+  - `src/core/indexer/indexer-types.ts` — Base types (`CodeNode`, `CodeEdge`, `IndexerConfig`) for the code graph
+  - `src/memory/memory-store.ts` — New `code_nodes` and `code_edges` SQLite tables for graph persistence
+  - `src/memory/memory-manager.ts` — New methods for saving/deleting code nodes and edges with HNSW vectorization
+- **3 New MCP Tools**:
+  - `rulebook_codebase_search` — Semantic search across indexed code chunks (hybrid BM25+HNSW)
+  - `rulebook_codebase_graph` — Explore direct code relationships (imports/exports) — V1 placeholder, deep search in V2
+  - `rulebook_indexer_status` — Check background indexer running status
+- **Deferred Items → Tasks Rule**: New mandatory directive in `RULEBOOK.md` and `rulebook-task-archive.md` templates enforcing that deferred/Phase X+ items MUST have Rulebook tasks created before archiving — prevents features from being forgotten
+- **Documentation**: `docs/background-indexer.md` explaining the feature, architecture, and troubleshooting
+
+### Changed
+- MCP server version aligned to 4.1.0
+- Background indexer auto-starts when Memory system is enabled via `memory.enabled: true` in `.rulebook/rulebook.json`
+- Graceful shutdown on SIGINT closes both BackgroundIndexer and MemoryManager
+
+### Internal
+- Added `tests/indexer.test.ts` with unit tests for CodeParser
+- Total MCP functions expanded from 19 to 22
+- 1,086 tests passing across 60 test files
+
 ## [4.0.0] - 2026-03-01
 
 ### Added

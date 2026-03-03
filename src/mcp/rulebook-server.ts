@@ -2,12 +2,13 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { existsSync, readFileSync, statSync } from 'fs';
+import { basename, dirname, join, resolve } from 'path';
 import { z } from 'zod';
-import { TaskManager } from '../core/task-manager.js';
-import { SkillsManager, getDefaultTemplatesPath } from '../core/skills-manager.js';
 import { ConfigManager } from '../core/config-manager.js';
-import { join, dirname, resolve, basename } from 'path';
-import { readFileSync, existsSync, statSync } from 'fs';
+import { BackgroundIndexer } from '../core/indexer/background-indexer.js';
+import { SkillsManager, getDefaultTemplatesPath } from '../core/skills-manager.js';
+import { TaskManager } from '../core/task-manager.js';
 import type { SkillCategory } from '../types.js';
 
 // Find .rulebook file/directory by walking up directories
@@ -75,7 +76,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '4.0.0',
+    version: '4.1.0',
   });
 
   // Register tool: rulebook_task_create
@@ -159,16 +160,16 @@ export async function startRulebookMcpServer(): Promise<void> {
             text: JSON.stringify({
               task: task
                 ? {
-                    id: task.id,
-                    title: task.title,
-                    status: task.status,
-                    proposal: task.proposal,
-                    tasks: task.tasks,
-                    design: task.design,
-                    specs: task.specs,
-                    createdAt: task.createdAt,
-                    updatedAt: task.updatedAt,
-                  }
+                  id: task.id,
+                  title: task.title,
+                  status: task.status,
+                  proposal: task.proposal,
+                  tasks: task.tasks,
+                  design: task.design,
+                  specs: task.specs,
+                  createdAt: task.createdAt,
+                  updatedAt: task.updatedAt,
+                }
                 : null,
               found: task !== null,
             }),
@@ -637,6 +638,7 @@ export async function startRulebookMcpServer(): Promise<void> {
   let memoryManager: Awaited<
     ReturnType<typeof import('../memory/memory-manager.js').createMemoryManager>
   > | null = null;
+  let bgIndexer: BackgroundIndexer | null = null;
   let autoCaptureEnabled = false;
 
   const rulebookConfig = await configManager.loadConfig();
@@ -650,8 +652,24 @@ export async function startRulebookMcpServer(): Promise<void> {
       console.error(`[rulebook-mcp] Memory DB: ${memoryDbPath}`);
       memoryManager = createMemoryManager(config.projectRoot, rulebookConfig.memory);
       autoCaptureEnabled = rulebookConfig.memory.autoCapture !== false; // enabled by default when memory is on
-    } catch {
-      // Memory module not available
+
+      // Boot Background Indexer
+      bgIndexer = new BackgroundIndexer(memoryManager, config.projectRoot, { enabled: true });
+      bgIndexer.start();
+
+      // Expose status to global so the tool can read it
+      (global as any).__indexerStatus = () => bgIndexer?.getStatus();
+
+      // Intercept process exit to elegantly shut down BackgroundIndexer and SQLite
+      process.on('SIGINT', async () => {
+        console.log('[rulebook-mcp] Shutting down indexes...');
+        if (bgIndexer) bgIndexer.stop();
+        if (memoryManager) await memoryManager.close();
+        process.exit(0);
+      });
+
+    } catch (e) {
+      console.warn('[rulebook-mcp] Failed to boot Memory/Indexer:', e);
     }
   }
 
@@ -1390,11 +1408,11 @@ export async function startRulebookMcpServer(): Promise<void> {
                   running,
                   ...(running && lockInfo
                     ? {
-                        runningPid: lockInfo.pid,
-                        runningTask: lockInfo.currentTask || null,
-                        runningIteration: lockInfo.iteration || 0,
-                        runningSince: lockInfo.startedAt,
-                      }
+                      runningPid: lockInfo.pid,
+                      runningTask: lockInfo.currentTask || null,
+                      runningIteration: lockInfo.iteration || 0,
+                      runningSince: lockInfo.startedAt,
+                    }
                     : {}),
                   iteration: status.current_iteration,
                   maxIterations: status.max_iterations,
@@ -1482,6 +1500,106 @@ export async function startRulebookMcpServer(): Promise<void> {
       }
     );
   }
+
+  // --- Background Indexer Tools ---
+
+  // Register tool: rulebook_codebase_search
+  server.registerTool(
+    'rulebook_codebase_search',
+    {
+      title: 'Codebase Semantic Search',
+      description: 'Search the entire project semantically (via AST chunks and paragraphs)',
+      inputSchema: {
+        query: z.string().describe('The code or concept you are looking for'),
+        limit: z.number().optional().describe('Result limit (default 10)'),
+      },
+    },
+    async (args) => {
+      if (!memoryManager) return memoryNotEnabled();
+      try {
+        const results = await memoryManager.searchMemories({
+          query: args.query,
+          limit: args.limit ?? 10,
+          mode: 'hybrid' // Force hybrid search for best code-chunk matching
+        });
+
+        // Filter out normal memories, keep only code nodes
+        const codeResults = results.filter((r: any) => r.id.startsWith('__code__'));
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, results: codeResults }) }],
+        };
+      } catch (error) {
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: false, error: String(error) }) },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_codebase_graph
+  server.registerTool(
+    'rulebook_codebase_graph',
+    {
+      title: 'Codebase Graph Explorer',
+      description: 'Find relationships (imports, exports) of a specific code node or file',
+      inputSchema: {
+        filePath: z.string().describe('The strict file path to query (e.g. src/core/app.ts)'),
+      },
+    },
+    async (args) => {
+      if (!memoryManager) return memoryNotEnabled();
+      try {
+        // Since V1 has limited Graph search implementation in memory-search, 
+        // we'll return a placeholder indicating the edge relations.
+        // In a real implementation we would call a memoryManager.getGraphAdjacent(args.filePath)
+
+        return {
+          content: [{
+            type: 'text', text: JSON.stringify({
+              success: true,
+              message: `Graph query for ${args.filePath} accepted. (Note: Graph deep-search pending V2 implementation, use codebase_search for now.)`,
+              filePath: args.filePath
+            })
+          }],
+        };
+      } catch (error) {
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: false, error: String(error) }) },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_indexer_status
+  server.registerTool(
+    'rulebook_indexer_status',
+    {
+      title: 'Background Indexer Status',
+      description: 'Get the status of the local autonomous filesystem indexer',
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        // Because the BackgroundIndexer runs asynchronously, we fetch its global state
+        // assuming it was attached to the server context during boot.
+        const status = (global as any).__indexerStatus ? (global as any).__indexerStatus() : { running: false, error: 'Indexer not attached to global context' };
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, status }) }],
+        };
+      } catch (error) {
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: false, error: String(error) }) },
+          ],
+        };
+      }
+    }
+  );
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

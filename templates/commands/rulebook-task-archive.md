@@ -62,6 +62,30 @@ description: Archive a completed Rulebook task and apply spec deltas to main spe
    - Create migration guides (if needed)
    - Unblock related tasks (if any)
 
+8. **🚨 MANDATORY: Deferred Items → Tasks Rule**:
+   **ABSOLUTE RULE — NO EXCEPTIONS**: Whenever a task is archived with items marked as "Deferred" or "Phase X+", you MUST immediately create Rulebook tasks for those deferred items **before archiving**.
+
+   ```
+   ❌ WRONG — defer without creating task:
+   1. Archive task with "- [ ] D1. feature X — deferred Phase 4"
+      → Feature X is now forgotten forever
+
+   ✅ CORRECT — defer with tracking:
+   1. Add "- [ ] D1. feature X — deferred Phase 4" to tasks.md
+   2. Call rulebook_task_create("phase4-feature-x")
+   3. Write tasks.md for the new task with full context
+   4. THEN call rulebook_task_archive
+   ```
+
+   **Archive Checklist (ALL must be done before archiving):**
+   ```
+   □ 1. tasks.md uses - [x] for implemented, - [ ] for deferred
+   □ 2. Each deferred item has a "Phase N" target
+   □ 3. A rulebook task exists for EVERY deferred item or group
+   □ 4. The new deferred tasks have tasks.md with full context
+   □ 5. THEN call rulebook_task_archive
+   ```
+
 **Reference**
 - Use `rulebook task list --archived` to see archived tasks
 - Use `rulebook task show <task-id>` to view task details

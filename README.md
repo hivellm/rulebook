@@ -52,6 +52,13 @@ npx @hivehub/rulebook@latest update
 
 See the full [CHANGELOG](CHANGELOG.md) for details.
 
+### v4.1.0 — Background Indexer & Codebase Intelligence
+
+- 🔍 **Background Indexer**: Autonomous daemon that continuously indexes your codebase into a searchable vector + graph database
+- 🧠 **3 New MCP Tools**: `rulebook_codebase_search` (semantic code search), `rulebook_codebase_graph` (import/export relationships), `rulebook_indexer_status` (daemon status)
+- 📋 **Deferred Items Protocol**: New mandatory directive ensuring deferred task items always get tracked as new Rulebook tasks before archiving
+- 📚 **22 MCP Functions** total (was 19)
+
 ### v4.0.0 — AI-first DX & Ralph maturity
 
 - 🚀 **Zero-prompt `init`**: auto-configures from detection, no questionnaires

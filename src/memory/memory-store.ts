@@ -5,8 +5,8 @@
  * with FTS5 full-text search (BM25 ranking).
  */
 
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import type { Memory, MemorySession, MemoryType } from './memory-types.js';
 
 // sql.js types (loaded dynamically)
@@ -89,6 +89,33 @@ export class MemoryStore {
       )
     `);
 
+    // --- Indexer Extensions ---
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS code_nodes (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        start_line INTEGER NOT NULL,
+        end_line INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        summary TEXT,
+        hash TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    `);
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS code_edges (
+        id TEXT PRIMARY KEY,
+        source_id TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        weight REAL NOT NULL DEFAULT 1.0,
+        FOREIGN KEY(source_id) REFERENCES code_nodes(id) ON DELETE CASCADE
+      )
+    `);
+
     // FTS5 virtual table for BM25 search
     // Use external content mode synced with memories table
     try {
@@ -132,6 +159,11 @@ export class MemoryStore {
     this.db.run('CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at)');
     this.db.run('CREATE INDEX IF NOT EXISTS idx_memories_accessed ON memories(accessed_at)');
     this.db.run('CREATE INDEX IF NOT EXISTS idx_memories_session ON memories(session_id)');
+
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_code_nodes_type ON code_nodes(type)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_code_nodes_path ON code_nodes(file_path)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_code_edges_source ON code_edges(source_id)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_code_edges_target ON code_edges(target_id)');
   }
 
   private trackWrite(): void {
@@ -478,4 +510,54 @@ export class MemoryStore {
       accessedAt: row[9] as number,
     };
   }
+
+  // --- Background Indexer Graph Persistance ---
+
+  saveCodeNode(node: import('../core/indexer/indexer-types.js').CodeNode): void {
+    if (!this.db) throw new Error('Database not initialized');
+
+    this.db.run(
+      `INSERT OR REPLACE INTO code_nodes (id, type, name, file_path, start_line, end_line, content, summary, hash, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        node.id,
+        node.type,
+        node.name,
+        node.filePath,
+        node.startLine,
+        node.endLine,
+        node.content,
+        node.summary ?? null,
+        node.hash,
+        node.updatedAt,
+      ]
+    );
+    this.trackWrite();
+  }
+
+  saveCodeEdge(edge: import('../core/indexer/indexer-types.js').CodeEdge): void {
+    if (!this.db) throw new Error('Database not initialized');
+
+    this.db.run(
+      `INSERT OR IGNORE INTO code_edges (id, source_id, target_id, type, weight)
+       VALUES (?, ?, ?, ?, ?)`,
+      [edge.id, edge.sourceId, edge.targetId, edge.type, edge.weight]
+    );
+    this.trackWrite();
+  }
+
+  deleteCodeNodesByFile(filePath: string): void {
+    if (!this.db) throw new Error('Database not initialized');
+    // Due to ON DELETE CASCADE, deleting the code_nodes will auto delete code_edges where source_id = node.id
+    this.db.run(`DELETE FROM code_nodes WHERE file_path = ?`, [filePath]);
+    this.trackWrite();
+  }
+
+  getCodeNodeByHash(id: string): string | null {
+    if (!this.db) throw new Error('Database not initialized');
+    const result = this.db.exec(`SELECT hash FROM code_nodes WHERE id = '${id.replace(/'/g, "''")}'`);
+    if (result.length === 0 || result[0].values.length === 0) return null;
+    return result[0].values[0][0] as string;
+  }
 }
+

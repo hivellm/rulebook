@@ -6,23 +6,23 @@
  * Uses lazy initialization to avoid loading WASM until first use.
  */
 
-import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { join } from 'path';
+import { HNSWIndex } from './hnsw-index.js';
+import { MemoryCache } from './memory-cache.js';
+import { MemorySearch } from './memory-search.js';
+import { MemoryStore } from './memory-store.js';
 import type {
   Memory,
-  MemorySession,
-  MemorySearchResult,
-  MemorySearchOptions,
   MemoryConfig,
+  MemorySearchOptions,
+  MemorySearchResult,
+  MemorySession,
   MemoryStats,
   MemoryType,
   TimelineEntry,
 } from './memory-types.js';
-import { MemoryStore } from './memory-store.js';
-import { HNSWIndex } from './hnsw-index.js';
-import { MemorySearch } from './memory-search.js';
-import { MemoryCache } from './memory-cache.js';
 import { vectorize } from './memory-vectorizer.js';
 
 const DEFAULT_DB_PATH = '.rulebook/memory/memory.db';
@@ -253,6 +253,42 @@ export class MemoryManager {
     }
 
     return JSON.stringify(memories, null, 2);
+  }
+
+  // --- Background Indexer Graph Persistance ---
+
+  async saveCodeNode(node: import('../core/indexer/indexer-types.js').CodeNode): Promise<void> {
+    await this.ensureInitialized();
+
+    // Check if hash is exactly the same to avoid re-vectorizing unchanged chunks
+    const existingHash = this.store!.getCodeNodeByHash(node.id);
+    if (existingHash === node.hash) {
+      return; // Unchanged
+    }
+
+    this.store!.saveCodeNode(node);
+
+    // Vectorize code chunks for FTS/HNSW semantic search
+    const textToVectorize = [node.name, node.summary || '', node.content].filter(Boolean).join(' ');
+    // Important: We prepend an identifier so search knows it's a code node
+    const vecId = `__code__${node.id}`;
+    const vec = vectorize(textToVectorize, this.dimensions);
+    this.index!.add(vecId, vec);
+    this.saveHnswIfNeeded();
+  }
+
+  async saveCodeEdge(edge: import('../core/indexer/indexer-types.js').CodeEdge): Promise<void> {
+    await this.ensureInitialized();
+    this.store!.saveCodeEdge(edge);
+  }
+
+  async deleteCodeNodesByFile(filePath: string): Promise<void> {
+    await this.ensureInitialized();
+    // In an ideal architecture we would query the store for all nodes belonging to this file, 
+    // then remove them from HNSW, before deleting from SQLite.
+    // For V1, the SQLite triggers delete, but HNSW vectors stay as orphans until a rebuild.
+    // A future improvement: add a HNSW delete via batch.
+    this.store!.deleteCodeNodesByFile(filePath);
   }
 
   async close(): Promise<void> {

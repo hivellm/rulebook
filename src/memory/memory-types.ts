@@ -83,3 +83,20 @@ export interface TimelineEntry {
   position: 'before' | 'anchor' | 'after';
   distanceFromAnchor: number;
 }
+
+export interface GraphSearchOptions {
+  nodeId: string;
+  maxDept?: number;
+  edgeTypes?: string[];
+}
+
+export interface GraphSearchResult {
+  nodeId: string;
+  nodeName: string;
+  filePath: string;
+  connectedEdges: {
+    targetId: string;
+    type: string;
+    weight: number;
+  }[];
+}
