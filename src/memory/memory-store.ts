@@ -511,7 +511,7 @@ export class MemoryStore {
     };
   }
 
-  // --- Background Indexer Graph Persistance ---
+  // --- Background Indexer Graph Persistence ---
 
   saveCodeNode(node: import('../core/indexer/indexer-types.js').CodeNode): void {
     if (!this.db) throw new Error('Database not initialized');

@@ -255,7 +255,7 @@ export class MemoryManager {
     return JSON.stringify(memories, null, 2);
   }
 
-  // --- Background Indexer Graph Persistance ---
+  // --- Background Indexer Graph Persistence ---
 
   async saveCodeNode(node: import('../core/indexer/indexer-types.js').CodeNode): Promise<void> {
     await this.ensureInitialized();

@@ -15,7 +15,7 @@ Isso dá ao Rulebook um contexto massivo e consultável sobre a base de código 
    - Para arquivos em TypeScript, o Indexer extrai blocos contendo `classes` e `functions` e determina the arestas do grafo baseadas em `imports`.
    - Para outros arquivos ou `.md`, são gerados "chunks" otimizados.
 4. **Debounce Optimization**: Modificações no file system sofrem delay (debounce) controlados através de filas assíncronas para não inundar o SQLite / HNSW.
-5. **Memory DB**: O motor insere representações em vetor (embeddings TF-IDF) associadas e permite buscas contextuais profundas através da ferramenta do Model Context Protocol `rulebook_codebase_search`.
+5. **Memory DB**: O motor insere representações em vector (embeddings TF-IDF) associadas e permite buscas contextuais profundas através da ferramenta do Model Context Protocol `rulebook_codebase_search`.
 
 ## Inicialização e Troubleshooting
 
