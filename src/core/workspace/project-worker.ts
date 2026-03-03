@@ -5,6 +5,7 @@
  * Tracks idle time for lifecycle management.
  */
 
+import { join } from 'node:path';
 import { TaskManager } from '../task-manager.js';
 import { ConfigManager } from '../config-manager.js';
 import { SkillsManager, getDefaultTemplatesPath } from '../skills-manager.js';
@@ -67,6 +68,11 @@ export class ProjectWorker {
     if (this._rulebookConfig.memory?.enabled) {
       try {
         const { createMemoryManager } = await import('../../memory/memory-manager.js');
+        const dbPath = join(
+          this.projectRoot,
+          this._rulebookConfig.memory.dbPath ?? '.rulebook/memory/memory.db'
+        );
+        console.error(`[rulebook-mcp] Memory DB (${this.projectId}): ${dbPath}`);
         this.memoryManager = createMemoryManager(this.projectRoot, this._rulebookConfig.memory);
       } catch {
         // Memory init failures are non-fatal

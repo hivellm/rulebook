@@ -276,6 +276,7 @@ mcpCommand
 program
   .command('mcp-server')
   .description('Start Rulebook MCP server for task management via MCP protocol (stdio transport)')
+  .option('--workspace', 'Run in workspace mode (multi-project)')
   .action(() => {
     mcpServerCommand();
   });
