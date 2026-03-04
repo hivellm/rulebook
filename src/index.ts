@@ -519,9 +519,7 @@ program
   .action(() => migrateMemoryDirectory());
 
 // Workspace commands (v4.2)
-const workspaceCommand = program
-  .command('workspace')
-  .description('Manage multi-project workspace');
+const workspaceCommand = program.command('workspace').description('Manage multi-project workspace');
 
 workspaceCommand
   .command('init')

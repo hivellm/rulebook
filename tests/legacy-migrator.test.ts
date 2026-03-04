@@ -252,23 +252,11 @@ describe('migrateMcpJson', () => {
       mcpServers: {
         rulebook: {
           command: 'npx',
-          args: [
-            '-y',
-            '@hivehub/rulebook@latest',
-            'mcp-server',
-            '--project-root',
-            '/abs/path1',
-          ],
+          args: ['-y', '@hivehub/rulebook@latest', 'mcp-server', '--project-root', '/abs/path1'],
         },
         'rulebook-memory': {
           command: 'npx',
-          args: [
-            '-y',
-            '@hivehub/rulebook@latest',
-            'mcp-server',
-            '--project-root',
-            '/abs/path2',
-          ],
+          args: ['-y', '@hivehub/rulebook@latest', 'mcp-server', '--project-root', '/abs/path2'],
         },
       },
     };
@@ -301,13 +289,7 @@ describe('migrateMcpJson', () => {
       mcpServers: {
         rulebook: {
           command: 'npx',
-          args: [
-            '-y',
-            '@hivehub/rulebook@latest',
-            'mcp-server',
-            '--project-root',
-            './relative',
-          ],
+          args: ['-y', '@hivehub/rulebook@latest', 'mcp-server', '--project-root', './relative'],
         },
       },
     };
@@ -326,13 +308,7 @@ describe('migrateLegacyMcpConfigs', () => {
       mcpServers: {
         rulebook: {
           command: 'npx',
-          args: [
-            '-y',
-            '@hivehub/rulebook@latest',
-            'mcp-server',
-            '--project-root',
-            '/abs/path',
-          ],
+          args: ['-y', '@hivehub/rulebook@latest', 'mcp-server', '--project-root', '/abs/path'],
         },
       },
     });

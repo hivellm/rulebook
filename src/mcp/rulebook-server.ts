@@ -144,7 +144,9 @@ export async function startRulebookMcpServer(): Promise<void> {
     return w.getSkillsManager();
   }
 
-  async function getMemMgr(projectId?: string): Promise<ReturnType<ProjectWorker['getMemoryManager']>> {
+  async function getMemMgr(
+    projectId?: string
+  ): Promise<ReturnType<ProjectWorker['getMemoryManager']>> {
     if (workspaceManager) {
       const pid = projectId ?? workspaceManager.getDefaultProjectId();
       const w = await workspaceManager.getWorker(pid);
@@ -159,7 +161,10 @@ export async function startRulebookMcpServer(): Promise<void> {
   });
 
   // Zod schema reused across tools for workspace project targeting
-  const projectIdSchema = z.string().optional().describe('Project ID (workspace mode only, defaults to default project)');
+  const projectIdSchema = z
+    .string()
+    .optional()
+    .describe('Project ID (workspace mode only, defaults to default project)');
 
   // Register tool: rulebook_task_create
   server.registerTool(
@@ -1856,9 +1861,7 @@ export async function startRulebookMcpServer(): Promise<void> {
             try {
               const tm = await getTaskMgr(project.name);
               const tasks = await tm.listTasks(false);
-              const filtered = args.status
-                ? tasks.filter((t) => t.status === args.status)
-                : tasks;
+              const filtered = args.status ? tasks.filter((t) => t.status === args.status) : tasks;
               if (filtered.length > 0) {
                 allTasks.push({
                   project: project.name,

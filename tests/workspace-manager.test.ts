@@ -113,10 +113,7 @@ describe('WorkspaceManager', () => {
     });
 
     it('getDefaultProjectId() should fallback to first project', () => {
-      const mgr = new WorkspaceManager(
-        makeConfig({ defaultProject: undefined }),
-        ROOT
-      );
+      const mgr = new WorkspaceManager(makeConfig({ defaultProject: undefined }), ROOT);
       expect(mgr.getDefaultProjectId()).toBe('frontend');
     });
 
@@ -514,9 +511,7 @@ describe('WorkspaceManager', () => {
     });
 
     it('should use dirname of filePath when workspaceRoot not provided', () => {
-      mockReadFileSync.mockReturnValue(
-        JSON.stringify({ folders: [{ path: '.' }] })
-      );
+      mockReadFileSync.mockReturnValue(JSON.stringify({ folders: [{ path: '.' }] }));
 
       const result = WorkspaceManager.fromCodeWorkspace('/projects/ws/app.code-workspace');
       expect(result).not.toBeNull();

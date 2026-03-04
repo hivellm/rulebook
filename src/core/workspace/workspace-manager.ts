@@ -28,10 +28,7 @@ export class WorkspaceManager {
   /** Start the idle-check timer. */
   startIdleChecker(): void {
     if (this.idleCheckInterval) return;
-    this.idleCheckInterval = setInterval(
-      () => this.killIdleWorkers(),
-      IDLE_CHECK_INTERVAL_MS
-    );
+    this.idleCheckInterval = setInterval(() => this.killIdleWorkers(), IDLE_CHECK_INTERVAL_MS);
     // Don't keep process alive just for the idle checker
     this.idleCheckInterval.unref();
   }
@@ -61,9 +58,7 @@ export class WorkspaceManager {
 
   /** Spawn and initialize a new worker for the given project. */
   async spawnWorker(projectId: string): Promise<ProjectWorker> {
-    const project = this.config.projects.find(
-      (p) => p.name === projectId && p.enabled !== false
-    );
+    const project = this.config.projects.find((p) => p.name === projectId && p.enabled !== false);
     if (!project) {
       throw new Error(`Project "${projectId}" not found in workspace "${this.config.name}"`);
     }
@@ -129,9 +124,7 @@ export class WorkspaceManager {
     const projects = await Promise.all(
       this.getProjects().map(async (p) => {
         const worker = this.workers.get(p.name);
-        const projectRoot = isAbsolute(p.path)
-          ? p.path
-          : resolve(this.workspaceRoot, p.path);
+        const projectRoot = isAbsolute(p.path) ? p.path : resolve(this.workspaceRoot, p.path);
         const hasConfig = existsSync(join(projectRoot, '.rulebook'));
 
         let taskCount = 0;
@@ -261,9 +254,7 @@ export class WorkspaceManager {
 
       const root = workspaceRoot ?? dirname(filePath);
       const projects: WorkspaceProject[] = parsed.folders.map((folder) => {
-        const resolvedPath = isAbsolute(folder.path)
-          ? folder.path
-          : resolve(root, folder.path);
+        const resolvedPath = isAbsolute(folder.path) ? folder.path : resolve(root, folder.path);
         const name = folder.name ?? basename(resolvedPath);
         return { name, path: folder.path };
       });
@@ -309,10 +300,7 @@ export class WorkspaceManager {
   }
 
   /** Build config from monorepo by scanning packages/ and apps/ directories. */
-  private static buildMonorepoConfig(
-    dir: string,
-    _tool: string
-  ): WorkspaceConfig | null {
+  private static buildMonorepoConfig(dir: string, _tool: string): WorkspaceConfig | null {
     const projects: WorkspaceProject[] = [];
 
     // Scan common monorepo directories
@@ -356,9 +344,7 @@ export class WorkspaceManager {
    * Walk up from `startDir` to find a workspace root directory.
    * Returns `{ config, root }` or null if no workspace found.
    */
-  static findWorkspaceFromCwd(
-    startDir: string
-  ): { config: WorkspaceConfig; root: string } | null {
+  static findWorkspaceFromCwd(startDir: string): { config: WorkspaceConfig; root: string } | null {
     let dir = resolve(startDir);
     const root = resolve('/');
 
