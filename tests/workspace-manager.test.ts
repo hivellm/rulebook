@@ -405,8 +405,9 @@ describe('WorkspaceManager', () => {
         projects: [{ name: 'a', path: './a' }],
       };
 
+      const suffix = join('.rulebook', 'workspace.json');
       mockExistsSync.mockImplementation((p: any) => {
-        return String(p).endsWith('.rulebook/workspace.json');
+        return String(p).endsWith(suffix);
       });
       mockReadFileSync.mockReturnValue(JSON.stringify(wsConfig));
 
@@ -415,8 +416,9 @@ describe('WorkspaceManager', () => {
     });
 
     it('should fall through on invalid .rulebook/workspace.json', () => {
+      const suffix = join('.rulebook', 'workspace.json');
       mockExistsSync.mockImplementation((p: any) => {
-        return String(p).endsWith('.rulebook/workspace.json');
+        return String(p).endsWith(suffix);
       });
       mockReadFileSync.mockReturnValue('invalid json{{{');
       mockReaddirSync.mockReturnValue([] as any);

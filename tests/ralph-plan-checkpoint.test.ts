@@ -197,12 +197,12 @@ describe('requestPlanApproval', () => {
   });
 
   const story = makeStory({ id: 'US-030', title: 'Plan Approval Story' });
-  const planText = 'Step 1: Create module\nStep 2: Write tests';
+  const planContent = 'Step 1: Create module\nStep 2: Write tests';
 
   it('should auto-approve when autoApproveAfterSeconds is greater than zero', async () => {
     vi.useFakeTimers();
 
-    const resultPromise = requestPlanApproval(planText, story, 5);
+    const resultPromise = requestPlanApproval(planContent, story, 5);
 
     // Advance the timer past the auto-approve delay
     await vi.advanceTimersByTimeAsync(5000);
@@ -221,7 +221,7 @@ describe('requestPlanApproval', () => {
 
     mockPrompt.mockResolvedValueOnce({ action: 'approve' });
 
-    const result = await requestPlanApproval(planText, story, 0);
+    const result = await requestPlanApproval(planContent, story, 0);
 
     expect(result).toEqual({ approved: true });
     expect(mockPrompt).toHaveBeenCalledOnce();
@@ -235,7 +235,7 @@ describe('requestPlanApproval', () => {
     mockPrompt.mockResolvedValueOnce({ action: 'reject' });
     mockPrompt.mockResolvedValueOnce({ feedback: 'Bad plan' });
 
-    const result = await requestPlanApproval(planText, story, 0);
+    const result = await requestPlanApproval(planContent, story, 0);
 
     expect(result).toEqual({ approved: false, feedback: 'Bad plan' });
     expect(mockPrompt).toHaveBeenCalledTimes(2);
@@ -249,7 +249,7 @@ describe('requestPlanApproval', () => {
     mockPrompt.mockResolvedValueOnce({ action: 'edit' });
     mockPrompt.mockResolvedValueOnce({ feedback: 'Change X' });
 
-    const result = await requestPlanApproval(planText, story, 0);
+    const result = await requestPlanApproval(planContent, story, 0);
 
     expect(result).toEqual({ approved: false, feedback: 'Change X' });
     expect(mockPrompt).toHaveBeenCalledTimes(2);
