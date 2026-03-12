@@ -30,17 +30,22 @@ export async function isClaudeCodeInstalled(homeDir?: string): Promise<boolean> 
 }
 
 /**
- * Build the expected MCP server args array for a given project root.
+ * Build the MCP server args array.
+ * Does NOT include --project-root; the MCP server discovers the project
+ * via walk-up (`findRulebookConfig(process.cwd())`), which is portable
+ * across machines and OS.
  */
-function buildMcpServerArgs(projectRoot: string): string[] {
-  return ['-y', '@hivehub/rulebook@latest', 'mcp-server', '--project-root', projectRoot];
+function buildMcpServerArgs(): string[] {
+  return ['-y', '@hivehub/rulebook@latest', 'mcp-server'];
 }
 
 /**
  * Configure .mcp.json at project root with rulebook MCP server entry.
  * If .mcp.json already exists, merges without replacing existing entries.
- * Includes --project-root to prevent MCP server conflicts in multi-project workspaces.
- * If the entry already exists but lacks --project-root, it is updated in place.
+ * Uses simplified args without --project-root (the MCP server discovers
+ * the project via cwd walk-up, which is portable across machines).
+ * If an existing entry contains legacy --project-root args, they are
+ * upgraded to the simplified form.
  */
 export async function configureMcpJson(projectRoot: string): Promise<boolean> {
   const mcpJsonPath = join(projectRoot, '.mcp.json');
@@ -59,14 +64,14 @@ export async function configureMcpJson(projectRoot: string): Promise<boolean> {
 
   mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
 
-  const expectedArgs = buildMcpServerArgs(projectRoot);
+  const expectedArgs = buildMcpServerArgs();
 
   if (mcpConfig.mcpServers.rulebook) {
     const existing = mcpConfig.mcpServers.rulebook as { args?: string[] };
-    const hasProjectRoot = existing.args?.includes('--project-root');
+    const hasLegacyProjectRoot = existing.args?.includes('--project-root');
 
-    if (!hasProjectRoot) {
-      // Upgrade legacy entry to include --project-root
+    if (hasLegacyProjectRoot) {
+      // Upgrade legacy entry: remove --project-root and its value
       existing.args = expectedArgs;
       await writeFile(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
     }

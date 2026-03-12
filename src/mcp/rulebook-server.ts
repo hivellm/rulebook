@@ -10,6 +10,8 @@ import { BackgroundIndexer } from '../core/indexer/background-indexer.js';
 import { SkillsManager, getDefaultTemplatesPath } from '../core/skills-manager.js';
 import { TaskManager } from '../core/task-manager.js';
 import type { SkillCategory } from '../types.js';
+import { WorkspaceManager } from '../core/workspace/workspace-manager.js';
+import type { ProjectWorker } from '../core/workspace/project-worker.js';
 
 // Find .rulebook file/directory by walking up directories
 export function findRulebookConfig(startDir: string): string | null {
@@ -69,15 +71,100 @@ function loadConfig() {
 }
 
 export async function startRulebookMcpServer(): Promise<void> {
-  const config = loadConfig();
-  const taskManager = new TaskManager(config.projectRoot, '.rulebook');
-  const skillsManager = new SkillsManager(getDefaultTemplatesPath(), config.projectRoot);
-  const configManager = new ConfigManager(config.projectRoot);
+  // --- Workspace vs Single-Project Mode ---
+  const isWorkspaceMode = process.argv.includes('--workspace');
+  let workspaceManager: WorkspaceManager | null = null;
+
+  // Default managers (single-project mode OR default workspace project)
+  let taskManager!: TaskManager;
+  let skillsManager!: SkillsManager;
+  let configManager!: ConfigManager;
+  let projectRoot: string;
+
+  if (isWorkspaceMode) {
+    const projectRootFlagIndex = process.argv.indexOf('--project-root');
+    const startDir =
+      projectRootFlagIndex !== -1 && process.argv[projectRootFlagIndex + 1]
+        ? process.argv[projectRootFlagIndex + 1]
+        : process.cwd();
+
+    const wsConfig = WorkspaceManager.findWorkspaceConfig(startDir);
+    if (!wsConfig) {
+      console.error(
+        '[rulebook-mcp] No workspace config found. Run `rulebook workspace init` to create .rulebook/workspace.json.'
+      );
+      process.exit(1);
+    }
+
+    workspaceManager = new WorkspaceManager(wsConfig, startDir);
+    workspaceManager.startIdleChecker();
+    projectRoot = startDir;
+
+    // Initialize default project so existing tools work without projectId
+    const defaultId = workspaceManager.getDefaultProjectId();
+    if (defaultId) {
+      try {
+        const defaultWorker = await workspaceManager.getWorker(defaultId);
+        taskManager = defaultWorker.getTaskManager();
+        skillsManager = defaultWorker.getSkillsManager();
+        configManager = defaultWorker.getConfigManager();
+      } catch (e) {
+        console.error(`[rulebook-mcp] Failed to init default project "${defaultId}":`, e);
+        process.exit(1);
+      }
+    }
+    console.error(
+      `[rulebook-mcp] Workspace mode: ${wsConfig.name} (${wsConfig.projects.length} projects, default: ${defaultId})`
+    );
+  } else {
+    const singleConfig = loadConfig();
+    projectRoot = singleConfig.projectRoot;
+    taskManager = new TaskManager(projectRoot, '.rulebook');
+    skillsManager = new SkillsManager(getDefaultTemplatesPath(), projectRoot);
+    configManager = new ConfigManager(projectRoot);
+  }
+
+  // --- Manager Resolution Helpers (workspace-aware) ---
+
+  async function getTaskMgr(projectId?: string): Promise<TaskManager> {
+    if (!projectId || !workspaceManager) return taskManager;
+    const w = await workspaceManager.getWorker(projectId);
+    return w.getTaskManager();
+  }
+
+  async function getConfigMgr(projectId?: string): Promise<ConfigManager> {
+    if (!projectId || !workspaceManager) return configManager;
+    const w = await workspaceManager.getWorker(projectId);
+    return w.getConfigManager();
+  }
+
+  async function getSkillsMgr(projectId?: string): Promise<SkillsManager> {
+    if (!projectId || !workspaceManager) return skillsManager;
+    const w = await workspaceManager.getWorker(projectId);
+    return w.getSkillsManager();
+  }
+
+  async function getMemMgr(
+    projectId?: string
+  ): Promise<ReturnType<ProjectWorker['getMemoryManager']>> {
+    if (workspaceManager) {
+      const pid = projectId ?? workspaceManager.getDefaultProjectId();
+      const w = await workspaceManager.getWorker(pid);
+      return w.getMemoryManager();
+    }
+    return memoryManager;
+  }
 
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '4.1.0',
+    version: '4.2.2',
   });
+
+  // Zod schema reused across tools for workspace project targeting
+  const projectIdSchema = z
+    .string()
+    .optional()
+    .describe('Project ID (workspace mode only, defaults to default project)');
 
   // Register tool: rulebook_task_create
   server.registerTool(
@@ -87,10 +174,12 @@ export async function startRulebookMcpServer(): Promise<void> {
       description: 'Create a new Rulebook task',
       inputSchema: {
         taskId: z.string().describe('Task ID in kebab-case'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
-      await taskManager.createTask(args.taskId);
+      const tm = await getTaskMgr(args.projectId);
+      await tm.createTask(args.taskId);
       const resultText = JSON.stringify({
         success: true,
         taskId: args.taskId,
@@ -113,10 +202,12 @@ export async function startRulebookMcpServer(): Promise<void> {
           .enum(['pending', 'in-progress', 'completed', 'blocked'])
           .optional()
           .describe('Filter by status'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
-      const tasks = await taskManager.listTasks(args.includeArchived || false);
+      const tm = await getTaskMgr(args.projectId);
+      const tasks = await tm.listTasks(args.includeArchived || false);
       let filtered = tasks;
       if (args.status) {
         filtered = tasks.filter((t) => t.status === args.status);
@@ -149,10 +240,12 @@ export async function startRulebookMcpServer(): Promise<void> {
       description: 'Show task details',
       inputSchema: {
         taskId: z.string().describe('Task ID to show'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
-      const task = await taskManager.showTask(args.taskId);
+      const tm = await getTaskMgr(args.projectId);
+      const task = await tm.showTask(args.taskId);
       return {
         content: [
           {
@@ -191,11 +284,13 @@ export async function startRulebookMcpServer(): Promise<void> {
           .enum(['pending', 'in-progress', 'completed', 'blocked'])
           .optional()
           .describe('New status'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
+      const tm = await getTaskMgr(args.projectId);
       if (args.status) {
-        await taskManager.updateTaskStatus(args.taskId, args.status);
+        await tm.updateTaskStatus(args.taskId, args.status);
       }
       const resultText = JSON.stringify({
         success: true,
@@ -215,10 +310,12 @@ export async function startRulebookMcpServer(): Promise<void> {
       description: 'Validate task format',
       inputSchema: {
         taskId: z.string().describe('Task ID to validate'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
-      const validation = await taskManager.validateTask(args.taskId);
+      const tm = await getTaskMgr(args.projectId);
+      const validation = await tm.validateTask(args.taskId);
       return {
         content: [
           {
@@ -243,10 +340,12 @@ export async function startRulebookMcpServer(): Promise<void> {
       inputSchema: {
         taskId: z.string().describe('Task ID to archive'),
         skipValidation: z.boolean().optional().describe('Skip validation before archiving'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
-      await taskManager.archiveTask(args.taskId, args.skipValidation || false);
+      const tm = await getTaskMgr(args.projectId);
+      await tm.archiveTask(args.taskId, args.skipValidation || false);
       const resultText = JSON.stringify({
         success: true,
         taskId: args.taskId,
@@ -265,10 +364,12 @@ export async function startRulebookMcpServer(): Promise<void> {
       description: 'Delete a task permanently',
       inputSchema: {
         taskId: z.string().describe('Task ID to delete'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
-      await taskManager.deleteTask(args.taskId);
+      const tm = await getTaskMgr(args.projectId);
+      await tm.deleteTask(args.taskId);
       const resultText = JSON.stringify({
         success: true,
         taskId: args.taskId,
@@ -306,20 +407,22 @@ export async function startRulebookMcpServer(): Promise<void> {
           .optional()
           .describe('Filter by category'),
         enabledOnly: z.boolean().optional().describe('Show only enabled skills'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
       try {
+        const sm = await getSkillsMgr(args.projectId);
+        const cm = await getConfigMgr(args.projectId);
         let skills;
         if (args.category) {
-          skills = await skillsManager.getSkillsByCategory(args.category as SkillCategory);
+          skills = await sm.getSkillsByCategory(args.category as SkillCategory);
         } else {
-          skills = await skillsManager.getSkills();
+          skills = await sm.getSkills();
         }
 
-        // Check enabled status from config
-        const rulebookConfig = await configManager.loadConfig();
-        const enabledIds = new Set(rulebookConfig.skills?.enabled || []);
+        const rbConfig = await cm.loadConfig();
+        const enabledIds = new Set(rbConfig.skills?.enabled || []);
 
         let filteredSkills = skills.map((s) => ({
           id: s.id,
@@ -372,11 +475,14 @@ export async function startRulebookMcpServer(): Promise<void> {
       description: 'Show detailed information about a specific skill',
       inputSchema: {
         skillId: z.string().describe('Skill ID (e.g., languages/typescript)'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
       try {
-        const skill = await skillsManager.getSkillById(args.skillId);
+        const sm = await getSkillsMgr(args.projectId);
+        const cm = await getConfigMgr(args.projectId);
+        const skill = await sm.getSkillById(args.skillId);
 
         if (!skill) {
           return {
@@ -393,8 +499,8 @@ export async function startRulebookMcpServer(): Promise<void> {
           };
         }
 
-        const rulebookConfig = await configManager.loadConfig();
-        const enabled = rulebookConfig.skills?.enabled?.includes(args.skillId) || false;
+        const rbConfig = await cm.loadConfig();
+        const enabled = rbConfig.skills?.enabled?.includes(args.skillId) || false;
 
         return {
           content: [
@@ -444,16 +550,18 @@ export async function startRulebookMcpServer(): Promise<void> {
       description: 'Enable a skill in the project configuration',
       inputSchema: {
         skillId: z.string().describe('Skill ID to enable (e.g., languages/typescript)'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
       try {
-        let rulebookConfig = await configManager.loadConfig();
-        rulebookConfig = await skillsManager.enableSkill(args.skillId, rulebookConfig);
-        await configManager.saveConfig(rulebookConfig);
+        const sm = await getSkillsMgr(args.projectId);
+        const cm = await getConfigMgr(args.projectId);
+        let rbConfig = await cm.loadConfig();
+        rbConfig = await sm.enableSkill(args.skillId, rbConfig);
+        await cm.saveConfig(rbConfig);
 
-        // Validate to check for conflicts
-        const validation = await skillsManager.validateSkills(rulebookConfig);
+        const validation = await sm.validateSkills(rbConfig);
 
         const resultText = JSON.stringify({
           success: true,
@@ -488,14 +596,16 @@ export async function startRulebookMcpServer(): Promise<void> {
       description: 'Disable a skill in the project configuration',
       inputSchema: {
         skillId: z.string().describe('Skill ID to disable (e.g., languages/typescript)'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
       try {
-        let rulebookConfig = await configManager.loadConfig();
+        const sm = await getSkillsMgr(args.projectId);
+        const cm = await getConfigMgr(args.projectId);
+        let rbConfig = await cm.loadConfig();
 
-        // Check if skill is enabled
-        if (!rulebookConfig.skills?.enabled?.includes(args.skillId)) {
+        if (!rbConfig.skills?.enabled?.includes(args.skillId)) {
           return {
             content: [
               {
@@ -509,8 +619,8 @@ export async function startRulebookMcpServer(): Promise<void> {
           };
         }
 
-        rulebookConfig = await skillsManager.disableSkill(args.skillId, rulebookConfig);
-        await configManager.saveConfig(rulebookConfig);
+        rbConfig = await sm.disableSkill(args.skillId, rbConfig);
+        await cm.saveConfig(rbConfig);
 
         const resultText = JSON.stringify({
           success: true,
@@ -543,13 +653,16 @@ export async function startRulebookMcpServer(): Promise<void> {
       description: 'Search for skills by name, description, or tags',
       inputSchema: {
         query: z.string().describe('Search query'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
       try {
-        const skills = await skillsManager.searchSkills(args.query);
-        const rulebookConfig = await configManager.loadConfig();
-        const enabledIds = new Set(rulebookConfig.skills?.enabled || []);
+        const sm = await getSkillsMgr(args.projectId);
+        const cm = await getConfigMgr(args.projectId);
+        const skills = await sm.searchSkills(args.query);
+        const rbConfig = await cm.loadConfig();
+        const enabledIds = new Set(rbConfig.skills?.enabled || []);
 
         return {
           content: [
@@ -592,12 +705,16 @@ export async function startRulebookMcpServer(): Promise<void> {
     {
       title: 'Validate Skills Configuration',
       description: 'Validate the current skills configuration for conflicts and dependencies',
-      inputSchema: {},
+      inputSchema: {
+        projectId: projectIdSchema,
+      },
     },
-    async () => {
+    async (args) => {
       try {
-        const rulebookConfig = await configManager.loadConfig();
-        const validation = await skillsManager.validateSkills(rulebookConfig);
+        const sm = await getSkillsMgr(args.projectId);
+        const cm = await getConfigMgr(args.projectId);
+        const rbConfig = await cm.loadConfig();
+        const validation = await sm.validateSkills(rbConfig);
 
         return {
           content: [
@@ -609,7 +726,7 @@ export async function startRulebookMcpServer(): Promise<void> {
                 errors: validation.errors,
                 warnings: validation.warnings,
                 conflicts: validation.conflicts,
-                enabledCount: rulebookConfig.skills?.enabled?.length || 0,
+                enabledCount: rbConfig.skills?.enabled?.length || 0,
               }),
             },
           ],
@@ -634,43 +751,48 @@ export async function startRulebookMcpServer(): Promise<void> {
   // Memory System Functions (v3.0)
   // ============================================
 
-  // Conditionally initialize MemoryManager
+  // Conditionally initialize MemoryManager (single-project mode only;
+  // in workspace mode each worker manages its own memory)
   let memoryManager: Awaited<
     ReturnType<typeof import('../memory/memory-manager.js').createMemoryManager>
   > | null = null;
   let bgIndexer: BackgroundIndexer | null = null;
   let autoCaptureEnabled = false;
 
-  const rulebookConfig = await configManager.loadConfig();
-  if (rulebookConfig.memory?.enabled) {
-    try {
-      const { createMemoryManager } = await import('../memory/memory-manager.js');
-      const memoryDbPath = join(
-        config.projectRoot,
-        rulebookConfig.memory.dbPath ?? '.rulebook/memory/memory.db'
-      );
-      console.error(`[rulebook-mcp] Memory DB: ${memoryDbPath}`);
-      memoryManager = createMemoryManager(config.projectRoot, rulebookConfig.memory);
-      autoCaptureEnabled = rulebookConfig.memory.autoCapture !== false; // enabled by default when memory is on
+  if (!isWorkspaceMode) {
+    const rulebookConfig = await configManager.loadConfig();
+    if (rulebookConfig.memory?.enabled) {
+      try {
+        const { createMemoryManager } = await import('../memory/memory-manager.js');
+        const memoryDbPath = join(
+          projectRoot,
+          rulebookConfig.memory.dbPath ?? '.rulebook/memory/memory.db'
+        );
+        console.error(`[rulebook-mcp] Memory DB: ${memoryDbPath}`);
+        memoryManager = createMemoryManager(projectRoot, rulebookConfig.memory);
+        autoCaptureEnabled = rulebookConfig.memory.autoCapture !== false;
 
-      // Boot Background Indexer
-      bgIndexer = new BackgroundIndexer(memoryManager, config.projectRoot, { enabled: true });
-      bgIndexer.start();
+        // Boot Background Indexer
+        bgIndexer = new BackgroundIndexer(memoryManager, projectRoot, { enabled: true });
+        bgIndexer.start();
 
-      // Expose status to global so the tool can read it
-      (global as any).__indexerStatus = () => bgIndexer?.getStatus();
-
-      // Intercept process exit to elegantly shut down BackgroundIndexer and SQLite
-      process.on('SIGINT', async () => {
-        console.log('[rulebook-mcp] Shutting down indexes...');
-        if (bgIndexer) bgIndexer.stop();
-        if (memoryManager) await memoryManager.close();
-        process.exit(0);
-      });
-    } catch (e) {
-      console.warn('[rulebook-mcp] Failed to boot Memory/Indexer:', e);
+        (global as any).__indexerStatus = () => bgIndexer?.getStatus();
+      } catch (e) {
+        console.warn('[rulebook-mcp] Failed to boot Memory/Indexer:', e);
+      }
     }
   }
+
+  // Graceful shutdown for both modes
+  process.on('SIGINT', async () => {
+    console.error('[rulebook-mcp] Shutting down...');
+    if (workspaceManager) {
+      await workspaceManager.shutdownAll();
+    }
+    if (bgIndexer) bgIndexer.stop();
+    if (memoryManager) await memoryManager.close();
+    process.exit(0);
+  });
 
   /**
    * Auto-capture: save tool interactions to memory in the background.
@@ -722,12 +844,14 @@ export async function startRulebookMcpServer(): Promise<void> {
         limit: z.number().optional().describe('Max results (default 20)'),
         mode: z.enum(['bm25', 'vector', 'hybrid']).optional().describe('Search mode'),
         type: z.string().optional().describe('Filter by memory type'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
-      if (!memoryManager) return memoryNotEnabled();
+      const mm = await getMemMgr(args.projectId);
+      if (!mm) return memoryNotEnabled();
       try {
-        const results = await memoryManager.searchMemories({
+        const results = await mm.searchMemories({
           query: args.query,
           limit: args.limit,
           mode: args.mode,
@@ -760,12 +884,14 @@ export async function startRulebookMcpServer(): Promise<void> {
       inputSchema: {
         memoryId: z.string().describe('Memory ID to anchor timeline'),
         window: z.number().optional().describe('Number of memories before/after (default 5)'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
-      if (!memoryManager) return memoryNotEnabled();
+      const mm = await getMemMgr(args.projectId);
+      if (!mm) return memoryNotEnabled();
       try {
-        const timeline = await memoryManager.getTimeline(args.memoryId, args.window);
+        const timeline = await mm.getTimeline(args.memoryId, args.window);
         return {
           content: [{ type: 'text', text: JSON.stringify({ success: true, timeline }) }],
         };
@@ -787,12 +913,14 @@ export async function startRulebookMcpServer(): Promise<void> {
       description: 'Get full details for specific memory IDs',
       inputSchema: {
         ids: z.array(z.string()).describe('Memory IDs to fetch'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
-      if (!memoryManager) return memoryNotEnabled();
+      const mm = await getMemMgr(args.projectId);
+      if (!mm) return memoryNotEnabled();
       try {
-        const memories = await memoryManager.getFullDetails(args.ids);
+        const memories = await mm.getFullDetails(args.ids);
         return {
           content: [{ type: 'text', text: JSON.stringify({ success: true, memories }) }],
         };
@@ -821,12 +949,14 @@ export async function startRulebookMcpServer(): Promise<void> {
         title: z.string().describe('Memory title'),
         content: z.string().describe('Memory content'),
         tags: z.array(z.string()).optional().describe('Tags'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
-      if (!memoryManager) return memoryNotEnabled();
+      const mm = await getMemMgr(args.projectId);
+      if (!mm) return memoryNotEnabled();
       try {
-        const memory = await memoryManager.saveMemory({
+        const memory = await mm.saveMemory({
           type: args.type as any,
           title: args.title,
           content: args.content,
@@ -859,12 +989,15 @@ export async function startRulebookMcpServer(): Promise<void> {
     {
       title: 'Memory Statistics',
       description: 'Get memory database statistics',
-      inputSchema: {},
+      inputSchema: {
+        projectId: projectIdSchema,
+      },
     },
-    async () => {
-      if (!memoryManager) return memoryNotEnabled();
+    async (args) => {
+      const mm = await getMemMgr(args.projectId);
+      if (!mm) return memoryNotEnabled();
       try {
-        const stats = await memoryManager.getStats();
+        const stats = await mm.getStats();
         return {
           content: [{ type: 'text', text: JSON.stringify({ success: true, stats }) }],
         };
@@ -886,12 +1019,14 @@ export async function startRulebookMcpServer(): Promise<void> {
       description: 'Force memory eviction and cleanup',
       inputSchema: {
         force: z.boolean().optional().describe('Force cleanup regardless of size'),
+        projectId: projectIdSchema,
       },
     },
     async (args) => {
-      if (!memoryManager) return memoryNotEnabled();
+      const mm = await getMemMgr(args.projectId);
+      if (!mm) return memoryNotEnabled();
       try {
-        const result = await memoryManager.cleanup(args.force ?? false);
+        const result = await mm.cleanup(args.force ?? false);
         return {
           content: [{ type: 'text', text: JSON.stringify({ success: true, ...result }) }],
         };
@@ -924,19 +1059,19 @@ export async function startRulebookMcpServer(): Promise<void> {
           const { RalphManager } = await import('../core/ralph-manager.js');
           const { PRDGenerator } = await import('../core/prd-generator.js');
 
-          const logger = new Logger(config.projectRoot);
-          const ralphManager = new RalphManager(config.projectRoot, logger);
-          const prdGenerator = new PRDGenerator(config.projectRoot, logger);
+          const logger = new Logger(projectRoot);
+          const ralphManager = new RalphManager(projectRoot, logger);
+          const prdGenerator = new PRDGenerator(projectRoot, logger);
 
           const configData = await configManager.loadConfig();
           const maxIterations = configData.ralph?.maxIterations || 10;
           const tool = (configData.ralph?.tool || 'claude') as 'claude' | 'amp' | 'gemini';
 
           // Generate PRD first, then initialize with correct task count
-          const prd = await prdGenerator.generatePRD(basename(config.projectRoot) || 'project');
+          const prd = await prdGenerator.generatePRD(basename(projectRoot) || 'project');
 
           const { writeFile } = await import('../utils/file-system.js');
-          const prdPath = join(config.projectRoot, '.rulebook', 'ralph', 'prd.json');
+          const prdPath = join(projectRoot, '.rulebook', 'ralph', 'prd.json');
           await writeFile(prdPath, JSON.stringify(prd, null, 2));
 
           // Initialize after PRD is written so task count is correct
@@ -988,8 +1123,8 @@ export async function startRulebookMcpServer(): Promise<void> {
           const { spawn } = await import('child_process');
           const { execSync } = await import('child_process');
 
-          const logger = new Logger(config.projectRoot);
-          const ralphManager = new RalphManager(config.projectRoot, logger);
+          const logger = new Logger(projectRoot);
+          const ralphManager = new RalphManager(projectRoot, logger);
 
           const configData = await configManager.loadConfig();
           const maxIterations = args.maxIterations || configData.ralph?.maxIterations || 10;
@@ -1061,7 +1196,7 @@ export async function startRulebookMcpServer(): Promise<void> {
                 let stdout = '';
                 let stderr = '';
                 const proc = spawn(cmd, cmdArgs, {
-                  cwd: config.projectRoot,
+                  cwd: projectRoot,
                   shell: true,
                   stdio: ['pipe', 'pipe', 'pipe'],
                 });
@@ -1134,7 +1269,7 @@ export async function startRulebookMcpServer(): Promise<void> {
                 };
 
                 const proc = spawn(cfg.cmd, cfg.args, {
-                  cwd: config.projectRoot,
+                  cwd: projectRoot,
                   shell: true,
                   stdio: ['pipe', 'pipe', 'pipe'],
                 });
@@ -1377,8 +1512,8 @@ export async function startRulebookMcpServer(): Promise<void> {
           const { Logger } = await import('../core/logger.js');
           const { RalphManager } = await import('../core/ralph-manager.js');
 
-          const logger = new Logger(config.projectRoot);
-          const ralphManager = new RalphManager(config.projectRoot, logger);
+          const logger = new Logger(projectRoot);
+          const ralphManager = new RalphManager(projectRoot, logger);
           const status = await ralphManager.getStatus();
 
           if (!status) {
@@ -1453,8 +1588,8 @@ export async function startRulebookMcpServer(): Promise<void> {
           const { Logger } = await import('../core/logger.js');
           const { IterationTracker } = await import('../core/iteration-tracker.js');
 
-          const logger = new Logger(config.projectRoot);
-          const tracker = new IterationTracker(config.projectRoot, logger);
+          const logger = new Logger(projectRoot);
+          const tracker = new IterationTracker(projectRoot, logger);
 
           const history = await tracker.getHistory(args.limit || 10, args.taskId);
           const stats = await tracker.getStatistics();
@@ -1606,6 +1741,163 @@ export async function startRulebookMcpServer(): Promise<void> {
       }
     }
   );
+
+  // ============================================
+  // Workspace Tools (v4.2 — workspace mode only)
+  // ============================================
+
+  if (workspaceManager) {
+    // Register tool: rulebook_workspace_list
+    server.registerTool(
+      'rulebook_workspace_list',
+      {
+        title: 'List Workspace Projects',
+        description: 'List all projects in the current workspace',
+        inputSchema: {},
+      },
+      async () => {
+        const projects = workspaceManager!.getProjects();
+        const activeIds = workspaceManager!.getActiveWorkerIds();
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                workspace: workspaceManager!.getConfig().name,
+                defaultProject: workspaceManager!.getDefaultProjectId(),
+                projects: projects.map((p) => ({
+                  name: p.name,
+                  path: p.path,
+                  workerActive: activeIds.includes(p.name),
+                })),
+                count: projects.length,
+              }),
+            },
+          ],
+        };
+      }
+    );
+
+    // Register tool: rulebook_workspace_status
+    server.registerTool(
+      'rulebook_workspace_status',
+      {
+        title: 'Workspace Status',
+        description: 'Get detailed status of all workspace projects (workers, tasks, memory)',
+        inputSchema: {},
+      },
+      async () => {
+        try {
+          const status = await workspaceManager!.getStatus();
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ success: true, ...status }) }],
+          };
+        } catch (error) {
+          return {
+            content: [
+              { type: 'text', text: JSON.stringify({ success: false, error: String(error) }) },
+            ],
+          };
+        }
+      }
+    );
+
+    // Register tool: rulebook_workspace_search
+    server.registerTool(
+      'rulebook_workspace_search',
+      {
+        title: 'Cross-Project Memory Search',
+        description: 'Search memories across all projects in the workspace',
+        inputSchema: {
+          query: z.string().describe('Search query'),
+          limit: z.number().optional().describe('Max results per project (default 10)'),
+        },
+      },
+      async (args) => {
+        try {
+          const results = await workspaceManager!.searchMemoryAcrossProjects(args.query, {
+            limit: args.limit,
+          });
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: true,
+                  results,
+                  projectsSearched: results.length,
+                }),
+              },
+            ],
+          };
+        } catch (error) {
+          return {
+            content: [
+              { type: 'text', text: JSON.stringify({ success: false, error: String(error) }) },
+            ],
+          };
+        }
+      }
+    );
+
+    // Register tool: rulebook_workspace_tasks
+    server.registerTool(
+      'rulebook_workspace_tasks',
+      {
+        title: 'List Tasks Across Projects',
+        description: 'List tasks from all workspace projects',
+        inputSchema: {
+          status: z
+            .enum(['pending', 'in-progress', 'completed', 'blocked'])
+            .optional()
+            .describe('Filter by status'),
+        },
+      },
+      async (args) => {
+        try {
+          const allTasks: Array<{ project: string; tasks: unknown[] }> = [];
+          for (const project of workspaceManager!.getProjects()) {
+            try {
+              const tm = await getTaskMgr(project.name);
+              const tasks = await tm.listTasks(false);
+              const filtered = args.status ? tasks.filter((t) => t.status === args.status) : tasks;
+              if (filtered.length > 0) {
+                allTasks.push({
+                  project: project.name,
+                  tasks: filtered.map((t) => ({
+                    id: t.id,
+                    title: t.title,
+                    status: t.status,
+                  })),
+                });
+              }
+            } catch {
+              // Skip projects that fail
+            }
+          }
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: true,
+                  projects: allTasks,
+                  totalTasks: allTasks.reduce((sum, p) => sum + p.tasks.length, 0),
+                }),
+              },
+            ],
+          };
+        } catch (error) {
+          return {
+            content: [
+              { type: 'text', text: JSON.stringify({ success: false, error: String(error) }) },
+            ],
+          };
+        }
+      }
+    );
+  }
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

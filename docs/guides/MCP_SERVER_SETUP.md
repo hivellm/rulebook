@@ -230,6 +230,76 @@ npm run build
 chmod -R u+w rulebook/tasks/
 ```
 
+## Workspace Mode (Multi-Project)
+
+> **NEW in v4.2.0** — Manage multiple projects with a single MCP server.
+
+### Setup
+
+```bash
+# 1. Initialize workspace at monorepo root
+cd my-monorepo
+rulebook workspace init
+
+# 2. Setup MCP in workspace mode
+rulebook mcp init --workspace
+```
+
+This creates a single `.mcp.json` with the `--workspace` flag:
+
+```json
+{
+  "mcpServers": {
+    "rulebook": {
+      "command": "npx",
+      "args": ["-y", "@hivehub/rulebook@latest", "mcp-server", "--workspace"]
+    }
+  }
+}
+```
+
+### How It Works
+
+In workspace mode, the MCP server:
+
+1. Reads `.rulebook/workspace.json` (or auto-discovers from `*.code-workspace` / monorepo config)
+2. Creates isolated `ProjectWorker` instances per project (each with own TaskManager, MemoryManager, etc.)
+3. Routes all tool calls via the optional `projectId` parameter
+4. Spawns workers on-demand, kills idle ones after 5 minutes
+
+### Using projectId
+
+All existing MCP tools accept an optional `projectId`:
+
+```json
+// Create task in the frontend project
+{ "taskId": "add-auth", "projectId": "frontend" }
+
+// Search memory in backend
+{ "query": "database schema", "projectId": "backend" }
+
+// If projectId is omitted, uses the defaultProject from workspace config
+{ "taskId": "fix-bug" }  // → goes to defaultProject
+```
+
+### Workspace-Specific Tools
+
+| Tool | Description |
+|------|-------------|
+| `rulebook_workspace_list` | List all projects with paths |
+| `rulebook_workspace_status` | Status of each project (worker state, task count) |
+| `rulebook_workspace_search` | Cross-project memory search |
+| `rulebook_workspace_tasks` | Tasks from all projects at once |
+
+### Isolation Guarantee
+
+Each project has completely isolated managers:
+- **Tasks** → `{project}/.rulebook/tasks/`
+- **Memory** → `{project}/.rulebook/memory.db`
+- **Config** → `{project}/.rulebook/rulebook.json`
+
+Cross-project operations only happen through explicit workspace tools.
+
 ## Advanced Configuration
 
 ### Custom Project Root
@@ -251,6 +321,8 @@ If your project structure differs, specify custom root:
   }
 }
 ```
+
+> **Note**: Prefer workspace mode over `--project-root` with absolute paths. Absolute paths break when the repo is cloned on another machine.
 
 ### Environment Variables
 

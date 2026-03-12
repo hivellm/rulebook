@@ -1,12 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   shouldRunCheckpoint,
   displayPlan,
   buildPlanPrompt,
   generateIterationPlan,
+  requestPlanApproval,
 } from '../src/core/ralph-plan-checkpoint.js';
 import type { ExecAsyncFn } from '../src/core/ralph-plan-checkpoint.js';
 import type { PRDUserStory, PlanCheckpointConfig } from '../src/types.js';
+
+// Mock inquirer for the requestPlanApproval interactive tests
+vi.mock('inquirer', () => ({
+  default: {
+    prompt: vi.fn(),
+  },
+}));
 
 /**
  * Factory helper -- creates a PRDUserStory with sensible defaults.
@@ -169,5 +177,81 @@ describe('generateIterationPlan', () => {
     const plan = await generateIterationPlan(story, 'claude', '/tmp/test', mockExec);
 
     expect(plan).toBe('Plan with whitespace');
+  });
+});
+
+// ─────────────────────────────────────────────────────────
+// requestPlanApproval
+// ─────────────────────────────────────────────────────────
+describe('requestPlanApproval', () => {
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  const story = makeStory({ id: 'US-030', title: 'Plan Approval Story' });
+  const planContent = 'Step 1: Create module\nStep 2: Write tests';
+
+  it('should auto-approve when autoApproveAfterSeconds is greater than zero', async () => {
+    vi.useFakeTimers();
+
+    const resultPromise = requestPlanApproval(planContent, story, 5);
+
+    // Advance the timer past the auto-approve delay
+    await vi.advanceTimersByTimeAsync(5000);
+
+    const result = await resultPromise;
+
+    expect(result).toEqual({ approved: true });
+
+    vi.useRealTimers();
+  });
+
+  it('should return approved true when user selects approve', async () => {
+    const inquirer = (await import('inquirer')).default;
+    const mockPrompt = vi.mocked(inquirer.prompt);
+    mockPrompt.mockClear();
+
+    mockPrompt.mockResolvedValueOnce({ action: 'approve' });
+
+    const result = await requestPlanApproval(planContent, story, 0);
+
+    expect(result).toEqual({ approved: true });
+    expect(mockPrompt).toHaveBeenCalledOnce();
+  });
+
+  it('should return approved false with feedback when user selects reject', async () => {
+    const inquirer = (await import('inquirer')).default;
+    const mockPrompt = vi.mocked(inquirer.prompt);
+    mockPrompt.mockClear();
+
+    mockPrompt.mockResolvedValueOnce({ action: 'reject' });
+    mockPrompt.mockResolvedValueOnce({ feedback: 'Bad plan' });
+
+    const result = await requestPlanApproval(planContent, story, 0);
+
+    expect(result).toEqual({ approved: false, feedback: 'Bad plan' });
+    expect(mockPrompt).toHaveBeenCalledTimes(2);
+  });
+
+  it('should return approved false with feedback when user selects edit', async () => {
+    const inquirer = (await import('inquirer')).default;
+    const mockPrompt = vi.mocked(inquirer.prompt);
+    mockPrompt.mockClear();
+
+    mockPrompt.mockResolvedValueOnce({ action: 'edit' });
+    mockPrompt.mockResolvedValueOnce({ feedback: 'Change X' });
+
+    const result = await requestPlanApproval(planContent, story, 0);
+
+    expect(result).toEqual({ approved: false, feedback: 'Change X' });
+    expect(mockPrompt).toHaveBeenCalledTimes(2);
   });
 });

@@ -477,3 +477,10 @@ export interface RalphIterationMetadata {
   git_commit?: string;
   quality_checks: IterationResult['quality_checks'];
 }
+
+export type {
+  WorkspaceConfig,
+  WorkspaceProject,
+  WorkspaceStatus,
+  WorkspaceProjectStatus,
+} from './core/workspace/workspace-types.js';

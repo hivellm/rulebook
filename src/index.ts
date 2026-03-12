@@ -61,6 +61,12 @@ import {
   // Setup commands
   setupClaudeCodePlugin,
   migrateMemoryDirectory,
+  // Workspace commands (v4.2)
+  workspaceInitCommand,
+  workspaceAddCommand,
+  workspaceRemoveCommand,
+  workspaceListCommand,
+  workspaceStatusCommand,
 } from './cli/commands.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -191,30 +197,47 @@ const taskCommand = program.command('task').description('Manage Rulebook tasks')
 taskCommand
   .command('create <task-id>')
   .description('Create a new task')
-  .action((taskId: string) => taskCreateCommand(taskId));
+  .option('--project <name>', 'Target a specific workspace project')
+  .action((taskId: string, options: { project?: string }) =>
+    taskCreateCommand(taskId, { project: options.project })
+  );
 
 taskCommand
   .command('list')
   .description('List all tasks')
   .option('--archived', 'Include archived tasks')
-  .action((options: { archived?: boolean }) => taskListCommand(options.archived || false));
+  .option('--project <name>', 'Target a specific workspace project')
+  .option('--all-projects', 'List tasks from all workspace projects')
+  .action((options: { archived?: boolean; project?: string; allProjects?: boolean }) =>
+    taskListCommand(options.archived || false, {
+      project: options.project,
+      allProjects: options.allProjects,
+    })
+  );
 
 taskCommand
   .command('show <task-id>')
   .description('Show task details')
-  .action((taskId: string) => taskShowCommand(taskId));
+  .option('--project <name>', 'Target a specific workspace project')
+  .action((taskId: string, options: { project?: string }) =>
+    taskShowCommand(taskId, { project: options.project })
+  );
 
 taskCommand
   .command('validate <task-id>')
   .description('Validate task format')
-  .action((taskId: string) => taskValidateCommand(taskId));
+  .option('--project <name>', 'Target a specific workspace project')
+  .action((taskId: string, options: { project?: string }) =>
+    taskValidateCommand(taskId, { project: options.project })
+  );
 
 taskCommand
   .command('archive <task-id>')
   .description('Archive a completed task')
   .option('--skip-validation', 'Skip validation before archiving')
-  .action((taskId: string, options: { skipValidation?: boolean }) =>
-    taskArchiveCommand(taskId, options.skipValidation || false)
+  .option('--project <name>', 'Target a specific workspace project')
+  .action((taskId: string, options: { skipValidation?: boolean; project?: string }) =>
+    taskArchiveCommand(taskId, options.skipValidation || false, { project: options.project })
   );
 
 // Legacy tasks command (deprecated)
@@ -247,11 +270,13 @@ const mcpCommand = program.command('mcp').description('Manage Rulebook MCP serve
 mcpCommand
   .command('init')
   .description('Initialize MCP configuration in .rulebook and .cursor/mcp.json')
-  .action(() => mcpInitCommand());
+  .option('--workspace', 'Configure MCP for workspace mode (multi-project)')
+  .action((options: { workspace?: boolean }) => mcpInitCommand(options));
 
 program
   .command('mcp-server')
   .description('Start Rulebook MCP server for task management via MCP protocol (stdio transport)')
+  .option('--workspace', 'Run in workspace mode (multi-project)')
   .action(() => {
     mcpServerCommand();
   });
@@ -492,5 +517,33 @@ program
   .command('migrate:memory')
   .description('Migrate .rulebook-memory to .rulebook/memory structure')
   .action(() => migrateMemoryDirectory());
+
+// Workspace commands (v4.2)
+const workspaceCommand = program.command('workspace').description('Manage multi-project workspace');
+
+workspaceCommand
+  .command('init')
+  .description('Initialize workspace config (auto-detects monorepo, .code-workspace, etc.)')
+  .action(() => workspaceInitCommand());
+
+workspaceCommand
+  .command('add <path>')
+  .description('Add a project to the workspace')
+  .action((projectPath: string) => workspaceAddCommand(projectPath));
+
+workspaceCommand
+  .command('remove <name>')
+  .description('Remove a project from the workspace')
+  .action((name: string) => workspaceRemoveCommand(name));
+
+workspaceCommand
+  .command('list')
+  .description('List all projects in the workspace')
+  .action(() => workspaceListCommand());
+
+workspaceCommand
+  .command('status')
+  .description('Show detailed workspace status (workers, tasks, memory)')
+  .action(() => workspaceStatusCommand());
 
 program.parse(process.argv);

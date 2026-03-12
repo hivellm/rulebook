@@ -23,9 +23,12 @@ import type {
 } from '../types.js';
 import { scaffoldMinimalProject } from '../core/minimal-scaffolder.js';
 import path from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { SkillsManager, getDefaultTemplatesPath } from '../core/skills-manager.js';
+import { WorkspaceManager } from '../core/workspace/workspace-manager.js';
+import type { WorkspaceConfig, WorkspaceProject } from '../core/workspace/workspace-types.js';
+import { migrateLegacyMcpConfigs } from '../core/workspace/legacy-migrator.js';
 
 const FRAMEWORK_LABELS: Record<FrameworkId, string> = {
   nestjs: 'NestJS',
@@ -1099,22 +1102,85 @@ export async function configCommand(options: {
   }
 }
 
-// Task management commands using Rulebook task system
-export async function taskCreateCommand(taskId: string): Promise<void> {
-  try {
-    const cwd = process.cwd();
-    const { createTaskManager } = await import('../core/task-manager.js');
-    const { createConfigManager } = await import('../core/config-manager.js');
+// --- Workspace-aware task helpers ---
 
-    const configManager = createConfigManager(cwd);
+interface WorkspaceTaskOptions {
+  project?: string;
+  allProjects?: boolean;
+}
+
+/**
+ * Resolve a TaskManager for a specific project.
+ *
+ * Resolution order:
+ * 1. Explicit --project flag → find workspace config from cwd, route to named project
+ * 2. Auto-detect → walk up from cwd to find workspace, match cwd to a project
+ * 3. Fallback → single-project from cwd (no workspace)
+ */
+async function resolveTaskManager(
+  cwd: string,
+  options?: WorkspaceTaskOptions
+): Promise<{ taskManager: any; projectLabel?: string }> {
+  const { createTaskManager } = await import('../core/task-manager.js');
+  const { createConfigManager } = await import('../core/config-manager.js');
+  const { isAbsolute, resolve } = await import('path');
+
+  // Helper: build TaskManager from a resolved project root
+  const buildFromProjectRoot = async (projectRoot: string, label: string) => {
+    const configManager = createConfigManager(projectRoot);
     const config = await configManager.loadConfig();
     const rulebookDir = config.rulebookDir || '.rulebook';
+    return { taskManager: createTaskManager(projectRoot, rulebookDir), projectLabel: label };
+  };
 
-    const taskManager = createTaskManager(cwd, rulebookDir);
+  // 1. Explicit --project flag
+  if (options?.project) {
+    const ws = WorkspaceManager.findWorkspaceFromCwd(cwd);
+    if (!ws) {
+      console.error(chalk.red('No workspace found. Run `rulebook workspace init` first.'));
+      process.exit(1);
+    }
+    const project = ws.config.projects.find((p) => p.name === options.project);
+    if (!project) {
+      console.error(chalk.red(`Project "${options.project}" not found in workspace.`));
+      console.error(chalk.gray(`Available: ${ws.config.projects.map((p) => p.name).join(', ')}`));
+      process.exit(1);
+    }
+    const projectRoot = isAbsolute(project.path) ? project.path : resolve(ws.root, project.path);
+    return buildFromProjectRoot(projectRoot, project.name);
+  }
+
+  // 2. Auto-detect: walk up from cwd to find workspace and match project
+  const resolved = WorkspaceManager.resolveProjectFromCwd(cwd);
+  if (resolved) {
+    const project = resolved.config.projects.find((p) => p.name === resolved.projectName);
+    if (project) {
+      const projectRoot = isAbsolute(project.path)
+        ? project.path
+        : resolve(resolved.root, project.path);
+      return buildFromProjectRoot(projectRoot, project.name);
+    }
+  }
+
+  // 3. Fallback: single-project from cwd
+  const configManager = createConfigManager(cwd);
+  const config = await configManager.loadConfig();
+  const rulebookDir = config.rulebookDir || '.rulebook';
+  return { taskManager: createTaskManager(cwd, rulebookDir) };
+}
+
+// Task management commands using Rulebook task system
+export async function taskCreateCommand(
+  taskId: string,
+  wsOptions?: WorkspaceTaskOptions
+): Promise<void> {
+  try {
+    const cwd = process.cwd();
+    const { taskManager, projectLabel } = await resolveTaskManager(cwd, wsOptions);
     await taskManager.createTask(taskId);
 
-    console.log(chalk.green(`✅ Task ${taskId} created successfully`));
-    console.log(chalk.gray(`Location: ${rulebookDir}/tasks/${taskId}/`));
+    const prefix = projectLabel ? `[${projectLabel}] ` : '';
+    console.log(chalk.green(`✅ ${prefix}Task ${taskId} created successfully`));
     console.log(chalk.yellow('\n⚠️  Remember to:'));
     console.log(chalk.gray('  1. Fill in proposal.md (minimum 20 characters in "Why" section)'));
     console.log(chalk.gray('  3. Add tasks to tasks.md'));
@@ -1126,17 +1192,73 @@ export async function taskCreateCommand(taskId: string): Promise<void> {
   }
 }
 
-export async function taskListCommand(includeArchived: boolean = false): Promise<void> {
+export async function taskListCommand(
+  includeArchived: boolean = false,
+  wsOptions?: WorkspaceTaskOptions
+): Promise<void> {
   try {
     const cwd = process.cwd();
-    const { createTaskManager } = await import('../core/task-manager.js');
-    const { createConfigManager } = await import('../core/config-manager.js');
 
-    const configManager = createConfigManager(cwd);
-    const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || '.rulebook';
+    // --all-projects: list tasks from every workspace project
+    if (wsOptions?.allProjects) {
+      const ws = WorkspaceManager.findWorkspaceFromCwd(cwd);
+      if (!ws) {
+        console.error(chalk.red('No workspace found. Run `rulebook workspace init` first.'));
+        process.exit(1);
+        return;
+      }
 
-    const taskManager = createTaskManager(cwd, rulebookDir);
+      console.log(chalk.bold.blue(`\n📋 Workspace Tasks (${ws.config.name})\n`));
+
+      const { createTaskManager } = await import('../core/task-manager.js');
+      const { createConfigManager } = await import('../core/config-manager.js');
+      const { isAbsolute, resolve } = await import('path');
+
+      let totalTasks = 0;
+      for (const project of ws.config.projects) {
+        const projectRoot = isAbsolute(project.path)
+          ? project.path
+          : resolve(ws.root, project.path);
+        try {
+          const configManager = createConfigManager(projectRoot);
+          const config = await configManager.loadConfig();
+          const rulebookDir = config.rulebookDir || '.rulebook';
+          const taskManager = createTaskManager(projectRoot, rulebookDir);
+          const tasks = await taskManager.listTasks(includeArchived);
+
+          if (tasks.length > 0) {
+            console.log(chalk.bold.cyan(`  [${project.name}]`));
+            for (const task of tasks) {
+              const statusColor =
+                task.status === 'completed'
+                  ? chalk.green
+                  : task.status === 'in-progress'
+                    ? chalk.yellow
+                    : task.status === 'blocked'
+                      ? chalk.red
+                      : chalk.gray;
+              console.log(
+                `    ${statusColor(task.status.padEnd(12))} ${chalk.white(task.id)} - ${chalk.gray(task.title)}`
+              );
+            }
+            console.log('');
+            totalTasks += tasks.length;
+          }
+        } catch {
+          console.log(chalk.bold.cyan(`  [${project.name}]`));
+          console.log(chalk.gray('    No tasks or no .rulebook config'));
+          console.log('');
+        }
+      }
+
+      console.log(
+        chalk.gray(`${totalTasks} task(s) across ${ws.config.projects.length} project(s)`)
+      );
+      return;
+    }
+
+    // Single project (optionally targeted via --project)
+    const { taskManager, projectLabel } = await resolveTaskManager(cwd, wsOptions);
     const tasks = await taskManager.listTasks(includeArchived);
 
     if (tasks.length === 0) {
@@ -1144,10 +1266,13 @@ export async function taskListCommand(includeArchived: boolean = false): Promise
       return;
     }
 
-    console.log(chalk.bold.blue('\n📋 Rulebook Tasks\n'));
+    const header = projectLabel
+      ? `\n📋 Rulebook Tasks [${projectLabel}]\n`
+      : '\n📋 Rulebook Tasks\n';
+    console.log(chalk.bold.blue(header));
 
-    const activeTasks = tasks.filter((t) => !t.archivedAt);
-    const archivedTasks = tasks.filter((t) => t.archivedAt);
+    const activeTasks = tasks.filter((t: any) => !t.archivedAt);
+    const archivedTasks = tasks.filter((t: any) => t.archivedAt);
 
     if (activeTasks.length > 0) {
       console.log(chalk.bold('Active Tasks:'));
@@ -1182,17 +1307,13 @@ export async function taskListCommand(includeArchived: boolean = false): Promise
   }
 }
 
-export async function taskShowCommand(taskId: string): Promise<void> {
+export async function taskShowCommand(
+  taskId: string,
+  wsOptions?: WorkspaceTaskOptions
+): Promise<void> {
   try {
     const cwd = process.cwd();
-    const { createTaskManager } = await import('../core/task-manager.js');
-    const { createConfigManager } = await import('../core/config-manager.js');
-
-    const configManager = createConfigManager(cwd);
-    const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || '.rulebook';
-
-    const taskManager = createTaskManager(cwd, rulebookDir);
+    const { taskManager } = await resolveTaskManager(cwd, wsOptions);
     const task = await taskManager.showTask(taskId);
 
     if (!task) {
@@ -1222,7 +1343,7 @@ export async function taskShowCommand(taskId: string): Promise<void> {
     if (task.specs && Object.keys(task.specs).length > 0) {
       console.log(chalk.bold('Specs:'));
       for (const [module, spec] of Object.entries(task.specs)) {
-        console.log(chalk.gray(`  ${module}/spec.md (${spec.length} chars)`));
+        console.log(chalk.gray(`  ${module}/spec.md (${(spec as string).length} chars)`));
       }
       console.log('');
     }
@@ -1232,17 +1353,13 @@ export async function taskShowCommand(taskId: string): Promise<void> {
   }
 }
 
-export async function taskValidateCommand(taskId: string): Promise<void> {
+export async function taskValidateCommand(
+  taskId: string,
+  wsOptions?: WorkspaceTaskOptions
+): Promise<void> {
   try {
     const cwd = process.cwd();
-    const { createTaskManager } = await import('../core/task-manager.js');
-    const { createConfigManager } = await import('../core/config-manager.js');
-
-    const configManager = createConfigManager(cwd);
-    const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || '.rulebook';
-
-    const taskManager = createTaskManager(cwd, rulebookDir);
+    const { taskManager } = await resolveTaskManager(cwd, wsOptions);
     const validation = await taskManager.validateTask(taskId);
 
     if (validation.valid) {
@@ -1275,21 +1392,16 @@ export async function taskValidateCommand(taskId: string): Promise<void> {
 
 export async function taskArchiveCommand(
   taskId: string,
-  skipValidation: boolean = false
+  skipValidation: boolean = false,
+  wsOptions?: WorkspaceTaskOptions
 ): Promise<void> {
   try {
     const cwd = process.cwd();
-    const { createTaskManager } = await import('../core/task-manager.js');
-    const { createConfigManager } = await import('../core/config-manager.js');
-
-    const configManager = createConfigManager(cwd);
-    const config = await configManager.loadConfig();
-    const rulebookDir = config.rulebookDir || '.rulebook';
-
-    const taskManager = createTaskManager(cwd, rulebookDir);
+    const { taskManager, projectLabel } = await resolveTaskManager(cwd, wsOptions);
     await taskManager.archiveTask(taskId, skipValidation);
 
-    console.log(chalk.green(`✅ Task ${taskId} archived successfully`));
+    const prefix = projectLabel ? `[${projectLabel}] ` : '';
+    console.log(chalk.green(`✅ ${prefix}Task ${taskId} archived successfully`));
   } catch (error: any) {
     console.error(chalk.red(`❌ Failed to archive task: ${error.message}`));
     process.exit(1);
@@ -1300,19 +1412,64 @@ export async function taskArchiveCommand(
  * Initialize MCP configuration in .rulebook file
  * Adds mcp block to .rulebook and creates/updates .cursor/mcp.json
  */
-export async function mcpInitCommand(): Promise<void> {
+export async function mcpInitCommand(options?: { workspace?: boolean }): Promise<void> {
   const { findRulebookConfig } = await import('../mcp/rulebook-server.js');
   const { existsSync, readFileSync, writeFileSync, statSync } = await import('fs');
   const { join, dirname } = await import('path');
   const { createConfigManager } = await import('../core/config-manager.js');
 
   try {
-    // Find or create .rulebook file/directory
     const cwd = process.cwd();
+
+    // --- Workspace mode ---
+    if (options?.workspace) {
+      const wsConfig = WorkspaceManager.findWorkspaceConfig(cwd);
+      if (!wsConfig) {
+        console.error(chalk.red('No workspace found. Run `rulebook workspace init` first.'));
+        process.exit(1);
+      }
+
+      const mcpArgs = ['-y', '@hivehub/rulebook@latest', 'mcp-server', '--workspace'];
+      const mcpEntry = { command: 'npx', args: mcpArgs };
+
+      // Write to .cursor/mcp.json if .cursor exists
+      const cursorDir = join(cwd, '.cursor');
+      if (existsSync(cursorDir)) {
+        const mcpJsonPath = join(cursorDir, 'mcp.json');
+        let mcpConfig: any = { mcpServers: {} };
+        if (existsSync(mcpJsonPath)) {
+          mcpConfig = JSON.parse(readFileSync(mcpJsonPath, 'utf8'));
+        }
+        mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
+        mcpConfig.mcpServers.rulebook = mcpEntry;
+        writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+        console.log(chalk.green('✓ Workspace MCP initialized'));
+        console.log(chalk.gray(`  • Updated .cursor/mcp.json with --workspace flag`));
+      }
+
+      // Write to .mcp.json (Claude Code format)
+      const mcpJsonPath = join(cwd, '.mcp.json');
+      let mcpConfig: any = { mcpServers: {} };
+      if (existsSync(mcpJsonPath)) {
+        mcpConfig = JSON.parse(readFileSync(mcpJsonPath, 'utf8'));
+      }
+      mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
+      mcpConfig.mcpServers.rulebook = mcpEntry;
+      writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+
+      console.log(chalk.green('✓ Workspace MCP initialized'));
+      console.log(
+        chalk.gray(`  • Workspace: ${wsConfig.name} (${wsConfig.projects.length} projects)`)
+      );
+      console.log(chalk.gray(`  • Updated .mcp.json with --workspace flag`));
+      console.log(chalk.gray(`  • MCP server will manage all projects automatically`));
+      return;
+    }
+
+    // --- Single-project mode (original behavior) ---
     let rulebookPath = findRulebookConfig(cwd);
 
     if (!rulebookPath) {
-      // Create new .rulebook directory via ConfigManager
       rulebookPath = join(cwd, '.rulebook');
       const configManager = createConfigManager(cwd);
       await configManager.initializeConfig();
@@ -1320,7 +1477,6 @@ export async function mcpInitCommand(): Promise<void> {
 
     const projectRoot = dirname(rulebookPath);
 
-    // Resolve config file path (handle .rulebook as directory or file)
     let configFilePath = rulebookPath;
     if (existsSync(rulebookPath)) {
       const stats = statSync(rulebookPath);
@@ -1329,23 +1485,19 @@ export async function mcpInitCommand(): Promise<void> {
       }
     }
 
-    // Load existing config
     let config: any = {};
     if (existsSync(configFilePath)) {
       const raw = readFileSync(configFilePath, 'utf8');
       config = JSON.parse(raw);
     }
 
-    // Add/update mcp block
     config.mcp = config.mcp ?? {};
     if (config.mcp.enabled === undefined) config.mcp.enabled = true;
     if (!config.mcp.tasksDir) config.mcp.tasksDir = '.rulebook/tasks';
     if (!config.mcp.archiveDir) config.mcp.archiveDir = '.rulebook/archive';
 
-    // Save updated config
     writeFileSync(configFilePath, JSON.stringify(config, null, 2) + '\n');
 
-    // Create/update .cursor/mcp.json if .cursor directory exists
     const cursorDir = join(projectRoot, '.cursor');
     if (existsSync(cursorDir)) {
       const mcpJsonPath = join(cursorDir, 'mcp.json');
@@ -1435,187 +1587,260 @@ export async function updateCommand(options: {
   try {
     const cwd = process.cwd();
 
+    // Auto-detect workspace: if inside a workspace, update ALL projects
+    const ws = WorkspaceManager.findWorkspaceFromCwd(cwd);
+    if (ws && ws.config.projects.length > 1) {
+      console.log(chalk.bold.blue('\n🔄 Rulebook Workspace Update\n'));
+      console.log(
+        chalk.gray(
+          `Workspace "${ws.config.name}" detected — updating ${ws.config.projects.length} projects\n`
+        )
+      );
+
+      const { isAbsolute, resolve, join } = await import('path');
+      const fsPromises = await import('fs/promises');
+      let updatedCount = 0;
+
+      // Build workspace project list for the template
+      const projectListMd = ws.config.projects
+        .map((p) => {
+          const root = isAbsolute(p.path) ? p.path : resolve(ws.root, p.path);
+          return `- **${p.name}** → \`${root}\``;
+        })
+        .join('\n');
+
+      // Load WORKSPACE.md template
+      const { getDefaultTemplatesPath } = await import('../core/skills-manager.js');
+      let workspaceTplContent = '';
+      try {
+        const tplPath = join(getDefaultTemplatesPath(), 'core', 'WORKSPACE.md');
+        workspaceTplContent = await fsPromises.readFile(tplPath, 'utf-8');
+      } catch {
+        // Template not available — skip
+      }
+
+      for (const project of ws.config.projects) {
+        const projectRoot = isAbsolute(project.path)
+          ? project.path
+          : resolve(ws.root, project.path);
+
+        console.log(chalk.bold.cyan(`\n━━━ [${project.name}] ${projectRoot} ━━━\n`));
+        try {
+          await updateSingleProject(projectRoot, options);
+
+          // Inject WORKSPACE.md spec into this project's .rulebook/specs/
+          if (workspaceTplContent) {
+            const specsDir = join(projectRoot, '.rulebook', 'specs');
+            await fsPromises.mkdir(specsDir, { recursive: true });
+            const rendered = workspaceTplContent
+              .replace(
+                '{{DEFAULT_PROJECT}}',
+                ws.config.defaultProject ?? ws.config.projects[0]?.name ?? ''
+              )
+              .replace('{{WORKSPACE_PROJECTS}}', projectListMd);
+            await fsPromises.writeFile(join(specsDir, 'WORKSPACE.md'), rendered, 'utf-8');
+          }
+
+          updatedCount++;
+        } catch (error: any) {
+          console.error(chalk.red(`  ❌ Failed to update ${project.name}: ${error.message}`));
+        }
+      }
+
+      console.log(
+        chalk.bold.green(
+          `\n✅ Workspace update complete — ${updatedCount}/${ws.config.projects.length} projects updated\n`
+        )
+      );
+      return;
+    }
+
+    // Single project update
     console.log(chalk.bold.blue('\n🔄 Rulebook Update Tool\n'));
     console.log(
       chalk.gray('This will update your AGENTS.md and .rulebook to the latest version\n')
     );
+    await updateSingleProject(cwd, options);
+  } catch (error) {
+    console.error(chalk.red('\n❌ Update failed:'), error);
+    process.exit(1);
+  }
+}
 
-    // Detect project
-    const spinner = ora('Detecting project structure...').start();
-    const detection = await detectProject(cwd);
-    spinner.succeed('Project detection complete');
+/** Update a single project at the given root directory. */
+async function updateSingleProject(
+  cwd: string,
+  options: {
+    yes?: boolean;
+    minimal?: boolean;
+    light?: boolean;
+    lean?: boolean;
+  }
+): Promise<void> {
+  // Detect project
+  const spinner = ora('Detecting project structure...').start();
+  const detection = await detectProject(cwd);
+  spinner.succeed('Project detection complete');
 
-    // Show detected languages
-    if (detection.languages.length > 0) {
-      console.log(chalk.green('\n✓ Detected languages:'));
-      for (const lang of detection.languages) {
-        console.log(`  - ${lang.language} (${(lang.confidence * 100).toFixed(0)}% confidence)`);
-      }
+  // Show detected languages
+  if (detection.languages.length > 0) {
+    console.log(chalk.green('\n✓ Detected languages:'));
+    for (const lang of detection.languages) {
+      console.log(`  - ${lang.language} (${(lang.confidence * 100).toFixed(0)}% confidence)`);
     }
+  }
 
-    // Check for existing AGENTS.md
-    if (!detection.existingAgents) {
-      console.log(chalk.yellow('\n⚠ No AGENTS.md found. Use "rulebook init" instead.'));
+  // Check for existing AGENTS.md
+  if (!detection.existingAgents) {
+    console.log(chalk.yellow('\n⚠ No AGENTS.md found. Use "rulebook init" instead.'));
+    process.exit(0);
+  }
+
+  console.log(
+    chalk.green(
+      `\n✓ Found existing AGENTS.md with ${detection.existingAgents.blocks.length} blocks`
+    )
+  );
+
+  // Get existing blocks to preserve user customizations
+  const existingBlocks = detection.existingAgents.blocks.map((b) => b.name);
+  console.log(chalk.gray(`  Existing blocks: ${existingBlocks.join(', ')}`));
+
+  let inquirerModule: typeof import('inquirer').default | null = null;
+  if (!options.yes) {
+    inquirerModule = (await import('inquirer')).default;
+    const { confirm } = await inquirerModule.prompt([
+      {
+        type: 'confirm',
+        name: 'confirm',
+        message: 'Update AGENTS.md and .rulebook with latest templates?',
+        default: true,
+      },
+    ]);
+
+    if (!confirm) {
+      console.log(chalk.yellow('\nUpdate cancelled'));
       process.exit(0);
     }
+  }
 
-    console.log(
-      chalk.green(
-        `\n✓ Found existing AGENTS.md with ${detection.existingAgents.blocks.length} blocks`
-      )
-    );
+  const hasPreCommit = detection.gitHooks?.preCommitExists ?? false;
+  const hasPrePush = detection.gitHooks?.prePushExists ?? false;
+  const missingHooks = !hasPreCommit || !hasPrePush;
+  let installHooksOnUpdate = false;
+  let hooksInstalledOnUpdate = false;
 
-    // Get existing blocks to preserve user customizations
-    const existingBlocks = detection.existingAgents.blocks.map((b) => b.name);
-    console.log(chalk.gray(`  Existing blocks: ${existingBlocks.join(', ')}`));
-
-    let inquirerModule: typeof import('inquirer').default | null = null;
-    if (!options.yes) {
-      inquirerModule = (await import('inquirer')).default;
-      const { confirm } = await inquirerModule.prompt([
+  if (missingHooks) {
+    if (options.yes) {
+      console.log(
+        chalk.yellow(
+          '\n⚠ Git hooks are missing. Re-run "rulebook update" without --yes to install automated hooks or install them manually.'
+        )
+      );
+    } else {
+      if (!inquirerModule) {
+        inquirerModule = (await import('inquirer')).default;
+      }
+      const { installHooks } = await inquirerModule.prompt([
         {
           type: 'confirm',
-          name: 'confirm',
-          message: 'Update AGENTS.md and .rulebook with latest templates?',
+          name: 'installHooks',
+          message: `Install Git hooks for automated quality checks? Missing: ${
+            hasPreCommit ? '' : 'pre-commit '
+          }${hasPrePush ? '' : 'pre-push'}`.trim(),
           default: true,
         },
       ]);
-
-      if (!confirm) {
-        console.log(chalk.yellow('\nUpdate cancelled'));
-        process.exit(0);
-      }
+      installHooksOnUpdate = installHooks;
     }
+  }
 
-    const hasPreCommit = detection.gitHooks?.preCommitExists ?? false;
-    const hasPrePush = detection.gitHooks?.prePushExists ?? false;
-    const missingHooks = !hasPreCommit || !hasPrePush;
-    let installHooksOnUpdate = false;
-    let hooksInstalledOnUpdate = false;
+  if (missingHooks && !installHooksOnUpdate && !options.yes) {
+    console.log(
+      chalk.gray(
+        '\nℹ Git hooks were not installed during update. Re-run "rulebook update" later or install them manually if you change your mind.'
+      )
+    );
+  }
 
-    if (missingHooks) {
-      if (options.yes) {
-        console.log(
-          chalk.yellow(
-            '\n⚠ Git hooks are missing. Re-run "rulebook update" without --yes to install automated hooks or install them manually.'
-          )
-        );
-      } else {
-        if (!inquirerModule) {
-          inquirerModule = (await import('inquirer')).default;
-        }
-        const { installHooks } = await inquirerModule.prompt([
-          {
-            type: 'confirm',
-            name: 'installHooks',
-            message: `Install Git hooks for automated quality checks? Missing: ${
-              hasPreCommit ? '' : 'pre-commit '
-            }${hasPrePush ? '' : 'pre-push'}`.trim(),
-            default: true,
-          },
-        ]);
-        installHooksOnUpdate = installHooks;
-      }
+  const agentsPath = path.join(cwd, 'AGENTS.md');
+
+  // Load existing config using ConfigManager
+  const { createConfigManager } = await import('../core/config-manager.js');
+  const configManager = createConfigManager(cwd);
+  const existingConfig = await configManager.loadConfig();
+
+  let existingMode: 'minimal' | 'full' | undefined;
+  let existingLightMode: boolean | undefined;
+  if (existingConfig) {
+    if (existingConfig && (existingConfig.mode === 'minimal' || existingConfig.mode === 'full')) {
+      existingMode = existingConfig.mode;
     }
-
-    if (missingHooks && !installHooksOnUpdate && !options.yes) {
-      console.log(
-        chalk.gray(
-          '\nℹ Git hooks were not installed during update. Re-run "rulebook update" later or install them manually if you change your mind.'
-        )
-      );
+    if (existingConfig && (existingConfig as any).lightMode !== undefined) {
+      existingLightMode = (existingConfig as any).lightMode;
     }
+  }
 
-    const agentsPath = path.join(cwd, 'AGENTS.md');
+  const minimalMode = options.minimal ?? existingMode === 'minimal';
+  const lightMode = options.light !== undefined ? options.light : (existingLightMode ?? false);
+  const leanMode = options.lean ?? existingConfig?.agentsMode === 'lean';
 
-    // Load existing config using ConfigManager
-    const { createConfigManager } = await import('../core/config-manager.js');
-    const configManager = createConfigManager(cwd);
-    const existingConfig = await configManager.loadConfig();
+  // Build config from detected project
+  const config: ProjectConfig = {
+    languages: detection.languages.map((l) => l.language),
+    modules: minimalMode ? [] : detection.modules.filter((m) => m.detected).map((m) => m.module),
+    frameworks: detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
+    ides: [], // Preserve existing IDE choices
+    projectType: 'application' as const,
+    coverageThreshold: 95,
+    strictDocs: true,
+    generateWorkflows: false, // Don't regenerate workflows on update
+    includeGitWorkflow: true,
+    gitPushMode: 'manual' as const,
+    installGitHooks: installHooksOnUpdate,
+    minimal: minimalMode,
+    lightMode: lightMode,
+    ...(leanMode ? { agentsMode: 'lean' as const } : {}),
+  };
 
-    let existingMode: 'minimal' | 'full' | undefined;
-    let existingLightMode: boolean | undefined;
-    if (existingConfig) {
-      if (existingConfig && (existingConfig.mode === 'minimal' || existingConfig.mode === 'full')) {
-        existingMode = existingConfig.mode;
-      }
-      if (existingConfig && (existingConfig as any).lightMode !== undefined) {
-        existingLightMode = (existingConfig as any).lightMode;
-      }
-    }
+  if (minimalMode) {
+    config.ides = [];
+    config.generateWorkflows = true;
+  }
 
-    const minimalMode = options.minimal ?? existingMode === 'minimal';
-    const lightMode = options.light !== undefined ? options.light : (existingLightMode ?? false);
-    const leanMode = options.lean ?? existingConfig?.agentsMode === 'lean';
+  let minimalArtifacts: string[] = [];
+  if (minimalMode) {
+    minimalArtifacts = await scaffoldMinimalProject(cwd, {
+      projectName: path.basename(cwd),
+      description: 'Essential project scaffolding refreshed via Rulebook minimal mode.',
+      license: 'MIT',
+    });
+  }
 
-    // Build config from detected project
-    const config: ProjectConfig = {
-      languages: detection.languages.map((l) => l.language),
-      modules: minimalMode ? [] : detection.modules.filter((m) => m.detected).map((m) => m.module),
-      frameworks: detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
-      ides: [], // Preserve existing IDE choices
-      projectType: 'application' as const,
-      coverageThreshold: 95,
-      strictDocs: true,
-      generateWorkflows: false, // Don't regenerate workflows on update
-      includeGitWorkflow: true,
-      gitPushMode: 'manual' as const,
-      installGitHooks: installHooksOnUpdate,
-      minimal: minimalMode,
-      lightMode: lightMode,
-      ...(leanMode ? { agentsMode: 'lean' as const } : {}),
-    };
+  // Generate Rulebook commands if Cursor is detected
+  // This ensures commands are available for all Cursor projects
+  const cursorRulesPath = path.join(cwd, '.cursorrules');
+  const cursorCommandsDir = path.join(cwd, '.cursor', 'commands');
+  const usesCursor = existsSync(cursorRulesPath) || existsSync(cursorCommandsDir);
 
-    if (minimalMode) {
-      config.ides = [];
-      config.generateWorkflows = true;
-    }
+  // Deprecated notice: .cursorrules is superseded by .cursor/rules/*.mdc in Cursor v0.45+
+  if (existsSync(cursorRulesPath)) {
+    console.log(
+      chalk.yellow(
+        '  ⚠ .cursorrules is deprecated as of Cursor v0.45. Use .cursor/rules/*.mdc instead.'
+      )
+    );
+  }
 
-    let minimalArtifacts: string[] = [];
-    if (minimalMode) {
-      minimalArtifacts = await scaffoldMinimalProject(cwd, {
-        projectName: path.basename(cwd),
-        description: 'Essential project scaffolding refreshed via Rulebook minimal mode.',
-        license: 'MIT',
-      });
-    }
+  if (usesCursor) {
+    // Check if commands already exist to avoid duplicate generation
+    const existingCommandsDir = path.join(cwd, '.cursor', 'commands');
+    if (existsSync(existingCommandsDir)) {
+      const { readdir } = await import('fs/promises');
+      const existingFiles = await readdir(existingCommandsDir);
+      const hasRulebookCommands = existingFiles.some((file) => file.startsWith('rulebook-task-'));
 
-    // Generate Rulebook commands if Cursor is detected
-    // This ensures commands are available for all Cursor projects
-    const cursorRulesPath = path.join(cwd, '.cursorrules');
-    const cursorCommandsDir = path.join(cwd, '.cursor', 'commands');
-    const usesCursor = existsSync(cursorRulesPath) || existsSync(cursorCommandsDir);
-
-    // Deprecated notice: .cursorrules is superseded by .cursor/rules/*.mdc in Cursor v0.45+
-    if (existsSync(cursorRulesPath)) {
-      console.log(
-        chalk.yellow(
-          '  ⚠ .cursorrules is deprecated as of Cursor v0.45. Use .cursor/rules/*.mdc instead.'
-        )
-      );
-    }
-
-    if (usesCursor) {
-      // Check if commands already exist to avoid duplicate generation
-      const existingCommandsDir = path.join(cwd, '.cursor', 'commands');
-      if (existsSync(existingCommandsDir)) {
-        const { readdir } = await import('fs/promises');
-        const existingFiles = await readdir(existingCommandsDir);
-        const hasRulebookCommands = existingFiles.some((file) => file.startsWith('rulebook-task-'));
-
-        if (!hasRulebookCommands) {
-          const { generateCursorCommands } = await import('../core/workflow-generator.js');
-          const generatedCommands = await generateCursorCommands(cwd);
-          if (generatedCommands.length > 0) {
-            console.log(
-              chalk.green(
-                `  Generated ${generatedCommands.length} Rulebook command(s) in .cursor/commands/`
-              )
-            );
-          }
-        }
-      } else {
-        // Directory doesn't exist, create it and generate commands
+      if (!hasRulebookCommands) {
         const { generateCursorCommands } = await import('../core/workflow-generator.js');
         const generatedCommands = await generateCursorCommands(cwd);
         if (generatedCommands.length > 0) {
@@ -1626,294 +1851,298 @@ export async function updateCommand(options: {
           );
         }
       }
-    }
-
-    // Migration already done via configManager.loadConfig() -> migrateConfig() -> migrateDirectoryStructure()
-    // No need to call it again here
-
-    // Load existing config to preserve skills and ralph settings (already loaded above)
-    const existingSkills = existingConfig.skills?.enabled || [];
-    const existingRalph = existingConfig.ralph;
-
-    // Auto-detect skills based on project detection (v2.0)
-    let detectedSkills: string[] = [];
-    try {
-      const { SkillsManager, getDefaultTemplatesPath } = await import('../core/skills-manager.js');
-      const skillsManager = new SkillsManager(getDefaultTemplatesPath(), cwd);
-
-      // Build a RulebookConfig-like object for skill detection
-      const rulebookConfigForSkills = {
-        languages: config.languages as LanguageDetection['language'][],
-        frameworks: config.frameworks as FrameworkId[],
-        modules: config.modules as ModuleDetection['module'][],
-        services: config.services as ServiceId[],
-      };
-
-      detectedSkills = await skillsManager.autoDetectSkills(rulebookConfigForSkills);
-
-      // Merge with existing skills (keep existing, add new detected)
-      const mergedSkills = [...new Set([...existingSkills, ...detectedSkills])];
-
-      if (detectedSkills.length > existingSkills.length) {
-        const newSkills = detectedSkills.filter((s) => !existingSkills.includes(s));
-        if (newSkills.length > 0) {
-          console.log(chalk.green('\n✓ New skills detected:'));
-          for (const skillId of newSkills) {
-            console.log(chalk.gray(`  - ${skillId}`));
-          }
-        }
-      }
-
-      detectedSkills = mergedSkills;
-    } catch {
-      // Skills system not available or error - preserve existing skills
-      detectedSkills = existingSkills;
-    }
-
-    await configManager.updateConfig({
-      languages: config.languages as LanguageDetection['language'][],
-      frameworks: config.frameworks as FrameworkId[],
-      modules: config.modules as ModuleDetection['module'][],
-      services: config.services as ServiceId[],
-      modular: config.modular ?? true,
-      rulebookDir: config.rulebookDir || '.rulebook',
-      skills: detectedSkills.length > 0 ? { enabled: detectedSkills } : undefined,
-      ralph: existingRalph,
-      memory: existingConfig.memory,
-    });
-
-    // Ensure .rulebook is in .gitignore with exceptions for specs/tasks
-    await configManager.ensureGitignore();
-
-    // Migrate flat layout to specs/ subdirectory if needed
-    {
-      const { hasFlatLayout, migrateFlatToSpecs } = await import('../core/migrator.js');
-      const rulebookDirForMigration = config.rulebookDir || '.rulebook';
-      if (await hasFlatLayout(cwd, rulebookDirForMigration)) {
-        const migrationSpinner = ora('Migrating rulebook files to specs/ subdirectory...').start();
-        const { migratedFiles } = await migrateFlatToSpecs(cwd, rulebookDirForMigration);
-        if (migratedFiles.length > 0) {
-          migrationSpinner.succeed(
-            `Migrated ${migratedFiles.length} file(s) to /${rulebookDirForMigration}/specs/`
-          );
-        } else {
-          migrationSpinner.info('No files to migrate');
-        }
-      }
-    }
-
-    // Merge with existing AGENTS.md (with migration support)
-    const mergeSpinner = ora('Updating AGENTS.md with latest templates...').start();
-    config.modular = config.modular ?? true; // Enable modular by default
-    const mergedContent = await mergeFullAgents(detection.existingAgents, config, cwd);
-    await writeFile(agentsPath, mergedContent);
-    mergeSpinner.succeed('AGENTS.md updated');
-
-    // Show multi-tool config feedback (update command)
-    if (detection.geminiCli?.detected) {
-      console.log(chalk.gray('  • Gemini CLI config updated: GEMINI.md'));
-    }
-    if (detection.continueDev?.detected) {
-      console.log(chalk.gray('  • Continue.dev rules updated in .continue/rules/'));
-    }
-    if (detection.windsurf?.detected) {
-      console.log(chalk.gray('  • Windsurf rules updated: .windsurfrules'));
-    }
-    if (detection.githubCopilot?.detected) {
-      console.log(chalk.gray('  • GitHub Copilot instructions updated in .github/'));
-    }
-
-    if (installHooksOnUpdate) {
-      const hookLanguages: LanguageDetection[] =
-        detection.languages.length > 0
-          ? detection.languages
-          : config.languages.map((language) => ({
-              language: language as LanguageDetection['language'],
-              confidence: 1,
-              indicators: [],
-            }));
-      const hookSpinner = ora('Installing Git hooks (pre-commit & pre-push)...').start();
-      try {
-        await installGitHooks({ languages: hookLanguages, cwd });
-        hookSpinner.succeed('Git hooks installed successfully');
-        hooksInstalledOnUpdate = true;
-      } catch (error) {
-        hookSpinner.fail('Failed to install Git hooks');
-        console.error(chalk.red('  ➤'), error instanceof Error ? error.message : error);
+    } else {
+      // Directory doesn't exist, create it and generate commands
+      const { generateCursorCommands } = await import('../core/workflow-generator.js');
+      const generatedCommands = await generateCursorCommands(cwd);
+      if (generatedCommands.length > 0) {
         console.log(
-          chalk.yellow(
-            '  ⚠ Skipping automatic hook installation. You can rerun "rulebook update" later to retry or install manually.'
+          chalk.green(
+            `  Generated ${generatedCommands.length} Rulebook command(s) in .cursor/commands/`
           )
         );
       }
     }
+  }
 
-    const gitHooksActiveAfterUpdate = hooksInstalledOnUpdate || (hasPreCommit && hasPrePush);
-    config.installGitHooks = gitHooksActiveAfterUpdate;
+  // Migration already done via configManager.loadConfig() -> migrateConfig() -> migrateDirectoryStructure()
+  // No need to call it again here
 
-    // Update .rulebook config
-    const configSpinner = ora('Updating .rulebook configuration...').start();
-    const rulebookFeatures: RulebookConfig['features'] = {
-      watcher: false,
-      agent: false,
-      logging: true,
-      telemetry: false,
-      notifications: false,
-      dryRun: false,
-      gitHooks: gitHooksActiveAfterUpdate,
-      repl: false,
-      templates: true,
-      context: minimalMode ? false : true,
-      health: true,
-      plugins: false,
-      parallel: minimalMode ? false : true,
-      smartContinue: minimalMode ? false : true,
+  // Load existing config to preserve skills and ralph settings (already loaded above)
+  const existingSkills = existingConfig.skills?.enabled || [];
+  const existingRalph = existingConfig.ralph;
+
+  // Auto-detect skills based on project detection (v2.0)
+  let detectedSkills: string[] = [];
+  try {
+    const { SkillsManager, getDefaultTemplatesPath } = await import('../core/skills-manager.js');
+    const skillsManager = new SkillsManager(getDefaultTemplatesPath(), cwd);
+
+    // Build a RulebookConfig-like object for skill detection
+    const rulebookConfigForSkills = {
+      languages: config.languages as LanguageDetection['language'][],
+      frameworks: config.frameworks as FrameworkId[],
+      modules: config.modules as ModuleDetection['module'][],
+      services: config.services as ServiceId[],
     };
 
-    const rulebookConfig: RulebookConfig = {
-      version: getRulebookVersion(),
-      installedAt:
-        detection.existingAgents.content?.match(/Generated at: (.+)/)?.[1] ||
-        new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      projectId: path.basename(cwd),
-      mode: minimalMode ? 'minimal' : 'full',
-      features: rulebookFeatures,
-      coverageThreshold: existingConfig.coverageThreshold ?? 95,
-      language: existingConfig.language ?? 'en',
-      outputLanguage: existingConfig.outputLanguage ?? 'en',
-      cliTools: existingConfig.cliTools ?? [],
-      maxParallelTasks: existingConfig.maxParallelTasks ?? 5,
-      timeouts: existingConfig.timeouts ?? {
-        taskExecution: 3600000,
-        cliResponse: 180000,
-        testRun: 600000,
-      },
-      ...(existingConfig.memory ? { memory: existingConfig.memory } : {}),
-      ...(existingConfig.ralph ? { ralph: existingConfig.ralph } : {}),
-      ...(existingConfig.skills ? { skills: existingConfig.skills } : {}),
-      ...(leanMode
-        ? { agentsMode: 'lean' as const }
-        : existingConfig.agentsMode
-          ? { agentsMode: existingConfig.agentsMode }
-          : {}),
-    };
+    detectedSkills = await skillsManager.autoDetectSkills(rulebookConfigForSkills);
 
-    await configManager.saveConfig(rulebookConfig);
-    configSpinner.succeed('.rulebook configuration updated');
+    // Merge with existing skills (keep existing, add new detected)
+    const mergedSkills = [...new Set([...existingSkills, ...detectedSkills])];
 
-    // Auto-setup Claude Code integration (MCP + skills)
-    const claudeSpinner = ora('Checking Claude Code integration...').start();
-    try {
-      const { setupClaudeCodeIntegration } = await import('../core/claude-mcp.js');
-      const result = await setupClaudeCodeIntegration(cwd);
-      if (result.detected) {
-        claudeSpinner.succeed('Claude Code integration updated');
-        if (result.mcpConfigured) {
-          console.log(chalk.gray('  • MCP server added to .mcp.json'));
+    if (detectedSkills.length > existingSkills.length) {
+      const newSkills = detectedSkills.filter((s) => !existingSkills.includes(s));
+      if (newSkills.length > 0) {
+        console.log(chalk.green('\n✓ New skills detected:'));
+        for (const skillId of newSkills) {
+          console.log(chalk.gray(`  - ${skillId}`));
         }
-        if (result.skillsInstalled.length > 0) {
-          console.log(
-            chalk.gray(`  • ${result.skillsInstalled.length} skills updated in .claude/commands/`)
-          );
-        }
-        if (result.agentTeamsEnabled) {
-          console.log(chalk.gray('  • Multi-agent teams enabled in .claude/settings.json'));
-        }
-        if (result.agentDefinitionsInstalled.length > 0) {
-          console.log(
-            chalk.gray(
-              `  • ${result.agentDefinitionsInstalled.length} agent definitions updated in .claude/agents/`
-            )
-          );
-        }
-      } else {
-        claudeSpinner.info('Claude Code not detected (skipped)');
       }
-    } catch {
-      claudeSpinner.info('Claude Code integration skipped');
     }
 
-    // Install/update Ralph shell scripts
+    detectedSkills = mergedSkills;
+  } catch {
+    // Skills system not available or error - preserve existing skills
+    detectedSkills = existingSkills;
+  }
+
+  await configManager.updateConfig({
+    languages: config.languages as LanguageDetection['language'][],
+    frameworks: config.frameworks as FrameworkId[],
+    modules: config.modules as ModuleDetection['module'][],
+    services: config.services as ServiceId[],
+    modular: config.modular ?? true,
+    rulebookDir: config.rulebookDir || '.rulebook',
+    skills: detectedSkills.length > 0 ? { enabled: detectedSkills } : undefined,
+    ralph: existingRalph,
+    memory: existingConfig.memory,
+  });
+
+  // Ensure .rulebook is in .gitignore with exceptions for specs/tasks
+  await configManager.ensureGitignore();
+
+  // Migrate flat layout to specs/ subdirectory if needed
+  {
+    const { hasFlatLayout, migrateFlatToSpecs } = await import('../core/migrator.js');
+    const rulebookDirForMigration = config.rulebookDir || '.rulebook';
+    if (await hasFlatLayout(cwd, rulebookDirForMigration)) {
+      const migrationSpinner = ora('Migrating rulebook files to specs/ subdirectory...').start();
+      const { migratedFiles } = await migrateFlatToSpecs(cwd, rulebookDirForMigration);
+      if (migratedFiles.length > 0) {
+        migrationSpinner.succeed(
+          `Migrated ${migratedFiles.length} file(s) to /${rulebookDirForMigration}/specs/`
+        );
+      } else {
+        migrationSpinner.info('No files to migrate');
+      }
+    }
+  }
+
+  // Merge with existing AGENTS.md (with migration support)
+  const mergeSpinner = ora('Updating AGENTS.md with latest templates...').start();
+  config.modular = config.modular ?? true; // Enable modular by default
+  const mergedContent = await mergeFullAgents(detection.existingAgents, config, cwd);
+  await writeFile(agentsPath, mergedContent);
+  mergeSpinner.succeed('AGENTS.md updated');
+
+  // Show multi-tool config feedback (update command)
+  if (detection.geminiCli?.detected) {
+    console.log(chalk.gray('  • Gemini CLI config updated: GEMINI.md'));
+  }
+  if (detection.continueDev?.detected) {
+    console.log(chalk.gray('  • Continue.dev rules updated in .continue/rules/'));
+  }
+  if (detection.windsurf?.detected) {
+    console.log(chalk.gray('  • Windsurf rules updated: .windsurfrules'));
+  }
+  if (detection.githubCopilot?.detected) {
+    console.log(chalk.gray('  • GitHub Copilot instructions updated in .github/'));
+  }
+
+  if (installHooksOnUpdate) {
+    const hookLanguages: LanguageDetection[] =
+      detection.languages.length > 0
+        ? detection.languages
+        : config.languages.map((language) => ({
+            language: language as LanguageDetection['language'],
+            confidence: 1,
+            indicators: [],
+          }));
+    const hookSpinner = ora('Installing Git hooks (pre-commit & pre-push)...').start();
     try {
-      const { installRalphScripts } = await import('../core/ralph-scripts.js');
-      const scripts = await installRalphScripts(cwd);
-      if (scripts.length > 0) {
+      await installGitHooks({ languages: hookLanguages, cwd });
+      hookSpinner.succeed('Git hooks installed successfully');
+      hooksInstalledOnUpdate = true;
+    } catch (error) {
+      hookSpinner.fail('Failed to install Git hooks');
+      console.error(chalk.red('  ➤'), error instanceof Error ? error.message : error);
+      console.log(
+        chalk.yellow(
+          '  ⚠ Skipping automatic hook installation. You can rerun "rulebook update" later to retry or install manually.'
+        )
+      );
+    }
+  }
+
+  const gitHooksActiveAfterUpdate = hooksInstalledOnUpdate || (hasPreCommit && hasPrePush);
+  config.installGitHooks = gitHooksActiveAfterUpdate;
+
+  // Update .rulebook config
+  const configSpinner = ora('Updating .rulebook configuration...').start();
+  const rulebookFeatures: RulebookConfig['features'] = {
+    watcher: false,
+    agent: false,
+    logging: true,
+    telemetry: false,
+    notifications: false,
+    dryRun: false,
+    gitHooks: gitHooksActiveAfterUpdate,
+    repl: false,
+    templates: true,
+    context: minimalMode ? false : true,
+    health: true,
+    plugins: false,
+    parallel: minimalMode ? false : true,
+    smartContinue: minimalMode ? false : true,
+  };
+
+  const rulebookConfig: RulebookConfig = {
+    version: getRulebookVersion(),
+    installedAt:
+      detection.existingAgents.content?.match(/Generated at: (.+)/)?.[1] ||
+      new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    projectId: path.basename(cwd),
+    mode: minimalMode ? 'minimal' : 'full',
+    features: rulebookFeatures,
+    coverageThreshold: existingConfig.coverageThreshold ?? 95,
+    language: existingConfig.language ?? 'en',
+    outputLanguage: existingConfig.outputLanguage ?? 'en',
+    cliTools: existingConfig.cliTools ?? [],
+    maxParallelTasks: existingConfig.maxParallelTasks ?? 5,
+    timeouts: existingConfig.timeouts ?? {
+      taskExecution: 3600000,
+      cliResponse: 180000,
+      testRun: 600000,
+    },
+    ...(existingConfig.memory ? { memory: existingConfig.memory } : {}),
+    ...(existingConfig.ralph ? { ralph: existingConfig.ralph } : {}),
+    ...(existingConfig.skills ? { skills: existingConfig.skills } : {}),
+    ...(leanMode
+      ? { agentsMode: 'lean' as const }
+      : existingConfig.agentsMode
+        ? { agentsMode: existingConfig.agentsMode }
+        : {}),
+  };
+
+  await configManager.saveConfig(rulebookConfig);
+  configSpinner.succeed('.rulebook configuration updated');
+
+  // Auto-setup Claude Code integration (MCP + skills)
+  const claudeSpinner = ora('Checking Claude Code integration...').start();
+  try {
+    const { setupClaudeCodeIntegration } = await import('../core/claude-mcp.js');
+    const result = await setupClaudeCodeIntegration(cwd);
+    if (result.detected) {
+      claudeSpinner.succeed('Claude Code integration updated');
+      if (result.mcpConfigured) {
+        console.log(chalk.gray('  • MCP server added to .mcp.json'));
+      }
+      if (result.skillsInstalled.length > 0) {
         console.log(
-          chalk.gray(`  • ${scripts.length} Ralph scripts updated in .rulebook/scripts/`)
+          chalk.gray(`  • ${result.skillsInstalled.length} skills updated in .claude/commands/`)
         );
       }
-    } catch {
-      // Skip if Ralph scripts installation fails
-    }
-
-    // Ensure PLANS.md exists (create if missing, never overwrite)
-    try {
-      const { initPlans } = await import('../core/plans-manager.js');
-      await initPlans(cwd);
-    } catch {
-      // Non-blocking
-    }
-
-    // Migrate memory directory if old structure exists
-    try {
-      await migrateMemoryDirectory();
-    } catch {
-      // Silently skip if migration fails
-    }
-
-    // Install plugin in Claude Code
-    try {
-      await setupClaudeCodePlugin();
-    } catch {
-      // Silently skip if plugin installation fails
-    }
-
-    // Clean up any accidental duplicate directories
-    try {
-      const fsPromises = await import('fs/promises');
-      const accidentalDir = path.join(cwd, '.rulebook', '.rulebook');
-      if (existsSync(accidentalDir)) {
-        await fsPromises.rm(accidentalDir, { recursive: true, force: true });
+      if (result.agentTeamsEnabled) {
+        console.log(chalk.gray('  • Multi-agent teams enabled in .claude/settings.json'));
       }
-    } catch {
-      // Ignore cleanup errors
-    }
-
-    // Success message
-    console.log(chalk.bold.green('\n✅ Update complete!\n'));
-    console.log(chalk.white('Updated components:'));
-    console.log(chalk.green('  ✓ AGENTS.md - Merged with latest templates'));
-    console.log(chalk.green(`  ✓ .rulebook - Updated to v${getRulebookVersion()}`));
-
-    console.log(chalk.white('\nWhat was updated:'));
-    console.log(chalk.gray(`  - ${detection.languages.length} language templates`));
-    console.log(
-      chalk.gray(`  - ${detection.modules.filter((m) => m.detected).length} MCP modules`)
-    );
-    console.log(chalk.gray('  - Git workflow rules'));
-    console.log(chalk.gray('  - Rulebook task management'));
-    console.log(chalk.gray('  - Pre-commit command standardization'));
-
-    console.log(
-      chalk.yellow('\n⚠ Review the updated AGENTS.md to ensure your custom rules are preserved')
-    );
-    console.log(chalk.white('\nNext steps:'));
-    console.log(chalk.gray('  1. Review AGENTS.md changes'));
-    console.log(chalk.gray('  2. Test that your project still builds'));
-    console.log(chalk.gray('  3. Run quality checks (lint, test, build)'));
-    console.log(chalk.gray('  4. Commit the updated files\n'));
-
-    if (minimalMode && minimalArtifacts.length > 0) {
-      console.log(chalk.green('Essentials ensured:'));
-      for (const artifact of minimalArtifacts) {
-        console.log(chalk.gray(`  - ${path.relative(cwd, artifact)}`));
+      if (result.agentDefinitionsInstalled.length > 0) {
+        console.log(
+          chalk.gray(
+            `  • ${result.agentDefinitionsInstalled.length} agent definitions updated in .claude/agents/`
+          )
+        );
       }
-      console.log('');
+    } else {
+      claudeSpinner.info('Claude Code not detected (skipped)');
     }
-  } catch (error) {
-    console.error(chalk.red('\n❌ Update failed:'), error);
-    process.exit(1);
+  } catch {
+    claudeSpinner.info('Claude Code integration skipped');
+  }
+
+  // Install/update Ralph shell scripts
+  try {
+    const { installRalphScripts } = await import('../core/ralph-scripts.js');
+    const scripts = await installRalphScripts(cwd);
+    if (scripts.length > 0) {
+      console.log(chalk.gray(`  • ${scripts.length} Ralph scripts updated in .rulebook/scripts/`));
+    }
+  } catch {
+    // Skip if Ralph scripts installation fails
+  }
+
+  // Ensure PLANS.md exists (create if missing, never overwrite)
+  try {
+    const { initPlans } = await import('../core/plans-manager.js');
+    await initPlans(cwd);
+  } catch {
+    // Non-blocking
+  }
+
+  // Migrate memory directory if old structure exists
+  try {
+    await migrateMemoryDirectory();
+  } catch {
+    // Silently skip if migration fails
+  }
+
+  // Install plugin in Claude Code
+  try {
+    await setupClaudeCodePlugin();
+  } catch {
+    // Silently skip if plugin installation fails
+  }
+
+  // Clean up any accidental duplicate directories
+  try {
+    const fsPromises = await import('fs/promises');
+    const accidentalDir = path.join(cwd, '.rulebook', '.rulebook');
+    if (existsSync(accidentalDir)) {
+      await fsPromises.rm(accidentalDir, { recursive: true, force: true });
+    }
+  } catch {
+    // Ignore cleanup errors
+  }
+
+  // Success message
+  console.log(chalk.bold.green('\n✅ Update complete!\n'));
+  console.log(chalk.white('Updated components:'));
+  console.log(chalk.green('  ✓ AGENTS.md - Merged with latest templates'));
+  console.log(chalk.green(`  ✓ .rulebook - Updated to v${getRulebookVersion()}`));
+
+  console.log(chalk.white('\nWhat was updated:'));
+  console.log(chalk.gray(`  - ${detection.languages.length} language templates`));
+  console.log(chalk.gray(`  - ${detection.modules.filter((m) => m.detected).length} MCP modules`));
+  console.log(chalk.gray('  - Git workflow rules'));
+  console.log(chalk.gray('  - Rulebook task management'));
+  console.log(chalk.gray('  - Pre-commit command standardization'));
+
+  console.log(
+    chalk.yellow('\n⚠ Review the updated AGENTS.md to ensure your custom rules are preserved')
+  );
+  console.log(chalk.white('\nNext steps:'));
+  console.log(chalk.gray('  1. Review AGENTS.md changes'));
+  console.log(chalk.gray('  2. Test that your project still builds'));
+  console.log(chalk.gray('  3. Run quality checks (lint, test, build)'));
+  console.log(chalk.gray('  4. Commit the updated files\n'));
+
+  if (minimalMode && minimalArtifacts.length > 0) {
+    console.log(chalk.green('Essentials ensured:'));
+    for (const artifact of minimalArtifacts) {
+      console.log(chalk.gray(`  - ${path.relative(cwd, artifact)}`));
+    }
+    console.log('');
   }
 }
 
@@ -4083,5 +4312,195 @@ export async function ralphImportIssuesCommand(options: {
   } catch (error) {
     console.error(chalk.red(`Failed to import GitHub issues: ${String(error)}`));
     process.exit(1);
+  }
+}
+
+// ============================================
+// Workspace Commands (v4.2)
+// ============================================
+
+/** Resolve the workspace config path inside .rulebook/ */
+function getWorkspaceConfigPath(cwd: string): string {
+  return path.join(cwd, '.rulebook', 'workspace.json');
+}
+
+export async function workspaceInitCommand(): Promise<void> {
+  const cwd = process.cwd();
+  const configPath = getWorkspaceConfigPath(cwd);
+
+  if (existsSync(configPath)) {
+    console.log(chalk.yellow('Workspace already initialized at .rulebook/workspace.json'));
+    return;
+  }
+
+  const spinner = ora('Detecting workspace structure...').start();
+
+  // Try auto-discovery first
+  let config = WorkspaceManager.findWorkspaceConfig(cwd);
+
+  if (config) {
+    spinner.succeed(`Detected workspace: ${config.name} (${config.projects.length} projects)`);
+    console.log('\n  Projects found:');
+    for (const p of config.projects) {
+      console.log(`    - ${chalk.cyan(p.name)} → ${p.path}`);
+    }
+  } else {
+    spinner.info('No workspace structure detected. Creating empty workspace config.');
+    config = {
+      name: path.basename(cwd),
+      version: '1.0.0',
+      projects: [],
+    };
+  }
+
+  // Ensure .rulebook/ directory exists
+  const rulebookDir = path.join(cwd, '.rulebook');
+  if (!existsSync(rulebookDir)) {
+    const { mkdirSync } = await import('fs');
+    mkdirSync(rulebookDir, { recursive: true });
+  }
+
+  // Write config
+  writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+  console.log(chalk.green(`\n  Created: .rulebook/workspace.json`));
+
+  // Check for legacy .mcp.json files
+  const migration = await migrateLegacyMcpConfigs(cwd);
+  if (migration.migratedFiles.length > 0) {
+    console.log(
+      chalk.yellow(
+        `\n  Migrated ${migration.migratedFiles.length} legacy .mcp.json files (backups at *.mcp.json.bak)`
+      )
+    );
+  }
+
+  console.log(chalk.dim('\n  Use `rulebook workspace add <path>` to add more projects'));
+  console.log(chalk.dim('  Use `rulebook mcp init --workspace` to configure MCP for workspace'));
+}
+
+export async function workspaceAddCommand(projectPath: string): Promise<void> {
+  const cwd = process.cwd();
+  const configPath = getWorkspaceConfigPath(cwd);
+
+  if (!existsSync(configPath)) {
+    console.error(chalk.red('No workspace found. Run `rulebook workspace init` first.'));
+    process.exit(1);
+  }
+
+  const config: WorkspaceConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
+  const resolvedPath = path.resolve(cwd, projectPath);
+  const name = path.basename(resolvedPath);
+
+  // Check for duplicates
+  if (config.projects.some((p) => p.name === name)) {
+    console.error(chalk.red(`Project "${name}" already exists in workspace.`));
+    process.exit(1);
+  }
+
+  // Use relative path if within workspace, absolute otherwise
+  const isSubpath = resolvedPath.startsWith(cwd);
+  const storedPath = isSubpath ? path.relative(cwd, resolvedPath) : resolvedPath;
+
+  const project: WorkspaceProject = {
+    name,
+    path: storedPath.startsWith('.') ? storedPath : `./${storedPath}`,
+  };
+
+  config.projects.push(project);
+  if (!config.defaultProject) {
+    config.defaultProject = name;
+  }
+
+  writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+  console.log(chalk.green(`Added project "${name}" → ${project.path}`));
+}
+
+export async function workspaceRemoveCommand(projectName: string): Promise<void> {
+  const cwd = process.cwd();
+  const configPath = getWorkspaceConfigPath(cwd);
+
+  if (!existsSync(configPath)) {
+    console.error(chalk.red('No workspace found. Run `rulebook workspace init` first.'));
+    process.exit(1);
+  }
+
+  const config: WorkspaceConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
+  const idx = config.projects.findIndex((p) => p.name === projectName);
+
+  if (idx === -1) {
+    console.error(chalk.red(`Project "${projectName}" not found in workspace.`));
+    process.exit(1);
+  }
+
+  config.projects.splice(idx, 1);
+  if (config.defaultProject === projectName) {
+    config.defaultProject = config.projects[0]?.name;
+  }
+
+  writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+  console.log(chalk.green(`Removed project "${projectName}" from workspace.`));
+}
+
+export async function workspaceListCommand(): Promise<void> {
+  const cwd = process.cwd();
+  const config = WorkspaceManager.findWorkspaceConfig(cwd);
+
+  if (!config) {
+    console.log(chalk.yellow('No workspace found. Run `rulebook workspace init` to create one.'));
+    return;
+  }
+
+  console.log(chalk.bold(`\nWorkspace: ${config.name}`));
+  console.log(chalk.dim(`  Version: ${config.version}`));
+  if (config.defaultProject) {
+    console.log(chalk.dim(`  Default: ${config.defaultProject}`));
+  }
+  console.log();
+
+  for (const p of config.projects) {
+    const isDefault = p.name === config.defaultProject;
+    const marker = isDefault ? chalk.green(' (default)') : '';
+    const disabled = p.enabled === false ? chalk.red(' [disabled]') : '';
+    console.log(`  ${chalk.cyan(p.name)}${marker}${disabled}`);
+    console.log(`    ${chalk.dim(p.path)}`);
+  }
+
+  console.log(chalk.dim(`\n  ${config.projects.length} project(s) total`));
+}
+
+export async function workspaceStatusCommand(): Promise<void> {
+  const cwd = process.cwd();
+  const config = WorkspaceManager.findWorkspaceConfig(cwd);
+
+  if (!config) {
+    console.log(chalk.yellow('No workspace found. Run `rulebook workspace init` to create one.'));
+    return;
+  }
+
+  const manager = new WorkspaceManager(config, cwd);
+
+  const spinner = ora('Checking workspace status...').start();
+  try {
+    const status = await manager.getStatus();
+    spinner.stop();
+
+    console.log(chalk.bold(`\nWorkspace: ${status.name}`));
+    console.log(`  Projects: ${status.totalProjects}  |  Active workers: ${status.activeWorkers}`);
+    console.log();
+
+    for (const p of status.projects) {
+      const configBadge = p.hasRulebookConfig ? chalk.green('.rulebook') : chalk.dim('no config');
+      const memBadge = p.memoryEnabled ? chalk.blue('memory') : '';
+      const taskBadge = p.taskCount > 0 ? chalk.yellow(`${p.taskCount} tasks`) : '';
+      const badges = [configBadge, memBadge, taskBadge].filter(Boolean).join('  ');
+
+      console.log(`  ${chalk.cyan(p.name)}  ${badges}`);
+      console.log(`    ${chalk.dim(p.path)}`);
+    }
+    console.log();
+  } catch (error) {
+    spinner.fail(`Failed: ${String(error)}`);
+  } finally {
+    await manager.shutdownAll();
   }
 }

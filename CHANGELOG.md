@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.2.0] - 2026-03-12
+## [4.3.0] - 2026-03-12
 
 ### Added
 - **Agent Delegation System**: 18 specialist agents with cost-appropriate model assignments (opus/sonnet/haiku), full Claude Code fields (`tools`, `maxTurns`, `disallowedTools`), and auto-installation on `init`/`update`
@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 - 1,206 tests passing (118 new in `tests/agent-delegation.test.ts`)
 - Tests cover: agent frontmatter validation, model assignments, skill-agent linking, placeholder substitution, integration install
+
+## [4.2.2] - 2026-03-03
+
+### Fixed
+- **`mcp-server --workspace` flag**: Commander.js rejected the `--workspace` option because it was not declared on the `mcp-server` command — now properly registered
+- **Workspace memory logging**: `ProjectWorker` now logs `Memory DB (<projectId>): <path>` on initialization, matching single-project mode behavior
 
 ## [4.1.0] - 2026-03-03
 
