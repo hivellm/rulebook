@@ -403,7 +403,7 @@ mv PLANS.md .rulebook/PLANS.md
 ### Changed
 - **CLI Prompts**: Enhanced interactive prompts to include service selection
   - Service selection appears after module selection
-  - Detected services are pre-selected
+  - Detected services are preselected
   - Descriptive labels for each service type
 - **Project Configuration**: Extended `ProjectConfig` and `RulebookConfig` to include services
   - Services are saved to `.rulebook` configuration file
