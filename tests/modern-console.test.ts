@@ -205,14 +205,16 @@ describe('ModernConsole', () => {
       // and is tested through the overall console functionality
     });
 
-    it('should support activity logging', async () => {
+    it('should support activity logging', () => {
       // Test activity logging functionality
-      const logSpy = vi.spyOn(modernConsole, 'logActivity');
+      // Mock render to avoid setTimeout keeping event loop alive
+      const renderSpy = vi.spyOn(modernConsole as any, 'render').mockImplementation(() => {});
 
       modernConsole.logActivity('info', 'Test message');
 
-      expect(logSpy).toHaveBeenCalledWith('info', 'Test message');
-    }, 10000);
+      expect(renderSpy).toHaveBeenCalled();
+      renderSpy.mockRestore();
+    });
 
     // Removed: markTaskCompleted and markTaskInProgress were replaced by onTaskStatusChange callback
 
