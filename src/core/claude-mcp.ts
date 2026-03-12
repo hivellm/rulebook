@@ -16,6 +16,7 @@ export interface ClaudeCodeSetupResult {
   detected: boolean;
   mcpConfigured: boolean;
   skillsInstalled: string[];
+  devSkillsInstalled: string[];
   agentTeamsEnabled: boolean;
   agentDefinitionsInstalled: string[];
 }
@@ -83,7 +84,7 @@ export async function configureMcpJson(projectRoot: string): Promise<boolean> {
 }
 
 /**
- * Install rulebook skill templates as Claude Code commands.
+ * Install rulebook skill templates as Claude Code commands (legacy format).
  * Copies templates/commands/*.md to .claude/commands/ in the project.
  */
 export async function installClaudeCodeSkills(
@@ -111,6 +112,44 @@ export async function installClaudeCodeSkills(
     const content = await readFile(sourcePath);
     await writeFile(targetPath, content);
     installed.push(entry);
+  }
+
+  return installed;
+}
+
+/**
+ * Install dev skills to .claude/skills/ (modern Claude Code format).
+ * Each skill is a directory with a SKILL.md file.
+ * Copies templates/dev-skills/<name>/SKILL.md to .claude/skills/<name>/SKILL.md.
+ */
+export async function installDevSkills(
+  projectRoot: string,
+  templatesPath: string
+): Promise<string[]> {
+  const skillsSourceDir = join(templatesPath, 'skills', 'dev');
+  const skillsTargetDir = join(projectRoot, '.claude', 'skills');
+
+  if (!(await fileExists(skillsSourceDir))) {
+    return [];
+  }
+
+  await ensureDir(skillsTargetDir);
+
+  const entries = await readdir(skillsSourceDir, { withFileTypes: true });
+  const installed: string[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+
+    const skillFile = join(skillsSourceDir, entry.name, 'SKILL.md');
+    if (!(await fileExists(skillFile))) continue;
+
+    const targetSkillDir = join(skillsTargetDir, entry.name);
+    await ensureDir(targetSkillDir);
+
+    const content = await readFile(skillFile);
+    await writeFile(join(targetSkillDir, 'SKILL.md'), content);
+    installed.push(entry.name);
   }
 
   return installed;
@@ -209,6 +248,7 @@ export async function setupClaudeCodeIntegration(
       detected: false,
       mcpConfigured: false,
       skillsInstalled: [],
+      devSkillsInstalled: [],
       agentTeamsEnabled: false,
       agentDefinitionsInstalled: [],
     };
@@ -218,6 +258,7 @@ export async function setupClaudeCodeIntegration(
 
   const mcpConfigured = await configureMcpJson(projectRoot);
   const skillsInstalled = await installClaudeCodeSkills(projectRoot, resolvedTemplatesPath);
+  const devSkillsInstalled = await installDevSkills(projectRoot, resolvedTemplatesPath);
   const agentTeamsEnabled = await configureClaudeSettings(projectRoot);
   const agentDefinitionsInstalled = await installAgentDefinitions(
     projectRoot,
@@ -228,6 +269,7 @@ export async function setupClaudeCodeIntegration(
     detected: true,
     mcpConfigured,
     skillsInstalled,
+    devSkillsInstalled,
     agentTeamsEnabled,
     agentDefinitionsInstalled,
   };

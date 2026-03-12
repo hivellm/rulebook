@@ -654,6 +654,299 @@ async function loadProjectConfigFromRulebook(
   }
 }
 
+// Agent delegation table entries
+interface AgentEntry {
+  task: string;
+  agent: string;
+  model: string;
+  when: string;
+}
+
+const AGENT_REGISTRY: AgentEntry[] = [
+  // Core agents
+  {
+    task: 'Implementation',
+    agent: 'implementer',
+    model: 'sonnet',
+    when: 'Writing new code or modifying existing',
+  },
+  {
+    task: 'Research',
+    agent: 'researcher',
+    model: 'haiku',
+    when: 'Exploring codebase, finding patterns',
+  },
+  {
+    task: 'Testing',
+    agent: 'tester',
+    model: 'sonnet',
+    when: 'Writing and running tests',
+  },
+  {
+    task: 'Documentation',
+    agent: 'docs-writer',
+    model: 'haiku',
+    when: 'README, docs, changelogs',
+  },
+  {
+    task: 'Code Review',
+    agent: 'code-reviewer',
+    model: 'sonnet',
+    when: 'Reviewing implementations for quality',
+  },
+  {
+    task: 'Build/CI',
+    agent: 'build-engineer',
+    model: 'sonnet',
+    when: 'Build failures, CI, dependencies',
+  },
+  {
+    task: 'Security',
+    agent: 'security-reviewer',
+    model: 'haiku',
+    when: 'Dependency audit, vulnerability review',
+  },
+  // Specialist agents
+  {
+    task: 'Architecture',
+    agent: 'architect',
+    model: 'opus',
+    when: 'System design, ADRs, scalability decisions',
+  },
+  {
+    task: 'API Design',
+    agent: 'api-designer',
+    model: 'sonnet',
+    when: 'REST/GraphQL endpoints, OpenAPI specs',
+  },
+  {
+    task: 'Database',
+    agent: 'database-architect',
+    model: 'sonnet',
+    when: 'Schema design, migrations, query optimization',
+  },
+  {
+    task: 'DevOps',
+    agent: 'devops-engineer',
+    model: 'sonnet',
+    when: 'CI/CD, Docker, Kubernetes, infrastructure',
+  },
+  {
+    task: 'Performance',
+    agent: 'performance-engineer',
+    model: 'sonnet',
+    when: 'Profiling, benchmarks, optimization',
+  },
+  {
+    task: 'Refactoring',
+    agent: 'refactoring-agent',
+    model: 'sonnet',
+    when: 'Code smells, complexity reduction, cleanup',
+  },
+  {
+    task: 'Migration',
+    agent: 'migration-engineer',
+    model: 'sonnet',
+    when: 'DB migrations, API migrations, upgrades',
+  },
+  {
+    task: 'Accessibility',
+    agent: 'accessibility-reviewer',
+    model: 'haiku',
+    when: 'WCAG compliance, ARIA, screen readers',
+  },
+  {
+    task: 'i18n',
+    agent: 'i18n-engineer',
+    model: 'haiku',
+    when: 'Internationalization, localization, RTL',
+  },
+  {
+    task: 'UX Review',
+    agent: 'ux-reviewer',
+    model: 'haiku',
+    when: 'Usability, interaction patterns, error states',
+  },
+  // Orchestration
+  {
+    task: 'Orchestration',
+    agent: 'team-lead',
+    model: 'opus',
+    when: 'Multi-agent coordination for complex tasks',
+  },
+];
+
+/**
+ * Generate the agent delegation section for AGENTS.md.
+ * Adapts table based on detected languages and frameworks.
+ */
+export function generateDelegationSection(config: ProjectConfig): string {
+  const lines: string[] = [];
+  const primaryLang = config.languages?.[0] || 'the project language';
+  const primaryFramework = config.frameworks?.[0] || '';
+
+  lines.push('## Agent Delegation');
+  lines.push('');
+  lines.push(
+    'Delegate work to specialist agents instead of doing everything in the main conversation. Each agent uses a cost-appropriate model.'
+  );
+  lines.push('');
+  lines.push('| Task | Agent | Model | When to use |');
+  lines.push('|------|-------|-------|-------------|');
+
+  for (const entry of AGENT_REGISTRY) {
+    lines.push(`| ${entry.task} | ${entry.agent} | ${entry.model} | ${entry.when} |`);
+  }
+
+  lines.push('');
+  lines.push('### Delegation Rules');
+  lines.push('');
+  lines.push(
+    '1. **Never write code directly in the main conversation** — delegate to the appropriate agent'
+  );
+  lines.push(
+    '2. **After implementing code**, launch tester + docs-writer in parallel to update tests and documentation'
+  );
+  lines.push(
+    '3. **The main conversation** serves for planning, coordination, and user communication only'
+  );
+  lines.push(
+    '4. **Use haiku agents** (researcher, docs-writer, security-reviewer) for read-only tasks — they are significantly cheaper'
+  );
+  lines.push('5. **Launch independent agents in parallel** when possible to maximize throughput');
+  lines.push('');
+  lines.push(
+    `> **Project context**: Primary language is **${primaryLang}**${primaryFramework ? ` with **${primaryFramework}**` : ''}. Agents are pre-configured with this context.`
+  );
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+/**
+ * Resolve placeholder values from project config.
+ */
+export function resolveAgentPlaceholders(config: ProjectConfig): Record<string, string> {
+  const primaryLang = config.languages?.[0] || 'TypeScript';
+  const primaryFramework = config.frameworks?.[0] || '';
+
+  // Map language to common test framework
+  const testFrameworkMap: Record<string, string> = {
+    typescript: 'vitest',
+    javascript: 'jest',
+    python: 'pytest',
+    rust: 'cargo test',
+    go: 'go test',
+    java: 'JUnit',
+    csharp: 'xUnit',
+    ruby: 'RSpec',
+    php: 'PHPUnit',
+    swift: 'XCTest',
+    kotlin: 'JUnit',
+    dart: 'flutter test',
+    elixir: 'ExUnit',
+    scala: 'ScalaTest',
+  };
+
+  // Map language to file naming convention
+  const fileNamingMap: Record<string, string> = {
+    typescript: 'kebab-case',
+    javascript: 'kebab-case',
+    python: 'snake_case',
+    rust: 'snake_case',
+    go: 'snake_case',
+    java: 'PascalCase',
+    csharp: 'PascalCase',
+    ruby: 'snake_case',
+    php: 'PascalCase',
+    swift: 'PascalCase',
+    kotlin: 'PascalCase',
+    dart: 'snake_case',
+    elixir: 'snake_case',
+    scala: 'PascalCase',
+  };
+
+  const langKey = primaryLang.toLowerCase();
+
+  return {
+    '{{language}}': primaryLang,
+    '{{framework}}': primaryFramework || 'none',
+    '{{test_framework}}': testFrameworkMap[langKey] || 'the project test framework',
+    '{{file_naming}}': fileNamingMap[langKey] || 'kebab-case',
+  };
+}
+
+/**
+ * Substitute placeholders in agent template content.
+ */
+export function substituteAgentPlaceholders(
+  content: string,
+  placeholders: Record<string, string>
+): string {
+  let result = content;
+  for (const [key, value] of Object.entries(placeholders)) {
+    result = result.replaceAll(key, value);
+  }
+  return result;
+}
+
+/**
+ * Install agent definitions to .claude/agents/ with placeholder substitution.
+ */
+async function installAgentsWithPlaceholders(
+  projectRoot: string,
+  config: ProjectConfig
+): Promise<void> {
+  const agentsDir = path.join(getTemplatesDir(), 'agents');
+  const targetDir = path.join(projectRoot, '.claude', 'agents');
+
+  if (!(await fileExists(agentsDir))) return;
+
+  await ensureDir(targetDir);
+
+  const placeholders = resolveAgentPlaceholders(config);
+
+  const { readdirSync } = await import('fs');
+  const files = readdirSync(agentsDir).filter((f: string) => f.endsWith('.md'));
+
+  for (const file of files) {
+    const content = await readFile(path.join(agentsDir, file));
+    const substituted = substituteAgentPlaceholders(content, placeholders);
+    await writeFile(path.join(targetDir, file), substituted);
+  }
+}
+
+/**
+ * Install dev skills to .claude/skills/ (modern Claude Code skills format).
+ * Each skill is a directory with a SKILL.md file.
+ * Always installed on init/update — useful for any project regardless of size.
+ */
+async function installDevSkillsFromTemplates(projectRoot: string): Promise<void> {
+  const { readdirSync, statSync } = await import('fs');
+  const skillsSourceDir = path.join(getTemplatesDir(), 'skills', 'dev');
+  const skillsTargetDir = path.join(projectRoot, '.claude', 'skills');
+
+  if (!(await fileExists(skillsSourceDir))) return;
+
+  await ensureDir(skillsTargetDir);
+
+  const entries = readdirSync(skillsSourceDir);
+
+  for (const entry of entries) {
+    const entryPath = path.join(skillsSourceDir, entry);
+    if (!statSync(entryPath).isDirectory()) continue;
+
+    const skillFile = path.join(entryPath, 'SKILL.md');
+    if (!(await fileExists(skillFile))) continue;
+
+    const targetSkillDir = path.join(skillsTargetDir, entry);
+    await ensureDir(targetSkillDir);
+
+    const content = await readFile(skillFile);
+    await writeFile(path.join(targetSkillDir, 'SKILL.md'), content);
+  }
+}
+
 /**
  * Generate modular AGENTS.md with references
  */
@@ -958,6 +1251,17 @@ export async function generateModularAgents(
     });
   } catch {
     // Multi-tool generation failed - skip silently
+  }
+
+  // Generate agent delegation section
+  sections.push(generateDelegationSection(mergedConfig));
+
+  // Install agent definitions and dev skills to .claude/
+  try {
+    await installAgentsWithPlaceholders(projectRoot, mergedConfig);
+    await installDevSkillsFromTemplates(projectRoot);
+  } catch {
+    // Agent/skill installation failed — skip silently
   }
 
   // Append AGENTS.override.md content if present and non-empty

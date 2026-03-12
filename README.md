@@ -52,6 +52,13 @@ npx @hivehub/rulebook@latest update
 
 See the full [CHANGELOG](CHANGELOG.md) for details.
 
+### v4.2.0 — Agent Delegation & Cost Optimization
+
+- 🤖 **18 Specialist Agents**: Cost-appropriate model assignments (opus for architecture, sonnet for code, haiku for read-only) with full Claude Code fields (`tools`, `maxTurns`, `disallowedTools`)
+- ⚡ **14 Dev Skills**: `/docs`, `/review`, `/debug`, `/refactor`, `/security-audit`, `/deploy`, `/perf`, `/architect`, `/api-design`, `/db-design`, `/accessibility`, `/migrate`, `/research`, `/build-fix` — each linked to a specialist agent via `context: fork`
+- 📋 **Delegation Rules in AGENTS.md**: Auto-generated table instructing LLMs to delegate work to specialist agents instead of doing everything in the main conversation
+- 🌐 **Dynamic Agent Templates**: Placeholders (`{{language}}`, `{{test_framework}}`, etc.) resolved at generation time for 14 languages
+
 ### v4.1.0 — Background Indexer & Codebase Intelligence
 
 - 🔍 **Background Indexer**: Autonomous daemon that continuously indexes your codebase into a searchable vector + graph database
@@ -68,7 +75,7 @@ See the full [CHANGELOG](CHANGELOG.md) for details.
 - 🐳 **Container + Observability**: Docker, K8s, Helm, Sentry, OTel, Datadog, Pino, Winston, Prometheus
 - 🛠️ **Multi-tool**: Gemini CLI, Continue.dev, Windsurf, Copilot configs auto-generated
 - 🔍 **AI Code Review**: `rulebook review` + GitHub Actions workflow
-- 👥 **Multi-agent teams**: Claude Code agent definitions + team auto-configuration
+- 👥 **Multi-agent teams**: Claude Code agent definitions + team auto-configuration (expanded to 18 agents in v4.2)
 
 ### v3.0.0 — Persistent Memory & Skills
 

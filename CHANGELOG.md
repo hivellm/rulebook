@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] - 2026-03-12
+
+### Added
+- **Agent Delegation System**: 18 specialist agents with cost-appropriate model assignments (opus/sonnet/haiku), full Claude Code fields (`tools`, `maxTurns`, `disallowedTools`), and auto-installation on `init`/`update`
+  - **Core agents**: team-lead (opus), implementer (sonnet), researcher (haiku), tester (sonnet), docs-writer (haiku), code-reviewer (sonnet), build-engineer (sonnet), security-reviewer (haiku)
+  - **New specialist agents**: architect (opus), api-designer (sonnet), database-architect (sonnet), devops-engineer (sonnet), performance-engineer (sonnet), refactoring-agent (sonnet), migration-engineer (sonnet), accessibility-reviewer (haiku), i18n-engineer (haiku), ux-reviewer (haiku)
+- **14 Dev Skills**: Modern Claude Code skills (`.claude/skills/`) with `context: fork` + `agent:` linking, auto-installed on `init`/`update`
+  - `/docs`, `/research`, `/review`, `/build-fix`, `/security-audit`, `/deploy`, `/refactor`, `/debug`, `/perf`, `/api-design`, `/db-design`, `/architect`, `/accessibility`, `/migrate`
+- **Delegation section in AGENTS.md**: Auto-generated table mapping tasks to agents with model assignments and delegation rules
+- **Dynamic placeholder substitution**: Agent templates use `{{language}}`, `{{framework}}`, `{{test_framework}}`, `{{file_naming}}` — resolved at generation time based on project detection (14 languages mapped)
+- **Dev skills installer**: `installDevSkills()` in `claude-mcp.ts` copies `templates/skills/dev/` to `.claude/skills/` on setup
+
+### Changed
+- Agent definitions now include full Claude Code frontmatter: `tools`, `disallowedTools`, `maxTurns`, `description` with usage guidance
+- `generateModularAgents()` now installs both agents and dev skills to `.claude/` on every `init`/`update`
+- `ClaudeCodeSetupResult` interface includes `devSkillsInstalled` field
+
+### Internal
+- 1,206 tests passing (118 new in `tests/agent-delegation.test.ts`)
+- Tests cover: agent frontmatter validation, model assignments, skill-agent linking, placeholder substitution, integration install
+
 ## [4.1.0] - 2026-03-03
 
 ### Added
