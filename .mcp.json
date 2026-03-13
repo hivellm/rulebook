@@ -5,9 +5,7 @@
       "args": [
         "-y",
         "@hivehub/rulebook@latest",
-        "mcp-server",
-        "--project-root",
-        "F:\\Node\\hivellm\\rulebook"
+        "mcp-server"
       ]
     }
   }

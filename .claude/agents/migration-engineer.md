@@ -10,7 +10,7 @@ maxTurns: 25
 
 - Plan and execute database schema migrations with zero-downtime strategies
 - Design API version migrations with backward compatibility bridges
-- Manage framework and dependency upgrades for rust projects
+- Manage framework and dependency upgrades for {{language}} projects
 - Write data transformation scripts for format or structure changes
 - Define rollback procedures and test them before production execution
 
