@@ -44,7 +44,7 @@ export class BackgroundIndexer {
 
   public start(): void {
     if (!this.config.enabled) return;
-    console.log(`[BackgroundIndexer] Starting watcher on: ${this.projectRoot}`);
+    console.error(`[BackgroundIndexer] Starting watcher on: ${this.projectRoot}`);
 
     // Very naive watcher for V1 (Node.js native Recursive FS Watcher when available, otherwise basic)
     // Production ready app should probably use `chokidar` here, but sticking to native limits deps
@@ -70,7 +70,7 @@ export class BackgroundIndexer {
     this.watchControllers.forEach((w) => w.close());
     this.watchControllers.clear();
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
-    console.log('[BackgroundIndexer] Stopped');
+    console.error('[BackgroundIndexer] Stopped');
   }
 
   public getStatus(): { queue: number; processed: number; errors: number; isProcessing: boolean } {
@@ -107,8 +107,15 @@ export class BackgroundIndexer {
       '.mp3',
       '.mp4',
       '.sqlite',
+      '.sqlite-wal',
+      '.sqlite-shm',
+      '.sqlite-journal',
       '.db',
+      '.db-wal',
+      '.db-shm',
+      '.db-journal',
       '.pdf',
+      '.lock',
     ];
     if (ignoredExts.includes(ext)) {
       return true;
@@ -139,7 +146,7 @@ export class BackgroundIndexer {
     const batch = Array.from(this.processQueue);
     this.processQueue.clear();
 
-    console.log(`[BackgroundIndexer] Processing batch of ${batch.length} files...`);
+    console.error(`[BackgroundIndexer] Processing batch of ${batch.length} files...`);
 
     for (const filePath of batch) {
       try {

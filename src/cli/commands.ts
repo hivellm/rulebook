@@ -509,6 +509,17 @@ export async function initCommand(options: {
       }
     }
 
+    // Clean up any accidental nested .rulebook/.rulebook directory
+    try {
+      const fsPromises = await import('fs/promises');
+      const accidentalDir = path.join(cwd, '.rulebook', '.rulebook');
+      if (existsSync(accidentalDir)) {
+        await fsPromises.rm(accidentalDir, { recursive: true, force: true });
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+
     console.log(chalk.bold.green('\n✨ Rulebook initialization complete!\n'));
     console.log(chalk.gray('Next steps:'));
     console.log(chalk.gray('  1. Review AGENTS.md'));
@@ -3668,7 +3679,6 @@ export async function setupClaudeCodePlugin(): Promise<void> {
     // Get Claude Code plugins directory
     const homeDir = os.homedir();
     const pluginsDir = path.join(homeDir, '.claude', 'plugins');
-    const installCountsPath = path.join(pluginsDir, 'install-counts-cache.json');
     const installedPluginsPath = path.join(pluginsDir, 'installed_plugins.json');
 
     // Create plugins directory if it doesn't exist
@@ -3685,7 +3695,7 @@ export async function setupClaudeCodePlugin(): Promise<void> {
       installedPlugins = JSON.parse(content);
     }
 
-    // Add rulebook plugin
+    // Add rulebook plugin — keep exactly ONE entry per plugin key
     const pluginKey = `rulebook@hivehub`;
     const version = pluginJson.version || '3.2.1';
     const installPath = path.join(pluginsDir, 'cache', 'hivehub', 'rulebook', version);
@@ -3694,12 +3704,25 @@ export async function setupClaudeCodePlugin(): Promise<void> {
       installedPlugins.plugins[pluginKey] = [];
     }
 
-    // Check if already installed
-    const existing = (installedPlugins.plugins[pluginKey] as { version: string }[]).find(
-      (p) => p.version === version
-    );
-    if (!existing) {
-      (installedPlugins.plugins[pluginKey] as Record<string, unknown>[]).push({
+    const entries = installedPlugins.plugins[pluginKey] as Record<string, unknown>[];
+
+    // Deduplicate: keep only the single latest entry, update it in-place
+    if (entries.length > 0) {
+      // Preserve original installedAt from the first entry
+      const originalInstalledAt = (entries[0] as { installedAt?: string }).installedAt;
+      // Replace all entries with a single updated one
+      installedPlugins.plugins[pluginKey] = [
+        {
+          scope: 'user',
+          installPath: installPath,
+          version: version,
+          installedAt: originalInstalledAt || new Date().toISOString(),
+          lastUpdated: new Date().toISOString(),
+        },
+      ];
+    } else {
+      // First install
+      entries.push({
         scope: 'user',
         installPath: installPath,
         version: version,
@@ -3710,15 +3733,6 @@ export async function setupClaudeCodePlugin(): Promise<void> {
 
     // Save installed_plugins.json
     await fs.writeFile(installedPluginsPath, JSON.stringify(installedPlugins, null, 2));
-
-    // Update install-counts-cache.json
-    let installCounts: Record<string, number> = {};
-    if (existsSync(installCountsPath)) {
-      const content = await readFile(installCountsPath);
-      installCounts = JSON.parse(content);
-    }
-    installCounts[pluginKey] = (installCounts[pluginKey] || 0) + 1;
-    await fs.writeFile(installCountsPath, JSON.stringify(installCounts, null, 2));
 
     spinner.succeed('Claude Code plugin installed');
     console.log(`\n  ${chalk.green('✓')} Plugin: ${pluginKey} v${version}`);

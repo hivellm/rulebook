@@ -226,8 +226,7 @@ export class ConfigManager {
     const migrated = { ...config };
 
     // Migrate directory structure from old to new layout
-    const projectRoot = dirname(this.configPath);
-    await this.migrateDirectoryStructure(projectRoot);
+    await this.migrateDirectoryStructure(this.projectRoot);
 
     // Add missing features with defaults
     const defaultFeatures = {
