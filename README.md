@@ -52,6 +52,13 @@ npx @hivehub/rulebook@latest update
 
 See the full [CHANGELOG](CHANGELOG.md) for details.
 
+### v4.3.1 — MCP Stability & Multi-Root Workspace Support
+
+- 🔧 **MCP server loop fix**: Resolved `BackgroundIndexer` stdout pollution causing infinite restarts
+- 🏗️ **Auto-detect workspace mode**: MCP server now auto-switches to workspace mode when `.code-workspace` or monorepo configs are found — no `--workspace` flag needed
+- 🧹 **Nested `.rulebook` fix**: Eliminated accidental `.rulebook/.rulebook` directory creation
+- 🔌 **Plugin deduplication**: Claude Code plugin entries consolidated to single entry on `update`
+
 ### v4.3.0 — Agent Delegation & Cost Optimization
 
 - 🤖 **18 Specialist Agents**: Cost-appropriate model assignments (opus for architecture, sonnet for code, haiku for read-only) with full Claude Code fields (`tools`, `maxTurns`, `disallowedTools`)

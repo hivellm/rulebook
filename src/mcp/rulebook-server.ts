@@ -170,7 +170,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '4.2.2',
+    version: '4.3.1',
   });
 
   // Zod schema reused across tools for workspace project targeting
