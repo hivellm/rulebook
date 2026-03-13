@@ -1,0 +1,7 @@
+- [x] Fix BackgroundIndexer console.log → console.error (stdout pollution)
+- [x] Add SQLite WAL/SHM/journal extensions to file watcher ignore list
+- [x] Fix migrateConfig() using wrong projectRoot (dirname(configPath))
+- [x] Add .rulebook/.rulebook cleanup to init command
+- [x] Fix setupClaudeCodePlugin() duplicate entries
+- [x] Remove install-counts-cache.json unnecessary increment
+- [x] Type-check and run tests (1341 passing)

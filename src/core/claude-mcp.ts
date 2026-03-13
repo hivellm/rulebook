@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import { readdir } from 'fs/promises';
 import { fileExists, readFile, writeFile, ensureDir } from '../utils/file-system.js';
+import { WorkspaceManager } from './workspace/workspace-manager.js';
 
 export interface ClaudeCodeSetupResult {
   detected: boolean;
@@ -35,8 +36,10 @@ export async function isClaudeCodeInstalled(homeDir?: string): Promise<boolean> 
  * via walk-up (`findRulebookConfig(process.cwd())`), which is portable
  * across machines and OS.
  */
-function buildMcpServerArgs(): string[] {
-  return ['-y', '@hivehub/rulebook@latest', 'mcp-server'];
+function buildMcpServerArgs(workspace?: boolean): string[] {
+  const args = ['-y', '@hivehub/rulebook@latest', 'mcp-server'];
+  if (workspace) args.push('--workspace');
+  return args;
 }
 
 /**
@@ -46,8 +49,9 @@ function buildMcpServerArgs(): string[] {
  * the project via cwd walk-up, which is portable across machines).
  * If an existing entry contains legacy --project-root args, they are
  * upgraded to the simplified form.
+ * When `workspace` is true, adds --workspace flag to the args.
  */
-export async function configureMcpJson(projectRoot: string): Promise<boolean> {
+export async function configureMcpJson(projectRoot: string, workspace?: boolean): Promise<boolean> {
   const mcpJsonPath = join(projectRoot, '.mcp.json');
 
   let mcpConfig: { mcpServers?: Record<string, unknown> } = { mcpServers: {} };
@@ -64,19 +68,20 @@ export async function configureMcpJson(projectRoot: string): Promise<boolean> {
 
   mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
 
-  const expectedArgs = buildMcpServerArgs();
+  const expectedArgs = buildMcpServerArgs(workspace);
 
   if (mcpConfig.mcpServers.rulebook) {
     const existing = mcpConfig.mcpServers.rulebook as { args?: string[] };
     const hasLegacyProjectRoot = existing.args?.includes('--project-root');
+    // Upgrade: add --workspace if now in workspace mode but entry lacks it
+    const needsWorkspaceFlag = workspace && !existing.args?.includes('--workspace');
 
-    if (hasLegacyProjectRoot) {
-      // Upgrade legacy entry: remove --project-root and its value
+    if (hasLegacyProjectRoot || needsWorkspaceFlag) {
       existing.args = expectedArgs;
       await writeFile(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
     }
 
-    return false; // Entry already existed
+    return false; // Entry already existed (possibly upgraded)
   }
 
   mcpConfig.mcpServers.rulebook = {
@@ -261,7 +266,9 @@ export async function setupClaudeCodeIntegration(
 
   const resolvedTemplatesPath = templatesPath ?? getTemplatesPath();
 
-  const mcpConfigured = await configureMcpJson(projectRoot);
+  // Auto-detect workspace mode for .mcp.json configuration
+  const isWorkspace = WorkspaceManager.findWorkspaceConfig(projectRoot) !== null;
+  const mcpConfigured = await configureMcpJson(projectRoot, isWorkspace);
   const skillsInstalled = await installClaudeCodeSkills(projectRoot, resolvedTemplatesPath);
   const devSkillsInstalled = await installDevSkills(projectRoot, resolvedTemplatesPath);
   const agentTeamsEnabled = await configureClaudeSettings(projectRoot);

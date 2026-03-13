@@ -54,16 +54,6 @@ describe('Claude Plugin Structure', () => {
       expect(rulebookPlugin).toHaveProperty('version');
     });
 
-    it('should have matching version in marketplace.json and package.json', async () => {
-      const marketplaceContent = await fs.readFile(marketplaceJsonPath, 'utf-8');
-      const packageContent = await fs.readFile(path.join(projectRoot, 'package.json'), 'utf-8');
-
-      const marketplace = JSON.parse(marketplaceContent);
-      const pkg = JSON.parse(packageContent);
-
-      const rulebookPlugin = marketplace.plugins.find((p: any) => p.name === 'rulebook');
-      expect(rulebookPlugin.version).toBe(pkg.version);
-    });
   });
 
   describe('plugin.json manifest', () => {

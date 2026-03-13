@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.1] - 2026-03-13
+
+### Fixed
+- **MCP server restart loop**: `BackgroundIndexer` was using `console.log` instead of `console.error`, polluting the MCP stdio transport with non-JSON-RPC messages and causing clients to restart the server in a loop
+- **File watcher feedback loop**: Added SQLite WAL/SHM/journal file extensions to the `BackgroundIndexer` ignore list, preventing a feedback loop where memory DB writes triggered re-indexing
+- **Nested `.rulebook/.rulebook` directory**: `migrateConfig()` was computing `projectRoot` as `dirname(configPath)` (resolving to `.rulebook/`) instead of the actual project root, creating nested directories on every `init`/`update`
+- **Duplicate Claude Code plugins**: `setupClaudeCodePlugin()` accumulated one entry per version in `installed_plugins.json` — now keeps exactly one entry per plugin key, updating version in-place
+
+### Added
+- **Auto-detect workspace mode in MCP server**: When the MCP server starts without `--workspace` flag, it now checks for workspace indicators (`.rulebook/workspace.json`, `*.code-workspace`, monorepo configs) and automatically switches to workspace mode — fixes multi-root VSCode workspaces where users open multiple projects
+- **Workspace hint in `rulebook init`**: When running `init` in a directory with multiple detected projects, shows a suggestion to use `rulebook workspace init`
+- **`.mcp.json` workspace upgrade**: `configureMcpJson()` now adds `--workspace` flag to existing entries when a workspace config is detected, applied automatically on `rulebook update`
+
 ## [4.3.0] - 2026-03-12
 
 ### Added

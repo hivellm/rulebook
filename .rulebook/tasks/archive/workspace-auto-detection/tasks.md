@@ -1,0 +1,6 @@
+- [x] Auto-detect workspace mode in MCP server startup
+- [x] Update configureMcpJson to accept and apply --workspace flag
+- [x] Auto-detect workspace in setupClaudeCodeIntegration for .mcp.json
+- [x] Add workspace detection hint in rulebook init command
+- [x] Ensure rulebook update upgrades existing .mcp.json entries
+- [x] Type-check and run tests (1341 passing)
