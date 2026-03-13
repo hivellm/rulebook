@@ -478,6 +478,56 @@ export interface RalphIterationMetadata {
   quality_checks: IterationResult['quality_checks'];
 }
 
+// Context Intelligence Layer Types (v4.4)
+
+export type DecisionStatus = 'proposed' | 'accepted' | 'superseded' | 'deprecated';
+
+export interface Decision {
+  id: number;
+  slug: string;
+  title: string;
+  status: DecisionStatus;
+  date: string;
+  context: string;
+  decision: string;
+  alternatives: string[];
+  consequences: string;
+  supersededBy?: number;
+  relatedTasks?: string[];
+}
+
+export type KnowledgeType = 'pattern' | 'anti-pattern';
+export type KnowledgeCategory = 'architecture' | 'code' | 'testing' | 'security' | 'performance' | 'devops';
+
+export interface KnowledgeEntry {
+  id: string;
+  type: KnowledgeType;
+  title: string;
+  category: KnowledgeCategory;
+  description: string;
+  example?: string;
+  whenToUse?: string;
+  whenNotToUse?: string;
+  createdAt: string;
+  tags: string[];
+  source: 'manual' | 'ralph' | 'learn';
+}
+
+export interface Learning {
+  id: string;
+  title: string;
+  content: string;
+  source: 'manual' | 'ralph' | 'task-archive';
+  relatedTask?: string;
+  relatedDecision?: number;
+  tags: string[];
+  createdAt: string;
+  promotedTo?: {
+    type: 'knowledge' | 'decision';
+    id: string;
+  };
+}
+
 export type {
   WorkspaceConfig,
   WorkspaceProject,

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.0] - 2026-03-13
+
+### Added
+- **Context Intelligence Layer**: Three interconnected features for capturing project knowledge across AI sessions
+  - **Decision Records** (`rulebook decision`): Architecture Decision Records (ADRs) with auto-numbering, status lifecycle (proposed → accepted → superseded → deprecated), and generator integration
+  - **Knowledge Base** (`rulebook knowledge`): Explicit patterns and anti-patterns with category filtering (architecture, code, testing, security, performance, devops), auto-injected into AGENTS.md on `rulebook update`
+  - **Learn Phase** (`rulebook learn`): Capture learnings manually or from Ralph iterations, promote to knowledge entries or decisions
+- **10 New MCP Tools**: `rulebook_decision_create|list|show|update`, `rulebook_knowledge_add|list|show`, `rulebook_learn_capture|list|promote` — **40 MCP tools total**
+- **12 New CLI Commands**: `rulebook decision create|list|show|supersede`, `rulebook knowledge add|list|show|remove`, `rulebook learn capture|from-ralph|list|promote`
+- **Context Intelligence Agent**: New `context-intelligence` (haiku) agent template for managing decisions, knowledge, and learnings
+- **6 New Claude Code Skills**: `/rulebook-decision-create`, `/rulebook-decision-list`, `/rulebook-knowledge-add`, `/rulebook-knowledge-list`, `/rulebook-learn-capture`, `/rulebook-learn-list`
+- **2 New Core Templates**: `DECISIONS.md` and `KNOWLEDGE.md` in `templates/core/`
+- **Generator Integration**: AGENTS.md now includes "Decision Records" and "Project Knowledge" sections (auto-populated from `.rulebook/decisions/` and `.rulebook/knowledge/`)
+- **Workspace Support**: All 3 new managers (DecisionManager, KnowledgeManager, LearnManager) integrated into ProjectWorker for multi-project workspaces
+
+### Internal
+- 1,393 tests passing (53 new across `decision-manager.test.ts`, `knowledge-manager.test.ts`, `learn-manager.test.ts`)
+- New source files: `decision-manager.ts`, `knowledge-manager.ts`, `learn-manager.ts`
+
 ## [4.3.1] - 2026-03-13
 
 ### Fixed

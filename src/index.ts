@@ -67,6 +67,19 @@ import {
   workspaceRemoveCommand,
   workspaceListCommand,
   workspaceStatusCommand,
+  // Context Intelligence commands (v4.4)
+  decisionCreateCommand,
+  decisionListCommand,
+  decisionShowCommand,
+  decisionSupersedeCommand,
+  knowledgeAddCommand,
+  knowledgeListCommand,
+  knowledgeShowCommand,
+  knowledgeRemoveCommand,
+  learnCaptureCommand,
+  learnFromRalphCommand,
+  learnListCommand,
+  learnPromoteCommand,
 } from './cli/commands.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -545,5 +558,93 @@ workspaceCommand
   .command('status')
   .description('Show detailed workspace status (workers, tasks, memory)')
   .action(() => workspaceStatusCommand());
+
+// Context Intelligence commands (v4.4)
+const decisionCommand = program.command('decision').description('Manage Architecture Decision Records');
+
+decisionCommand
+  .command('create <title>')
+  .description('Create a new decision record')
+  .option('--context <context>', 'Decision context')
+  .option('--related-task <taskId>', 'Related task ID')
+  .action((title: string, options: { context?: string; relatedTask?: string }) =>
+    decisionCreateCommand(title, options)
+  );
+
+decisionCommand
+  .command('list')
+  .description('List all decisions')
+  .option('--status <status>', 'Filter by status: proposed, accepted, superseded, deprecated')
+  .action((options: { status?: string }) => decisionListCommand(options));
+
+decisionCommand
+  .command('show <id>')
+  .description('Show decision details')
+  .action((id: string) => decisionShowCommand(id));
+
+decisionCommand
+  .command('supersede <oldId> <newId>')
+  .description('Mark a decision as superseded by another')
+  .action((oldId: string, newId: string) => decisionSupersedeCommand(oldId, newId));
+
+const knowledgeCommand = program.command('knowledge').description('Manage project knowledge base');
+
+knowledgeCommand
+  .command('add <type> <title>')
+  .description('Add a pattern or anti-pattern')
+  .option('--category <category>', 'Category: architecture, code, testing, security, performance, devops', 'code')
+  .option('--description <desc>', 'Description of the pattern')
+  .action((type: string, title: string, options: { category?: string; description?: string }) =>
+    knowledgeAddCommand(type, title, options)
+  );
+
+knowledgeCommand
+  .command('list')
+  .description('List knowledge entries')
+  .option('--type <type>', 'Filter by type: pattern, anti-pattern')
+  .option('--category <category>', 'Filter by category')
+  .action((options: { type?: string; category?: string }) => knowledgeListCommand(options));
+
+knowledgeCommand
+  .command('show <id>')
+  .description('Show knowledge entry details')
+  .action((id: string) => knowledgeShowCommand(id));
+
+knowledgeCommand
+  .command('remove <id>')
+  .description('Remove a knowledge entry')
+  .action((id: string) => knowledgeRemoveCommand(id));
+
+const learnCommand = program.command('learn').description('Capture and promote learnings');
+
+learnCommand
+  .command('capture')
+  .description('Capture a learning')
+  .option('--title <title>', 'Learning title')
+  .option('--content <content>', 'Learning content')
+  .option('--related-task <taskId>', 'Related task ID')
+  .option('--tags <tags>', 'Comma-separated tags')
+  .action((options: { title?: string; content?: string; relatedTask?: string; tags?: string }) =>
+    learnCaptureCommand(options)
+  );
+
+learnCommand
+  .command('from-ralph')
+  .description('Extract learnings from Ralph iteration history')
+  .action(() => learnFromRalphCommand());
+
+learnCommand
+  .command('list')
+  .description('List learnings')
+  .option('--limit <n>', 'Max results', '20')
+  .action((options: { limit?: string }) => learnListCommand(options));
+
+learnCommand
+  .command('promote <id> <target>')
+  .description('Promote learning to knowledge entry or decision')
+  .option('--title <title>', 'Override title for the promoted entry')
+  .action((id: string, target: string, options: { title?: string }) =>
+    learnPromoteCommand(id, target, options)
+  );
 
 program.parse(process.argv);

@@ -27,7 +27,7 @@ Large Language Models (LLMs) for software development need **clear directives** 
 - 🎯 **Normalized Deliverables**: Ensures consistent code quality across all AI-generated outputs
 - 🛡️ **Error Reduction**: Catches issues early through automated quality gates and pre-commit/pre-push hooks
 - ⚙️ **Process Automation**: Automates repetitive tasks like formatting, testing, and deployment
-- 🔌 **MCP Integration**: 19 MCP functions for task management, skills, and persistent memory
+- 🔌 **MCP Integration**: 40 MCP tools for task management, skills, memory, decisions, knowledge, and learnings
 - 📊 **Task Management**: Built-in task management system (OpenSpec-compatible format) for structured development
 
 By giving LLMs a clear "rulebook" to follow, you ensure that every piece of generated code meets your project's standards—**automatically**.
@@ -52,12 +52,14 @@ npx @hivehub/rulebook@latest update
 
 See the full [CHANGELOG](CHANGELOG.md) for details.
 
-### v4.3.1 — MCP Stability & Multi-Root Workspace Support
+### v4.4.0 — Context Intelligence Layer
 
-- 🔧 **MCP server loop fix**: Resolved `BackgroundIndexer` stdout pollution causing infinite restarts
-- 🏗️ **Auto-detect workspace mode**: MCP server now auto-switches to workspace mode when `.code-workspace` or monorepo configs are found — no `--workspace` flag needed
-- 🧹 **Nested `.rulebook` fix**: Eliminated accidental `.rulebook/.rulebook` directory creation
-- 🔌 **Plugin deduplication**: Claude Code plugin entries consolidated to single entry on `update`
+- 🧠 **Decision Records**: `rulebook decision create|list|show|supersede` — Architecture Decision Records with auto-numbering and status lifecycle
+- 📚 **Knowledge Base**: `rulebook knowledge add|list|show|remove` — Explicit patterns and anti-patterns auto-injected into AGENTS.md
+- 💡 **Learn Phase**: `rulebook learn capture|from-ralph|list|promote` — Capture learnings, extract from Ralph, promote to patterns or decisions
+- 🔌 **10 New MCP Tools**: Decision, knowledge, and learning management — **40 MCP tools total**
+- 🤖 **Context Intelligence Agent**: New `context-intelligence` (haiku) agent for managing project knowledge
+- 📋 **6 New Skills**: `/rulebook-decision-create`, `/rulebook-decision-list`, `/rulebook-knowledge-add`, `/rulebook-knowledge-list`, `/rulebook-learn-capture`, `/rulebook-learn-list`
 
 ### v4.3.0 — Agent Delegation & Cost Optimization
 

@@ -1912,6 +1912,491 @@ export async function startRulebookMcpServer(): Promise<void> {
     );
   }
 
+  // ============================================
+  // Context Intelligence Layer Tools (v4.4)
+  // ============================================
+
+  // Register tool: rulebook_decision_create
+  server.registerTool(
+    'rulebook_decision_create',
+    {
+      title: 'Create Decision Record',
+      description: 'Create a new architectural decision record (ADR)',
+      inputSchema: {
+        title: z.string().describe('Decision title'),
+        context: z.string().optional().describe('Context and problem statement'),
+        decision: z.string().optional().describe('The decision made'),
+        alternatives: z.array(z.string()).optional().describe('Alternatives considered'),
+        consequences: z.string().optional().describe('Consequences and tradeoffs'),
+        relatedTasks: z.array(z.string()).optional().describe('Related task IDs'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root = args.projectId && workspaceManager
+          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+          : projectRoot;
+        const { DecisionManager } = await import('../core/decision-manager.js');
+        const dm = new DecisionManager(root);
+        const decision = await dm.create(args.title, {
+          context: args.context,
+          decision: args.decision,
+          alternatives: args.alternatives,
+          consequences: args.consequences,
+          relatedTasks: args.relatedTasks,
+        });
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, decision }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_decision_list
+  server.registerTool(
+    'rulebook_decision_list',
+    {
+      title: 'List Decision Records',
+      description: 'List all architectural decision records',
+      inputSchema: {
+        status: z.string().optional().describe('Filter by status (proposed, accepted, rejected, superseded, deprecated)'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root = args.projectId && workspaceManager
+          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+          : projectRoot;
+        const { DecisionManager } = await import('../core/decision-manager.js');
+        const dm = new DecisionManager(root);
+        const decisions = await dm.list(args.status as any);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, decisions, count: decisions.length }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_decision_show
+  server.registerTool(
+    'rulebook_decision_show',
+    {
+      title: 'Show Decision Record',
+      description: 'Show full details of a decision record',
+      inputSchema: {
+        id: z.number().describe('Decision ID'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root = args.projectId && workspaceManager
+          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+          : projectRoot;
+        const { DecisionManager } = await import('../core/decision-manager.js');
+        const dm = new DecisionManager(root);
+        const result = await dm.show(args.id);
+        if (!result) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({ success: false, error: `Decision ${args.id} not found` }),
+              },
+            ],
+          };
+        }
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, decision: result.decision, content: result.content }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_decision_update
+  server.registerTool(
+    'rulebook_decision_update',
+    {
+      title: 'Update Decision Record',
+      description: 'Update an existing architectural decision record',
+      inputSchema: {
+        id: z.number().describe('Decision ID to update'),
+        status: z.string().optional().describe('New status (proposed, accepted, rejected, superseded, deprecated)'),
+        context: z.string().optional().describe('Updated context'),
+        decision: z.string().optional().describe('Updated decision text'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root = args.projectId && workspaceManager
+          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+          : projectRoot;
+        const { DecisionManager } = await import('../core/decision-manager.js');
+        const dm = new DecisionManager(root);
+        const updated = await dm.update(args.id, {
+          status: args.status as any,
+          context: args.context,
+          decision: args.decision,
+        });
+        if (!updated) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({ success: false, error: `Decision ${args.id} not found` }),
+              },
+            ],
+          };
+        }
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, decision: updated }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_knowledge_add
+  server.registerTool(
+    'rulebook_knowledge_add',
+    {
+      title: 'Add Knowledge Entry',
+      description: 'Add a new pattern or anti-pattern to the project knowledge base',
+      inputSchema: {
+        type: z.string().describe('Knowledge type: "pattern" or "anti-pattern"'),
+        title: z.string().describe('Entry title'),
+        category: z.string().describe('Category (e.g. code, architecture, testing, security)'),
+        description: z.string().describe('Description of the pattern'),
+        example: z.string().optional().describe('Code or usage example'),
+        whenToUse: z.string().optional().describe('When to use this pattern'),
+        whenNotToUse: z.string().optional().describe('When NOT to use this pattern'),
+        tags: z.array(z.string()).optional().describe('Tags for search'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root = args.projectId && workspaceManager
+          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+          : projectRoot;
+        const { KnowledgeManager } = await import('../core/knowledge-manager.js');
+        const km = new KnowledgeManager(root);
+        const entry = await km.add(args.type as any, args.title, {
+          category: args.category as any,
+          description: args.description,
+          example: args.example,
+          whenToUse: args.whenToUse,
+          whenNotToUse: args.whenNotToUse,
+          tags: args.tags,
+        });
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, entry }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_knowledge_list
+  server.registerTool(
+    'rulebook_knowledge_list',
+    {
+      title: 'List Knowledge Entries',
+      description: 'List patterns and anti-patterns in the project knowledge base',
+      inputSchema: {
+        type: z.string().optional().describe('Filter by type: "pattern" or "anti-pattern"'),
+        category: z.string().optional().describe('Filter by category'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root = args.projectId && workspaceManager
+          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+          : projectRoot;
+        const { KnowledgeManager } = await import('../core/knowledge-manager.js');
+        const km = new KnowledgeManager(root);
+        const entries = await km.list(args.type as any, args.category as any);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, entries, count: entries.length }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_knowledge_show
+  server.registerTool(
+    'rulebook_knowledge_show',
+    {
+      title: 'Show Knowledge Entry',
+      description: 'Show full details of a knowledge entry',
+      inputSchema: {
+        id: z.string().describe('Knowledge entry ID (slug)'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root = args.projectId && workspaceManager
+          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+          : projectRoot;
+        const { KnowledgeManager } = await import('../core/knowledge-manager.js');
+        const km = new KnowledgeManager(root);
+        const result = await km.show(args.id);
+        if (!result) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({ success: false, error: `Knowledge entry "${args.id}" not found` }),
+              },
+            ],
+          };
+        }
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, entry: result.entry, content: result.content }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_learn_capture
+  server.registerTool(
+    'rulebook_learn_capture',
+    {
+      title: 'Capture Learning',
+      description: 'Capture a learning or insight for future reference',
+      inputSchema: {
+        title: z.string().describe('Brief title for the learning'),
+        content: z.string().describe('Full content of the learning'),
+        tags: z.array(z.string()).optional().describe('Tags for search'),
+        relatedTask: z.string().optional().describe('Related task ID'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root = args.projectId && workspaceManager
+          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+          : projectRoot;
+        const { LearnManager } = await import('../core/learn-manager.js');
+        const lm = new LearnManager(root);
+        const learning = await lm.capture(args.title, args.content, {
+          tags: args.tags,
+          relatedTask: args.relatedTask,
+        });
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, learning }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_learn_list
+  server.registerTool(
+    'rulebook_learn_list',
+    {
+      title: 'List Learnings',
+      description: 'List captured learnings, newest first',
+      inputSchema: {
+        limit: z.number().optional().describe('Maximum number of learnings to return'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root = args.projectId && workspaceManager
+          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+          : projectRoot;
+        const { LearnManager } = await import('../core/learn-manager.js');
+        const lm = new LearnManager(root);
+        const learnings = await lm.list(args.limit);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, learnings, count: learnings.length }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_learn_promote
+  server.registerTool(
+    'rulebook_learn_promote',
+    {
+      title: 'Promote Learning',
+      description: 'Promote a learning to a knowledge entry or decision record',
+      inputSchema: {
+        id: z.string().describe('Learning ID to promote'),
+        target: z.enum(['knowledge', 'decision']).describe('Promote to knowledge base or decision record'),
+        title: z.string().optional().describe('Override title for the promoted entry'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root = args.projectId && workspaceManager
+          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+          : projectRoot;
+        const { LearnManager } = await import('../core/learn-manager.js');
+        const lm = new LearnManager(root);
+        const result = await lm.promote(args.id, args.target, { title: args.title });
+        if (!result) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({ success: false, error: `Learning "${args.id}" not found` }),
+              },
+            ],
+          };
+        }
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, promoted: result }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

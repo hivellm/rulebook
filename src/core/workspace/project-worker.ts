@@ -9,6 +9,9 @@ import { join } from 'node:path';
 import { TaskManager } from '../task-manager.js';
 import { ConfigManager } from '../config-manager.js';
 import { SkillsManager, getDefaultTemplatesPath } from '../skills-manager.js';
+import { DecisionManager } from '../decision-manager.js';
+import { KnowledgeManager } from '../knowledge-manager.js';
+import { LearnManager } from '../learn-manager.js';
 import type { RulebookConfig } from '../../types.js';
 
 export class ProjectWorker {
@@ -18,6 +21,9 @@ export class ProjectWorker {
   private taskManager: TaskManager | null = null;
   private configManager: ConfigManager | null = null;
   private skillsManager: SkillsManager | null = null;
+  private decisionManager: DecisionManager | null = null;
+  private knowledgeManager: KnowledgeManager | null = null;
+  private learnManager: LearnManager | null = null;
   private memoryManager: Awaited<
     ReturnType<typeof import('../../memory/memory-manager.js').createMemoryManager>
   > | null = null;
@@ -63,6 +69,9 @@ export class ProjectWorker {
     this._rulebookConfig = await this.configManager.loadConfig();
     this.taskManager = new TaskManager(this.projectRoot, '.rulebook');
     this.skillsManager = new SkillsManager(getDefaultTemplatesPath(), this.projectRoot);
+    this.decisionManager = new DecisionManager(this.projectRoot, '.rulebook');
+    this.knowledgeManager = new KnowledgeManager(this.projectRoot, '.rulebook');
+    this.learnManager = new LearnManager(this.projectRoot, '.rulebook');
 
     // Lazy-load memory if enabled in project config
     if (this._rulebookConfig.memory?.enabled) {
@@ -121,6 +130,24 @@ export class ProjectWorker {
     this.touch();
     if (!this.configManager) throw new Error(`Worker ${this.projectId} not initialized`);
     return this.configManager;
+  }
+
+  getDecisionManager(): DecisionManager {
+    this.touch();
+    if (!this.decisionManager) throw new Error(`Worker ${this.projectId} not initialized`);
+    return this.decisionManager;
+  }
+
+  getKnowledgeManager(): KnowledgeManager {
+    this.touch();
+    if (!this.knowledgeManager) throw new Error(`Worker ${this.projectId} not initialized`);
+    return this.knowledgeManager;
+  }
+
+  getLearnManager(): LearnManager {
+    this.touch();
+    if (!this.learnManager) throw new Error(`Worker ${this.projectId} not initialized`);
+    return this.learnManager;
   }
 
   /** Returns the loaded RulebookConfig, or null if not initialized. */

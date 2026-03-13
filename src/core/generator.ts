@@ -3,6 +3,8 @@ import { readFile, fileExists, writeFile, ensureDir } from '../utils/file-system
 import type { ProjectConfig } from '../types.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { DecisionManager } from './decision-manager.js';
+import { KnowledgeManager } from './knowledge-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -371,6 +373,31 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
     'For detailed Ralph documentation, see `templates/skills/workflows/ralph/SKILL.md`'
   );
   sections.push('');
+
+  // Decision Records section — inject active ADRs if any exist
+  try {
+    const projectRoot = config.rulebookDir ? process.cwd() : process.cwd();
+    const dm = new DecisionManager(projectRoot, config.rulebookDir || '.rulebook');
+    const decisionContent = await dm.getForGenerator();
+    if (decisionContent) {
+      sections.push(decisionContent);
+    }
+  } catch {
+    // No decisions directory yet — skip silently
+  }
+
+  // Project Knowledge section — inject patterns/anti-patterns if any exist
+  try {
+    const projectRoot = config.rulebookDir ? process.cwd() : process.cwd();
+    const km = new KnowledgeManager(projectRoot, config.rulebookDir || '.rulebook');
+    const knowledgeContent = await km.getForGenerator();
+    if (knowledgeContent) {
+      sections.push(knowledgeContent);
+    }
+  } catch {
+    // No knowledge directory yet — skip silently
+  }
+
   sections.push('<!-- RULEBOOK:END -->');
 
   return sections.join('\n');
