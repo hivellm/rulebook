@@ -38,4 +38,4 @@ maxTurns: 20
 - Destructive operations (DROP, TRUNCATE) require a separate, reviewed migration
 - All schema changes must be backward-compatible for at least one release cycle
 - Query optimization proposals must include EXPLAIN/EXPLAIN ANALYZE evidence
-- Avoid stored procedures for business logic; keep logic in {{language}} application code
+- Avoid stored procedures for business logic; keep logic in rust application code

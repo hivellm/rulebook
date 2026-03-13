@@ -3,8 +3,7 @@
     "rulebook": {
       "command": "node",
       "args": [
-        "-y",
-        "@hivehub/rulebook@latest",
+        "./dist/index.js",
         "mcp-server"
       ]
     }
