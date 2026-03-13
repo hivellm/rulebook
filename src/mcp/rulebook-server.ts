@@ -72,7 +72,7 @@ function loadConfig() {
 
 export async function startRulebookMcpServer(): Promise<void> {
   // --- Workspace vs Single-Project Mode ---
-  const isWorkspaceMode = process.argv.includes('--workspace');
+  let isWorkspaceMode = process.argv.includes('--workspace');
   let workspaceManager: WorkspaceManager | null = null;
 
   // Default managers (single-project mode OR default workspace project)
@@ -81,13 +81,26 @@ export async function startRulebookMcpServer(): Promise<void> {
   let configManager!: ConfigManager;
   let projectRoot: string;
 
-  if (isWorkspaceMode) {
-    const projectRootFlagIndex = process.argv.indexOf('--project-root');
-    const startDir =
-      projectRootFlagIndex !== -1 && process.argv[projectRootFlagIndex + 1]
-        ? process.argv[projectRootFlagIndex + 1]
-        : process.cwd();
+  // Resolve start directory (shared by both modes)
+  const projectRootFlagIndex = process.argv.indexOf('--project-root');
+  const startDir =
+    projectRootFlagIndex !== -1 && process.argv[projectRootFlagIndex + 1]
+      ? process.argv[projectRootFlagIndex + 1]
+      : process.cwd();
 
+  // Auto-detect workspace mode: if not explicitly set, check if a workspace
+  // config exists (workspace.json, .code-workspace, or monorepo indicators).
+  // This handles the common case where VSCode multi-root workspaces or
+  // monorepos start the MCP server from the workspace root without --workspace.
+  if (!isWorkspaceMode) {
+    const autoDetected = WorkspaceManager.findWorkspaceConfig(startDir);
+    if (autoDetected) {
+      isWorkspaceMode = true;
+      console.error('[rulebook-mcp] Auto-detected workspace configuration, switching to workspace mode.');
+    }
+  }
+
+  if (isWorkspaceMode) {
     const wsConfig = WorkspaceManager.findWorkspaceConfig(startDir);
     if (!wsConfig) {
       console.error(

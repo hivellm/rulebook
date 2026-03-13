@@ -520,6 +520,27 @@ export async function initCommand(options: {
       // Ignore cleanup errors
     }
 
+    // Detect if this looks like a workspace root and hint the user
+    const wsConfig = WorkspaceManager.findWorkspaceConfig(cwd);
+    if (wsConfig && wsConfig.projects.length > 1) {
+      console.log(
+        chalk.yellow(
+          `\n⚠ Workspace detected: "${wsConfig.name}" with ${wsConfig.projects.length} projects.`
+        )
+      );
+      console.log(
+        chalk.yellow(
+          '  The MCP server will auto-detect workspace mode. For explicit setup, run:'
+        )
+      );
+      console.log(chalk.yellow('    rulebook workspace init'));
+      console.log(
+        chalk.yellow(
+          '  Then run `rulebook init` inside each sub-project individually for best results.\n'
+        )
+      );
+    }
+
     console.log(chalk.bold.green('\n✨ Rulebook initialization complete!\n'));
     console.log(chalk.gray('Next steps:'));
     console.log(chalk.gray('  1. Review AGENTS.md'));
