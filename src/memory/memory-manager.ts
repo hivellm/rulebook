@@ -75,7 +75,10 @@ export class MemoryManager {
     const INIT_TIMEOUT_MS = parseInt(process.env.RULEBOOK_MEMORY_INIT_TIMEOUT_MS ?? '8000', 10);
 
     const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`Memory initialization timed out after ${INIT_TIMEOUT_MS}ms`)), INIT_TIMEOUT_MS)
+      setTimeout(
+        () => reject(new Error(`Memory initialization timed out after ${INIT_TIMEOUT_MS}ms`)),
+        INIT_TIMEOUT_MS
+      )
     );
 
     await Promise.race([this.doInitInner(), timeout]);

@@ -17,14 +17,24 @@ import type { ProjectWorker } from '../core/workspace/project-worker.js';
 // Prevents the MCP server from hanging when a tool handler blocks (SQLite, WASM, fs).
 const MCP_TOOL_TIMEOUT_MS = parseInt(process.env.RULEBOOK_MCP_TIMEOUT_MS ?? '10000', 10);
 
-function withTimeout<T>(promise: Promise<T>, ms: number = MCP_TOOL_TIMEOUT_MS, label = 'tool'): Promise<T> {
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number = MCP_TOOL_TIMEOUT_MS,
+  label = 'tool'
+): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`[rulebook-mcp] ${label} timed out after ${ms}ms`));
     }, ms);
     promise.then(
-      (val) => { clearTimeout(timer); resolve(val); },
-      (err) => { clearTimeout(timer); reject(err); },
+      (val) => {
+        clearTimeout(timer);
+        resolve(val);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
     );
   });
 }
@@ -112,7 +122,9 @@ export async function startRulebookMcpServer(): Promise<void> {
     const autoDetected = WorkspaceManager.findWorkspaceConfig(startDir);
     if (autoDetected) {
       isWorkspaceMode = true;
-      console.error('[rulebook-mcp] Auto-detected workspace configuration, switching to workspace mode.');
+      console.error(
+        '[rulebook-mcp] Auto-detected workspace configuration, switching to workspace mode.'
+      );
     }
   }
 
@@ -195,7 +207,7 @@ export async function startRulebookMcpServer(): Promise<void> {
   server.registerTool = ((
     name: string,
     config: any,
-    handler: (...handlerArgs: any[]) => Promise<any>,
+    handler: (...handlerArgs: any[]) => Promise<any>
   ) => {
     const wrappedHandler = async (...handlerArgs: any[]) => {
       try {
@@ -204,7 +216,9 @@ export async function startRulebookMcpServer(): Promise<void> {
         const msg = error instanceof Error ? error.message : String(error);
         console.error(`[rulebook-mcp] ${name} error: ${msg}`);
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: msg }) }],
+          content: [
+            { type: 'text' as const, text: JSON.stringify({ success: false, error: msg }) },
+          ],
         };
       }
     };
@@ -826,7 +840,9 @@ export async function startRulebookMcpServer(): Promise<void> {
         // Boot Background Indexer — deferred to avoid blocking server startup
         bgIndexer = new BackgroundIndexer(memoryManager, projectRoot, { enabled: true });
         setTimeout(() => {
-          try { bgIndexer?.start(); } catch (e) {
+          try {
+            bgIndexer?.start();
+          } catch (e) {
             console.error('[rulebook-mcp] BackgroundIndexer start failed:', e);
           }
         }, 5000);
@@ -875,7 +891,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           });
         })(),
         AUTO_CAPTURE_TIMEOUT_MS,
-        `autoCapture(${toolName})`,
+        `autoCapture(${toolName})`
       );
     } catch {
       // Never fail the original tool call — timeout or error is silently dropped
@@ -1984,9 +2000,10 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       try {
-        const root = args.projectId && workspaceManager
-          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-          : projectRoot;
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
         const { DecisionManager } = await import('../core/decision-manager.js');
         const dm = new DecisionManager(root);
         const decision = await dm.create(args.title, {
@@ -2009,7 +2026,10 @@ export async function startRulebookMcpServer(): Promise<void> {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
             },
           ],
         };
@@ -2024,15 +2044,19 @@ export async function startRulebookMcpServer(): Promise<void> {
       title: 'List Decision Records',
       description: 'List all architectural decision records',
       inputSchema: {
-        status: z.string().optional().describe('Filter by status (proposed, accepted, rejected, superseded, deprecated)'),
+        status: z
+          .string()
+          .optional()
+          .describe('Filter by status (proposed, accepted, rejected, superseded, deprecated)'),
         projectId: projectIdSchema,
       },
     },
     async (args) => {
       try {
-        const root = args.projectId && workspaceManager
-          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-          : projectRoot;
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
         const { DecisionManager } = await import('../core/decision-manager.js');
         const dm = new DecisionManager(root);
         const decisions = await dm.list(args.status as any);
@@ -2049,7 +2073,10 @@ export async function startRulebookMcpServer(): Promise<void> {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
             },
           ],
         };
@@ -2070,9 +2097,10 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       try {
-        const root = args.projectId && workspaceManager
-          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-          : projectRoot;
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
         const { DecisionManager } = await import('../core/decision-manager.js');
         const dm = new DecisionManager(root);
         const result = await dm.show(args.id);
@@ -2090,7 +2118,11 @@ export async function startRulebookMcpServer(): Promise<void> {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ success: true, decision: result.decision, content: result.content }),
+              text: JSON.stringify({
+                success: true,
+                decision: result.decision,
+                content: result.content,
+              }),
             },
           ],
         };
@@ -2099,7 +2131,10 @@ export async function startRulebookMcpServer(): Promise<void> {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
             },
           ],
         };
@@ -2115,7 +2150,10 @@ export async function startRulebookMcpServer(): Promise<void> {
       description: 'Update an existing architectural decision record',
       inputSchema: {
         id: z.number().describe('Decision ID to update'),
-        status: z.string().optional().describe('New status (proposed, accepted, rejected, superseded, deprecated)'),
+        status: z
+          .string()
+          .optional()
+          .describe('New status (proposed, accepted, rejected, superseded, deprecated)'),
         context: z.string().optional().describe('Updated context'),
         decision: z.string().optional().describe('Updated decision text'),
         projectId: projectIdSchema,
@@ -2123,9 +2161,10 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       try {
-        const root = args.projectId && workspaceManager
-          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-          : projectRoot;
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
         const { DecisionManager } = await import('../core/decision-manager.js');
         const dm = new DecisionManager(root);
         const updated = await dm.update(args.id, {
@@ -2156,7 +2195,10 @@ export async function startRulebookMcpServer(): Promise<void> {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
             },
           ],
         };
@@ -2184,9 +2226,10 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       try {
-        const root = args.projectId && workspaceManager
-          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-          : projectRoot;
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
         const { KnowledgeManager } = await import('../core/knowledge-manager.js');
         const km = new KnowledgeManager(root);
         const entry = await km.add(args.type as any, args.title, {
@@ -2210,7 +2253,10 @@ export async function startRulebookMcpServer(): Promise<void> {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
             },
           ],
         };
@@ -2232,9 +2278,10 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       try {
-        const root = args.projectId && workspaceManager
-          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-          : projectRoot;
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
         const { KnowledgeManager } = await import('../core/knowledge-manager.js');
         const km = new KnowledgeManager(root);
         const entries = await km.list(args.type as any, args.category as any);
@@ -2251,7 +2298,10 @@ export async function startRulebookMcpServer(): Promise<void> {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
             },
           ],
         };
@@ -2272,9 +2322,10 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       try {
-        const root = args.projectId && workspaceManager
-          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-          : projectRoot;
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
         const { KnowledgeManager } = await import('../core/knowledge-manager.js');
         const km = new KnowledgeManager(root);
         const result = await km.show(args.id);
@@ -2283,7 +2334,10 @@ export async function startRulebookMcpServer(): Promise<void> {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify({ success: false, error: `Knowledge entry "${args.id}" not found` }),
+                text: JSON.stringify({
+                  success: false,
+                  error: `Knowledge entry "${args.id}" not found`,
+                }),
               },
             ],
           };
@@ -2301,7 +2355,10 @@ export async function startRulebookMcpServer(): Promise<void> {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
             },
           ],
         };
@@ -2325,9 +2382,10 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       try {
-        const root = args.projectId && workspaceManager
-          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-          : projectRoot;
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
         const { LearnManager } = await import('../core/learn-manager.js');
         const lm = new LearnManager(root);
         const learning = await lm.capture(args.title, args.content, {
@@ -2347,7 +2405,10 @@ export async function startRulebookMcpServer(): Promise<void> {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
             },
           ],
         };
@@ -2368,9 +2429,10 @@ export async function startRulebookMcpServer(): Promise<void> {
     },
     async (args) => {
       try {
-        const root = args.projectId && workspaceManager
-          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-          : projectRoot;
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
         const { LearnManager } = await import('../core/learn-manager.js');
         const lm = new LearnManager(root);
         const learnings = await lm.list(args.limit);
@@ -2387,7 +2449,10 @@ export async function startRulebookMcpServer(): Promise<void> {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
             },
           ],
         };
@@ -2403,16 +2468,19 @@ export async function startRulebookMcpServer(): Promise<void> {
       description: 'Promote a learning to a knowledge entry or decision record',
       inputSchema: {
         id: z.string().describe('Learning ID to promote'),
-        target: z.enum(['knowledge', 'decision']).describe('Promote to knowledge base or decision record'),
+        target: z
+          .enum(['knowledge', 'decision'])
+          .describe('Promote to knowledge base or decision record'),
         title: z.string().optional().describe('Override title for the promoted entry'),
         projectId: projectIdSchema,
       },
     },
     async (args) => {
       try {
-        const root = args.projectId && workspaceManager
-          ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-          : projectRoot;
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
         const { LearnManager } = await import('../core/learn-manager.js');
         const lm = new LearnManager(root);
         const result = await lm.promote(args.id, args.target, { title: args.title });
@@ -2439,7 +2507,10 @@ export async function startRulebookMcpServer(): Promise<void> {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
             },
           ],
         };

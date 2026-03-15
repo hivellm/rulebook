@@ -153,7 +153,9 @@ export class BackgroundIndexer {
     const batch = allQueued.slice(0, BackgroundIndexer.MAX_BATCH_SIZE);
     for (const f of batch) this.processQueue.delete(f);
 
-    console.error(`[BackgroundIndexer] Processing batch of ${batch.length} files (${this.processQueue.size} remaining)...`);
+    console.error(
+      `[BackgroundIndexer] Processing batch of ${batch.length} files (${this.processQueue.size} remaining)...`
+    );
 
     for (const filePath of batch) {
       try {
@@ -211,8 +213,14 @@ export class BackgroundIndexer {
       }, BackgroundIndexer.PER_FILE_TIMEOUT_MS);
 
       work().then(
-        () => { clearTimeout(timer); resolve(); },
-        (err) => { clearTimeout(timer); reject(err); },
+        () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        (err) => {
+          clearTimeout(timer);
+          reject(err);
+        }
       );
     });
   }
