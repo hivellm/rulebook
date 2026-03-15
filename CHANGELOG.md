@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.1] - 2026-03-15
+
+### Fixed
+- **MCP server hanging**: Added timeout guards to all 40 MCP tool handlers (default 10s, configurable via `RULEBOOK_MCP_TIMEOUT_MS`). On timeout, returns a JSON error instead of hanging the process forever
+- **Memory WASM initialization hang**: `MemoryManager.ensureInitialized()` now has an 8s timeout (configurable via `RULEBOOK_MEMORY_INIT_TIMEOUT_MS`) and deduplicates concurrent init calls
+- **BackgroundIndexer blocking server boot**: `bgIndexer.start()` is now deferred by 5s so the MCP server becomes responsive before file watching begins
+- **BackgroundIndexer unbounded batches**: Added per-file timeout (5s) and max batch size (20 files) to prevent the indexer from monopolizing the event loop
+- **Frequent `saveToDisk()` blocking**: Increased `AUTO_SAVE_THRESHOLD` from 50 to 200 writes, reducing how often the synchronous `db.export()` + `writeFileSync` blocks the event loop
+- **`autoCapture` could hang tool calls**: Added 2s timeout to the fire-and-forget memory auto-capture function
+
 ## [4.4.0] - 2026-03-13
 
 ### Added

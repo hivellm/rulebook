@@ -13,6 +13,22 @@ import type { SkillCategory } from '../types.js';
 import { WorkspaceManager } from '../core/workspace/workspace-manager.js';
 import type { ProjectWorker } from '../core/workspace/project-worker.js';
 
+// --- Timeout guard for MCP tool handlers ---
+// Prevents the MCP server from hanging when a tool handler blocks (SQLite, WASM, fs).
+const MCP_TOOL_TIMEOUT_MS = parseInt(process.env.RULEBOOK_MCP_TIMEOUT_MS ?? '10000', 10);
+
+function withTimeout<T>(promise: Promise<T>, ms: number = MCP_TOOL_TIMEOUT_MS, label = 'tool'): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`[rulebook-mcp] ${label} timed out after ${ms}ms`));
+    }, ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
 // Find .rulebook file/directory by walking up directories
 export function findRulebookConfig(startDir: string): string | null {
   let current = resolve(startDir);
@@ -170,8 +186,30 @@ export async function startRulebookMcpServer(): Promise<void> {
 
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '4.3.1',
+    version: '4.4.1',
   });
+
+  // --- Wrap all tool handlers with timeout guard ---
+  // Intercept registerTool to automatically add timeout protection to every handler.
+  const originalRegisterTool = server.registerTool.bind(server);
+  server.registerTool = ((
+    name: string,
+    config: any,
+    handler: (...handlerArgs: any[]) => Promise<any>,
+  ) => {
+    const wrappedHandler = async (...handlerArgs: any[]) => {
+      try {
+        return await withTimeout(handler(...handlerArgs), MCP_TOOL_TIMEOUT_MS, name);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error(`[rulebook-mcp] ${name} error: ${msg}`);
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: msg }) }],
+        };
+      }
+    };
+    return originalRegisterTool(name, config, wrappedHandler);
+  }) as typeof server.registerTool;
 
   // Zod schema reused across tools for workspace project targeting
   const projectIdSchema = z
@@ -785,9 +823,13 @@ export async function startRulebookMcpServer(): Promise<void> {
         memoryManager = createMemoryManager(projectRoot, rulebookConfig.memory);
         autoCaptureEnabled = rulebookConfig.memory.autoCapture !== false;
 
-        // Boot Background Indexer
+        // Boot Background Indexer — deferred to avoid blocking server startup
         bgIndexer = new BackgroundIndexer(memoryManager, projectRoot, { enabled: true });
-        bgIndexer.start();
+        setTimeout(() => {
+          try { bgIndexer?.start(); } catch (e) {
+            console.error('[rulebook-mcp] BackgroundIndexer start failed:', e);
+          }
+        }, 5000);
 
         (global as any).__indexerStatus = () => bgIndexer?.getStatus();
       } catch (e) {
@@ -810,7 +852,9 @@ export async function startRulebookMcpServer(): Promise<void> {
   /**
    * Auto-capture: save tool interactions to memory in the background.
    * Fire-and-forget — never blocks or fails the original tool call.
+   * Has its own 2s timeout to prevent hanging the event loop.
    */
+  const AUTO_CAPTURE_TIMEOUT_MS = 2000;
   async function autoCapture(
     toolName: string,
     args: Record<string, unknown>,
@@ -818,17 +862,23 @@ export async function startRulebookMcpServer(): Promise<void> {
   ): Promise<void> {
     if (!memoryManager || !autoCaptureEnabled) return;
     try {
-      const { captureFromToolCall } = await import('../memory/memory-hooks.js');
-      const captured = captureFromToolCall(toolName, args, resultText);
-      if (!captured) return;
-      await memoryManager.saveMemory({
-        type: captured.type,
-        title: captured.title,
-        content: captured.content,
-        tags: captured.tags,
-      });
+      await withTimeout(
+        (async () => {
+          const { captureFromToolCall } = await import('../memory/memory-hooks.js');
+          const captured = captureFromToolCall(toolName, args, resultText);
+          if (!captured) return;
+          await memoryManager!.saveMemory({
+            type: captured.type,
+            title: captured.title,
+            content: captured.content,
+            tags: captured.tags,
+          });
+        })(),
+        AUTO_CAPTURE_TIMEOUT_MS,
+        `autoCapture(${toolName})`,
+      );
     } catch {
-      // Never fail the original tool call
+      // Never fail the original tool call — timeout or error is silently dropped
     }
   }
 

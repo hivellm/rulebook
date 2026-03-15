@@ -139,42 +139,25 @@ export class BackgroundIndexer {
     }, this.config.debounceMs);
   }
 
+  // Max time for a single file to be indexed before we skip it
+  private static readonly PER_FILE_TIMEOUT_MS = 5000;
+  // Max batch size to prevent long blocking runs
+  private static readonly MAX_BATCH_SIZE = 20;
+
   private async processNextBatch(): Promise<void> {
     if (this.isProcessing || this.processQueue.size === 0) return;
     this.isProcessing = true;
 
-    const batch = Array.from(this.processQueue);
-    this.processQueue.clear();
+    // Cap batch size to prevent the indexer from monopolizing the event loop
+    const allQueued = Array.from(this.processQueue);
+    const batch = allQueued.slice(0, BackgroundIndexer.MAX_BATCH_SIZE);
+    for (const f of batch) this.processQueue.delete(f);
 
-    console.error(`[BackgroundIndexer] Processing batch of ${batch.length} files...`);
+    console.error(`[BackgroundIndexer] Processing batch of ${batch.length} files (${this.processQueue.size} remaining)...`);
 
     for (const filePath of batch) {
       try {
-        if (!existsSync(filePath)) {
-          // File was deleted
-          await this.memoryManager.deleteCodeNodesByFile(filePath);
-          continue;
-        }
-
-        const stats = statSync(filePath);
-        if (!stats.isFile()) continue;
-
-        // Parse
-        const { nodes, edges } = this.parser.parseFile(filePath);
-
-        // 1. Flush old Nodes/Edges for this file (Cascade handles Edges)
-        await this.memoryManager.deleteCodeNodesByFile(filePath);
-
-        // 2. Insert new Nodes
-        for (const node of nodes) {
-          await this.memoryManager.saveCodeNode(node);
-        }
-
-        // 3. Insert new Edges
-        for (const edge of edges) {
-          await this.memoryManager.saveCodeEdge(edge);
-        }
-
+        await this.processFile(filePath);
         this.processedCount++;
       } catch (e) {
         console.error(`[BackgroundIndexer] Error processing ${filePath}:`, e);
@@ -188,5 +171,49 @@ export class BackgroundIndexer {
     if (this.processQueue.size > 0) {
       this.handleFileChange('__trigger_batch__');
     }
+  }
+
+  /**
+   * Process a single file with a timeout guard.
+   * If processing takes longer than PER_FILE_TIMEOUT_MS, skip it.
+   */
+  private processFile(filePath: string): Promise<void> {
+    const work = async () => {
+      if (!existsSync(filePath)) {
+        // File was deleted
+        await this.memoryManager.deleteCodeNodesByFile(filePath);
+        return;
+      }
+
+      const stats = statSync(filePath);
+      if (!stats.isFile()) return;
+
+      // Parse
+      const { nodes, edges } = this.parser.parseFile(filePath);
+
+      // 1. Flush old Nodes/Edges for this file (Cascade handles Edges)
+      await this.memoryManager.deleteCodeNodesByFile(filePath);
+
+      // 2. Insert new Nodes
+      for (const node of nodes) {
+        await this.memoryManager.saveCodeNode(node);
+      }
+
+      // 3. Insert new Edges
+      for (const edge of edges) {
+        await this.memoryManager.saveCodeEdge(edge);
+      }
+    };
+
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`Indexing timed out after ${BackgroundIndexer.PER_FILE_TIMEOUT_MS}ms`));
+      }, BackgroundIndexer.PER_FILE_TIMEOUT_MS);
+
+      work().then(
+        () => { clearTimeout(timer); resolve(); },
+        (err) => { clearTimeout(timer); reject(err); },
+      );
+    });
   }
 }

@@ -56,10 +56,33 @@ export class MemoryManager {
     this.dimensions = config.vectorDimensions ?? DEFAULT_DIMENSIONS;
   }
 
+  private initPromise: Promise<void> | null = null;
+
   private async ensureInitialized(): Promise<void> {
     if (this.initialized) return;
+    // Deduplicate concurrent init calls (e.g. multiple tool calls hitting memory at once)
+    if (!this.initPromise) {
+      this.initPromise = this.doInit().catch((err) => {
+        // Reset so next call retries instead of getting stuck on a rejected promise
+        this.initPromise = null;
+        throw err;
+      });
+    }
+    await this.initPromise;
+  }
 
-    // Initialize store
+  private async doInit(): Promise<void> {
+    const INIT_TIMEOUT_MS = parseInt(process.env.RULEBOOK_MEMORY_INIT_TIMEOUT_MS ?? '8000', 10);
+
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Memory initialization timed out after ${INIT_TIMEOUT_MS}ms`)), INIT_TIMEOUT_MS)
+    );
+
+    await Promise.race([this.doInitInner(), timeout]);
+  }
+
+  private async doInitInner(): Promise<void> {
+    // Initialize store (loads WASM sql.js — can be slow on first load)
     this.store = new MemoryStore(this.dbPath);
     await this.store.initialize();
 

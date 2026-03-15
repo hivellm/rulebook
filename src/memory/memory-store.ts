@@ -17,7 +17,9 @@ type SqlJsDatabase = {
   close(): void;
 };
 
-const AUTO_SAVE_THRESHOLD = 50;
+// Increase threshold to reduce blocking syncs during heavy write bursts
+// (db.export() + writeFileSync blocks the event loop for the full DB size)
+const AUTO_SAVE_THRESHOLD = 200;
 
 export class MemoryStore {
   private db: SqlJsDatabase | null = null;
