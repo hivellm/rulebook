@@ -19,6 +19,7 @@ const ALL_AGENTS = [
   'architect',
   'build-engineer',
   'code-reviewer',
+  'context-intelligence',
   'database-architect',
   'devops-engineer',
   'docs-writer',
@@ -65,7 +66,7 @@ const baseConfig: ProjectConfig = {
 describe('Agent Templates', () => {
   const agentFiles = readdirSync(AGENTS_DIR).filter((f) => f.endsWith('.md'));
 
-  it('has all 18 expected agent files', () => {
+  it('has all 19 expected agent files', () => {
     const names = agentFiles.map((f) => f.replace('.md', '')).sort();
     expect(names).toEqual(ALL_AGENTS);
   });
@@ -326,7 +327,7 @@ describe('installAgentsWithPlaceholders (integration)', () => {
       expect(files).toContain('security-reviewer.md');
       expect(files).toContain('architect.md');
       expect(files).toContain('devops-engineer.md');
-      expect(files.length).toBe(18);
+      expect(files.length).toBe(19);
 
       // Verify placeholders were substituted
       const implementer = readFileSync(join(agentsDir, 'implementer.md'), 'utf-8');
