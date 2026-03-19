@@ -26,6 +26,7 @@ export class MemoryStore {
   private dbPath: string;
   private writeCount = 0;
   private initialized = false;
+  private _cachedSizeBytes = 0;
 
   constructor(dbPath: string) {
     this.dbPath = dbPath;
@@ -271,19 +272,24 @@ export class MemoryStore {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      // Escape FTS5 special characters
-      const escaped = query.replace(/['"]/g, ' ').trim();
+      // Escape FTS5 special characters — strip quotes and special operators
+      const escaped = query.replace(/['"*(){}[\]:^~!]/g, ' ').trim();
       if (!escaped) return [];
+
+      // Build FTS5 match query with proper term quoting
+      const terms = escaped.split(/\s+/).filter(t => t.length > 1);
+      if (terms.length === 0) return [];
+      const ftsQuery = terms.map(t => `"${t}"`).join(' OR ');
 
       let sql = `
         SELECT m.id, bm25(memory_fts) as score
         FROM memory_fts f
         JOIN memories m ON m.rowid = f.rowid
-        WHERE memory_fts MATCH '${escaped}'
+        WHERE memory_fts MATCH '${ftsQuery}'
       `;
 
       if (filters?.type) {
-        sql += ` AND m.type = '${filters.type}'`;
+        sql += ` AND m.type = '${filters.type.replace(/'/g, "''")}'`;
       }
       if (filters?.project) {
         sql += ` AND m.project = '${filters.project.replace(/'/g, "''")}'`;
@@ -474,7 +480,9 @@ export class MemoryStore {
 
   getDbSizeBytes(): number {
     if (!this.db) return 0;
-    return this.db.export().byteLength;
+    // Return cached size to avoid calling db.export() which allocates
+    // a full copy of the database. Cache is updated on every saveToDisk().
+    return this._cachedSizeBytes;
   }
 
   saveToDisk(): void {
@@ -486,6 +494,7 @@ export class MemoryStore {
     }
 
     const data = this.db.export();
+    this._cachedSizeBytes = data.byteLength;
     writeFileSync(this.dbPath, data);
   }
 
@@ -546,6 +555,15 @@ export class MemoryStore {
       [edge.id, edge.sourceId, edge.targetId, edge.type, edge.weight]
     );
     this.trackWrite();
+  }
+
+  getCodeNodeIdsByFile(filePath: string): string[] {
+    if (!this.db) return [];
+    const result = this.db.exec(
+      `SELECT id FROM code_nodes WHERE file_path = '${filePath.replace(/'/g, "''")}'`
+    );
+    if (result.length === 0) return [];
+    return result[0].values.map((row) => row[0] as string);
   }
 
   deleteCodeNodesByFile(filePath: string): void {

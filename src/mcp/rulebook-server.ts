@@ -1229,12 +1229,9 @@ export async function startRulebookMcpServer(): Promise<void> {
             };
           }
 
-          // Ensure lock is released on exit, even on crashes
-          const cleanupLock = async () => {
-            await ralphManager.releaseLock();
-          };
-          process.on('SIGTERM', cleanupLock);
-          process.on('SIGINT', cleanupLock);
+          // Lock cleanup is handled by the top-level SIGINT handler (line ~858)
+          // which shuts down all managers. Adding per-call SIGINT/SIGTERM listeners
+          // causes accumulation and race conditions with the server shutdown handler.
 
           try {
             // Validate tool is available before starting
@@ -1562,8 +1559,6 @@ export async function startRulebookMcpServer(): Promise<void> {
           } finally {
             // Always release lock, even on error
             await ralphManager.releaseLock();
-            process.removeListener('SIGTERM', cleanupLock);
-            process.removeListener('SIGINT', cleanupLock);
           }
         } catch (error) {
           return {

@@ -169,9 +169,12 @@ export class BackgroundIndexer {
 
     this.isProcessing = false;
 
-    // If more accumulated while processing, trigger again
+    // If more accumulated while processing, schedule next batch directly
+    // (avoid going through handleFileChange which would add a fake path to the queue)
     if (this.processQueue.size > 0) {
-      this.handleFileChange('__trigger_batch__');
+      this.debounceTimer = setTimeout(() => {
+        this.processNextBatch();
+      }, 100); // Short delay to yield event loop
     }
   }
 
