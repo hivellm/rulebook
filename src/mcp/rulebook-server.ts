@@ -2513,6 +2513,252 @@ export async function startRulebookMcpServer(): Promise<void> {
     }
   );
 
+  // ── v5.0 Tools: Session Management, Rules, Blockers ──────────────────
+
+  // Register tool: rulebook_session_start
+  server.registerTool(
+    'rulebook_session_start',
+    {
+      title: 'Start Session',
+      description:
+        'Load session context: reads PLANS.md and searches relevant memories. Call at the start of every session.',
+      inputSchema: {
+        query: z
+          .string()
+          .optional()
+          .describe('Optional search query to find relevant past memories'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
+        const { join } = await import('path');
+        const { existsSync } = await import('fs');
+        const { readFile } = await import('fs/promises');
+
+        const result: {
+          plans: string | null;
+          memories: unknown[];
+        } = { plans: null, memories: [] };
+
+        // Read PLANS.md
+        const plansPath = join(root, '.rulebook', 'PLANS.md');
+        if (existsSync(plansPath)) {
+          result.plans = await readFile(plansPath, 'utf-8');
+        }
+
+        // Search relevant memories
+        if (args.query && memoryManager) {
+          const searchResults = await memoryManager.searchMemories({
+            query: args.query,
+            mode: 'hybrid',
+            limit: 5,
+          });
+          result.memories = searchResults;
+        }
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, ...result }) }],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_session_end
+  server.registerTool(
+    'rulebook_session_end',
+    {
+      title: 'End Session',
+      description:
+        'Save session summary to PLANS.md history section. Call at the end of every session.',
+      inputSchema: {
+        summary: z.string().describe('Session summary: what was accomplished, key decisions, next steps'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
+        const { join } = await import('path');
+        const { existsSync } = await import('fs');
+        const { readFile, writeFile } = await import('fs/promises');
+
+        const plansPath = join(root, '.rulebook', 'PLANS.md');
+        const date = new Date().toISOString().split('T')[0];
+        const entry = `### ${date}\n${args.summary}\n`;
+
+        if (existsSync(plansPath)) {
+          let content = await readFile(plansPath, 'utf-8');
+          // Insert after <!-- PLANS:HISTORY:START -->
+          if (content.includes('<!-- PLANS:HISTORY:START -->')) {
+            content = content.replace(
+              '<!-- PLANS:HISTORY:START -->',
+              `<!-- PLANS:HISTORY:START -->\n${entry}`
+            );
+          } else {
+            content += `\n## Session History\n\n<!-- PLANS:HISTORY:START -->\n${entry}<!-- PLANS:HISTORY:END -->\n`;
+          }
+          await writeFile(plansPath, content, 'utf-8');
+        } else {
+          // Create PLANS.md from scratch
+          const newContent = `# Project Plans & Session Context\n\n<!-- PLANS:CONTEXT:START -->\n_No active context._\n<!-- PLANS:CONTEXT:END -->\n\n<!-- PLANS:TASK:START -->\n_No task in progress._\n<!-- PLANS:TASK:END -->\n\n## Session History\n\n<!-- PLANS:HISTORY:START -->\n${entry}<!-- PLANS:HISTORY:END -->\n`;
+          const { mkdirSync } = await import('fs');
+          const dir = join(root, '.rulebook');
+          if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+          await writeFile(plansPath, newContent, 'utf-8');
+        }
+
+        // Also save to memory if available
+        if (memoryManager) {
+          await memoryManager.saveMemory({
+            type: 'observation',
+            title: `Session summary ${date}`,
+            content: args.summary,
+            tags: ['session', 'summary'],
+          });
+        }
+
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: true, message: 'Session summary saved to PLANS.md' }) },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_rules_list
+  server.registerTool(
+    'rulebook_rules_list',
+    {
+      title: 'List Rules',
+      description: 'List all canonical rules from .rulebook/rules/ with tier and tool targeting info',
+      inputSchema: {
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
+        const { listRules } = await import('../core/rule-engine.js');
+        const rules = await listRules(root);
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, rules, count: rules.length }) }],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_blockers
+  server.registerTool(
+    'rulebook_blockers',
+    {
+      title: 'Show Blockers',
+      description: 'Show task blocker chain with cascade impact analysis',
+      inputSchema: {
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const tm = await getTaskMgr(args.projectId);
+        const tasks = await tm.listTasks();
+
+        // Build blocker chain from task metadata
+        const blockers: Array<{
+          taskId: string;
+          blocks: string[];
+          blockedBy: string[];
+          cascadeImpact: number;
+        }> = [];
+
+        for (const task of tasks) {
+          const metadata = await tm.getTaskMetadata(task.id);
+          const blocks = Array.isArray(metadata?.blocks) ? metadata.blocks as string[] : [];
+          const blockedBy = Array.isArray(metadata?.blockedBy) ? metadata.blockedBy as string[] : [];
+          if (blocks.length > 0 || blockedBy.length > 0) {
+            blockers.push({
+              taskId: task.id,
+              blocks,
+              blockedBy,
+              cascadeImpact: (metadata?.cascadeImpact as number) || blocks.length,
+            });
+          }
+        }
+
+        // Sort by cascade impact (highest first)
+        blockers.sort((a, b) => b.cascadeImpact - a.cascadeImpact);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, blockers, count: blockers.length }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

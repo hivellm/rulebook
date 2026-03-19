@@ -253,6 +253,47 @@ taskCommand
     taskArchiveCommand(taskId, options.skipValidation || false, { project: options.project })
   );
 
+taskCommand
+  .command('blockers')
+  .description('Show task blocker chain with cascade impact')
+  .option('--project <name>', 'Target a specific workspace project')
+  .action(async (_options: { project?: string }) => {
+    const chalk = (await import('chalk')).default;
+    const { TaskManager } = await import('./core/task-manager.js');
+    const { ConfigManager } = await import('./core/config-manager.js');
+    const cwd = process.cwd();
+    const cm = new ConfigManager(cwd);
+    const config = await cm.loadConfig();
+    const rulebookDir = config?.rulebookDir || '.rulebook';
+    const tm = new TaskManager(cwd, rulebookDir);
+    const tasks = await tm.listTasks();
+    const blockers: Array<{ taskId: string; blocks: string[]; cascadeImpact: number }> = [];
+
+    for (const task of tasks) {
+      const metadata = await tm.getTaskMetadata(task.id);
+      if (metadata?.blocks && Array.isArray(metadata.blocks) && metadata.blocks.length > 0) {
+        blockers.push({
+          taskId: task.id,
+          blocks: metadata.blocks as string[],
+          cascadeImpact: (metadata.cascadeImpact as number) || (metadata.blocks as string[]).length,
+        });
+      }
+    }
+
+    if (blockers.length === 0) {
+      console.log(chalk.gray('No blocker chains found. Add "blocks" field to task .metadata.json to track dependencies.'));
+      return;
+    }
+
+    blockers.sort((a, b) => b.cascadeImpact - a.cascadeImpact);
+    console.log(chalk.bold('\nBlocker Chain (highest cascade impact first)\n'));
+    for (const b of blockers) {
+      const impact = b.cascadeImpact >= 3 ? chalk.red('HIGH') : b.cascadeImpact >= 2 ? chalk.yellow('MEDIUM') : chalk.gray('LOW');
+      console.log(`  ${chalk.green(b.taskId)} → blocks: ${b.blocks.join(', ')} (${b.cascadeImpact} tasks, ${impact} impact)`);
+    }
+    console.log('');
+  });
+
 // Legacy tasks command (deprecated)
 program
   .command('tasks')
