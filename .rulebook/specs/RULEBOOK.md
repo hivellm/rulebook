@@ -204,6 +204,18 @@ Detailed description of what will change:
 - [ ] 3.2 Update CHANGELOG
 ```
 
+**⚠️ CRITICAL: Sequential Execution Rule**
+
+When implementing tasks from `tasks.md`, you MUST execute items **in the exact order listed**:
+
+1. Find the FIRST unchecked item (`- [ ]`) — implement THAT one
+2. Mark it `[x]` when done
+3. Move to the NEXT unchecked item
+4. **NEVER** skip ahead, reorder, or cherry-pick tasks
+5. **NEVER** start a later phase before the current phase is 100% complete
+
+**The task list is an ORDER, not a MENU.** The human defined the sequence deliberately. Follow it.
+
 ### Step 7: Write Spec Delta
 
 **File**: `/.rulebook/tasks/<task-id>/specs/<module>/spec.md`
