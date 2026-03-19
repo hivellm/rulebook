@@ -11,7 +11,7 @@
 [![Build](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/build.yml?label=build&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/build.yml)
 [![Lint](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/lint.yml?label=lint&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/lint.yml)
 
-> Standardize AI-generated projects with automated templates, quality gates, persistent memory, and framework detection for 28 languages, 17 frameworks, 13 MCP modules, and 20 services.
+> Tool-agnostic AI development framework. Standardize projects across Claude Code, Cursor, Gemini, Codex, Windsurf, Copilot with automated templates, quality gates, persistent memory, and framework detection for 28 languages, 17 frameworks, 13 MCP modules, and 20 services.
 
 ---
 
@@ -35,8 +35,14 @@ By giving LLMs a clear "rulebook" to follow, you ensure that every piece of gene
 ## Quick Start
 
 ```bash
-# New project — auto-detects languages, frameworks, services (no prompts)
+# New project — auto-detects languages, tools, and complexity
 npx @hivehub/rulebook@latest init
+
+# Target specific AI tools
+npx @hivehub/rulebook@latest init --tools claude-code,cursor,gemini
+
+# Assess project complexity before configuring
+npx @hivehub/rulebook@latest assess
 
 # Minimal setup (essentials only)
 npx @hivehub/rulebook@latest init --minimal
@@ -44,13 +50,48 @@ npx @hivehub/rulebook@latest init --minimal
 # Lean mode — AGENTS.md as <3KB index (fast AI loading)
 npx @hivehub/rulebook@latest init --lean
 
-# Update existing project
+# Update existing project (re-projects rules to all detected tools)
 npx @hivehub/rulebook@latest update
+
+# Manage canonical rules
+npx @hivehub/rulebook@latest rules list      # List rules by tier
+npx @hivehub/rulebook@latest rules add no-shortcuts  # Install from library
+npx @hivehub/rulebook@latest rules project   # Project to all tools
 ```
 
 ## What's New
 
 See the full [CHANGELOG](CHANGELOG.md) for details.
+
+### v5.0.0 — Multi-Tool AI Framework
+
+The biggest release yet. Rulebook becomes a **tool-agnostic AI development framework** — same quality directives for every AI tool, with graceful degradation.
+
+**One Source, Multiple Projections**
+- Canonical rules live in `.rulebook/rules/` with YAML frontmatter
+- `rulebook update` projects them to **6 tool formats simultaneously**:
+  - Claude Code (`.claude/rules/*.md`), Cursor (`.cursor/rules/*.mdc`), Gemini (`GEMINI.md`), Copilot (`.github/copilot-instructions.md`), Windsurf (`.windsurf/rules/`), Continue.dev (`.continue/rules/`)
+
+**Adaptive Agent Framework**
+- 15 agent templates across 5 project types (game-engine, compiler, web-app, mobile, generic)
+- Claude Code: full agents with memory directories
+- Cursor: contextual `.mdc` rules activated by file glob patterns
+- Gemini/Codex: inline conditional sections
+
+**7 Tier 1 Prohibitions** (auto-installed, universal)
+- No shortcuts/stubs/TODOs, git safety allow-list, no delete without authorization, research-first, sequential editing, no deferred tasks, **follow task sequence** (no cherry-picking)
+
+**Project Complexity Detection**
+- `rulebook assess` — auto-detects LOC, languages, structure
+- Calibrated init: small projects get Tier 1 only, large/complex projects get full agent framework + Tier 2 rules
+
+**Critical Performance Fixes**
+- Replaced sql.js (WASM) with better-sqlite3 (native) — eliminates 100-500MB memory copies per save
+- Replaced fs.watch with chokidar — stops node_modules event flood
+- HNSW search optimized with MinHeap/MaxHeap (~100x faster)
+
+**New MCP Tools**: `rulebook_session_start`, `rulebook_session_end`, `rulebook_rules_list`, `rulebook_blockers`
+**New CLI**: `rulebook assess`, `rulebook rules list|add|project`, `rulebook task blockers|blocked-by`
 
 ### v4.4.0 — Context Intelligence Layer
 
@@ -131,7 +172,7 @@ Every time you open a new tab or restart your editor, the AI loses all context a
 ### How It Works
 
 ```
-Session 1: "Let's use sql.js instead of better-sqlite3 for zero native deps"
+Session 1: "Chose event sourcing over CRUD for the audit trail"
   → Saved to memory automatically
 
 Session 2 (new tab, days later):

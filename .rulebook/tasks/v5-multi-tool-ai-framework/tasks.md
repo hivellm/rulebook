@@ -82,7 +82,7 @@
 - [x] 8.4 Unit tests for complexity detection — 13 tests in complexity-detector.test.ts <!-- 49c08a8 -->
 - [x] 8.5 Unit tests for task blockers — 5 tests in task-blockers.test.ts <!-- 1e8d08c -->
 - [x] 8.6 Unit tests for session management — 3 tests in session-management.test.ts <!-- 1e8d08c -->
-- [ ] 8.7 Integration tests for multi-tool `rulebook init --tools` flow
-- [ ] 8.8 Update CHANGELOG.md with v5.0.0 entry
-- [ ] 8.9 Update README.md with multi-tool documentation
-- [ ] 8.10 Update docs/ with v5 architecture guide
+- [x] 8.7 Integration tests — 11 tests in multi-tool-integration.test.ts (assess → install → project → agents) <!-- 35234eb -->
+- [x] 8.8 CHANGELOG.md updated with v5.0.0 entry <!-- 589b733 -->
+- [x] 8.9 README.md updated: v5 section, multi-tool quick start, tool-agnostic tagline
+- [x] 8.10 docs/V5_ARCHITECTURE.md — 3-layer architecture, data flow, test coverage table
