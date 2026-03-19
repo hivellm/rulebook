@@ -688,6 +688,44 @@ learnCommand
     learnPromoteCommand(id, target, options)
   );
 
+// ── Project Assessment (v5.0) ───────────────────────────────────────────
+
+program
+  .command('assess')
+  .description('Analyze project complexity and recommend v5 configuration')
+  .action(async () => {
+    const chalk = (await import('chalk')).default;
+    const ora = (await import('ora')).default;
+    const { assessComplexity } = await import('./core/complexity-detector.js');
+    const cwd = process.cwd();
+
+    const spinner = ora('Analyzing project complexity...').start();
+    const result = assessComplexity(cwd);
+    spinner.succeed(`Project complexity: ${result.tier.toUpperCase()} (score: ${result.score}/100)`);
+
+    console.log(chalk.bold('\nMetrics'));
+    console.log(`  Estimated LOC:      ${result.metrics.estimatedLoc.toLocaleString()}`);
+    console.log(`  Languages:          ${result.metrics.languageCount}`);
+    console.log(`  Source directories:  ${result.metrics.sourceDirectories}`);
+    console.log(`  Multiple builds:    ${result.metrics.hasMultipleBuildTargets ? 'yes' : 'no'}`);
+    console.log(`  Custom MCP server:  ${result.metrics.hasCustomMcpServer ? 'yes' : 'no'}`);
+
+    if (result.detectedTools.length > 0) {
+      console.log(`  Detected tools:     ${result.detectedTools.join(', ')}`);
+    }
+
+    console.log(chalk.bold('\nRecommended Configuration'));
+    const rec = result.recommendations;
+    console.log(`  ${rec.tier1Rules ? chalk.green('✓') : chalk.gray('·')} Tier 1 prohibitions (no-shortcuts, git-safety, etc.)`);
+    console.log(`  ${rec.tier2Rules ? chalk.green('✓') : chalk.gray('·')} Tier 2 workflow rules (decomposition, incremental tests)`);
+    console.log(`  ${rec.specializedAgents ? chalk.green('✓') : chalk.gray('·')} Specialized agents by project type`);
+    console.log(`  ${rec.teamCoordination ? chalk.green('✓') : chalk.gray('·')} Multi-agent team coordination`);
+    console.log(`  ${rec.blockerTracking ? chalk.green('✓') : chalk.gray('·')} Task blocker chain tracking`);
+    console.log(`  ${rec.dataFlowPlanning ? chalk.green('✓') : chalk.gray('·')} Data flow planning for cross-subsystem changes`);
+    console.log(`  ${rec.referenceWorkflow ? chalk.green('✓') : chalk.gray('·')} Reference implementation workflow`);
+    console.log('');
+  });
+
 // ── Rules Management (v5.0) ─────────────────────────────────────────────
 
 const rulesCommand = program.command('rules').description('Manage canonical rules (.rulebook/rules/)');
