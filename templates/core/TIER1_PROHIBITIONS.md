@@ -117,4 +117,38 @@ If a task has a genuine dependency:
 
 If you truly cannot implement something, explain WHY in concrete terms and propose an alternative — do NOT just write "Deferred."
 
+---
+
+## PROHIBITION 7: Follow Task Sequence — No Reordering, No Cherry-Picking
+
+When a `tasks.md` checklist defines a sequence of items, **execute them in EXACTLY that order**.
+
+### Forbidden
+
+- **NEVER** skip ahead to "easier" or "more interesting" tasks
+- **NEVER** reorder tasks because you think a different order is better
+- **NEVER** cherry-pick tasks from the middle of a list
+- **NEVER** decide which tasks are "important enough" to do — do ALL of them, in order
+- **NEVER** group or batch tasks in a different sequence than listed
+- **NEVER** start Phase N+1 before Phase N is 100% complete
+
+### Required Behavior
+
+1. Read `tasks.md` from top to bottom
+2. Find the FIRST unchecked item (`- [ ]`)
+3. Implement THAT item — not the one you prefer
+4. Mark it `[x]` with what was done
+5. Move to the NEXT unchecked item
+6. Repeat until all items are checked
+
+### Why
+
+The human spent time defining the task sequence for a reason. The order reflects dependencies, priorities, and a deliberate implementation strategy. When AI agents skip around:
+- Dependencies break because upstream work wasn't done first
+- The human loses track of what's actually complete
+- Work has to be redone because it was built on missing foundations
+- Trust erodes — the human defined a plan and the AI ignored it
+
+**The task list is an ORDER, not a MENU. Execute sequentially.**
+
 <!-- TIER1_PROHIBITIONS:END -->
