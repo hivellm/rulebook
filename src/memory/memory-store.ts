@@ -13,9 +13,8 @@
  * No export(), no manual saveToDisk(), no memory copies.
  */
 
-import { existsSync, mkdirSync, statSync } from 'fs';
+import { existsSync, mkdirSync, statSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import Database from 'better-sqlite3';
 import type { Database as DatabaseType } from 'better-sqlite3';
 import type { Memory, MemorySession, MemoryType } from './memory-types.js';
 
@@ -37,13 +36,29 @@ export class MemoryStore {
       mkdirSync(dir, { recursive: true });
     }
 
-    // better-sqlite3 opens/creates the file directly — no async needed
-    this.db = new Database(this.dbPath);
-
-    // Enable WAL mode for better concurrent read/write performance
-    this.db.pragma('journal_mode = WAL');
-    // Enable foreign keys
-    this.db.pragma('foreign_keys = ON');
+    // Try better-sqlite3 (native, fast) first.
+    // Falls back to sql.js (WASM, portable) if native addon isn't available
+    // (e.g. no C++ build tools on Windows).
+    try {
+      const Database = (await import('better-sqlite3')).default;
+      this.db = new Database(this.dbPath);
+      this.db.pragma('journal_mode = WAL');
+      this.db.pragma('foreign_keys = ON');
+    } catch {
+      // better-sqlite3 not available — fall back to sql.js (WASM)
+      console.error('[MemoryStore] better-sqlite3 unavailable, falling back to sql.js (slower but portable)');
+      const { default: initSqlJs } = await import('sql.js');
+      const SQL = await initSqlJs();
+      let rawDb;
+      if (existsSync(this.dbPath)) {
+        const { readFileSync } = await import('fs');
+        rawDb = new SQL.Database(readFileSync(this.dbPath));
+      } else {
+        rawDb = new SQL.Database();
+      }
+      // Wrap sql.js to match better-sqlite3 API surface used in this file
+      this.db = this.wrapSqlJs(rawDb) as unknown as DatabaseType;
+    }
 
     this.createSchema();
     this.initialized = true;
@@ -451,10 +466,14 @@ export class MemoryStore {
   }
 
   saveToDisk(): void {
-    // No-op: better-sqlite3 writes directly to disk via WAL journal.
-    // This method exists for API compatibility with code that calls it explicitly.
-    if (this.db) {
-      // Force a WAL checkpoint to ensure all data is in the main DB file
+    if (!this.db) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((this.db as any)._isSqlJs) {
+      // sql.js: export + writeFileSync
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (this.db as any)._sqlJsSave();
+    } else {
+      // better-sqlite3: WAL checkpoint
       this.db.pragma('wal_checkpoint(TRUNCATE)');
     }
   }
@@ -465,6 +484,80 @@ export class MemoryStore {
       this.db = null;
       this.initialized = false;
     }
+  }
+
+  /**
+   * Wraps a sql.js database to expose the same API surface as better-sqlite3.
+   * This enables the rest of the class to use db.prepare().run/get/all uniformly.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private wrapSqlJs(rawDb: any): any {
+    const dbPath = this.dbPath;
+    let writeCount = 0;
+
+    const saveToDisk = () => {
+      const data = rawDb.export();
+      const dir = join(dbPath, '..');
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      writeFileSync(dbPath, data);
+    };
+
+    const trackWrite = () => {
+      writeCount++;
+      if (writeCount >= 200) {
+        saveToDisk();
+        writeCount = 0;
+      }
+    };
+
+    return {
+      exec: (sql: string) => rawDb.run(sql),
+      pragma: () => {}, // No-op for sql.js
+      prepare: (sql: string) => ({
+        run: (...params: unknown[]) => {
+          rawDb.run(sql, params.length === 1 && Array.isArray(params[0]) ? params[0] : params);
+          trackWrite();
+        },
+        get: (...params: unknown[]) => {
+          const result = rawDb.exec(sql.replace(/\?/g, () => {
+            const p = params.shift();
+            if (p === null || p === undefined) return 'NULL';
+            if (typeof p === 'string') return `'${p.replace(/'/g, "''")}'`;
+            return String(p);
+          }));
+          if (!result.length || !result[0].values.length) return undefined;
+          const cols = result[0].columns;
+          const row = result[0].values[0];
+          const obj: Record<string, unknown> = {};
+          cols.forEach((c: string, i: number) => { obj[c] = row[i]; });
+          return obj;
+        },
+        all: (...params: unknown[]) => {
+          let processed = sql;
+          for (const p of params) {
+            if (p === null || p === undefined) {
+              processed = processed.replace('?', 'NULL');
+            } else if (typeof p === 'string') {
+              processed = processed.replace('?', `'${p.replace(/'/g, "''")}'`);
+            } else {
+              processed = processed.replace('?', String(p));
+            }
+          }
+          const result = rawDb.exec(processed);
+          if (!result.length) return [];
+          const cols = result[0].columns;
+          return result[0].values.map((row: unknown[]) => {
+            const obj: Record<string, unknown> = {};
+            cols.forEach((c: string, i: number) => { obj[c] = row[i]; });
+            return obj;
+          });
+        },
+      }),
+      close: () => { saveToDisk(); rawDb.close(); },
+      // For saveToDisk() compatibility
+      _sqlJsSave: saveToDisk,
+      _isSqlJs: true,
+    };
   }
 
   private rowToMemory(row: Record<string, unknown>): Memory {
