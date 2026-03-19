@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] - 2026-03-19
+
+### Added — Multi-Tool AI Framework
+- **Canonical Rule Engine** (`src/core/rule-engine.ts`): Rules live in `.rulebook/rules/` with YAML frontmatter and are projected to 6 AI tool formats simultaneously (Claude Code, Cursor, Gemini, Copilot, Windsurf, Continue.dev). One source, multiple projections.
+- **9 Canonical Rule Templates** in `templates/rules/`: no-shortcuts, git-safety, sequential-editing, research-first, task-decomposition, incremental-tests, no-deferred, follow-task-sequence, session-workflow
+- **Adaptive Agent Framework** (`src/core/agent-template-engine.ts`): Agent templates per project type with graceful degradation — full agents for Claude Code, contextual .mdc rules for Cursor, inline sections for Gemini/Codex
+- **15 Agent Templates** across 5 project types: generic (5), game-engine (4), compiler (3), web-app (5), mobile (2)
+- **Project Complexity Detection** (`src/core/complexity-detector.ts`): Auto-assess LOC, languages, and structure to calibrate rule generation (small/medium/large/complex tiers)
+- **7 Tier 1 Prohibitions** in `TIER1_PROHIBITIONS.md`: no shortcuts, git safety, no delete, research-first, sequential editing, no deferred, follow task sequence
+- **Token Optimization** in `TOKEN_OPTIMIZATION.md`: Model tier assignment (core/standard/research) with per-tier output verbosity rules
+- **Session Management MCP Tools**: `rulebook_session_start` (load PLANS.md + memories), `rulebook_session_end` (save summary), `rulebook_rules_list`, `rulebook_blockers`
+- **Task Blocker Chain**: `blocks`/`blockedBy`/`cascadeImpact` in task metadata, `rulebook task blockers` CLI command, `rulebook_blockers` MCP tool
+- **Config Schema Extensions**: `agentFramework` and `referenceSource` sections in RulebookConfig
+- **New CLI Commands**: `rulebook assess`, `rulebook rules list|add|project`, `rulebook task blockers`, `rulebook task blocked-by <id>`
+- **`--tools` flag** on `rulebook init` and `rulebook update` for explicit tool targeting
+- **Calibrated Init**: `rulebook init` now auto-assesses complexity, installs appropriate rules, and projects to detected tools
+- **58 New Tests** across 4 test files: rule-engine (22), agent-template-engine (15), complexity-detector (13), task-blockers (5), session-management (3)
+
+### Changed — Performance
+- **BREAKING: Replaced sql.js (WASM) with better-sqlite3 (native)**: Eliminates db.export() copies (100-500MB per save), WAL journal for zero-copy writes, <5ms init vs ~300ms WASM JIT, O(1) size check via statSync. Existing .db files are compatible (standard SQLite3 format).
+- **Replaced fs.watch with chokidar** for background indexer: OS-level ignore patterns (no more node_modules event flood), cross-platform reliability, write stabilization
+- **HNSW search optimized**: Replaced array.sort() with MinHeap/MaxHeap priority queues (~100x fewer comparisons per query)
+- **Fixed HNSW orphan leak**: Code node vectors now properly removed from HNSW index on file delete
+- **Cached getDbSizeBytes()**: No longer allocates full DB copy just to get size
+- **Moved checkAndEvict()** out of saveMemory() hot path — runs every 50 saves
+- **Fixed BM25 query safety**: Proper FTS5 special character escaping
+- **Clamped exportMemories** limit from 100,000 to 1,000
+- **Removed duplicate SIGINT/SIGTERM listeners** in Ralph MCP tool
+- **Updated GIT_WORKFLOW.md** with explicit allow-list/forbidden-list table
+
+### Dependencies
+- Added: `better-sqlite3`, `@types/better-sqlite3`, `chokidar`
+- Removed: `sql.js`
+
 ## [4.4.1] - 2026-03-15
 
 ### Fixed

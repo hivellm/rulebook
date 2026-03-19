@@ -72,16 +72,16 @@
 - [x] 7.1 Implement complexity scoring (LOC sampling, languages, source dirs, build targets, MCP) <!-- 10df8ae -->
 - [x] 7.2 Define complexity tiers (small/medium/large/complex) with recommendation profiles <!-- 10df8ae -->
 - [x] 7.3 Add `rulebook assess` CLI command — tested on rulebook (LARGE, 58K LOC) <!-- 10df8ae -->
-- [ ] 7.4 Implement calibrated generation per complexity tier
+- [x] 7.4 Calibrated generation in init: complexity assessment → auto-install Tier 1/2 rules → project to tools <!-- b9f021d -->
 - [x] 7.5 `referenceSource` config added to RulebookConfig in types.ts <!-- cc4aae8 -->
 
 ## 8. Testing & Documentation
 - [x] 8.1 Unit tests for rule projection engine — 22 tests in rule-engine.test.ts <!-- ae26f91 -->
 - [x] 8.2 Unit tests for tool detection — pre-existing in multi-tool-detection.test.ts <!-- pre-existing -->
 - [x] 8.3 Unit tests for agent template generation — 15 tests in agent-template-engine.test.ts <!-- d6e60ac -->
-- [ ] 8.4 Unit tests for complexity detection and tier scoring
-- [ ] 8.5 Unit tests for task dependency graph and blocker chain
-- [ ] 8.6 Unit tests for session management MCP tools
+- [x] 8.4 Unit tests for complexity detection — 13 tests in complexity-detector.test.ts <!-- 49c08a8 -->
+- [x] 8.5 Unit tests for task blockers — 5 tests in task-blockers.test.ts <!-- 1e8d08c -->
+- [x] 8.6 Unit tests for session management — 3 tests in session-management.test.ts <!-- 1e8d08c -->
 - [ ] 8.7 Integration tests for multi-tool `rulebook init --tools` flow
 - [ ] 8.8 Update CHANGELOG.md with v5.0.0 entry
 - [ ] 8.9 Update README.md with multi-tool documentation
