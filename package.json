@@ -1,7 +1,7 @@
 {
   "name": "@hivehub/rulebook",
-  "version": "4.4.1",
-  "description": "Standardize AI-generated projects with automated templates, quality gates, persistent memory, and framework detection for 28 languages, 17 frameworks, 13 MCP modules, and 20 services",
+  "version": "5.0.0",
+  "description": "Tool-agnostic AI development framework. Standardize projects across Claude Code, Cursor, Gemini, Codex, Windsurf, Copilot with automated templates, quality gates, persistent memory, and framework detection for 28 languages, 17 frameworks, 13 MCP modules, and 20 services",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -59,6 +59,7 @@
     "ansi-escapes": "^7.2.0",
     "blessed": "^0.1.81",
     "chalk": "^5.3.0",
+    "chokidar": "^5.0.0",
     "cli-cursor": "^5.0.0",
     "commander": "^14.0.2",
     "execa": "^9.6.0",
@@ -68,12 +69,16 @@
     "node-notifier": "^10.0.1",
     "ora": "^9.0.0",
     "picocolors": "^1.0.0",
-    "sql.js": "^1.14.0",
+    "sql.js": "^1.14.1",
     "uuid": "^13.0.0",
     "zod": "^3.25.76"
   },
+  "optionalDependencies": {
+    "better-sqlite3": "^12.8.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/inquirer": "^9.0.0",
     "@types/js-yaml": "^4.0.0",
     "@types/node": "^24.10.1",

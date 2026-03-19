@@ -1,5 +1,6 @@
-import { existsSync, statSync, watch } from 'fs';
-import { extname, join, resolve } from 'path';
+import { existsSync, statSync } from 'fs';
+import { extname, resolve } from 'path';
+import chokidar, { type FSWatcher } from 'chokidar';
 import type { MemoryManager } from '../../memory/memory-manager.js';
 import { CodeParser } from './file-parser.js';
 import type { IndexerConfig } from './indexer-types.js';
@@ -12,7 +13,7 @@ export class BackgroundIndexer {
   private isProcessing = false;
   private processQueue: Set<string> = new Set();
   private debounceTimer: NodeJS.Timeout | null = null;
-  private watchControllers: Set<import('fs').FSWatcher> = new Set();
+  private watcher: FSWatcher | null = null;
 
   // Stats
   private processedCount = 0;
@@ -46,29 +47,44 @@ export class BackgroundIndexer {
     if (!this.config.enabled) return;
     console.error(`[BackgroundIndexer] Starting watcher on: ${this.projectRoot}`);
 
-    // Very naive watcher for V1 (Node.js native Recursive FS Watcher when available, otherwise basic)
-    // Production ready app should probably use `chokidar` here, but sticking to native limits deps
-    try {
-      const watcher = watch(this.projectRoot, { recursive: true }, (_, filename) => {
-        if (!filename) return;
-        this.handleFileChange(filename);
-      });
+    // Use chokidar for reliable cross-platform file watching with proper ignore support.
+    // Unlike fs.watch({ recursive: true }), chokidar filters at the OS watcher level,
+    // preventing node_modules events from ever reaching the event loop.
+    const ignoredGlobs = this.config.ignorePatterns.map(p => `**/${p}/**`);
+    // Also ignore binary/asset files at the watcher level
+    ignoredGlobs.push(
+      '**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.gif', '**/*.svg', '**/*.ico',
+      '**/*.mp3', '**/*.mp4', '**/*.pdf', '**/*.lock',
+      '**/*.sqlite', '**/*.sqlite-wal', '**/*.sqlite-shm', '**/*.sqlite-journal',
+      '**/*.db', '**/*.db-wal', '**/*.db-shm', '**/*.db-journal',
+    );
 
-      watcher.on('error', (error) => {
+    this.watcher = chokidar.watch(this.projectRoot, {
+      ignored: ignoredGlobs,
+      persistent: true,
+      ignoreInitial: true,
+      depth: 8,
+      // Reduce CPU usage: aggregate events over 500ms
+      awaitWriteFinish: {
+        stabilityThreshold: 500,
+        pollInterval: 100,
+      },
+    });
+
+    this.watcher
+      .on('change', (filePath: string) => this.handleFileChange(filePath))
+      .on('add', (filePath: string) => this.handleFileChange(filePath))
+      .on('unlink', (filePath: string) => this.handleFileChange(filePath))
+      .on('error', (error: unknown) => {
         console.error('[BackgroundIndexer] Watcher error:', error);
       });
-
-      this.watchControllers.add(watcher);
-    } catch (e) {
-      console.warn(
-        `[BackgroundIndexer] Recursive FS watch failed. Falling back to targeted watching may be required. Error: ${e}`
-      );
-    }
   }
 
   public stop(): void {
-    this.watchControllers.forEach((w) => w.close());
-    this.watchControllers.clear();
+    if (this.watcher) {
+      this.watcher.close();
+      this.watcher = null;
+    }
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     console.error('[BackgroundIndexer] Stopped');
   }
@@ -82,52 +98,22 @@ export class BackgroundIndexer {
     };
   }
 
-  private isIgnored(filePath: string): boolean {
-    // Basic ignore check
-    const normalizedPath = filePath.replace(/\\/g, '/');
-    for (const pattern of this.config.ignorePatterns) {
-      if (
-        normalizedPath.includes(`/${pattern}/`) ||
-        normalizedPath.startsWith(`${pattern}/`) ||
-        normalizedPath.includes(`\\${pattern}\\`)
-      ) {
-        return true;
-      }
-    }
-
-    // Ignore non-code files or assets
+  private isCodeFile(filePath: string): boolean {
     const ext = extname(filePath).toLowerCase();
-    const ignoredExts = [
-      '.png',
-      '.jpg',
-      '.jpeg',
-      '.gif',
-      '.svg',
-      '.ico',
-      '.mp3',
-      '.mp4',
-      '.sqlite',
-      '.sqlite-wal',
-      '.sqlite-shm',
-      '.sqlite-journal',
-      '.db',
-      '.db-wal',
-      '.db-shm',
-      '.db-journal',
-      '.pdf',
-      '.lock',
+    const codeExts = [
+      '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+      '.py', '.rs', '.go', '.java', '.kt', '.scala',
+      '.cs', '.cpp', '.cc', '.c', '.h', '.hpp',
+      '.swift', '.rb', '.php', '.ex', '.erl', '.zig',
+      '.sol', '.dart', '.lua', '.hs', '.r', '.R',
+      '.sh', '.bash', '.zsh', '.yaml', '.yml', '.json',
+      '.toml', '.md', '.mdx',
     ];
-    if (ignoredExts.includes(ext)) {
-      return true;
-    }
-
-    return false;
+    return codeExts.includes(ext);
   }
 
-  private handleFileChange(filename: string): void {
-    const fullPath = join(this.projectRoot, filename);
-
-    if (this.isIgnored(filename)) return;
+  private handleFileChange(fullPath: string): void {
+    if (!this.isCodeFile(fullPath)) return;
 
     this.processQueue.add(fullPath);
 
@@ -169,9 +155,11 @@ export class BackgroundIndexer {
 
     this.isProcessing = false;
 
-    // If more accumulated while processing, trigger again
+    // If more accumulated while processing, schedule next batch directly
     if (this.processQueue.size > 0) {
-      this.handleFileChange('__trigger_batch__');
+      this.debounceTimer = setTimeout(() => {
+        this.processNextBatch();
+      }, 100);
     }
   }
 

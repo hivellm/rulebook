@@ -45,6 +45,8 @@ export class MemoryManager {
   private readonly hnswPath: string;
   private readonly maxSizeBytes: number;
   private readonly dimensions: number;
+  private saveCount = 0;
+  private static readonly EVICTION_CHECK_INTERVAL = 50;
 
   constructor(projectRoot: string, config: MemoryConfig) {
     this.dbPath = join(projectRoot, config.dbPath ?? DEFAULT_DB_PATH);
@@ -175,8 +177,13 @@ export class MemoryManager {
     this.index!.add(memory.id, vec);
     this.saveHnswIfNeeded();
 
-    // Check cache limits
-    this.cache!.checkAndEvict();
+    // Check cache limits periodically (not on every save — getDbSizeBytes is cheap now
+    // but eviction itself is expensive and rarely needed)
+    this.saveCount++;
+    if (this.saveCount >= MemoryManager.EVICTION_CHECK_INTERVAL) {
+      this.saveCount = 0;
+      this.cache!.checkAndEvict();
+    }
 
     return memory;
   }
@@ -267,7 +274,7 @@ export class MemoryManager {
   async exportMemories(format: 'json' | 'csv' = 'json'): Promise<string> {
     await this.ensureInitialized();
 
-    const memories = this.store!.listMemories({ limit: 100000 });
+    const memories = this.store!.listMemories({ limit: 1000 });
 
     if (format === 'csv') {
       const header = 'id,type,title,content,project,tags,createdAt,updatedAt';
@@ -310,11 +317,13 @@ export class MemoryManager {
 
   async deleteCodeNodesByFile(filePath: string): Promise<void> {
     await this.ensureInitialized();
-    // In an ideal architecture we would query the store for all nodes belonging to this file,
-    // then remove them from HNSW, before deleting from SQLite.
-    // For V1, the SQLite triggers delete, but HNSW vectors stay as orphans until a rebuild.
-    // A future improvement: add a HNSW delete via batch.
+    // Query node IDs before deleting from SQLite so we can also clean HNSW
+    const nodeIds = this.store!.getCodeNodeIdsByFile(filePath);
     this.store!.deleteCodeNodesByFile(filePath);
+    // Remove corresponding vectors from HNSW to prevent orphan accumulation
+    for (const id of nodeIds) {
+      this.index!.remove(`__code__${id}`);
+    }
   }
 
   async close(): Promise<void> {

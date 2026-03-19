@@ -17,6 +17,118 @@ interface SearchCandidate {
   distance: number;
 }
 
+/**
+ * Min-heap (priority queue) for efficient nearest-neighbor search.
+ * Replaces Array.sort() in the inner HNSW search loop:
+ * O(log n) insert/extract vs O(n log n) full sort per iteration.
+ */
+class MinHeap {
+  private heap: SearchCandidate[] = [];
+
+  get size(): number { return this.heap.length; }
+
+  peek(): SearchCandidate | undefined { return this.heap[0]; }
+
+  push(item: SearchCandidate): void {
+    this.heap.push(item);
+    this.siftUp(this.heap.length - 1);
+  }
+
+  pop(): SearchCandidate | undefined {
+    if (this.heap.length === 0) return undefined;
+    const top = this.heap[0];
+    const last = this.heap.pop()!;
+    if (this.heap.length > 0) {
+      this.heap[0] = last;
+      this.siftDown(0);
+    }
+    return top;
+  }
+
+  toSorted(): SearchCandidate[] {
+    return [...this.heap].sort((a, b) => a.distance - b.distance);
+  }
+
+  private siftUp(i: number): void {
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (this.heap[i].distance < this.heap[parent].distance) {
+        [this.heap[i], this.heap[parent]] = [this.heap[parent], this.heap[i]];
+        i = parent;
+      } else break;
+    }
+  }
+
+  private siftDown(i: number): void {
+    const n = this.heap.length;
+    while (true) {
+      let smallest = i;
+      const left = 2 * i + 1;
+      const right = 2 * i + 2;
+      if (left < n && this.heap[left].distance < this.heap[smallest].distance) smallest = left;
+      if (right < n && this.heap[right].distance < this.heap[smallest].distance) smallest = right;
+      if (smallest === i) break;
+      [this.heap[i], this.heap[smallest]] = [this.heap[smallest], this.heap[i]];
+      i = smallest;
+    }
+  }
+}
+
+/**
+ * Max-heap for maintaining the k-farthest boundary in HNSW search results.
+ */
+class MaxHeap {
+  private heap: SearchCandidate[] = [];
+
+  get size(): number { return this.heap.length; }
+
+  peek(): SearchCandidate | undefined { return this.heap[0]; }
+
+  push(item: SearchCandidate): void {
+    this.heap.push(item);
+    this.siftUp(this.heap.length - 1);
+  }
+
+  popMax(): SearchCandidate | undefined {
+    if (this.heap.length === 0) return undefined;
+    const top = this.heap[0];
+    const last = this.heap.pop()!;
+    if (this.heap.length > 0) {
+      this.heap[0] = last;
+      this.siftDown(0);
+    }
+    return top;
+  }
+
+  toSorted(): SearchCandidate[] {
+    return [...this.heap].sort((a, b) => a.distance - b.distance);
+  }
+
+  private siftUp(i: number): void {
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (this.heap[i].distance > this.heap[parent].distance) {
+        [this.heap[i], this.heap[parent]] = [this.heap[parent], this.heap[i]];
+        i = parent;
+      } else break;
+    }
+  }
+
+  private siftDown(i: number): void {
+    const n = this.heap.length;
+    while (true) {
+      let largest = i;
+      const left = 2 * i + 1;
+      const right = 2 * i + 2;
+      if (left < n && this.heap[left].distance > this.heap[largest].distance) largest = left;
+      if (right < n && this.heap[right].distance > this.heap[largest].distance) largest = right;
+      if (largest === i) break;
+      [this.heap[i], this.heap[largest]] = [this.heap[largest], this.heap[i]];
+      i = largest;
+    }
+  }
+}
+
 export interface HNSWConfig {
   M?: number; // max connections per layer (default: 16)
   efConstruction?: number; // construction search width (default: 200)
@@ -74,7 +186,9 @@ export class HNSWIndex {
   }
 
   /**
-   * Greedy search at a single layer, returning ef nearest candidates
+   * Greedy search at a single layer, returning ef nearest candidates.
+   * Uses min-heap for candidates and max-heap for results to avoid
+   * O(n log n) array sorts on every iteration (now O(log n) per operation).
    */
   private searchLayer(
     query: Float32Array,
@@ -83,8 +197,8 @@ export class HNSWIndex {
     layer: number
   ): SearchCandidate[] {
     const visited = new Set<string>();
-    const candidates: SearchCandidate[] = [];
-    const results: SearchCandidate[] = [];
+    const candidates = new MinHeap();  // closest-first extraction
+    const results = new MaxHeap();     // farthest-first for boundary check
 
     const entryNode = this.nodes.get(entryLabel);
     if (!entryNode) return [];
@@ -94,14 +208,9 @@ export class HNSWIndex {
     results.push({ label: entryLabel, distance: entryDist });
     visited.add(entryLabel);
 
-    while (candidates.length > 0) {
-      // Get closest candidate
-      candidates.sort((a, b) => a.distance - b.distance);
-      const current = candidates.shift()!;
-
-      // Get farthest result
-      results.sort((a, b) => a.distance - b.distance);
-      const farthest = results[results.length - 1];
+    while (candidates.size > 0) {
+      const current = candidates.pop()!;
+      const farthest = results.peek()!;
 
       if (current.distance > farthest.distance) break;
 
@@ -119,24 +228,20 @@ export class HNSWIndex {
         if (!neighborNode) continue;
 
         const dist = this.cosineDistance(query, neighborNode.vector);
+        const currentFarthest = results.peek()!;
 
-        results.sort((a, b) => a.distance - b.distance);
-        const currentFarthest = results[results.length - 1];
-
-        if (results.length < ef || dist < currentFarthest.distance) {
+        if (results.size < ef || dist < currentFarthest.distance) {
           candidates.push({ label: neighborLabel, distance: dist });
           results.push({ label: neighborLabel, distance: dist });
 
-          if (results.length > ef) {
-            results.sort((a, b) => a.distance - b.distance);
-            results.pop();
+          if (results.size > ef) {
+            results.popMax();
           }
         }
       }
     }
 
-    results.sort((a, b) => a.distance - b.distance);
-    return results;
+    return results.toSorted();
   }
 
   /**

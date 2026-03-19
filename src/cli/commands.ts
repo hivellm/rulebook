@@ -81,6 +81,15 @@ export async function initCommand(options: {
     const detection = await detectProject(cwd);
     spinner.succeed('Project detection complete');
 
+    // Assess project complexity for calibrated generation (v5)
+    const { assessComplexity } = await import('../core/complexity-detector.js');
+    const complexity = assessComplexity(cwd);
+    console.log(
+      chalk.gray(
+        `  Complexity: ${complexity.tier.toUpperCase()} (${complexity.metrics.estimatedLoc.toLocaleString()} LOC, ${complexity.metrics.languageCount} languages)`
+      )
+    );
+
     // Show detection results
     if (detection.languages.length > 0) {
       console.log(chalk.green('\n✓ Detected languages:'));
@@ -341,6 +350,51 @@ export async function initCommand(options: {
     // Write AGENTS.md
     await writeFile(agentsPath, finalContent);
     console.log(chalk.green(`\n✅ AGENTS.md written to ${agentsPath}`));
+
+    // Install canonical rules based on complexity tier (v5)
+    {
+      const { installRule, projectRules } = await import('../core/rule-engine.js');
+      const { getTemplatesDir } = await import('../core/generator.js');
+      const templatesDir = getTemplatesDir();
+
+      // Tier 1 rules — always installed
+      const tier1Rules = ['no-shortcuts', 'git-safety', 'sequential-editing', 'research-first', 'follow-task-sequence'];
+      // Tier 2 rules — installed for medium+ complexity
+      const tier2Rules = ['task-decomposition', 'incremental-tests', 'no-deferred', 'session-workflow'];
+
+      const rulesToInstall = [...tier1Rules];
+      if (complexity.recommendations.tier2Rules) {
+        rulesToInstall.push(...tier2Rules);
+      }
+
+      let installedCount = 0;
+      for (const name of rulesToInstall) {
+        const result = await installRule(cwd, name, templatesDir);
+        if (result) installedCount++;
+      }
+
+      if (installedCount > 0) {
+        console.log(chalk.gray(`  • Installed ${installedCount} canonical rules to .rulebook/rules/`));
+      }
+
+      // Project rules to detected tools
+      const ruleResult = await projectRules(cwd, {
+        claudeCode: existsSync(path.join(cwd, '.claude')) || existsSync(path.join(cwd, 'CLAUDE.md')),
+        cursor: detection.cursor?.detected,
+        gemini: detection.geminiCli?.detected,
+        windsurf: detection.windsurf?.detected,
+        copilot: detection.githubCopilot?.detected,
+        continueDev: detection.continueDev?.detected,
+      });
+
+      const totalProjected =
+        ruleResult.claudeCode.length + ruleResult.cursor.length + ruleResult.gemini.length +
+        ruleResult.copilot.length + ruleResult.windsurf.length + ruleResult.continueDev.length;
+
+      if (totalProjected > 0) {
+        console.log(chalk.gray(`  • Projected rules to ${totalProjected} tool-specific files`));
+      }
+    }
 
     // Show Cursor MDC feedback
     if (detection.cursor?.detected) {
@@ -1977,6 +2031,64 @@ async function updateSingleProject(
   const mergedContent = await mergeFullAgents(detection.existingAgents, config, cwd);
   await writeFile(agentsPath, mergedContent);
   mergeSpinner.succeed('AGENTS.md updated');
+
+  // Install + project canonical rules to all detected tools (v5 rule engine)
+  // On update: if .rulebook/rules/ is empty (v4 project), auto-install based on complexity
+  {
+    const { projectRules, installRule, loadCanonicalRules } = await import('../core/rule-engine.js');
+    const existingRules = await loadCanonicalRules(cwd);
+
+    if (existingRules.length === 0) {
+      // v4 project upgrading to v5 — install canonical rules based on complexity
+      const { assessComplexity } = await import('../core/complexity-detector.js');
+      const { getTemplatesDir } = await import('../core/generator.js');
+      const complexity = assessComplexity(cwd);
+      const templatesDir = getTemplatesDir();
+
+      const tier1 = ['no-shortcuts', 'git-safety', 'sequential-editing', 'research-first', 'follow-task-sequence'];
+      const tier2 = ['task-decomposition', 'incremental-tests', 'no-deferred', 'session-workflow'];
+
+      const toInstall = [...tier1];
+      if (complexity.recommendations.tier2Rules) {
+        toInstall.push(...tier2);
+      }
+
+      let installed = 0;
+      for (const name of toInstall) {
+        const result = await installRule(cwd, name, templatesDir);
+        if (result) installed++;
+      }
+
+      if (installed > 0) {
+        console.log(
+          chalk.gray(
+            `  • Installed ${installed} v5 canonical rules (${complexity.tier} project, ${complexity.metrics.estimatedLoc.toLocaleString()} LOC)`
+          )
+        );
+      }
+    }
+
+    const ruleResult = await projectRules(cwd, {
+      claudeCode: existsSync(path.join(cwd, '.claude')) || existsSync(path.join(cwd, 'CLAUDE.md')),
+      cursor: detection.cursor?.detected,
+      gemini: detection.geminiCli?.detected,
+      windsurf: detection.windsurf?.detected,
+      copilot: detection.githubCopilot?.detected,
+      continueDev: detection.continueDev?.detected,
+    });
+
+    const totalProjected =
+      ruleResult.claudeCode.length +
+      ruleResult.cursor.length +
+      ruleResult.gemini.length +
+      ruleResult.copilot.length +
+      ruleResult.windsurf.length +
+      ruleResult.continueDev.length;
+
+    if (totalProjected > 0) {
+      console.log(chalk.gray(`  • Projected ${totalProjected} canonical rules to detected tools`));
+    }
+  }
 
   // Show multi-tool config feedback (update command)
   if (detection.geminiCli?.detected) {

@@ -17,6 +17,41 @@ Run these commands manually (SSH password may be required):
 
 **CRITICAL**: Specific rules and patterns for Git version control workflow.
 
+## Git Command Allow-List (Quick Reference)
+
+### ALLOWED (always safe — no authorization needed)
+| Command | Purpose |
+|---------|---------|
+| `git status` | Check repository state |
+| `git diff` | View changes |
+| `git log` | View history |
+| `git blame` | View line-by-line attribution |
+| `git add <files>` | Stage specific files |
+| `git commit` | Create commits (after quality checks) |
+| `git branch` (list) | List branches |
+| `git tag` (list) | List tags |
+
+### FORBIDDEN (require explicit user authorization)
+| Command | Risk | Why |
+|---------|------|-----|
+| `git stash` | Loses uncommitted work | Hidden state that gets forgotten |
+| `git rebase` | Rewrites history | Breaks shared branch history |
+| `git reset --hard` | Destroys changes | Irreversible data loss |
+| `git checkout -- .` | Discards all changes | Irreversible data loss |
+| `git restore .` | Discards all changes | Irreversible data loss |
+| `git revert` | Creates revert commits | May cause unexpected conflicts |
+| `git cherry-pick` | Duplicates commits | Can cause merge conflicts |
+| `git merge` | Can create conflicts | Requires human judgment |
+| `git branch -D` | Deletes branch | Permanent, may lose work |
+| `git push --force` | Overwrites remote | NEVER on main/master |
+| `git clean -f` | Deletes untracked files | Permanent file deletion |
+| `git checkout <branch>` | Switches branch | Breaks concurrent AI sessions |
+| `git switch <branch>` | Switches branch | Breaks concurrent AI sessions |
+
+**Why**: Multiple AI sessions may share the same working tree. Branch switching or destructive operations affect ALL concurrent sessions.
+
+---
+
 ## Git Workflow Overview
 
 This project follows a strict Git workflow to ensure code quality and proper version control.

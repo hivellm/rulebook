@@ -114,6 +114,7 @@ program
   .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
   .option('--package <name>', 'Initialize only a single package inside a monorepo')
   .option('--add-sequential-thinking', 'Auto-add sequential-thinking MCP to .mcp.json')
+  .option('--tools <tools>', 'Comma-separated AI tools to generate for (e.g., claude-code,cursor,gemini)')
   .action(initCommand);
 
 program
@@ -253,6 +254,76 @@ taskCommand
     taskArchiveCommand(taskId, options.skipValidation || false, { project: options.project })
   );
 
+taskCommand
+  .command('blockers')
+  .description('Show task blocker chain with cascade impact')
+  .option('--project <name>', 'Target a specific workspace project')
+  .action(async (_options: { project?: string }) => {
+    const chalk = (await import('chalk')).default;
+    const { TaskManager } = await import('./core/task-manager.js');
+    const { ConfigManager } = await import('./core/config-manager.js');
+    const cwd = process.cwd();
+    const cm = new ConfigManager(cwd);
+    const config = await cm.loadConfig();
+    const rulebookDir = config?.rulebookDir || '.rulebook';
+    const tm = new TaskManager(cwd, rulebookDir);
+    const tasks = await tm.listTasks();
+    const blockers: Array<{ taskId: string; blocks: string[]; cascadeImpact: number }> = [];
+
+    for (const task of tasks) {
+      const metadata = await tm.getTaskMetadata(task.id);
+      if (metadata?.blocks && Array.isArray(metadata.blocks) && metadata.blocks.length > 0) {
+        blockers.push({
+          taskId: task.id,
+          blocks: metadata.blocks as string[],
+          cascadeImpact: (metadata.cascadeImpact as number) || (metadata.blocks as string[]).length,
+        });
+      }
+    }
+
+    if (blockers.length === 0) {
+      console.log(chalk.gray('No blocker chains found. Add "blocks" field to task .metadata.json to track dependencies.'));
+      return;
+    }
+
+    blockers.sort((a, b) => b.cascadeImpact - a.cascadeImpact);
+    console.log(chalk.bold('\nBlocker Chain (highest cascade impact first)\n'));
+    for (const b of blockers) {
+      const impact = b.cascadeImpact >= 3 ? chalk.red('HIGH') : b.cascadeImpact >= 2 ? chalk.yellow('MEDIUM') : chalk.gray('LOW');
+      console.log(`  ${chalk.green(b.taskId)} → blocks: ${b.blocks.join(', ')} (${b.cascadeImpact} tasks, ${impact} impact)`);
+    }
+    console.log('');
+  });
+
+taskCommand
+  .command('blocked-by <task-id>')
+  .description('Show what blocks a specific task')
+  .action(async (taskId: string) => {
+    const chalk = (await import('chalk')).default;
+    const { TaskManager } = await import('./core/task-manager.js');
+    const { ConfigManager } = await import('./core/config-manager.js');
+    const cwd = process.cwd();
+    const cm = new ConfigManager(cwd);
+    const config = await cm.loadConfig();
+    const rulebookDir = config?.rulebookDir || '.rulebook';
+    const tm = new TaskManager(cwd, rulebookDir);
+    const metadata = await tm.getTaskMetadata(taskId);
+    if (!metadata) {
+      console.log(chalk.yellow(`Task "${taskId}" not found or has no metadata.`));
+      return;
+    }
+    const blockedBy = Array.isArray(metadata.blockedBy) ? metadata.blockedBy as string[] : [];
+    if (blockedBy.length === 0) {
+      console.log(chalk.green(`Task "${taskId}" is not blocked by anything.`));
+    } else {
+      console.log(chalk.bold(`\nTask "${taskId}" is blocked by:\n`));
+      for (const b of blockedBy) {
+        console.log(`  ${chalk.red('→')} ${b}`);
+      }
+      console.log('');
+    }
+  });
+
 // Legacy tasks command (deprecated)
 program
   .command('tasks')
@@ -275,6 +346,7 @@ program
   .option('--minimal', 'Regenerate using minimal mode (essentials only)')
   .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
   .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
+  .option('--tools <tools>', 'Comma-separated AI tools to generate for (e.g., claude-code,cursor,gemini)')
   .action(updateCommand);
 
 // MCP commands
@@ -646,5 +718,122 @@ learnCommand
   .action((id: string, target: string, options: { title?: string }) =>
     learnPromoteCommand(id, target, options)
   );
+
+// ── Project Assessment (v5.0) ───────────────────────────────────────────
+
+program
+  .command('assess')
+  .description('Analyze project complexity and recommend v5 configuration')
+  .action(async () => {
+    const chalk = (await import('chalk')).default;
+    const ora = (await import('ora')).default;
+    const { assessComplexity } = await import('./core/complexity-detector.js');
+    const cwd = process.cwd();
+
+    const spinner = ora('Analyzing project complexity...').start();
+    const result = assessComplexity(cwd);
+    spinner.succeed(`Project complexity: ${result.tier.toUpperCase()} (score: ${result.score}/100)`);
+
+    console.log(chalk.bold('\nMetrics'));
+    console.log(`  Estimated LOC:      ${result.metrics.estimatedLoc.toLocaleString()}`);
+    console.log(`  Languages:          ${result.metrics.languageCount}`);
+    console.log(`  Source directories:  ${result.metrics.sourceDirectories}`);
+    console.log(`  Multiple builds:    ${result.metrics.hasMultipleBuildTargets ? 'yes' : 'no'}`);
+    console.log(`  Custom MCP server:  ${result.metrics.hasCustomMcpServer ? 'yes' : 'no'}`);
+
+    if (result.detectedTools.length > 0) {
+      console.log(`  Detected tools:     ${result.detectedTools.join(', ')}`);
+    }
+
+    console.log(chalk.bold('\nRecommended Configuration'));
+    const rec = result.recommendations;
+    console.log(`  ${rec.tier1Rules ? chalk.green('✓') : chalk.gray('·')} Tier 1 prohibitions (no-shortcuts, git-safety, etc.)`);
+    console.log(`  ${rec.tier2Rules ? chalk.green('✓') : chalk.gray('·')} Tier 2 workflow rules (decomposition, incremental tests)`);
+    console.log(`  ${rec.specializedAgents ? chalk.green('✓') : chalk.gray('·')} Specialized agents by project type`);
+    console.log(`  ${rec.teamCoordination ? chalk.green('✓') : chalk.gray('·')} Multi-agent team coordination`);
+    console.log(`  ${rec.blockerTracking ? chalk.green('✓') : chalk.gray('·')} Task blocker chain tracking`);
+    console.log(`  ${rec.dataFlowPlanning ? chalk.green('✓') : chalk.gray('·')} Data flow planning for cross-subsystem changes`);
+    console.log(`  ${rec.referenceWorkflow ? chalk.green('✓') : chalk.gray('·')} Reference implementation workflow`);
+    console.log('');
+  });
+
+// ── Rules Management (v5.0) ─────────────────────────────────────────────
+
+const rulesCommand = program.command('rules').description('Manage canonical rules (.rulebook/rules/)');
+
+rulesCommand
+  .command('list')
+  .description('List all canonical rules by tier')
+  .action(async () => {
+    const { listRules } = await import('./core/rule-engine.js');
+    const chalk = (await import('chalk')).default;
+    const rules = await listRules(process.cwd());
+    if (rules.length === 0) {
+      console.log(chalk.yellow('No canonical rules found in .rulebook/rules/'));
+      console.log(chalk.gray('Run "rulebook rules add <name>" to install from template library'));
+      return;
+    }
+    const tierLabels: Record<number, string> = { 1: 'Tier 1 (Prohibition)', 2: 'Tier 2 (Workflow)', 3: 'Tier 3 (Standard)' };
+    for (const tier of [1, 2, 3]) {
+      const tierRules = rules.filter(r => r.tier === tier);
+      if (tierRules.length === 0) continue;
+      console.log(chalk.bold(`\n${tierLabels[tier]}`));
+      for (const r of tierRules) {
+        const tools = r.tools.includes('all' as never) ? 'all tools' : r.tools.join(', ');
+        console.log(`  ${chalk.green(r.name)} — ${r.description} [${chalk.gray(tools)}]`);
+      }
+    }
+    console.log('');
+  });
+
+rulesCommand
+  .command('add <name>')
+  .description('Install a rule from the template library')
+  .action(async (name: string) => {
+    const { installRule } = await import('./core/rule-engine.js');
+    const { getTemplatesDir } = await import('./core/generator.js');
+    const chalk = (await import('chalk')).default;
+    const templatesDir = getTemplatesDir();
+    const result = await installRule(process.cwd(), name, templatesDir);
+    if (result) {
+      console.log(chalk.green(`✓ Rule "${name}" installed to .rulebook/rules/${name}.md`));
+      console.log(chalk.gray('Run "rulebook update" to project rules to all detected tools'));
+    } else {
+      console.log(chalk.red(`✗ Rule template "${name}" not found`));
+      console.log(chalk.gray('Available: no-shortcuts, git-safety, sequential-editing, task-decomposition, research-first, incremental-tests, no-deferred'));
+    }
+  });
+
+rulesCommand
+  .command('project')
+  .description('Project canonical rules to all detected tool formats')
+  .action(async () => {
+    const { projectRules } = await import('./core/rule-engine.js');
+    const { detectProject } = await import('./core/detector.js');
+    const { existsSync } = await import('fs');
+    const { join } = await import('path');
+    const chalk = (await import('chalk')).default;
+    const ora = (await import('ora')).default;
+    const cwd = process.cwd();
+    const spinner = ora('Projecting rules to detected tools...').start();
+    const detection = await detectProject(cwd);
+    const result = await projectRules(cwd, {
+      claudeCode: existsSync(join(cwd, '.claude')) || existsSync(join(cwd, 'CLAUDE.md')),
+      cursor: detection.cursor?.detected,
+      gemini: detection.geminiCli?.detected,
+      windsurf: detection.windsurf?.detected,
+      copilot: detection.githubCopilot?.detected,
+      continueDev: detection.continueDev?.detected,
+    });
+    const total = result.claudeCode.length + result.cursor.length + result.gemini.length +
+      result.copilot.length + result.windsurf.length + result.continueDev.length;
+    spinner.succeed(`Projected rules to ${total} tool-specific files`);
+    if (result.claudeCode.length) console.log(chalk.gray(`  • Claude Code: ${result.claudeCode.length} files`));
+    if (result.cursor.length) console.log(chalk.gray(`  • Cursor: ${result.cursor.length} files`));
+    if (result.gemini.length) console.log(chalk.gray(`  • Gemini: ${result.gemini.length} files`));
+    if (result.copilot.length) console.log(chalk.gray(`  • Copilot: ${result.copilot.length} files`));
+    if (result.windsurf.length) console.log(chalk.gray(`  • Windsurf: ${result.windsurf.length} files`));
+    if (result.continueDev.length) console.log(chalk.gray(`  • Continue.dev: ${result.continueDev.length} files`));
+  });
 
 program.parse(process.argv);

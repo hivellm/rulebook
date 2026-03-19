@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Resolve templates directory (handles both dev and production)
-function getTemplatesDir(): string {
+export function getTemplatesDir(): string {
   // In production (dist/), templates are at package root
   // In development (src/), templates are at package root
   // Both resolve to same location
@@ -184,9 +184,14 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   );
   sections.push('');
 
-  // RULEBOOK.md is always first in the list (highest precedence)
+  // TIER1_PROHIBITIONS is ALWAYS first (absolute highest precedence)
   sections.push(
-    `- \`/${rulebookDir}/specs/RULEBOOK.md\` - **Task management rules (HIGHEST PRECEDENCE)**`
+    `- \`/${rulebookDir}/specs/TIER1_PROHIBITIONS.md\` - **Absolute prohibitions (HIGHEST PRECEDENCE — read first)**`
+  );
+
+  // RULEBOOK.md is second (task management)
+  sections.push(
+    `- \`/${rulebookDir}/specs/RULEBOOK.md\` - **Task management rules**`
   );
 
   // Only reference QUALITY_ENFORCEMENT if not in light mode
@@ -197,6 +202,11 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   // Only reference GIT if enabled
   if (config.includeGitWorkflow) {
     sections.push(`- \`/${rulebookDir}/specs/GIT.md\` - Git workflow rules`);
+  }
+
+  // Token optimization reference
+  if (!config.lightMode) {
+    sections.push(`- \`/${rulebookDir}/specs/TOKEN_OPTIMIZATION.md\` - Model tier assignment and output verbosity rules`);
   }
 
   // Reference PLANS.md for session continuity
@@ -1017,6 +1027,20 @@ export async function generateModularAgents(
       enforcementContent.trim(),
       rulebookDir
     );
+  }
+
+  // Write TIER1_PROHIBITIONS to /rulebook/ (always included — highest precedence directives)
+  const tier1Content = await generateCoreRules('TIER1_PROHIBITIONS');
+  if (tier1Content.trim()) {
+    await writeModularFile(projectRoot, 'TIER1_PROHIBITIONS', tier1Content.trim(), rulebookDir);
+  }
+
+  // Write TOKEN_OPTIMIZATION to /rulebook/ (always included unless light mode)
+  if (!mergedConfig.lightMode) {
+    const tokenOptContent = await generateCoreRules('TOKEN_OPTIMIZATION');
+    if (tokenOptContent.trim()) {
+      await writeModularFile(projectRoot, 'TOKEN_OPTIMIZATION', tokenOptContent.trim(), rulebookDir);
+    }
   }
 
   // Write Git workflow rules to /.rulebook/specs/GIT.md

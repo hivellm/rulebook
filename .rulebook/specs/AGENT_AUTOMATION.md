@@ -125,6 +125,14 @@ rulebook task update <task-id> --status completed
 rulebook task update <task-id> --status blocked --reason "explanation"
 ```
 
+**⚠️ CRITICAL: Follow the task sequence**
+
+When working through a `tasks.md` checklist:
+- Execute items in the EXACT order listed — top to bottom
+- NEVER skip ahead, reorder, or cherry-pick "easier" tasks
+- NEVER start Phase N+1 before Phase N is 100% complete
+- The task list is an ORDER, not a MENU
+
 ### Step 5: Update OpenSpec Tasks
 
 If `openspec/` directory exists:
