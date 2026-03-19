@@ -62,6 +62,10 @@ export class MemoryStore {
 
     this.createSchema();
     this.initialized = true;
+
+    // For sql.js: force initial save so the .db file exists on disk
+    // (better-sqlite3 creates the file automatically on open)
+    this.saveToDisk();
   }
 
   private createSchema(): void {
