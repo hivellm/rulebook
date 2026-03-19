@@ -1978,6 +1978,31 @@ async function updateSingleProject(
   await writeFile(agentsPath, mergedContent);
   mergeSpinner.succeed('AGENTS.md updated');
 
+  // Project canonical rules to all detected tools (v5 rule engine)
+  {
+    const { projectRules } = await import('../core/rule-engine.js');
+    const ruleResult = await projectRules(cwd, {
+      claudeCode: existsSync(path.join(cwd, '.claude')) || existsSync(path.join(cwd, 'CLAUDE.md')),
+      cursor: detection.cursor?.detected,
+      gemini: detection.geminiCli?.detected,
+      windsurf: detection.windsurf?.detected,
+      copilot: detection.githubCopilot?.detected,
+      continueDev: detection.continueDev?.detected,
+    });
+
+    const totalProjected =
+      ruleResult.claudeCode.length +
+      ruleResult.cursor.length +
+      ruleResult.gemini.length +
+      ruleResult.copilot.length +
+      ruleResult.windsurf.length +
+      ruleResult.continueDev.length;
+
+    if (totalProjected > 0) {
+      console.log(chalk.gray(`  • Projected ${totalProjected} canonical rules to detected tools`));
+    }
+  }
+
   // Show multi-tool config feedback (update command)
   if (detection.geminiCli?.detected) {
     console.log(chalk.gray('  • Gemini CLI config updated: GEMINI.md'));

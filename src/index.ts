@@ -647,4 +647,83 @@ learnCommand
     learnPromoteCommand(id, target, options)
   );
 
+// ── Rules Management (v5.0) ─────────────────────────────────────────────
+
+const rulesCommand = program.command('rules').description('Manage canonical rules (.rulebook/rules/)');
+
+rulesCommand
+  .command('list')
+  .description('List all canonical rules by tier')
+  .action(async () => {
+    const { listRules } = await import('./core/rule-engine.js');
+    const chalk = (await import('chalk')).default;
+    const rules = await listRules(process.cwd());
+    if (rules.length === 0) {
+      console.log(chalk.yellow('No canonical rules found in .rulebook/rules/'));
+      console.log(chalk.gray('Run "rulebook rules add <name>" to install from template library'));
+      return;
+    }
+    const tierLabels: Record<number, string> = { 1: 'Tier 1 (Prohibition)', 2: 'Tier 2 (Workflow)', 3: 'Tier 3 (Standard)' };
+    for (const tier of [1, 2, 3]) {
+      const tierRules = rules.filter(r => r.tier === tier);
+      if (tierRules.length === 0) continue;
+      console.log(chalk.bold(`\n${tierLabels[tier]}`));
+      for (const r of tierRules) {
+        const tools = r.tools.includes('all' as never) ? 'all tools' : r.tools.join(', ');
+        console.log(`  ${chalk.green(r.name)} — ${r.description} [${chalk.gray(tools)}]`);
+      }
+    }
+    console.log('');
+  });
+
+rulesCommand
+  .command('add <name>')
+  .description('Install a rule from the template library')
+  .action(async (name: string) => {
+    const { installRule } = await import('./core/rule-engine.js');
+    const { getTemplatesDir } = await import('./core/generator.js');
+    const chalk = (await import('chalk')).default;
+    const templatesDir = getTemplatesDir();
+    const result = await installRule(process.cwd(), name, templatesDir);
+    if (result) {
+      console.log(chalk.green(`✓ Rule "${name}" installed to .rulebook/rules/${name}.md`));
+      console.log(chalk.gray('Run "rulebook update" to project rules to all detected tools'));
+    } else {
+      console.log(chalk.red(`✗ Rule template "${name}" not found`));
+      console.log(chalk.gray('Available: no-shortcuts, git-safety, sequential-editing, task-decomposition, research-first, incremental-tests, no-deferred'));
+    }
+  });
+
+rulesCommand
+  .command('project')
+  .description('Project canonical rules to all detected tool formats')
+  .action(async () => {
+    const { projectRules } = await import('./core/rule-engine.js');
+    const { detectProject } = await import('./core/detector.js');
+    const { existsSync } = await import('fs');
+    const { join } = await import('path');
+    const chalk = (await import('chalk')).default;
+    const ora = (await import('ora')).default;
+    const cwd = process.cwd();
+    const spinner = ora('Projecting rules to detected tools...').start();
+    const detection = await detectProject(cwd);
+    const result = await projectRules(cwd, {
+      claudeCode: existsSync(join(cwd, '.claude')) || existsSync(join(cwd, 'CLAUDE.md')),
+      cursor: detection.cursor?.detected,
+      gemini: detection.geminiCli?.detected,
+      windsurf: detection.windsurf?.detected,
+      copilot: detection.githubCopilot?.detected,
+      continueDev: detection.continueDev?.detected,
+    });
+    const total = result.claudeCode.length + result.cursor.length + result.gemini.length +
+      result.copilot.length + result.windsurf.length + result.continueDev.length;
+    spinner.succeed(`Projected rules to ${total} tool-specific files`);
+    if (result.claudeCode.length) console.log(chalk.gray(`  • Claude Code: ${result.claudeCode.length} files`));
+    if (result.cursor.length) console.log(chalk.gray(`  • Cursor: ${result.cursor.length} files`));
+    if (result.gemini.length) console.log(chalk.gray(`  • Gemini: ${result.gemini.length} files`));
+    if (result.copilot.length) console.log(chalk.gray(`  • Copilot: ${result.copilot.length} files`));
+    if (result.windsurf.length) console.log(chalk.gray(`  • Windsurf: ${result.windsurf.length} files`));
+    if (result.continueDev.length) console.log(chalk.gray(`  • Continue.dev: ${result.continueDev.length} files`));
+  });
+
 program.parse(process.argv);

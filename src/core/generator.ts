@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Resolve templates directory (handles both dev and production)
-function getTemplatesDir(): string {
+export function getTemplatesDir(): string {
   // In production (dist/), templates are at package root
   // In development (src/), templates are at package root
   // Both resolve to same location
