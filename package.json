@@ -57,6 +57,7 @@
     "@modelcontextprotocol/sdk": "^1.22.0",
     "@types/blessed": "^0.1.26",
     "ansi-escapes": "^7.2.0",
+    "better-sqlite3": "^12.8.0",
     "blessed": "^0.1.81",
     "chalk": "^5.3.0",
     "cli-cursor": "^5.0.0",
@@ -68,12 +69,12 @@
     "node-notifier": "^10.0.1",
     "ora": "^9.0.0",
     "picocolors": "^1.0.0",
-    "sql.js": "^1.14.0",
     "uuid": "^13.0.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/inquirer": "^9.0.0",
     "@types/js-yaml": "^4.0.0",
     "@types/node": "^24.10.1",

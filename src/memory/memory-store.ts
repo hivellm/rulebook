@@ -1,32 +1,28 @@
 /**
- * SQLite Storage Layer using sql.js (WASM)
+ * SQLite Storage Layer using better-sqlite3 (native)
  *
  * Provides CRUD operations for memories and sessions,
  * with FTS5 full-text search (BM25 ranking).
+ *
+ * Replaced sql.js (WASM) in v5.0 to eliminate:
+ * - Full DB export() copies on every save (100-500MB allocations)
+ * - WASM JIT warmup delay (~300ms on init)
+ * - Event loop blocking on synchronous writeFileSync of entire DB
+ *
+ * better-sqlite3 writes directly to disk via SQLite's WAL journal.
+ * No export(), no manual saveToDisk(), no memory copies.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, statSync } from 'fs';
 import { join } from 'path';
+import Database from 'better-sqlite3';
+import type { Database as DatabaseType } from 'better-sqlite3';
 import type { Memory, MemorySession, MemoryType } from './memory-types.js';
 
-// sql.js types (loaded dynamically)
-type SqlJsDatabase = {
-  run(sql: string, params?: unknown[]): void;
-  exec(sql: string): Array<{ columns: string[]; values: unknown[][] }>;
-  export(): Uint8Array;
-  close(): void;
-};
-
-// Increase threshold to reduce blocking syncs during heavy write bursts
-// (db.export() + writeFileSync blocks the event loop for the full DB size)
-const AUTO_SAVE_THRESHOLD = 200;
-
 export class MemoryStore {
-  private db: SqlJsDatabase | null = null;
+  private db: DatabaseType | null = null;
   private dbPath: string;
-  private writeCount = 0;
   private initialized = false;
-  private _cachedSizeBytes = 0;
 
   constructor(dbPath: string) {
     this.dbPath = dbPath;
@@ -41,31 +37,22 @@ export class MemoryStore {
       mkdirSync(dir, { recursive: true });
     }
 
-    // Dynamic import sql.js
-    const initSqlJs = (await import('sql.js')).default;
-    const SQL = await initSqlJs();
+    // better-sqlite3 opens/creates the file directly — no async needed
+    this.db = new Database(this.dbPath);
 
-    // Load existing DB or create new
-    if (existsSync(this.dbPath)) {
-      const fileData = readFileSync(this.dbPath);
-      this.db = new SQL.Database(fileData) as unknown as SqlJsDatabase;
-    } else {
-      this.db = new SQL.Database() as unknown as SqlJsDatabase;
-    }
+    // Enable WAL mode for better concurrent read/write performance
+    this.db.pragma('journal_mode = WAL');
+    // Enable foreign keys
+    this.db.pragma('foreign_keys = ON');
 
     this.createSchema();
     this.initialized = true;
-
-    // Force save to disk immediately after initialization to ensure the .db file exists.
-    // Without this, the DB only persists after AUTO_SAVE_THRESHOLD writes or explicit close(),
-    // which means sessions that end early never create the file on disk.
-    this.saveToDisk();
   }
 
   private createSchema(): void {
     if (!this.db) throw new Error('Database not initialized');
 
-    this.db.run(`
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS memories (
         id TEXT PRIMARY KEY,
         type TEXT NOT NULL,
@@ -80,7 +67,7 @@ export class MemoryStore {
       )
     `);
 
-    this.db.run(`
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
         project TEXT NOT NULL DEFAULT '',
@@ -93,7 +80,7 @@ export class MemoryStore {
     `);
 
     // --- Indexer Extensions ---
-    this.db.run(`
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS code_nodes (
         id TEXT PRIMARY KEY,
         type TEXT NOT NULL,
@@ -108,7 +95,7 @@ export class MemoryStore {
       )
     `);
 
-    this.db.run(`
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS code_edges (
         id TEXT PRIMARY KEY,
         source_id TEXT NOT NULL,
@@ -120,9 +107,8 @@ export class MemoryStore {
     `);
 
     // FTS5 virtual table for BM25 search
-    // Use external content mode synced with memories table
     try {
-      this.db.run(`
+      this.db.exec(`
         CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(
           title, content, type,
           content=memories,
@@ -131,21 +117,21 @@ export class MemoryStore {
       `);
 
       // Triggers to sync FTS with memories table
-      this.db.run(`
+      this.db.exec(`
         CREATE TRIGGER IF NOT EXISTS memory_fts_ai AFTER INSERT ON memories BEGIN
           INSERT INTO memory_fts(rowid, title, content, type)
             VALUES (new.rowid, new.title, new.content, new.type);
         END
       `);
 
-      this.db.run(`
+      this.db.exec(`
         CREATE TRIGGER IF NOT EXISTS memory_fts_ad AFTER DELETE ON memories BEGIN
           INSERT INTO memory_fts(memory_fts, rowid, title, content, type)
             VALUES ('delete', old.rowid, old.title, old.content, old.type);
         END
       `);
 
-      this.db.run(`
+      this.db.exec(`
         CREATE TRIGGER IF NOT EXISTS memory_fts_au AFTER UPDATE ON memories BEGIN
           INSERT INTO memory_fts(memory_fts, rowid, title, content, type)
             VALUES ('delete', old.rowid, old.title, old.content, old.type);
@@ -158,23 +144,15 @@ export class MemoryStore {
     }
 
     // Index for common queries
-    this.db.run('CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type)');
-    this.db.run('CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at)');
-    this.db.run('CREATE INDEX IF NOT EXISTS idx_memories_accessed ON memories(accessed_at)');
-    this.db.run('CREATE INDEX IF NOT EXISTS idx_memories_session ON memories(session_id)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_memories_accessed ON memories(accessed_at)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_memories_session ON memories(session_id)');
 
-    this.db.run('CREATE INDEX IF NOT EXISTS idx_code_nodes_type ON code_nodes(type)');
-    this.db.run('CREATE INDEX IF NOT EXISTS idx_code_nodes_path ON code_nodes(file_path)');
-    this.db.run('CREATE INDEX IF NOT EXISTS idx_code_edges_source ON code_edges(source_id)');
-    this.db.run('CREATE INDEX IF NOT EXISTS idx_code_edges_target ON code_edges(target_id)');
-  }
-
-  private trackWrite(): void {
-    this.writeCount++;
-    if (this.writeCount >= AUTO_SAVE_THRESHOLD) {
-      this.saveToDisk();
-      this.writeCount = 0;
-    }
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_code_nodes_type ON code_nodes(type)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_code_nodes_path ON code_nodes(file_path)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_code_edges_source ON code_edges(source_id)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_code_edges_target ON code_edges(target_id)');
   }
 
   // --- Memory CRUD ---
@@ -182,44 +160,38 @@ export class MemoryStore {
   saveMemory(memory: Memory): void {
     if (!this.db) throw new Error('Database not initialized');
 
-    this.db.run(
+    this.db.prepare(
       `INSERT OR REPLACE INTO memories (id, type, title, content, project, tags, session_id, created_at, updated_at, accessed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        memory.id,
-        memory.type,
-        memory.title,
-        memory.content,
-        memory.project,
-        JSON.stringify(memory.tags),
-        memory.sessionId ?? null,
-        memory.createdAt,
-        memory.updatedAt,
-        memory.accessedAt,
-      ]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      memory.id,
+      memory.type,
+      memory.title,
+      memory.content,
+      memory.project,
+      JSON.stringify(memory.tags),
+      memory.sessionId ?? null,
+      memory.createdAt,
+      memory.updatedAt,
+      memory.accessedAt,
     );
-    this.trackWrite();
   }
 
   getMemory(id: string): Memory | null {
     if (!this.db) throw new Error('Database not initialized');
 
-    const result = this.db.exec(
+    const row = this.db.prepare(
       `SELECT id, type, title, content, project, tags, session_id, created_at, updated_at, accessed_at
-       FROM memories WHERE id = '${id.replace(/'/g, "''")}'`
-    );
+       FROM memories WHERE id = ?`
+    ).get(id) as Record<string, unknown> | undefined;
 
-    if (result.length === 0 || result[0].values.length === 0) return null;
-
-    const row = result[0].values[0];
+    if (!row) return null;
     return this.rowToMemory(row);
   }
 
   deleteMemory(id: string): void {
     if (!this.db) throw new Error('Database not initialized');
-
-    this.db.run(`DELETE FROM memories WHERE id = ?`, [id]);
-    this.trackWrite();
+    this.db.prepare(`DELETE FROM memories WHERE id = ?`).run(id);
   }
 
   listMemories(options?: {
@@ -231,35 +203,38 @@ export class MemoryStore {
     if (!this.db) throw new Error('Database not initialized');
 
     const conditions: string[] = [];
-    if (options?.type) conditions.push(`type = '${options.type}'`);
-    if (options?.project) conditions.push(`project = '${options.project.replace(/'/g, "''")}'`);
+    const params: unknown[] = [];
+
+    if (options?.type) {
+      conditions.push(`type = ?`);
+      params.push(options.type);
+    }
+    if (options?.project) {
+      conditions.push(`project = ?`);
+      params.push(options.project);
+    }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const limit = options?.limit ? `LIMIT ${options.limit}` : 'LIMIT 100';
-    const offset = options?.offset ? `OFFSET ${options.offset}` : '';
+    const limit = options?.limit ?? 100;
+    const offset = options?.offset ?? 0;
 
-    const result = this.db.exec(
+    const rows = this.db.prepare(
       `SELECT id, type, title, content, project, tags, session_id, created_at, updated_at, accessed_at
-       FROM memories ${where} ORDER BY created_at DESC ${limit} ${offset}`
-    );
+       FROM memories ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+    ).all(...params, limit, offset) as Array<Record<string, unknown>>;
 
-    if (result.length === 0) return [];
-    return result[0].values.map((row) => this.rowToMemory(row));
+    return rows.map((row) => this.rowToMemory(row));
   }
 
   updateAccessedAt(id: string): void {
     if (!this.db) throw new Error('Database not initialized');
-
-    this.db.run(`UPDATE memories SET accessed_at = ? WHERE id = ?`, [Date.now(), id]);
-    this.trackWrite();
+    this.db.prepare(`UPDATE memories SET accessed_at = ? WHERE id = ?`).run(Date.now(), id);
   }
 
   getMemoryCount(): number {
     if (!this.db) throw new Error('Database not initialized');
-
-    const result = this.db.exec('SELECT COUNT(*) FROM memories');
-    if (result.length === 0) return 0;
-    return Number(result[0].values[0][0]);
+    const row = this.db.prepare('SELECT COUNT(*) as count FROM memories').get() as { count: number };
+    return row.count;
   }
 
   // --- BM25 Search ---
@@ -297,12 +272,10 @@ export class MemoryStore {
 
       sql += ` ORDER BY score LIMIT ${limit}`;
 
-      const result = this.db.exec(sql);
-      if (result.length === 0) return [];
-
-      return result[0].values.map((row) => ({
-        id: row[0] as string,
-        score: Math.abs(row[1] as number), // BM25 returns negative scores
+      const rows = this.db.prepare(sql).all() as Array<{ id: string; score: number }>;
+      return rows.map((row) => ({
+        id: row.id,
+        score: Math.abs(row.score), // BM25 returns negative scores
       }));
     } catch {
       // FTS5 not available or query error; fallback to LIKE
@@ -332,12 +305,10 @@ export class MemoryStore {
     if (filters?.project) sql += ` AND project = '${filters.project.replace(/'/g, "''")}'`;
     sql += ` LIMIT ${limit}`;
 
-    const result = this.db.exec(sql);
-    if (result.length === 0) return [];
-
-    return result[0].values.map((row, i) => ({
-      id: row[0] as string,
-      score: 1 / (i + 1), // Simple rank-based score
+    const rows = this.db.prepare(sql).all() as Array<{ id: string }>;
+    return rows.map((row, i) => ({
+      id: row.id,
+      score: 1 / (i + 1),
     }));
   }
 
@@ -346,92 +317,82 @@ export class MemoryStore {
   createSession(session: MemorySession): void {
     if (!this.db) throw new Error('Database not initialized');
 
-    this.db.run(
+    this.db.prepare(
       `INSERT INTO sessions (id, project, status, started_at, ended_at, summary, tool_calls)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        session.id,
-        session.project,
-        session.status,
-        session.startedAt,
-        session.endedAt ?? null,
-        session.summary ?? null,
-        session.toolCalls,
-      ]
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      session.id,
+      session.project,
+      session.status,
+      session.startedAt,
+      session.endedAt ?? null,
+      session.summary ?? null,
+      session.toolCalls,
     );
-    this.trackWrite();
   }
 
   endSession(id: string, summary?: string): void {
     if (!this.db) throw new Error('Database not initialized');
-
-    this.db.run(
-      `UPDATE sessions SET status = 'completed', ended_at = ?, summary = ? WHERE id = ?`,
-      [Date.now(), summary ?? null, id]
-    );
-    this.trackWrite();
+    this.db.prepare(
+      `UPDATE sessions SET status = 'completed', ended_at = ?, summary = ? WHERE id = ?`
+    ).run(Date.now(), summary ?? null, id);
   }
 
   getActiveSession(): MemorySession | null {
     if (!this.db) throw new Error('Database not initialized');
 
-    const result = this.db.exec(
+    const row = this.db.prepare(
       `SELECT id, project, status, started_at, ended_at, summary, tool_calls
        FROM sessions WHERE status = 'active' ORDER BY started_at DESC LIMIT 1`
-    );
+    ).get() as Record<string, unknown> | undefined;
 
-    if (result.length === 0 || result[0].values.length === 0) return null;
+    if (!row) return null;
 
-    const row = result[0].values[0];
     return {
-      id: row[0] as string,
-      project: row[1] as string,
-      status: row[2] as 'active' | 'completed',
-      startedAt: row[3] as number,
-      endedAt: row[4] as number | undefined,
-      summary: row[5] as string | undefined,
-      toolCalls: row[6] as number,
+      id: row.id as string,
+      project: row.project as string,
+      status: row.status as 'active' | 'completed',
+      startedAt: row.started_at as number,
+      endedAt: row.ended_at as number | undefined,
+      summary: row.summary as string | undefined,
+      toolCalls: row.tool_calls as number,
     };
   }
 
   getSessionCount(): number {
     if (!this.db) throw new Error('Database not initialized');
-
-    const result = this.db.exec('SELECT COUNT(*) FROM sessions');
-    if (result.length === 0) return 0;
-    return Number(result[0].values[0][0]);
+    const row = this.db.prepare('SELECT COUNT(*) as count FROM sessions').get() as { count: number };
+    return row.count;
   }
 
   // --- Queries for cache/stats ---
 
   getOldestMemoryTimestamp(): number | undefined {
     if (!this.db) return undefined;
-
-    const result = this.db.exec('SELECT MIN(created_at) FROM memories');
-    if (result.length === 0 || result[0].values[0][0] === null) return undefined;
-    return Number(result[0].values[0][0]);
+    const row = this.db.prepare('SELECT MIN(created_at) as ts FROM memories').get() as { ts: number | null };
+    return row.ts ?? undefined;
   }
 
   getNewestMemoryTimestamp(): number | undefined {
     if (!this.db) return undefined;
-
-    const result = this.db.exec('SELECT MAX(created_at) FROM memories');
-    if (result.length === 0 || result[0].values[0][0] === null) return undefined;
-    return Number(result[0].values[0][0]);
+    const row = this.db.prepare('SELECT MAX(created_at) as ts FROM memories').get() as { ts: number | null };
+    return row.ts ?? undefined;
   }
 
   getEvictionCandidates(batchSize: number, activeSessionId?: string): Array<{ id: string }> {
     if (!this.db) return [];
 
     let sql = `SELECT id FROM memories WHERE type != 'decision'`;
-    if (activeSessionId) {
-      sql += ` AND (session_id IS NULL OR session_id != '${activeSessionId.replace(/'/g, "''")}')`;
-    }
-    sql += ` ORDER BY accessed_at ASC, created_at ASC LIMIT ${batchSize}`;
+    const params: unknown[] = [];
 
-    const result = this.db.exec(sql);
-    if (result.length === 0) return [];
-    return result[0].values.map((row) => ({ id: row[0] as string }));
+    if (activeSessionId) {
+      sql += ` AND (session_id IS NULL OR session_id != ?)`;
+      params.push(activeSessionId);
+    }
+    sql += ` ORDER BY accessed_at ASC, created_at ASC LIMIT ?`;
+    params.push(batchSize);
+
+    return this.db.prepare(sql).all(...params) as Array<{ id: string }>;
   }
 
   /**
@@ -444,35 +405,34 @@ export class MemoryStore {
     if (!this.db) return [];
 
     // Get anchor memory's timestamp
-    const anchorResult = this.db.exec(
-      `SELECT created_at FROM memories WHERE id = '${memoryId.replace(/'/g, "''")}'`
-    );
-    if (anchorResult.length === 0 || anchorResult[0].values.length === 0) return [];
+    const anchor = this.db.prepare(
+      `SELECT created_at FROM memories WHERE id = ?`
+    ).get(memoryId) as { created_at: number } | undefined;
 
-    const anchorTs = anchorResult[0].values[0][0] as number;
+    if (!anchor) return [];
+    const anchorTs = anchor.created_at;
 
     // Get before + anchor + after
-    const result = this.db.exec(
+    const rows = this.db.prepare(
       `SELECT id, title, type, created_at FROM (
          SELECT id, title, type, created_at FROM memories
-         WHERE created_at <= ${anchorTs}
-         ORDER BY created_at DESC LIMIT ${window + 1}
+         WHERE created_at <= ?
+         ORDER BY created_at DESC LIMIT ?
        )
        UNION ALL
        SELECT id, title, type, created_at FROM (
          SELECT id, title, type, created_at FROM memories
-         WHERE created_at > ${anchorTs}
-         ORDER BY created_at ASC LIMIT ${window}
+         WHERE created_at > ?
+         ORDER BY created_at ASC LIMIT ?
        )
        ORDER BY created_at ASC`
-    );
+    ).all(anchorTs, window + 1, anchorTs, window) as Array<Record<string, unknown>>;
 
-    if (result.length === 0) return [];
-    return result[0].values.map((row) => ({
-      id: row[0] as string,
-      title: row[1] as string,
-      type: row[2] as string,
-      createdAt: row[3] as number,
+    return rows.map((row) => ({
+      id: row.id as string,
+      title: row.title as string,
+      type: row.type as string,
+      createdAt: row.created_at as number,
     }));
   }
 
@@ -480,45 +440,45 @@ export class MemoryStore {
 
   getDbSizeBytes(): number {
     if (!this.db) return 0;
-    // Return cached size to avoid calling db.export() which allocates
-    // a full copy of the database. Cache is updated on every saveToDisk().
-    return this._cachedSizeBytes;
+    // O(1) — reads page count and page size from SQLite internal state
+    // No memory allocation, no data copy (unlike sql.js db.export())
+    try {
+      const stat = statSync(this.dbPath);
+      return stat.size;
+    } catch {
+      return 0;
+    }
   }
 
   saveToDisk(): void {
-    if (!this.db) return;
-
-    const dir = join(this.dbPath, '..');
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+    // No-op: better-sqlite3 writes directly to disk via WAL journal.
+    // This method exists for API compatibility with code that calls it explicitly.
+    if (this.db) {
+      // Force a WAL checkpoint to ensure all data is in the main DB file
+      this.db.pragma('wal_checkpoint(TRUNCATE)');
     }
-
-    const data = this.db.export();
-    this._cachedSizeBytes = data.byteLength;
-    writeFileSync(this.dbPath, data);
   }
 
   close(): void {
     if (this.db) {
-      this.saveToDisk();
       this.db.close();
       this.db = null;
       this.initialized = false;
     }
   }
 
-  private rowToMemory(row: unknown[]): Memory {
+  private rowToMemory(row: Record<string, unknown>): Memory {
     return {
-      id: row[0] as string,
-      type: row[1] as MemoryType,
-      title: row[2] as string,
-      content: row[3] as string,
-      project: row[4] as string,
-      tags: JSON.parse((row[5] as string) || '[]'),
-      sessionId: (row[6] as string) || undefined,
-      createdAt: row[7] as number,
-      updatedAt: row[8] as number,
-      accessedAt: row[9] as number,
+      id: row.id as string,
+      type: row.type as MemoryType,
+      title: row.title as string,
+      content: row.content as string,
+      project: row.project as string,
+      tags: JSON.parse((row.tags as string) || '[]'),
+      sessionId: (row.session_id as string) || undefined,
+      createdAt: row.created_at as number,
+      updatedAt: row.updated_at as number,
+      accessedAt: row.accessed_at as number,
     };
   }
 
@@ -527,59 +487,51 @@ export class MemoryStore {
   saveCodeNode(node: import('../core/indexer/indexer-types.js').CodeNode): void {
     if (!this.db) throw new Error('Database not initialized');
 
-    this.db.run(
+    this.db.prepare(
       `INSERT OR REPLACE INTO code_nodes (id, type, name, file_path, start_line, end_line, content, summary, hash, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        node.id,
-        node.type,
-        node.name,
-        node.filePath,
-        node.startLine,
-        node.endLine,
-        node.content,
-        node.summary ?? null,
-        node.hash,
-        node.updatedAt,
-      ]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      node.id,
+      node.type,
+      node.name,
+      node.filePath,
+      node.startLine,
+      node.endLine,
+      node.content,
+      node.summary ?? null,
+      node.hash,
+      node.updatedAt,
     );
-    this.trackWrite();
   }
 
   saveCodeEdge(edge: import('../core/indexer/indexer-types.js').CodeEdge): void {
     if (!this.db) throw new Error('Database not initialized');
 
-    this.db.run(
+    this.db.prepare(
       `INSERT OR IGNORE INTO code_edges (id, source_id, target_id, type, weight)
-       VALUES (?, ?, ?, ?, ?)`,
-      [edge.id, edge.sourceId, edge.targetId, edge.type, edge.weight]
-    );
-    this.trackWrite();
+       VALUES (?, ?, ?, ?, ?)`
+    ).run(edge.id, edge.sourceId, edge.targetId, edge.type, edge.weight);
   }
 
   getCodeNodeIdsByFile(filePath: string): string[] {
     if (!this.db) return [];
-    const result = this.db.exec(
-      `SELECT id FROM code_nodes WHERE file_path = '${filePath.replace(/'/g, "''")}'`
-    );
-    if (result.length === 0) return [];
-    return result[0].values.map((row) => row[0] as string);
+    const rows = this.db.prepare(
+      `SELECT id FROM code_nodes WHERE file_path = ?`
+    ).all(filePath) as Array<{ id: string }>;
+    return rows.map((row) => row.id);
   }
 
   deleteCodeNodesByFile(filePath: string): void {
     if (!this.db) throw new Error('Database not initialized');
-    // Due to ON DELETE CASCADE, deleting the code_nodes will auto delete code_edges where source_id = node.id
-    this.db.run(`DELETE FROM code_nodes WHERE file_path = ?`, [filePath]);
-    this.trackWrite();
+    this.db.prepare(`DELETE FROM code_nodes WHERE file_path = ?`).run(filePath);
   }
 
   getCodeNodeByHash(id: string): string | null {
     if (!this.db) throw new Error('Database not initialized');
-    const result = this.db.exec(
-      `SELECT hash FROM code_nodes WHERE id = '${id.replace(/'/g, "''")}'`
-    );
-    if (result.length === 0 || result[0].values.length === 0) return null;
-    return result[0].values[0][0] as string;
+    const row = this.db.prepare(
+      `SELECT hash FROM code_nodes WHERE id = ?`
+    ).get(id) as { hash: string } | undefined;
+    return row?.hash ?? null;
   }
 
   getCodeNode(id: string): {
@@ -592,19 +544,19 @@ export class MemoryStore {
     updatedAt: number;
   } | null {
     if (!this.db) throw new Error('Database not initialized');
-    const result = this.db.exec(
-      `SELECT id, type, name, file_path, content, hash, updated_at FROM code_nodes WHERE id = '${id.replace(/'/g, "''")}'`
-    );
-    if (result.length === 0 || result[0].values.length === 0) return null;
-    const row = result[0].values[0];
+    const row = this.db.prepare(
+      `SELECT id, type, name, file_path, content, hash, updated_at FROM code_nodes WHERE id = ?`
+    ).get(id) as Record<string, unknown> | undefined;
+
+    if (!row) return null;
     return {
-      id: row[0] as string,
-      type: row[1] as string,
-      name: row[2] as string,
-      filePath: row[3] as string,
-      content: row[4] as string,
-      hash: row[5] as string,
-      updatedAt: row[6] as number,
+      id: row.id as string,
+      type: row.type as string,
+      name: row.name as string,
+      filePath: row.file_path as string,
+      content: row.content as string,
+      hash: row.hash as string,
+      updatedAt: row.updated_at as number,
     };
   }
 }
