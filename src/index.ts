@@ -114,6 +114,7 @@ program
   .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
   .option('--package <name>', 'Initialize only a single package inside a monorepo')
   .option('--add-sequential-thinking', 'Auto-add sequential-thinking MCP to .mcp.json')
+  .option('--tools <tools>', 'Comma-separated AI tools to generate for (e.g., claude-code,cursor,gemini)')
   .action(initCommand);
 
 program
@@ -294,6 +295,35 @@ taskCommand
     console.log('');
   });
 
+taskCommand
+  .command('blocked-by <task-id>')
+  .description('Show what blocks a specific task')
+  .action(async (taskId: string) => {
+    const chalk = (await import('chalk')).default;
+    const { TaskManager } = await import('./core/task-manager.js');
+    const { ConfigManager } = await import('./core/config-manager.js');
+    const cwd = process.cwd();
+    const cm = new ConfigManager(cwd);
+    const config = await cm.loadConfig();
+    const rulebookDir = config?.rulebookDir || '.rulebook';
+    const tm = new TaskManager(cwd, rulebookDir);
+    const metadata = await tm.getTaskMetadata(taskId);
+    if (!metadata) {
+      console.log(chalk.yellow(`Task "${taskId}" not found or has no metadata.`));
+      return;
+    }
+    const blockedBy = Array.isArray(metadata.blockedBy) ? metadata.blockedBy as string[] : [];
+    if (blockedBy.length === 0) {
+      console.log(chalk.green(`Task "${taskId}" is not blocked by anything.`));
+    } else {
+      console.log(chalk.bold(`\nTask "${taskId}" is blocked by:\n`));
+      for (const b of blockedBy) {
+        console.log(`  ${chalk.red('→')} ${b}`);
+      }
+      console.log('');
+    }
+  });
+
 // Legacy tasks command (deprecated)
 program
   .command('tasks')
@@ -316,6 +346,7 @@ program
   .option('--minimal', 'Regenerate using minimal mode (essentials only)')
   .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
   .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
+  .option('--tools <tools>', 'Comma-separated AI tools to generate for (e.g., claude-code,cursor,gemini)')
   .action(updateCommand);
 
 // MCP commands

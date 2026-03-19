@@ -293,6 +293,25 @@ export interface RulebookConfig {
     customSkillsPath?: string; // Path to custom skills directory
     autoDetect?: boolean; // Auto-enable skills based on detection
   };
+  // Agent framework configuration (v5.0)
+  agentFramework?: {
+    projectType?: 'game-engine' | 'compiler' | 'web-app' | 'mobile' | 'generic';
+    enableAgents?: boolean; // default: true when complexity is large/complex
+    enableMemory?: boolean; // default: true — create agent-memory/ dirs
+    modelAssignment?: {
+      core?: string; // default: 'opus'
+      standard?: string; // default: 'sonnet'
+      research?: string; // default: 'haiku'
+    };
+  };
+  // Reference implementation configuration (v5.0)
+  referenceSource?: {
+    enabled?: boolean;
+    path?: string; // Path to reference source tree
+    type?: 'source-tree' | 'compiler' | 'api-spec';
+    citationFormat?: string; // e.g., "@source UE5 <file>:<line>"
+    mandatoryFor?: string[]; // Domains requiring reference (e.g., ["rendering", "physics"])
+  };
 }
 
 export interface LogEntry {

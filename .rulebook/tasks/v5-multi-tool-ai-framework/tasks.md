@@ -5,12 +5,12 @@
 - [x] 0.2 Fix BackgroundIndexer `__trigger_batch__` fake path — use direct setTimeout <!-- 89a0f44 -->
 - [x] 0.3 Fix HNSW orphan leak: query node IDs before delete, call `index.remove()` for each <!-- 89a0f44 -->
 - [x] 0.4 Remove duplicate SIGTERM/SIGINT listeners in Ralph MCP tool <!-- 89a0f44 -->
-- [ ] 0.5 Replace sql.js (WASM) with better-sqlite3 (native) to eliminate full-DB export() copies
+- [x] 0.5 Replace sql.js (WASM) with better-sqlite3 (native) — zero-copy WAL writes, <5ms init, O(1) size check <!-- fd9851c -->
 - [x] 0.6 Replace HNSW `searchLayer` array `.sort()` with MinHeap/MaxHeap priority queues <!-- 89a0f44 -->
 - [x] 0.7 Fix BM25 FTS5 query safety — escape special chars, quote individual terms <!-- 89a0f44 -->
 - [x] 0.8 Clamp `exportMemories` limit from 100,000 to 1,000 to prevent OOM <!-- 89a0f44 -->
 - [x] 0.9 Move `checkAndEvict()` out of hot path — run every 50 saves, not on every save <!-- 89a0f44 -->
-- [ ] 0.10 Replace BackgroundIndexer `fs.watch` recursive with chokidar for proper ignore support
+- [x] 0.10 Replace BackgroundIndexer `fs.watch` with chokidar — OS-level ignore, write stabilization <!-- a305c79 -->
 
 ## 1. Universal Templates
 - [x] 1.1 Create `templates/core/TIER1_PROHIBITIONS.md` — 6 prohibitions (no-shortcuts, git-safety, no-delete, research-first, sequential-editing, no-deferred) <!-- d52e025 -->
