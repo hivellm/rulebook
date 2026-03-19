@@ -198,7 +198,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '4.4.1',
+    version: '5.0.0',
   });
 
   // --- Wrap all tool handlers with timeout guard ---
