@@ -81,6 +81,15 @@ export async function initCommand(options: {
     const detection = await detectProject(cwd);
     spinner.succeed('Project detection complete');
 
+    // Assess project complexity for calibrated generation (v5)
+    const { assessComplexity } = await import('../core/complexity-detector.js');
+    const complexity = assessComplexity(cwd);
+    console.log(
+      chalk.gray(
+        `  Complexity: ${complexity.tier.toUpperCase()} (${complexity.metrics.estimatedLoc.toLocaleString()} LOC, ${complexity.metrics.languageCount} languages)`
+      )
+    );
+
     // Show detection results
     if (detection.languages.length > 0) {
       console.log(chalk.green('\n✓ Detected languages:'));
@@ -341,6 +350,51 @@ export async function initCommand(options: {
     // Write AGENTS.md
     await writeFile(agentsPath, finalContent);
     console.log(chalk.green(`\n✅ AGENTS.md written to ${agentsPath}`));
+
+    // Install canonical rules based on complexity tier (v5)
+    {
+      const { installRule, projectRules } = await import('../core/rule-engine.js');
+      const { getTemplatesDir } = await import('../core/generator.js');
+      const templatesDir = getTemplatesDir();
+
+      // Tier 1 rules — always installed
+      const tier1Rules = ['no-shortcuts', 'git-safety', 'sequential-editing', 'research-first', 'follow-task-sequence'];
+      // Tier 2 rules — installed for medium+ complexity
+      const tier2Rules = ['task-decomposition', 'incremental-tests', 'no-deferred', 'session-workflow'];
+
+      const rulesToInstall = [...tier1Rules];
+      if (complexity.recommendations.tier2Rules) {
+        rulesToInstall.push(...tier2Rules);
+      }
+
+      let installedCount = 0;
+      for (const name of rulesToInstall) {
+        const result = await installRule(cwd, name, templatesDir);
+        if (result) installedCount++;
+      }
+
+      if (installedCount > 0) {
+        console.log(chalk.gray(`  • Installed ${installedCount} canonical rules to .rulebook/rules/`));
+      }
+
+      // Project rules to detected tools
+      const ruleResult = await projectRules(cwd, {
+        claudeCode: existsSync(path.join(cwd, '.claude')) || existsSync(path.join(cwd, 'CLAUDE.md')),
+        cursor: detection.cursor?.detected,
+        gemini: detection.geminiCli?.detected,
+        windsurf: detection.windsurf?.detected,
+        copilot: detection.githubCopilot?.detected,
+        continueDev: detection.continueDev?.detected,
+      });
+
+      const totalProjected =
+        ruleResult.claudeCode.length + ruleResult.cursor.length + ruleResult.gemini.length +
+        ruleResult.copilot.length + ruleResult.windsurf.length + ruleResult.continueDev.length;
+
+      if (totalProjected > 0) {
+        console.log(chalk.gray(`  • Projected rules to ${totalProjected} tool-specific files`));
+      }
+    }
 
     // Show Cursor MDC feedback
     if (detection.cursor?.detected) {

@@ -43,11 +43,11 @@
 - [x] 3.8 Implement graceful degradation for Gemini/Codex (agents → inline "When Editing" sections) <!-- d6e60ac -->
 - [x] 3.9 Add mandatory section injection: no-shortcuts, update-tasks, no-deferred, research-first + pre-flight checklists <!-- d6e60ac -->
 - [x] 3.10 Model tier labels (core/standard/research) mapped to model names in templates <!-- d6e60ac -->
-- [ ] 3.11 Add `agentFramework` config section to `.rulebook` schema
+- [x] 3.11 Add `agentFramework` + `referenceSource` config sections to types.ts <!-- cc4aae8 -->
 
 ## 4. Tool Detection & Multi-Tool Generation
 - [x] 4.1 Tool detection already existed in detector.ts (Claude Code, Cursor, Gemini, Codex, Windsurf, Continue.dev, Copilot) <!-- pre-existing -->
-- [ ] 4.2 Add `--tools` flag to `rulebook init` and `rulebook update`
+- [x] 4.2 Add `--tools` flag to `rulebook init` and `rulebook update` <!-- cc4aae8 -->
 - [x] 4.3 Tool-specific file generation via multi-tool-generator.ts + cursor-mdc-generator.ts <!-- pre-existing -->
 - [x] 4.4 Rule projection integrated into `rulebook update` — projects to ALL detected tools <!-- cf58fea -->
 - [x] 4.5 Tool detection indicators already in detector.ts <!-- pre-existing -->
@@ -58,14 +58,14 @@
 - [x] 5.3 Add `rulebook_rules_list` MCP tool — lists canonical rules with tier info <!-- af5a758 -->
 - [x] 5.4 Session CLI via existing `rulebook plans` commands (show/init/clear) <!-- pre-existing -->
 - [x] 5.5 Session end via `rulebook_session_end` MCP tool <!-- af5a758 -->
-- [ ] 5.6 Generate session workflow directive in all tool-specific files
+- [x] 5.6 Session workflow directive as canonical rule `session-workflow.md` — projected to all tools <!-- cc4aae8 -->
 
 ## 6. Enhanced Task Management
 - [x] 6.1 Add `getTaskMetadata()` supporting blocks/blockedBy/cascadeImpact <!-- af5a758 -->
 - [x] 6.2 Implement blocker chain in `rulebook_blockers` MCP tool — traverses metadata <!-- af5a758 -->
 - [x] 6.3 Add `rulebook task blockers` CLI command — sorted by cascade impact <!-- af5a758 -->
 - [x] 6.4 Add `rulebook_blockers` MCP tool <!-- af5a758 -->
-- [ ] 6.5 Add `rulebook task blocked-by <id>` CLI command
+- [x] 6.5 Add `rulebook task blocked-by <id>` CLI command <!-- cc4aae8 -->
 - [x] 6.6 Anti-deferred enforced via Tier 1 prohibition in TIER1_PROHIBITIONS.md <!-- d52e025 -->
 
 ## 7. Project Complexity Detection
@@ -73,7 +73,7 @@
 - [x] 7.2 Define complexity tiers (small/medium/large/complex) with recommendation profiles <!-- 10df8ae -->
 - [x] 7.3 Add `rulebook assess` CLI command — tested on rulebook (LARGE, 58K LOC) <!-- 10df8ae -->
 - [ ] 7.4 Implement calibrated generation per complexity tier
-- [ ] 7.5 Add `referenceSource` config for reference implementation workflows
+- [x] 7.5 `referenceSource` config added to RulebookConfig in types.ts <!-- cc4aae8 -->
 
 ## 8. Testing & Documentation
 - [x] 8.1 Unit tests for rule projection engine — 22 tests in rule-engine.test.ts <!-- ae26f91 -->
