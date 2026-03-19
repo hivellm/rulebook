@@ -2032,9 +2032,42 @@ async function updateSingleProject(
   await writeFile(agentsPath, mergedContent);
   mergeSpinner.succeed('AGENTS.md updated');
 
-  // Project canonical rules to all detected tools (v5 rule engine)
+  // Install + project canonical rules to all detected tools (v5 rule engine)
+  // On update: if .rulebook/rules/ is empty (v4 project), auto-install based on complexity
   {
-    const { projectRules } = await import('../core/rule-engine.js');
+    const { projectRules, installRule, loadCanonicalRules } = await import('../core/rule-engine.js');
+    const existingRules = await loadCanonicalRules(cwd);
+
+    if (existingRules.length === 0) {
+      // v4 project upgrading to v5 — install canonical rules based on complexity
+      const { assessComplexity } = await import('../core/complexity-detector.js');
+      const { getTemplatesDir } = await import('../core/generator.js');
+      const complexity = assessComplexity(cwd);
+      const templatesDir = getTemplatesDir();
+
+      const tier1 = ['no-shortcuts', 'git-safety', 'sequential-editing', 'research-first', 'follow-task-sequence'];
+      const tier2 = ['task-decomposition', 'incremental-tests', 'no-deferred', 'session-workflow'];
+
+      const toInstall = [...tier1];
+      if (complexity.recommendations.tier2Rules) {
+        toInstall.push(...tier2);
+      }
+
+      let installed = 0;
+      for (const name of toInstall) {
+        const result = await installRule(cwd, name, templatesDir);
+        if (result) installed++;
+      }
+
+      if (installed > 0) {
+        console.log(
+          chalk.gray(
+            `  • Installed ${installed} v5 canonical rules (${complexity.tier} project, ${complexity.metrics.estimatedLoc.toLocaleString()} LOC)`
+          )
+        );
+      }
+    }
+
     const ruleResult = await projectRules(cwd, {
       claudeCode: existsSync(path.join(cwd, '.claude')) || existsSync(path.join(cwd, 'CLAUDE.md')),
       cursor: detection.cursor?.detected,
