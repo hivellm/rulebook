@@ -10,6 +10,8 @@ checklist:
   - "Are all error paths handled?"
   - "Does this follow project conventions?"
   - "Are there any security vulnerabilities?"
+  - "Does this match known patterns in .rulebook/knowledge/patterns/?"
+  - "Does this repeat any known anti-pattern from .rulebook/knowledge/anti-patterns/?"
 ---
 
 You are a code reviewer focused on correctness and maintainability.

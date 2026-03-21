@@ -151,6 +151,18 @@ const MANDATORY_FOOTER = `
 NEVER simplify logic, add TODO/FIXME/HACK, create stubs, use placeholders, reduce scope,
 skip edge cases, or deliver partial implementations. Quality is everything.
 
+### Incremental Implementation — Step by Step
+NEVER implement everything at once. Decompose into small steps, implement ONE step, test/verify
+immediately, fix errors before proceeding. If stuck after 3 failed attempts on the same error:
+STOP, record the failure as anti-pattern, remove broken code, restart from scratch with a
+different approach. The line between persistence and stubbornness is thin.
+
+### Knowledge Base — Check Before, Record After
+BEFORE implementing: check \`.rulebook/knowledge/\` for existing patterns and anti-patterns.
+AFTER implementing: record what worked (pattern) and what failed (anti-pattern).
+After debugging: capture learnings with \`rulebook learn capture\`.
+The knowledge base exists so you don't repeat mistakes across sessions.
+
 ### Update tasks.md After Every Completion
 After completing ANY task, update the corresponding \`.rulebook/tasks/*/tasks.md\` file.
 Change \`- [ ]\` to \`- [x]\` with a brief description. Do this BEFORE reporting completion.

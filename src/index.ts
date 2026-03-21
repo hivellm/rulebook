@@ -800,7 +800,7 @@ rulesCommand
       console.log(chalk.gray('Run "rulebook update" to project rules to all detected tools'));
     } else {
       console.log(chalk.red(`✗ Rule template "${name}" not found`));
-      console.log(chalk.gray('Available: no-shortcuts, git-safety, sequential-editing, task-decomposition, research-first, incremental-tests, no-deferred'));
+      console.log(chalk.gray('Available: no-shortcuts, git-safety, sequential-editing, task-decomposition, research-first, incremental-tests, incremental-implementation, no-deferred, follow-task-sequence, session-workflow'));
     }
   });
 

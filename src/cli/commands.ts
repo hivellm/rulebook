@@ -358,7 +358,7 @@ export async function initCommand(options: {
       const templatesDir = getTemplatesDir();
 
       // Tier 1 rules — always installed
-      const tier1Rules = ['no-shortcuts', 'git-safety', 'sequential-editing', 'research-first', 'follow-task-sequence'];
+      const tier1Rules = ['no-shortcuts', 'git-safety', 'sequential-editing', 'research-first', 'follow-task-sequence', 'incremental-implementation'];
       // Tier 2 rules — installed for medium+ complexity
       const tier2Rules = ['task-decomposition', 'incremental-tests', 'no-deferred', 'session-workflow'];
 
@@ -2045,7 +2045,7 @@ async function updateSingleProject(
       const complexity = assessComplexity(cwd);
       const templatesDir = getTemplatesDir();
 
-      const tier1 = ['no-shortcuts', 'git-safety', 'sequential-editing', 'research-first', 'follow-task-sequence'];
+      const tier1 = ['no-shortcuts', 'git-safety', 'sequential-editing', 'research-first', 'follow-task-sequence', 'incremental-implementation'];
       const tier2 = ['task-decomposition', 'incremental-tests', 'no-deferred', 'session-workflow'];
 
       const toInstall = [...tier1];

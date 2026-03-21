@@ -33,10 +33,13 @@ Before reporting completion, verify:
 
 ## Workflow
 
-1. Read the implemented code and understand what needs testing
-2. Write tests following the existing test patterns in the project
-3. Run quality gates and fix any issues
-4. Report results to team lead via SendMessage
+1. **Check knowledge base** — read `.rulebook/knowledge/` for known testing patterns and pitfalls
+2. Read the implemented code and understand what needs testing
+3. Write tests **incrementally** — 1-3 at a time, run immediately, fix before continuing
+4. If tests cascade-fail after 3 attempts: delete them, restart from scratch with a simpler approach
+5. Run quality gates and fix any issues
+6. **Record learnings** — capture testing patterns and discoveries in knowledge base
+7. Report results to team lead via SendMessage
 
 ## Rules
 
