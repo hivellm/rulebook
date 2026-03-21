@@ -23,7 +23,7 @@ Large Language Models (LLMs) for software development need **clear directives** 
 
 - 📋 **Comprehensive Rule Sets**: Language-specific guidelines (TypeScript, Rust, Python, etc.), framework conventions (NestJS, Django, React), testing standards, linting rules, spell-checking, CI/CD pipelines, Git hooks, and version control best practices
 - 🤖 **Ralph Autonomous Loop**: Multi-iteration AI agent task solving with quality gates (type-check, lint, tests, coverage), iteration tracking, learnings extraction, and graceful pause/resume
-- 🧠 **Persistent Memory**: Context that survives across AI sessions with hybrid BM25+HNSW search, zero native dependencies
+- 🧠 **Persistent Memory**: Context that survives across AI sessions with hybrid BM25+HNSW search, native SQLite with WASM fallback
 - 🎯 **Normalized Deliverables**: Ensures consistent code quality across all AI-generated outputs
 - 🛡️ **Error Reduction**: Catches issues early through automated quality gates and pre-commit/pre-push hooks
 - ⚙️ **Process Automation**: Automates repetitive tasks like formatting, testing, and deployment
@@ -63,6 +63,25 @@ npx @hivehub/rulebook@latest rules project   # Project to all tools
 
 See the full [CHANGELOG](CHANGELOG.md) for details.
 
+### v5.1.0 — Incremental Implementation & Knowledge Base Integration
+
+Born from real-world experience: AI agents that implement everything at once produce cascading errors. This release makes **step-by-step implementation** and **knowledge base usage** mandatory for all agents.
+
+**New Tier 1 Rule: `incremental-implementation`**
+- Decompose, implement ONE step, test/verify, repeat
+- **3-attempt restart rule**: if stuck 3 times on the same error, STOP, record anti-pattern, restart from scratch
+- "The line between persistence and stubbornness is thin"
+
+**Knowledge Base as Mandatory Workflow**
+- All agents now check `.rulebook/knowledge/` BEFORE implementing
+- All agents record patterns/anti-patterns AFTER completing
+- Code reviewers validate against known patterns and anti-patterns
+- Project managers track KB health and remind agents to record learnings
+
+**41 New Memory Store Tests**
+- Comprehensive CRUD, FTS5 search, sessions, persistence, code nodes
+- sql.js fallback validation (for environments without native build tools)
+
 ### v5.0.0 — Multi-Tool AI Framework
 
 The biggest release yet. Rulebook becomes a **tool-agnostic AI development framework** — same quality directives for every AI tool, with graceful degradation.
@@ -78,8 +97,8 @@ The biggest release yet. Rulebook becomes a **tool-agnostic AI development frame
 - Cursor: contextual `.mdc` rules activated by file glob patterns
 - Gemini/Codex: inline conditional sections
 
-**7 Tier 1 Prohibitions** (auto-installed, universal)
-- No shortcuts/stubs/TODOs, git safety allow-list, no delete without authorization, research-first, sequential editing, no deferred tasks, **follow task sequence** (no cherry-picking)
+**8 Tier 1 Prohibitions** (auto-installed, universal)
+- No shortcuts/stubs/TODOs, git safety allow-list, no delete without authorization, research-first, sequential editing, no deferred tasks, follow task sequence, **incremental implementation** (step by step, restart if stuck)
 
 **Project Complexity Detection**
 - `rulebook assess` — auto-detects LOC, languages, structure
@@ -183,8 +202,8 @@ Session 2 (new tab, days later):
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
-| **Storage** | SQLite via sql.js WASM | Zero native compilation, works everywhere |
-| **Keyword Search** | BM25 | Fast exact-match scoring |
+| **Storage** | better-sqlite3 (native) with sql.js fallback | Fast native SQLite with WAL journal; falls back to WASM if no build tools |
+| **Keyword Search** | BM25 via FTS5 | Fast exact-match scoring |
 | **Vector Search** | HNSW index | Semantic similarity matching |
 | **Embeddings** | TF-IDF + FNV1a hashing | 256-dim vectors, pure TypeScript, no API calls |
 | **Ranking** | Reciprocal Rank Fusion | Combines BM25 + vector scores |
@@ -377,7 +396,7 @@ Cross-project operations (search, task listing) are explicit and deliberate.
   - Graceful pause/resume capabilities
   - Complete iteration history and metrics
   - 6 CLI commands + 4 MCP tools
-- 🧠 **Persistent Memory**: Context that survives across AI sessions — hybrid BM25+HNSW search, auto-capture, zero native dependencies
+- 🧠 **Persistent Memory**: Context that survives across AI sessions — hybrid BM25+HNSW search, auto-capture, native SQLite with WASM fallback
 - 🔍 **Auto-Detection**: Detects languages, frameworks, MCP modules, and services from your project files
 - 📁 **Modular Architecture**: Templates in `/.rulebook/` directory — smaller AGENTS.md, on-demand loading
 - 🔗 **Git Hook Automation**: Pre-commit/pre-push hooks with language-aware quality checks

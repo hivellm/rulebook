@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.0] - 2026-03-21
+
+### Added — Incremental Implementation & Knowledge Base Integration
+
+- **New Tier 1 Rule: `incremental-implementation`** — Implement step by step, test each step, restart from scratch if stuck after 3 failed attempts. Enforces the principle: "The line between persistence and stubbornness is thin."
+- **Knowledge Base as mandatory workflow** — All agents now check `.rulebook/knowledge/` before implementing and record patterns/anti-patterns after completing. Knowledge base is no longer optional side feature — it's integrated into every agent's workflow.
+- **Agent MANDATORY_FOOTER updated** — Every generated agent now includes:
+  - Incremental implementation directive (decompose → implement one step → verify → repeat)
+  - 3-attempt restart rule (stop, record anti-pattern, restart from scratch)
+  - Knowledge base check-before / record-after directive
+- **Agent template updates**:
+  - `implementer`: Workflow starts with KB check, implements incrementally, records learnings
+  - `tester`: Includes cascade-fail restart rule and KB pitfall check
+  - `code-reviewer`: Checklist validates against known patterns and anti-patterns
+  - `test-engineer`: Checklist includes KB testing pitfalls
+  - `project-manager`: Tracks KB health and reminds agents to record learnings
+- **sql.js fallback fix**: `saveToDisk()` now called after `createSchema()` to ensure .db file exists on disk for sql.js backend
+- **41 new memory store tests**: Comprehensive CRUD, FTS5 search, sessions, persistence, code nodes, code edges, and sql.js fallback validation
+
+### Changed
+
+- Tier 1 rules list expanded from 5 to 6 (added `incremental-implementation`)
+- CLI `rules add` help text updated with complete list of all 10 available rules
+- `rulebook init` and `rulebook update` both auto-install the new rule
+
 ## [5.0.0] - 2026-03-19
 
 ### Added — Multi-Tool AI Framework
