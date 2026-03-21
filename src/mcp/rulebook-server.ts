@@ -837,15 +837,18 @@ export async function startRulebookMcpServer(): Promise<void> {
         memoryManager = createMemoryManager(projectRoot, rulebookConfig.memory);
         autoCaptureEnabled = rulebookConfig.memory.autoCapture !== false;
 
-        // Boot Background Indexer — deferred to avoid blocking server startup
-        bgIndexer = new BackgroundIndexer(memoryManager, projectRoot, { enabled: true });
-        setTimeout(() => {
-          try {
-            bgIndexer?.start();
-          } catch (e) {
-            console.error('[rulebook-mcp] BackgroundIndexer start failed:', e);
-          }
-        }, 5000);
+        // Boot Background Indexer only if memory is enabled (opt-in to save resources)
+        const indexerEnabled = rulebookConfig.memory?.enabled === true;
+        if (indexerEnabled) {
+          bgIndexer = new BackgroundIndexer(memoryManager, projectRoot, { enabled: true });
+          setTimeout(() => {
+            try {
+              bgIndexer?.start();
+            } catch (e) {
+              console.error('[rulebook-mcp] BackgroundIndexer start failed:', e);
+            }
+          }, 5000);
+        }
 
         (global as any).__indexerStatus = () => bgIndexer?.getStatus();
       } catch (e) {

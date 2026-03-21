@@ -176,10 +176,10 @@ export class ConfigManager {
         testRun: 120000, // 2 minutes
       },
       memory: {
-        enabled: true,
+        enabled: false,
         dbPath: '.rulebook/memory/memory.db',
         maxSizeBytes: 524288000,
-        autoCapture: true,
+        autoCapture: false,
         vectorDimensions: 256,
       },
       ralph: {
@@ -267,21 +267,20 @@ export class ConfigManager {
       };
     }
 
-    // Add/update memory config with defaults enabled
+    // Add memory config with defaults (disabled by default to save resources)
     if (!migrated.memory) {
       migrated.memory = {
-        enabled: true,
+        enabled: false,
         dbPath: '.rulebook/memory/memory.db',
         maxSizeBytes: 524288000,
-        autoCapture: true,
+        autoCapture: false,
         vectorDimensions: 256,
       };
     } else {
-      // Ensure memory is enabled in migration
-      migrated.memory.enabled = true;
+      // Preserve existing memory.enabled — don't force it
       if (!migrated.memory.dbPath) migrated.memory.dbPath = '.rulebook/memory/memory.db';
       if (!migrated.memory.maxSizeBytes) migrated.memory.maxSizeBytes = 524288000;
-      if (migrated.memory.autoCapture === undefined) migrated.memory.autoCapture = true;
+      if (migrated.memory.autoCapture === undefined) migrated.memory.autoCapture = false;
       if (!migrated.memory.vectorDimensions) migrated.memory.vectorDimensions = 256;
     }
 

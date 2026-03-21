@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { hasEmbeddedTemplates, migrateEmbeddedTemplates } from '../src/core/migrator';
+import {
+  hasEmbeddedTemplates,
+  migrateEmbeddedTemplates,
+  hasFlatLayout,
+  migrateFlatToSpecs,
+} from '../src/core/migrator';
 import type { ExistingAgentsInfo, ProjectConfig } from '../src/types';
 import { readFile, fileExists } from '../src/utils/file-system';
 import path from 'path';
@@ -378,6 +383,235 @@ React content here.
       expect(result).toContain('<!-- RULEBOOK:START -->');
       expect(result).toContain('/.rulebook/specs/TYPESCRIPT.md');
       expect(result).toContain('/.rulebook/specs/VECTORIZER.md');
+    });
+  });
+
+  describe('migrateEmbeddedTemplates — framework block not found (lines 115-118)', () => {
+    it('should generate new framework template when block is not found in existing blocks', async () => {
+      const agentsWithoutFrameworkBlock: ExistingAgentsInfo = {
+        exists: true,
+        path: '',
+        content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+        blocks: [
+          {
+            name: 'RULEBOOK',
+            startLine: 0,
+            endLine: 1,
+            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+          },
+          // No REACT block present
+        ],
+      };
+
+      const frameworkConfig: ProjectConfig = {
+        ...config,
+        frameworks: ['react'],
+      };
+
+      const result = await migrateEmbeddedTemplates(
+        agentsWithoutFrameworkBlock,
+        frameworkConfig,
+        testDir
+      );
+
+      expect(result.extractedFrameworks).toContain('react');
+      const reactPath = path.join(testDir, '.rulebook', 'specs', 'REACT.md');
+      expect(await fileExists(reactPath)).toBe(true);
+    });
+
+    it('should generate new framework template when framework block has empty content', async () => {
+      const agentsWithEmptyFrameworkBlock: ExistingAgentsInfo = {
+        exists: true,
+        path: '',
+        content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+        blocks: [
+          {
+            name: 'RULEBOOK',
+            startLine: 0,
+            endLine: 1,
+            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+          },
+          {
+            name: 'NESTJS',
+            startLine: 2,
+            endLine: 2,
+            content: '', // empty content triggers fallback to generateFrameworkRules
+          },
+        ],
+      };
+
+      const frameworkConfig: ProjectConfig = {
+        ...config,
+        frameworks: ['nestjs'],
+      };
+
+      const result = await migrateEmbeddedTemplates(
+        agentsWithEmptyFrameworkBlock,
+        frameworkConfig,
+        testDir
+      );
+
+      expect(result.extractedFrameworks).toContain('nestjs');
+      const nestjsPath = path.join(testDir, '.rulebook', 'specs', 'NESTJS.md');
+      expect(await fileExists(nestjsPath)).toBe(true);
+    });
+
+    it('should handle multiple frameworks where some blocks are found and some are not', async () => {
+      const agentsMixed: ExistingAgentsInfo = {
+        exists: true,
+        path: '',
+        content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+        blocks: [
+          {
+            name: 'RULEBOOK',
+            startLine: 0,
+            endLine: 1,
+            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
+          },
+          {
+            name: 'REACT',
+            startLine: 2,
+            endLine: 4,
+            content:
+              '<!-- REACT:START -->\n# React Rules\nReact content here.\n<!-- REACT:END -->',
+          },
+          // No VUE block — will trigger generateFrameworkRules
+        ],
+      };
+
+      const frameworkConfig: ProjectConfig = {
+        ...config,
+        frameworks: ['react', 'vue'],
+      };
+
+      const result = await migrateEmbeddedTemplates(agentsMixed, frameworkConfig, testDir);
+
+      expect(result.extractedFrameworks).toContain('react');
+      expect(result.extractedFrameworks).toContain('vue');
+
+      const reactPath = path.join(testDir, '.rulebook', 'specs', 'REACT.md');
+      const vuePath = path.join(testDir, '.rulebook', 'specs', 'VUE.md');
+      expect(await fileExists(reactPath)).toBe(true);
+      expect(await fileExists(vuePath)).toBe(true);
+    });
+  });
+
+  describe('hasFlatLayout', () => {
+    it('should return true when known spec files exist in rulebook root but not in specs/', async () => {
+      const rulebookRoot = path.join(testDir, '.rulebook');
+      await fs.mkdir(rulebookRoot, { recursive: true });
+      // Write a known spec file directly in rulebook root (flat layout)
+      await fs.writeFile(path.join(rulebookRoot, 'RULEBOOK.md'), '# Rulebook');
+
+      const result = await hasFlatLayout(testDir);
+      expect(result).toBe(true);
+    });
+
+    it('should return false when specs/ already has the file', async () => {
+      const rulebookRoot = path.join(testDir, '.rulebook');
+      const specsDir = path.join(rulebookRoot, 'specs');
+      await fs.mkdir(specsDir, { recursive: true });
+      // Write the file in BOTH locations — specs/ takes precedence
+      await fs.writeFile(path.join(rulebookRoot, 'RULEBOOK.md'), '# Rulebook');
+      await fs.writeFile(path.join(specsDir, 'RULEBOOK.md'), '# Rulebook');
+
+      const result = await hasFlatLayout(testDir);
+      expect(result).toBe(false);
+    });
+
+    it('should return false when no known spec files exist in rulebook root', async () => {
+      const rulebookRoot = path.join(testDir, '.rulebook');
+      await fs.mkdir(rulebookRoot, { recursive: true });
+      // Rulebook root is empty — no flat layout files
+
+      const result = await hasFlatLayout(testDir);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('migrateFlatToSpecs', () => {
+    it('should move .md files from rulebook root to specs/ subdirectory', async () => {
+      const rulebookRoot = path.join(testDir, '.rulebook');
+      await fs.mkdir(rulebookRoot, { recursive: true });
+      await fs.writeFile(path.join(rulebookRoot, 'TYPESCRIPT.md'), '# TypeScript rules');
+      await fs.writeFile(path.join(rulebookRoot, 'RULEBOOK.md'), '# Rulebook rules');
+
+      const result = await migrateFlatToSpecs(testDir);
+
+      expect(result.migratedFiles).toContain('TYPESCRIPT.md');
+      expect(result.migratedFiles).toContain('RULEBOOK.md');
+
+      // Files should now be in specs/
+      const tsSpec = path.join(rulebookRoot, 'specs', 'TYPESCRIPT.md');
+      const rbSpec = path.join(rulebookRoot, 'specs', 'RULEBOOK.md');
+      expect(await fileExists(tsSpec)).toBe(true);
+      expect(await fileExists(rbSpec)).toBe(true);
+
+      // Original files should be gone
+      expect(await fileExists(path.join(rulebookRoot, 'TYPESCRIPT.md'))).toBe(false);
+      expect(await fileExists(path.join(rulebookRoot, 'RULEBOOK.md'))).toBe(false);
+    });
+
+    it('should not move non-.md files', async () => {
+      const rulebookRoot = path.join(testDir, '.rulebook');
+      await fs.mkdir(rulebookRoot, { recursive: true });
+      await fs.writeFile(path.join(rulebookRoot, 'config.json'), '{}');
+      await fs.writeFile(path.join(rulebookRoot, 'TYPESCRIPT.md'), '# TS');
+
+      const result = await migrateFlatToSpecs(testDir);
+
+      expect(result.migratedFiles).toContain('TYPESCRIPT.md');
+      expect(result.migratedFiles).not.toContain('config.json');
+
+      // config.json should still be in root
+      const configExists = await fileExists(path.join(rulebookRoot, 'config.json'));
+      expect(configExists).toBe(true);
+    });
+
+    it('should return empty migratedFiles when rulebook directory does not exist', async () => {
+      // testDir/.rulebook does not exist
+      const result = await migrateFlatToSpecs(testDir);
+      expect(result.migratedFiles).toEqual([]);
+    });
+
+    it('should use custom rulebookDir when provided', async () => {
+      const customRoot = path.join(testDir, 'custom-rulebook');
+      await fs.mkdir(customRoot, { recursive: true });
+      await fs.writeFile(path.join(customRoot, 'GIT.md'), '# Git rules');
+
+      const result = await migrateFlatToSpecs(testDir, 'custom-rulebook');
+
+      expect(result.migratedFiles).toContain('GIT.md');
+      const gitSpec = path.join(customRoot, 'specs', 'GIT.md');
+      expect(await fileExists(gitSpec)).toBe(true);
+    });
+
+    it('should not move subdirectories even if they could match .md pattern', async () => {
+      const rulebookRoot = path.join(testDir, '.rulebook');
+      const tasksDir = path.join(rulebookRoot, 'tasks');
+      await fs.mkdir(tasksDir, { recursive: true });
+      await fs.writeFile(path.join(rulebookRoot, 'QUALITY_ENFORCEMENT.md'), '# QE');
+
+      const result = await migrateFlatToSpecs(testDir);
+
+      expect(result.migratedFiles).toContain('QUALITY_ENFORCEMENT.md');
+      // tasks directory should still exist
+      const tasksDirExists = await fileExists(tasksDir);
+      expect(tasksDirExists).toBe(true);
+    });
+
+    it('should skip entries that are directories even with .md extension (stat covers line 206)', async () => {
+      const rulebookRoot = path.join(testDir, '.rulebook');
+      // Create a directory whose name ends in .md to hit the stat.isFile() false branch
+      const fakeMdDir = path.join(rulebookRoot, 'fake.md');
+      await fs.mkdir(fakeMdDir, { recursive: true });
+      await fs.writeFile(path.join(rulebookRoot, 'REAL.md'), '# Real');
+
+      const result = await migrateFlatToSpecs(testDir);
+
+      // Only the real file should be migrated, not the directory
+      expect(result.migratedFiles).toContain('REAL.md');
+      expect(result.migratedFiles).not.toContain('fake.md');
     });
   });
 });

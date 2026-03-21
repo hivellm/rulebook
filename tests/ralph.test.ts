@@ -8,6 +8,13 @@ import { existsSync, rmSync } from 'fs';
 import { join } from 'path';
 import { mkdir } from 'fs/promises';
 
+// Module-level mock for ralph-plan-checkpoint — allows per-test control via vi.mocked()
+vi.mock('../src/core/ralph-plan-checkpoint.js', () => ({
+  shouldRunCheckpoint: vi.fn().mockReturnValue(false),
+  generateIterationPlan: vi.fn().mockResolvedValue(''),
+  requestPlanApproval: vi.fn().mockResolvedValue({ approved: true }),
+}));
+
 describe('Ralph Autonomous Loop', () => {
   let tempDir: string;
   let logger: Logger;
@@ -702,6 +709,220 @@ describe('Ralph Autonomous Loop', () => {
       expect(prd.userStories).toHaveLength(1);
       // No tasks.md means default acceptance criteria
       expect(prd.userStories[0].acceptanceCriteria).toContain('Implementation complete');
+    });
+  });
+
+  describe('RalphManager — extended coverage', () => {
+    let manager: RalphManager;
+
+    beforeEach(() => {
+      manager = new RalphManager(tempDir, logger);
+    });
+
+    it('should return zero stats when no PRD exists', async () => {
+      const stats = await manager.getTaskStats();
+      expect(stats.completed).toBe(0);
+      expect(stats.pending).toBe(0);
+      expect(stats.total).toBe(0);
+    });
+
+    it('should return empty stats when PRD has no userStories field', async () => {
+      const ralphDir = join(tempDir, '.rulebook', 'ralph');
+      await mkdir(ralphDir, { recursive: true });
+      const { writeFile: wf } = await import('fs/promises');
+      await wf(join(ralphDir, 'prd.json'), JSON.stringify({ project: 'x' }));
+
+      const stats = await manager.getTaskStats();
+      expect(stats.total).toBe(0);
+    });
+
+    it('should handle getNextTask when PRD has no userStories field', async () => {
+      const ralphDir = join(tempDir, '.rulebook', 'ralph');
+      await mkdir(ralphDir, { recursive: true });
+      const { writeFile: wf } = await import('fs/promises');
+      await wf(join(ralphDir, 'prd.json'), JSON.stringify({ project: 'x' }));
+
+      const next = await manager.getNextTask();
+      expect(next).toBeNull();
+    });
+
+    it('should return empty batches when no PRD exists for getParallelBatches', async () => {
+      const batches = await manager.getParallelBatches(3);
+      expect(batches).toEqual([]);
+    });
+
+    it('should return empty batches when all stories are complete for getParallelBatches', async () => {
+      const ralphDir = join(tempDir, '.rulebook', 'ralph');
+      await mkdir(ralphDir, { recursive: true });
+      const { writeFile: wf } = await import('fs/promises');
+      await wf(
+        join(ralphDir, 'prd.json'),
+        JSON.stringify({
+          project: 'done',
+          userStories: [
+            {
+              id: 'US-001',
+              title: 'Done Story',
+              description: 'Already done',
+              acceptanceCriteria: [],
+              priority: 1,
+              passes: true,
+              notes: '',
+            },
+          ],
+        })
+      );
+
+      const batches = await manager.getParallelBatches(3);
+      expect(batches).toEqual([]);
+    });
+
+    it('should return null from getStatus when state file is corrupt', async () => {
+      const ralphDir = join(tempDir, '.rulebook', 'ralph');
+      await mkdir(ralphDir, { recursive: true });
+      const { writeFile: wf } = await import('fs/promises');
+      // Write corrupt JSON — loadLoopState catches the parse error and returns null
+      await wf(join(ralphDir, 'state.json'), '{ invalid json !!!');
+
+      const status = await manager.getStatus();
+      expect(status).toBeNull();
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('should load persisted loop state from disk via getStatus', async () => {
+      // Initialize populates and saves state.json; a fresh manager should load it
+      await manager.initialize(7, 'amp');
+
+      const manager2 = new RalphManager(tempDir, logger);
+      const status = await manager2.getStatus();
+      expect(status).not.toBeNull();
+      expect(status?.max_iterations).toBe(7);
+      expect(status?.tool).toBe('amp');
+    });
+
+    it('should return batches with pending stories for getParallelBatches', async () => {
+      const ralphDir = join(tempDir, '.rulebook', 'ralph');
+      await mkdir(ralphDir, { recursive: true });
+      const { writeFile: wf } = await import('fs/promises');
+      await wf(
+        join(ralphDir, 'prd.json'),
+        JSON.stringify({
+          project: 'test',
+          userStories: [
+            {
+              id: 'US-001',
+              title: 'Story One',
+              description: 'First pending story',
+              acceptanceCriteria: ['Works'],
+              priority: 1,
+              passes: false,
+              notes: '',
+            },
+            {
+              id: 'US-002',
+              title: 'Story Two',
+              description: 'Second pending story',
+              acceptanceCriteria: ['Also works'],
+              priority: 2,
+              passes: false,
+              notes: '',
+            },
+          ],
+        })
+      );
+
+      const batches = await manager.getParallelBatches(2);
+      expect(batches.length).toBeGreaterThan(0);
+      const allStories = batches.flat();
+      expect(allStories.length).toBe(2);
+    });
+
+    it('should skip checkpoint when shouldRunCheckpoint returns false', async () => {
+      const checkpoint = await import('../src/core/ralph-plan-checkpoint.js');
+      vi.mocked(checkpoint.shouldRunCheckpoint).mockReturnValue(false);
+
+      const story = {
+        id: 'US-001',
+        title: 'Test Story',
+        description: 'A story',
+        acceptanceCriteria: ['Works'],
+        priority: 1,
+        passes: false,
+        notes: '',
+      };
+
+      const config = { enabled: false, requireApprovalForStories: 'none' as const, autoApproveAfterSeconds: 0 };
+      const result = await manager.runCheckpoint(story, 'claude', config);
+      expect(result.proceed).toBe(true);
+      expect(checkpoint.generateIterationPlan).not.toHaveBeenCalled();
+    });
+
+    it('should proceed when plan generation returns empty output', async () => {
+      const checkpoint = await import('../src/core/ralph-plan-checkpoint.js');
+      vi.mocked(checkpoint.shouldRunCheckpoint).mockReturnValue(true);
+      vi.mocked(checkpoint.generateIterationPlan).mockResolvedValue('');
+
+      const story = {
+        id: 'US-002',
+        title: 'Empty Plan Story',
+        description: 'A story with empty plan',
+        acceptanceCriteria: ['Works'],
+        priority: 1,
+        passes: false,
+        notes: '',
+      };
+
+      const config = { enabled: true, requireApprovalForStories: 'all' as const, autoApproveAfterSeconds: 0 };
+      const result = await manager.runCheckpoint(story, 'claude', config);
+      expect(result.proceed).toBe(true);
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('empty output'));
+    });
+
+    it('should proceed when plan is approved', async () => {
+      const checkpoint = await import('../src/core/ralph-plan-checkpoint.js');
+      vi.mocked(checkpoint.shouldRunCheckpoint).mockReturnValue(true);
+      vi.mocked(checkpoint.generateIterationPlan).mockResolvedValue('Step 1: do X\nStep 2: do Y');
+      vi.mocked(checkpoint.requestPlanApproval).mockResolvedValue({ approved: true });
+
+      const story = {
+        id: 'US-003',
+        title: 'Approved Story',
+        description: 'A story with an approved plan',
+        acceptanceCriteria: ['Works'],
+        priority: 1,
+        passes: false,
+        notes: '',
+      };
+
+      const config = { enabled: true, requireApprovalForStories: 'all' as const, autoApproveAfterSeconds: 0 };
+      const result = await manager.runCheckpoint(story, 'claude', config);
+      expect(result.proceed).toBe(true);
+      expect(result.feedback).toBeUndefined();
+    });
+
+    it('should return proceed false with feedback when plan is rejected', async () => {
+      const checkpoint = await import('../src/core/ralph-plan-checkpoint.js');
+      vi.mocked(checkpoint.shouldRunCheckpoint).mockReturnValue(true);
+      vi.mocked(checkpoint.generateIterationPlan).mockResolvedValue('Some plan content');
+      vi.mocked(checkpoint.requestPlanApproval).mockResolvedValue({
+        approved: false,
+        feedback: 'Need more detail on step 2',
+      });
+
+      const story = {
+        id: 'US-004',
+        title: 'Rejected Story',
+        description: 'A story with a rejected plan',
+        acceptanceCriteria: ['Works'],
+        priority: 1,
+        passes: false,
+        notes: '',
+      };
+
+      const config = { enabled: true, requireApprovalForStories: 'all' as const, autoApproveAfterSeconds: 0 };
+      const result = await manager.runCheckpoint(story, 'claude', config);
+      expect(result.proceed).toBe(false);
+      expect(result.feedback).toBe('Need more detail on step 2');
     });
   });
 
