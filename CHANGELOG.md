@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.1] - 2026-03-24
+
+### Fixed — MCP Server Memory Leak & Orphan Processes
+
+- **Orphan process prevention**: Added `SIGTERM`, `SIGHUP` signal handlers and `stdin` close detection to `rulebook-server.js`. Previously only `SIGINT` was handled — when Claude Code exited, the MCP server kept running as an orphan, leaking memory indefinitely.
+- **stdin polling safety net**: Added 30s polling fallback for Windows environments where stdin `close`/`end` events may not fire reliably.
+- **HNSW index memory cap**: Added `maxNodes` option (default 50,000) to the in-memory HNSW vector index with FIFO eviction. Previously the index grew unboundedly as the BackgroundIndexer processed files, contributing to multi-GB memory usage over time.
+- **PID file instance guard**: Added `mcp-server.pid` lock file in `.rulebook/` to prevent multiple MCP server instances for the same project. Detects and takes over stale PID files from dead processes.
+- **autoCapture import caching**: Cached the dynamic `import('../memory/memory-hooks.js')` after first call instead of re-importing on every tool invocation.
+- **Flaky migrator test fix**: Changed `tests/migrator.test.ts` to use unique OS temp directories instead of a fixed `tmp-test-migrator/` path in the project root, eliminating EPERM errors from parallel test worker file contention.
+
 ## [5.1.0] - 2026-03-21
 
 ### Added — Incremental Implementation & Knowledge Base Integration

@@ -2,7 +2,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { existsSync, readFileSync, statSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'fs';
 import { basename, dirname, join, resolve } from 'path';
 import { z } from 'zod';
 import { ConfigManager } from '../core/config-manager.js';
@@ -96,6 +96,65 @@ function loadConfig() {
   return { projectRoot, tasksDir, archiveDir };
 }
 
+// --- PID file guard: prevent multiple MCP server instances for the same project ---
+
+const PID_FILE_NAME = 'mcp-server.pid';
+
+/**
+ * Check if a PID file exists and if the recorded process is still alive.
+ * If alive, exit this instance. If stale (process died), take over.
+ */
+export function acquirePidLock(projectRoot: string): string {
+  const pidDir = join(projectRoot, '.rulebook');
+  const pidPath = join(pidDir, PID_FILE_NAME);
+
+  if (existsSync(pidPath)) {
+    try {
+      const raw = readFileSync(pidPath, 'utf8').trim();
+      const existingPid = parseInt(raw, 10);
+      if (!isNaN(existingPid)) {
+        // Check if process is still alive (signal 0 = existence check)
+        try {
+          process.kill(existingPid, 0);
+          // Process is alive — another server is running
+          console.error(
+            `[rulebook-mcp] Another instance is already running (PID ${existingPid}). Exiting.`
+          );
+          process.exit(0);
+        } catch {
+          // Process is dead — stale PID file, take over
+          console.error(
+            `[rulebook-mcp] Stale PID file found (PID ${existingPid} no longer exists). Taking over.`
+          );
+        }
+      }
+    } catch {
+      // Corrupt PID file — overwrite
+    }
+  }
+
+  // Write our PID
+  if (!existsSync(pidDir)) {
+    mkdirSync(pidDir, { recursive: true });
+  }
+  writeFileSync(pidPath, String(process.pid), 'utf8');
+  return pidPath;
+}
+
+export function releasePidLock(pidPath: string): void {
+  try {
+    if (existsSync(pidPath)) {
+      const raw = readFileSync(pidPath, 'utf8').trim();
+      // Only remove if it's OUR PID (another instance may have taken over)
+      if (parseInt(raw, 10) === process.pid) {
+        unlinkSync(pidPath);
+      }
+    }
+  } catch {
+    // Best-effort cleanup
+  }
+}
+
 export async function startRulebookMcpServer(): Promise<void> {
   // --- Workspace vs Single-Project Mode ---
   let isWorkspaceMode = process.argv.includes('--workspace');
@@ -165,6 +224,9 @@ export async function startRulebookMcpServer(): Promise<void> {
     configManager = new ConfigManager(projectRoot);
   }
 
+  // --- PID file lock: prevent multiple instances for the same project ---
+  const pidFilePath = acquirePidLock(projectRoot);
+
   // --- Manager Resolution Helpers (workspace-aware) ---
 
   async function getTaskMgr(projectId?: string): Promise<TaskManager> {
@@ -198,7 +260,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '5.1.0',
+    version: '5.1.1',
   });
 
   // --- Wrap all tool handlers with timeout guard ---
@@ -857,23 +919,60 @@ export async function startRulebookMcpServer(): Promise<void> {
     }
   }
 
-  // Graceful shutdown for both modes
-  process.on('SIGINT', async () => {
-    console.error('[rulebook-mcp] Shutting down...');
-    if (workspaceManager) {
-      await workspaceManager.shutdownAll();
+  // --- Graceful shutdown for both modes ---
+  // Handles SIGINT (Ctrl+C), SIGTERM (parent exit), SIGHUP (terminal close),
+  // and stdin close (parent process died without signaling).
+  let isShuttingDown = false;
+
+  async function gracefulShutdown(reason: string): Promise<void> {
+    if (isShuttingDown) return; // Prevent double-shutdown races
+    isShuttingDown = true;
+    console.error(`[rulebook-mcp] Shutting down (${reason})...`);
+    try {
+      if (bgIndexer) bgIndexer.stop();
+      if (workspaceManager) {
+        await workspaceManager.shutdownAll();
+      }
+      if (memoryManager) await memoryManager.close();
+      releasePidLock(pidFilePath);
+    } catch (e) {
+      console.error('[rulebook-mcp] Error during shutdown:', e);
     }
-    if (bgIndexer) bgIndexer.stop();
-    if (memoryManager) await memoryManager.close();
     process.exit(0);
-  });
+  }
+
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
+
+  // Detect parent process exit: when the MCP client (e.g. Claude Code) dies,
+  // stdin closes. Without this, the server becomes an orphan that leaks memory.
+  process.stdin.on('end', () => gracefulShutdown('stdin closed'));
+  process.stdin.on('close', () => gracefulShutdown('stdin closed'));
+
+  // Safety net: if stdin becomes unreadable but doesn't emit 'end'/'close'
+  // (can happen on Windows), poll stdin.readable every 30s.
+  const STDIN_POLL_INTERVAL_MS = 30_000;
+  const stdinPollTimer = setInterval(() => {
+    if (process.stdin.destroyed || !process.stdin.readable) {
+      clearInterval(stdinPollTimer);
+      gracefulShutdown('stdin unreadable');
+    }
+  }, STDIN_POLL_INTERVAL_MS);
+  stdinPollTimer.unref(); // Don't keep the process alive just for this timer
 
   /**
    * Auto-capture: save tool interactions to memory in the background.
    * Fire-and-forget — never blocks or fails the original tool call.
    * Has its own 2s timeout to prevent hanging the event loop.
+   *
+   * The dynamic import is cached after the first call to avoid repeated
+   * module loading overhead on every tool invocation.
    */
   const AUTO_CAPTURE_TIMEOUT_MS = 2000;
+  let _captureFromToolCall: typeof import('../memory/memory-hooks.js').captureFromToolCall | null =
+    null;
+
   async function autoCapture(
     toolName: string,
     args: Record<string, unknown>,
@@ -883,8 +982,11 @@ export async function startRulebookMcpServer(): Promise<void> {
     try {
       await withTimeout(
         (async () => {
-          const { captureFromToolCall } = await import('../memory/memory-hooks.js');
-          const captured = captureFromToolCall(toolName, args, resultText);
+          if (!_captureFromToolCall) {
+            const mod = await import('../memory/memory-hooks.js');
+            _captureFromToolCall = mod.captureFromToolCall;
+          }
+          const captured = _captureFromToolCall(toolName, args, resultText);
           if (!captured) return;
           await memoryManager!.saveMemory({
             type: captured.type,

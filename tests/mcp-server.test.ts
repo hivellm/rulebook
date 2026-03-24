@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { findRulebookConfig } from '../src/mcp/rulebook-server.js';
+import { findRulebookConfig, acquirePidLock, releasePidLock } from '../src/mcp/rulebook-server.js';
 import { TaskManager } from '../src/core/task-manager.js';
 import { SkillsManager } from '../src/core/skills-manager.js';
 import { ConfigManager } from '../src/core/config-manager.js';
@@ -332,6 +332,91 @@ describeOrSkip('MCP Server', () => {
       }));
 
       expect(Array.isArray(results)).toBe(true);
+    });
+  });
+
+  describe('PID File Lock', () => {
+    let pidTestDir: string;
+
+    beforeEach(async () => {
+      pidTestDir = join(tmpdir(), `rulebook-pid-test-${Date.now()}`);
+      await fs.mkdir(join(pidTestDir, '.rulebook'), { recursive: true });
+    });
+
+    afterEach(async () => {
+      if (existsSync(pidTestDir)) {
+        await fs.rm(pidTestDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should create PID file with current process PID', () => {
+      const pidPath = acquirePidLock(pidTestDir);
+      expect(existsSync(pidPath)).toBe(true);
+
+      const content = readFileSync(pidPath, 'utf8').trim();
+      expect(parseInt(content, 10)).toBe(process.pid);
+
+      releasePidLock(pidPath);
+    });
+
+    it('should release PID file on shutdown', () => {
+      const pidPath = acquirePidLock(pidTestDir);
+      expect(existsSync(pidPath)).toBe(true);
+
+      releasePidLock(pidPath);
+      expect(existsSync(pidPath)).toBe(false);
+    });
+
+    it('should not release PID file if owned by another PID', () => {
+      const pidPath = acquirePidLock(pidTestDir);
+
+      // Simulate another process taking over
+      writeFileSync(pidPath, '999999999', 'utf8');
+
+      releasePidLock(pidPath);
+      // Should NOT have been deleted since PID doesn't match
+      expect(existsSync(pidPath)).toBe(true);
+      expect(readFileSync(pidPath, 'utf8').trim()).toBe('999999999');
+    });
+
+    it('should take over stale PID file from dead process', () => {
+      const pidPath = join(pidTestDir, '.rulebook', 'mcp-server.pid');
+      // Write a PID that definitely doesn't exist
+      writeFileSync(pidPath, '999999999', 'utf8');
+
+      const result = acquirePidLock(pidTestDir);
+      expect(result).toBe(pidPath);
+
+      const content = readFileSync(pidPath, 'utf8').trim();
+      expect(parseInt(content, 10)).toBe(process.pid);
+
+      releasePidLock(pidPath);
+    });
+
+    it('should handle corrupt PID file gracefully', () => {
+      const pidPath = join(pidTestDir, '.rulebook', 'mcp-server.pid');
+      writeFileSync(pidPath, 'not-a-number', 'utf8');
+
+      const result = acquirePidLock(pidTestDir);
+      expect(result).toBe(pidPath);
+
+      const content = readFileSync(pidPath, 'utf8').trim();
+      expect(parseInt(content, 10)).toBe(process.pid);
+
+      releasePidLock(pidPath);
+    });
+
+    it('should create .rulebook directory if it does not exist', async () => {
+      const freshDir = join(tmpdir(), `rulebook-pid-fresh-${Date.now()}`);
+      await fs.mkdir(freshDir, { recursive: true });
+
+      try {
+        const pidPath = acquirePidLock(freshDir);
+        expect(existsSync(pidPath)).toBe(true);
+        releasePidLock(pidPath);
+      } finally {
+        await fs.rm(freshDir, { recursive: true, force: true });
+      }
     });
   });
 });

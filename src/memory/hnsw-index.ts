@@ -133,6 +133,7 @@ export interface HNSWConfig {
   M?: number; // max connections per layer (default: 16)
   efConstruction?: number; // construction search width (default: 200)
   dimensions: number;
+  maxNodes?: number; // cap on index size to prevent unbounded memory growth (default: 50000)
 }
 
 const MAGIC_NUMBER = 0x484e5357; // 'HNSW'
@@ -142,8 +143,10 @@ export class HNSWIndex {
   private readonly M: number;
   private readonly efConstruction: number;
   private readonly dimensions: number;
+  private readonly maxNodes: number;
   private readonly mL: number; // normalization factor for layer assignment
   private nodes: Map<string, HNSWNode> = new Map();
+  private insertionOrder: string[] = []; // tracks insertion order for FIFO eviction
   private entryPoint: string | null = null;
   private maxLayer = 0;
 
@@ -151,6 +154,7 @@ export class HNSWIndex {
     this.M = config.M ?? 16;
     this.efConstruction = config.efConstruction ?? 200;
     this.dimensions = config.dimensions;
+    this.maxNodes = config.maxNodes ?? 50_000;
     this.mL = 1 / Math.log(this.M);
   }
 
@@ -267,6 +271,14 @@ export class HNSWIndex {
       this.remove(label);
     }
 
+    // Evict oldest nodes when at capacity to prevent unbounded memory growth
+    while (this.nodes.size >= this.maxNodes && this.insertionOrder.length > 0) {
+      const oldest = this.insertionOrder.shift()!;
+      if (this.nodes.has(oldest)) {
+        this.remove(oldest);
+      }
+    }
+
     const nodeLayer = this.randomLayer();
     const node: HNSWNode = {
       label,
@@ -281,6 +293,7 @@ export class HNSWIndex {
     }
 
     this.nodes.set(label, node);
+    this.insertionOrder.push(label);
 
     if (this.entryPoint === null) {
       this.entryPoint = label;
@@ -612,6 +625,7 @@ export class HNSWIndex {
         layer: data.layer,
       };
       index.nodes.set(data.label, node);
+      index.insertionOrder.push(data.label);
     }
 
     if (entryPointIndex >= 0 && entryPointIndex < labels.length) {
