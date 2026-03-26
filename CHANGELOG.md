@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.2] - 2026-03-26
+
+### Fixed — MCP Server Per-Session PID Lock
+
+- **Multiple MCP instances now coexist**: Replaced single `mcp-server.pid` lock with session-scoped `mcp-server.<pid>.pid` files. Each VSCode/Claude Code session gets its own MCP server instance — no more `process.exit(0)` blocking concurrent windows.
+- **Stale PID cleanup on startup**: New `cleanStalePidFiles()` scans `.rulebook/mcp-server.*.pid` on startup and removes files from dead processes.
+- **Legacy backward-compat**: Old `mcp-server.pid` format is cleaned up if stale or corrupt; alive instances are left untouched.
+- **Cross-platform PID tests**: Moved PID lock tests outside Windows-skip block — 12 tests now run on all platforms.
+
 ## [5.1.1] - 2026-03-24
 
 ### Fixed — MCP Server Memory Leak & Orphan Processes

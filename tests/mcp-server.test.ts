@@ -1,10 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { findRulebookConfig, acquirePidLock, releasePidLock } from '../src/mcp/rulebook-server.js';
+import {
+  findRulebookConfig,
+  acquirePidLock,
+  releasePidLock,
+  cleanStalePidFiles,
+} from '../src/mcp/rulebook-server.js';
 import { TaskManager } from '../src/core/task-manager.js';
 import { SkillsManager } from '../src/core/skills-manager.js';
 import { ConfigManager } from '../src/core/config-manager.js';
 import { promises as fs } from 'fs';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -335,7 +340,10 @@ describeOrSkip('MCP Server', () => {
     });
   });
 
-  describe('PID File Lock', () => {
+});
+
+// PID file tests are platform-independent — run on all OSes including Windows
+describe('PID File Lock (per-session)', () => {
     let pidTestDir: string;
 
     beforeEach(async () => {
@@ -349,9 +357,12 @@ describeOrSkip('MCP Server', () => {
       }
     });
 
-    it('should create PID file with current process PID', () => {
+    it('should create session-scoped PID file with current process PID', () => {
       const pidPath = acquirePidLock(pidTestDir);
       expect(existsSync(pidPath)).toBe(true);
+
+      // File should be named mcp-server.<pid>.pid
+      expect(pidPath).toContain(`mcp-server.${process.pid}.pid`);
 
       const content = readFileSync(pidPath, 'utf8').trim();
       expect(parseInt(content, 10)).toBe(process.pid);
@@ -367,10 +378,10 @@ describeOrSkip('MCP Server', () => {
       expect(existsSync(pidPath)).toBe(false);
     });
 
-    it('should not release PID file if owned by another PID', () => {
+    it('should not release PID file if content was changed to another PID', () => {
       const pidPath = acquirePidLock(pidTestDir);
 
-      // Simulate another process taking over
+      // Simulate content overwrite (unlikely but defensive)
       writeFileSync(pidPath, '999999999', 'utf8');
 
       releasePidLock(pidPath);
@@ -379,29 +390,73 @@ describeOrSkip('MCP Server', () => {
       expect(readFileSync(pidPath, 'utf8').trim()).toBe('999999999');
     });
 
-    it('should take over stale PID file from dead process', () => {
-      const pidPath = join(pidTestDir, '.rulebook', 'mcp-server.pid');
-      // Write a PID that definitely doesn't exist
-      writeFileSync(pidPath, '999999999', 'utf8');
+    it('should allow multiple concurrent instances (no process.exit)', () => {
+      // Simulate another alive instance by writing a PID file for current process
+      const otherPidPath = join(pidTestDir, '.rulebook', `mcp-server.${process.pid}.pid`);
+      writeFileSync(otherPidPath, String(process.pid), 'utf8');
 
-      const result = acquirePidLock(pidTestDir);
-      expect(result).toBe(pidPath);
-
-      const content = readFileSync(pidPath, 'utf8').trim();
-      expect(parseInt(content, 10)).toBe(process.pid);
+      // acquirePidLock should NOT exit — just register (same PID in test, overwrites)
+      const pidPath = acquirePidLock(pidTestDir);
+      expect(existsSync(pidPath)).toBe(true);
 
       releasePidLock(pidPath);
     });
 
-    it('should handle corrupt PID file gracefully', () => {
-      const pidPath = join(pidTestDir, '.rulebook', 'mcp-server.pid');
-      writeFileSync(pidPath, 'not-a-number', 'utf8');
+    it('should clean stale PID files from dead processes on startup', () => {
+      // Write PID files for processes that don't exist
+      const stale1 = join(pidTestDir, '.rulebook', 'mcp-server.999999991.pid');
+      const stale2 = join(pidTestDir, '.rulebook', 'mcp-server.999999992.pid');
+      writeFileSync(stale1, '999999991', 'utf8');
+      writeFileSync(stale2, '999999992', 'utf8');
 
-      const result = acquirePidLock(pidTestDir);
-      expect(result).toBe(pidPath);
+      // acquirePidLock cleans stale files on startup
+      const pidPath = acquirePidLock(pidTestDir);
 
-      const content = readFileSync(pidPath, 'utf8').trim();
-      expect(parseInt(content, 10)).toBe(process.pid);
+      expect(existsSync(stale1)).toBe(false);
+      expect(existsSync(stale2)).toBe(false);
+      expect(existsSync(pidPath)).toBe(true);
+
+      releasePidLock(pidPath);
+    });
+
+    it('should clean legacy mcp-server.pid if stale', () => {
+      const legacyPath = join(pidTestDir, '.rulebook', 'mcp-server.pid');
+      writeFileSync(legacyPath, '999999999', 'utf8');
+
+      const pidPath = acquirePidLock(pidTestDir);
+
+      // Legacy stale file should be cleaned
+      expect(existsSync(legacyPath)).toBe(false);
+      // Our session PID file should exist
+      expect(existsSync(pidPath)).toBe(true);
+
+      releasePidLock(pidPath);
+    });
+
+    it('should not remove legacy mcp-server.pid if process is alive', () => {
+      const legacyPath = join(pidTestDir, '.rulebook', 'mcp-server.pid');
+      // Write current process PID (alive) as legacy format
+      writeFileSync(legacyPath, String(process.pid), 'utf8');
+
+      const pidPath = acquirePidLock(pidTestDir);
+
+      // Legacy file should be preserved (process is alive)
+      expect(existsSync(legacyPath)).toBe(true);
+      // Our session PID file should also exist
+      expect(existsSync(pidPath)).toBe(true);
+
+      releasePidLock(pidPath);
+    });
+
+    it('should handle corrupt legacy PID file gracefully', () => {
+      const legacyPath = join(pidTestDir, '.rulebook', 'mcp-server.pid');
+      writeFileSync(legacyPath, 'not-a-number', 'utf8');
+
+      const pidPath = acquirePidLock(pidTestDir);
+
+      // Corrupt legacy file should be removed
+      expect(existsSync(legacyPath)).toBe(false);
+      expect(existsSync(pidPath)).toBe(true);
 
       releasePidLock(pidPath);
     });
@@ -418,5 +473,36 @@ describeOrSkip('MCP Server', () => {
         await fs.rm(freshDir, { recursive: true, force: true });
       }
     });
-  });
+
+    describe('cleanStalePidFiles', () => {
+      it('should remove only stale PID files', () => {
+        // Stale file (dead PID)
+        const stalePath = join(pidTestDir, '.rulebook', 'mcp-server.999999999.pid');
+        writeFileSync(stalePath, '999999999', 'utf8');
+
+        // Alive file (current process)
+        const alivePath = join(pidTestDir, '.rulebook', `mcp-server.${process.pid}.pid`);
+        writeFileSync(alivePath, String(process.pid), 'utf8');
+
+        cleanStalePidFiles(pidTestDir);
+
+        expect(existsSync(stalePath)).toBe(false);
+        expect(existsSync(alivePath)).toBe(true);
+      });
+
+      it('should handle non-existent .rulebook directory', () => {
+        const emptyDir = join(tmpdir(), `rulebook-pid-empty-${Date.now()}`);
+        // Should not throw
+        expect(() => cleanStalePidFiles(emptyDir)).not.toThrow();
+      });
+
+      it('should not touch non-PID files', () => {
+        const otherFile = join(pidTestDir, '.rulebook', 'config.json');
+        writeFileSync(otherFile, '{}', 'utf8');
+
+        cleanStalePidFiles(pidTestDir);
+
+        expect(existsSync(otherFile)).toBe(true);
+      });
+    });
 });

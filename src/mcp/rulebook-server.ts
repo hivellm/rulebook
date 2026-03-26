@@ -2,7 +2,15 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from 'fs';
 import { basename, dirname, join, resolve } from 'path';
 import { z } from 'zod';
 import { ConfigManager } from '../core/config-manager.js';
@@ -96,56 +104,109 @@ function loadConfig() {
   return { projectRoot, tasksDir, archiveDir };
 }
 
-// --- PID file guard: prevent multiple MCP server instances for the same project ---
+// --- PID file guard: allow multiple MCP server instances (one per session) ---
+// Each instance writes its own PID file: mcp-server.<pid>.pid
+// Stale PID files from dead processes are cleaned up on startup.
 
-const PID_FILE_NAME = 'mcp-server.pid';
+const PID_FILE_PREFIX = 'mcp-server.';
+const PID_FILE_SUFFIX = '.pid';
+const LEGACY_PID_FILE_NAME = 'mcp-server.pid';
 
 /**
- * Check if a PID file exists and if the recorded process is still alive.
- * If alive, exit this instance. If stale (process died), take over.
+ * Check if a process with the given PID is still alive.
+ */
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Remove stale PID files from dead processes.
+ * Also cleans up the legacy single-PID file format (mcp-server.pid).
+ */
+export function cleanStalePidFiles(projectRoot: string): void {
+  const pidDir = join(projectRoot, '.rulebook');
+  if (!existsSync(pidDir)) return;
+
+  try {
+    const files = readdirSync(pidDir);
+    for (const file of files) {
+      // Match session-scoped PID files: mcp-server.<digits>.pid
+      const sessionMatch = file.match(/^mcp-server\.(\d+)\.pid$/);
+      if (sessionMatch) {
+        const pid = parseInt(sessionMatch[1], 10);
+        if (!isNaN(pid) && !isProcessAlive(pid)) {
+          try {
+            unlinkSync(join(pidDir, file));
+            console.error(`[rulebook-mcp] Cleaned stale PID file (PID ${pid}).`);
+          } catch {
+            // Best-effort cleanup
+          }
+        }
+        continue;
+      }
+
+      // Clean legacy mcp-server.pid if stale or corrupt
+      if (file === LEGACY_PID_FILE_NAME) {
+        try {
+          const raw = readFileSync(join(pidDir, file), 'utf8').trim();
+          const pid = parseInt(raw, 10);
+          if (isNaN(pid)) {
+            // Corrupt content — remove it
+            unlinkSync(join(pidDir, file));
+            console.error(`[rulebook-mcp] Cleaned corrupt legacy PID file.`);
+          } else if (!isProcessAlive(pid)) {
+            unlinkSync(join(pidDir, file));
+            console.error(`[rulebook-mcp] Cleaned stale legacy PID file (PID ${pid}).`);
+          }
+        } catch {
+          // Read/unlink failed — try to remove
+          try {
+            unlinkSync(join(pidDir, file));
+          } catch {
+            // Best-effort
+          }
+        }
+      }
+    }
+  } catch {
+    // Best-effort — don't block startup if cleanup fails
+  }
+}
+
+/**
+ * Register this MCP server instance with a session-scoped PID file.
+ * Multiple instances can coexist — one per client session.
+ * Cleans up stale PID files from dead processes before registering.
  */
 export function acquirePidLock(projectRoot: string): string {
   const pidDir = join(projectRoot, '.rulebook');
-  const pidPath = join(pidDir, PID_FILE_NAME);
 
-  if (existsSync(pidPath)) {
-    try {
-      const raw = readFileSync(pidPath, 'utf8').trim();
-      const existingPid = parseInt(raw, 10);
-      if (!isNaN(existingPid)) {
-        // Check if process is still alive (signal 0 = existence check)
-        try {
-          process.kill(existingPid, 0);
-          // Process is alive — another server is running
-          console.error(
-            `[rulebook-mcp] Another instance is already running (PID ${existingPid}). Exiting.`
-          );
-          process.exit(0);
-        } catch {
-          // Process is dead — stale PID file, take over
-          console.error(
-            `[rulebook-mcp] Stale PID file found (PID ${existingPid} no longer exists). Taking over.`
-          );
-        }
-      }
-    } catch {
-      // Corrupt PID file — overwrite
-    }
-  }
+  // Clean up dead instances before registering
+  cleanStalePidFiles(projectRoot);
 
-  // Write our PID
+  // Write our session-scoped PID file
   if (!existsSync(pidDir)) {
     mkdirSync(pidDir, { recursive: true });
   }
+  const pidPath = join(pidDir, `${PID_FILE_PREFIX}${process.pid}${PID_FILE_SUFFIX}`);
   writeFileSync(pidPath, String(process.pid), 'utf8');
+  console.error(`[rulebook-mcp] Registered instance (PID ${process.pid}).`);
   return pidPath;
 }
 
+/**
+ * Remove this instance's PID file on shutdown.
+ * Only deletes the file if it still contains our PID.
+ */
 export function releasePidLock(pidPath: string): void {
   try {
     if (existsSync(pidPath)) {
       const raw = readFileSync(pidPath, 'utf8').trim();
-      // Only remove if it's OUR PID (another instance may have taken over)
       if (parseInt(raw, 10) === process.pid) {
         unlinkSync(pidPath);
       }
@@ -260,7 +321,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '5.1.1',
+    version: '5.1.2',
   });
 
   // --- Wrap all tool handlers with timeout guard ---
