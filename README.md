@@ -63,6 +63,10 @@ npx @hivehub/rulebook@latest rules project   # Project to all tools
 
 See the full [CHANGELOG](CHANGELOG.md) for details.
 
+### v5.1.2 — MCP Per-Session PID Lock
+
+Fixed a critical issue where only one VSCode/Claude Code window could use the MCP server at a time. The PID lock now uses **session-scoped files** (`mcp-server.<pid>.pid`) instead of a single global lock, allowing multiple concurrent MCP instances. Stale PID files from dead processes are automatically cleaned on startup, with backward-compatible cleanup of the legacy format.
+
 ### v5.1.0 — Incremental Implementation & Knowledge Base Integration
 
 Born from real-world experience: AI agents that implement everything at once produce cascading errors. This release makes **step-by-step implementation** and **knowledge base usage** mandatory for all agents.
