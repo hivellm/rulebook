@@ -119,10 +119,7 @@ Body content.
 
     it('should skip non-md files', async () => {
       writeFileSync(join(testDir, '.rulebook', 'rules', 'readme.txt'), 'not a rule');
-      writeFileSync(
-        join(testDir, '.rulebook', 'rules', 'real.md'),
-        '---\nname: real\n---\nBody'
-      );
+      writeFileSync(join(testDir, '.rulebook', 'rules', 'real.md'), '---\nname: real\n---\nBody');
 
       const rules = await loadCanonicalRules(testDir);
       expect(rules).toHaveLength(1);
@@ -130,10 +127,7 @@ Body content.
     });
 
     it('should handle rule without frontmatter', async () => {
-      writeFileSync(
-        join(testDir, '.rulebook', 'rules', 'bare.md'),
-        '# A Rule\n\nJust markdown.'
-      );
+      writeFileSync(join(testDir, '.rulebook', 'rules', 'bare.md'), '# A Rule\n\nJust markdown.');
 
       const rules = await loadCanonicalRules(testDir);
       expect(rules).toHaveLength(1);
@@ -181,10 +175,7 @@ Use strict types.
       const result = await projectRules(testDir, { claudeCode: true });
       expect(result.claudeCode).toHaveLength(2);
 
-      const content = readFileSync(
-        join(testDir, '.claude', 'rules', 'no-shortcuts.md'),
-        'utf-8'
-      );
+      const content = readFileSync(join(testDir, '.claude', 'rules', 'no-shortcuts.md'), 'utf-8');
       expect(content).toContain('Never use stubs or TODOs');
     });
 
@@ -192,17 +183,11 @@ Use strict types.
       const result = await projectRules(testDir, { cursor: true });
       expect(result.cursor).toHaveLength(2);
 
-      const content = readFileSync(
-        join(testDir, '.cursor', 'rules', 'no-shortcuts.mdc'),
-        'utf-8'
-      );
+      const content = readFileSync(join(testDir, '.cursor', 'rules', 'no-shortcuts.mdc'), 'utf-8');
       expect(content).toContain('alwaysApply: true');
       expect(content).toContain('Never use stubs or TODOs');
 
-      const tsContent = readFileSync(
-        join(testDir, '.cursor', 'rules', 'ts-only.mdc'),
-        'utf-8'
-      );
+      const tsContent = readFileSync(join(testDir, '.cursor', 'rules', 'ts-only.mdc'), 'utf-8');
       expect(tsContent).toContain('globs:');
       expect(tsContent).toContain('*.ts');
     });
@@ -222,10 +207,7 @@ Use strict types.
       const result = await projectRules(testDir, { copilot: true });
       expect(result.copilot).toHaveLength(1);
 
-      const content = readFileSync(
-        join(testDir, '.github', 'copilot-instructions.md'),
-        'utf-8'
-      );
+      const content = readFileSync(join(testDir, '.github', 'copilot-instructions.md'), 'utf-8');
       expect(content).toContain('<!-- RULEBOOK:START -->');
       expect(content).toContain('Never use stubs or TODOs');
     });
@@ -234,18 +216,14 @@ Use strict types.
       const result = await projectRules(testDir, { windsurf: true });
       // ts-only targets claude-code+cursor only, so windsurf gets 1 rule (no-shortcuts)
       expect(result.windsurf).toHaveLength(1);
-      expect(
-        existsSync(join(testDir, '.windsurf', 'rules', 'no-shortcuts.md'))
-      ).toBe(true);
+      expect(existsSync(join(testDir, '.windsurf', 'rules', 'no-shortcuts.md'))).toBe(true);
     });
 
     it('should project to Continue.dev as individual files', async () => {
       const result = await projectRules(testDir, { continueDev: true });
       // ts-only targets claude-code+cursor only, so continue gets 1 rule (no-shortcuts)
       expect(result.continueDev).toHaveLength(1);
-      expect(
-        existsSync(join(testDir, '.continue', 'rules', 'no-shortcuts.md'))
-      ).toBe(true);
+      expect(existsSync(join(testDir, '.continue', 'rules', 'no-shortcuts.md'))).toBe(true);
     });
 
     it('should only project to detected tools', async () => {

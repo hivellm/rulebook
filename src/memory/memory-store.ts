@@ -46,7 +46,9 @@ export class MemoryStore {
       this.db.pragma('foreign_keys = ON');
     } catch {
       // better-sqlite3 not available — fall back to sql.js (WASM)
-      console.error('[MemoryStore] better-sqlite3 unavailable, falling back to sql.js (slower but portable)');
+      console.error(
+        '[MemoryStore] better-sqlite3 unavailable, falling back to sql.js (slower but portable)'
+      );
       const { default: initSqlJs } = await import('sql.js');
       const SQL = await initSqlJs();
       let rawDb;
@@ -179,30 +181,34 @@ export class MemoryStore {
   saveMemory(memory: Memory): void {
     if (!this.db) throw new Error('Database not initialized');
 
-    this.db.prepare(
-      `INSERT OR REPLACE INTO memories (id, type, title, content, project, tags, session_id, created_at, updated_at, accessed_at)
+    this.db
+      .prepare(
+        `INSERT OR REPLACE INTO memories (id, type, title, content, project, tags, session_id, created_at, updated_at, accessed_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      memory.id,
-      memory.type,
-      memory.title,
-      memory.content,
-      memory.project,
-      JSON.stringify(memory.tags),
-      memory.sessionId ?? null,
-      memory.createdAt,
-      memory.updatedAt,
-      memory.accessedAt,
-    );
+      )
+      .run(
+        memory.id,
+        memory.type,
+        memory.title,
+        memory.content,
+        memory.project,
+        JSON.stringify(memory.tags),
+        memory.sessionId ?? null,
+        memory.createdAt,
+        memory.updatedAt,
+        memory.accessedAt
+      );
   }
 
   getMemory(id: string): Memory | null {
     if (!this.db) throw new Error('Database not initialized');
 
-    const row = this.db.prepare(
-      `SELECT id, type, title, content, project, tags, session_id, created_at, updated_at, accessed_at
+    const row = this.db
+      .prepare(
+        `SELECT id, type, title, content, project, tags, session_id, created_at, updated_at, accessed_at
        FROM memories WHERE id = ?`
-    ).get(id) as Record<string, unknown> | undefined;
+      )
+      .get(id) as Record<string, unknown> | undefined;
 
     if (!row) return null;
     return this.rowToMemory(row);
@@ -237,10 +243,12 @@ export class MemoryStore {
     const limit = options?.limit ?? 100;
     const offset = options?.offset ?? 0;
 
-    const rows = this.db.prepare(
-      `SELECT id, type, title, content, project, tags, session_id, created_at, updated_at, accessed_at
+    const rows = this.db
+      .prepare(
+        `SELECT id, type, title, content, project, tags, session_id, created_at, updated_at, accessed_at
        FROM memories ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
-    ).all(...params, limit, offset) as Array<Record<string, unknown>>;
+      )
+      .all(...params, limit, offset) as Array<Record<string, unknown>>;
 
     return rows.map((row) => this.rowToMemory(row));
   }
@@ -252,7 +260,9 @@ export class MemoryStore {
 
   getMemoryCount(): number {
     if (!this.db) throw new Error('Database not initialized');
-    const row = this.db.prepare('SELECT COUNT(*) as count FROM memories').get() as { count: number };
+    const row = this.db.prepare('SELECT COUNT(*) as count FROM memories').get() as {
+      count: number;
+    };
     return row.count;
   }
 
@@ -271,9 +281,9 @@ export class MemoryStore {
       if (!escaped) return [];
 
       // Build FTS5 match query with proper term quoting
-      const terms = escaped.split(/\s+/).filter(t => t.length > 1);
+      const terms = escaped.split(/\s+/).filter((t) => t.length > 1);
       if (terms.length === 0) return [];
-      const ftsQuery = terms.map(t => `"${t}"`).join(' OR ');
+      const ftsQuery = terms.map((t) => `"${t}"`).join(' OR ');
 
       let sql = `
         SELECT m.id, bm25(memory_fts) as score
@@ -336,34 +346,38 @@ export class MemoryStore {
   createSession(session: MemorySession): void {
     if (!this.db) throw new Error('Database not initialized');
 
-    this.db.prepare(
-      `INSERT INTO sessions (id, project, status, started_at, ended_at, summary, tool_calls)
+    this.db
+      .prepare(
+        `INSERT INTO sessions (id, project, status, started_at, ended_at, summary, tool_calls)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      session.id,
-      session.project,
-      session.status,
-      session.startedAt,
-      session.endedAt ?? null,
-      session.summary ?? null,
-      session.toolCalls,
-    );
+      )
+      .run(
+        session.id,
+        session.project,
+        session.status,
+        session.startedAt,
+        session.endedAt ?? null,
+        session.summary ?? null,
+        session.toolCalls
+      );
   }
 
   endSession(id: string, summary?: string): void {
     if (!this.db) throw new Error('Database not initialized');
-    this.db.prepare(
-      `UPDATE sessions SET status = 'completed', ended_at = ?, summary = ? WHERE id = ?`
-    ).run(Date.now(), summary ?? null, id);
+    this.db
+      .prepare(`UPDATE sessions SET status = 'completed', ended_at = ?, summary = ? WHERE id = ?`)
+      .run(Date.now(), summary ?? null, id);
   }
 
   getActiveSession(): MemorySession | null {
     if (!this.db) throw new Error('Database not initialized');
 
-    const row = this.db.prepare(
-      `SELECT id, project, status, started_at, ended_at, summary, tool_calls
+    const row = this.db
+      .prepare(
+        `SELECT id, project, status, started_at, ended_at, summary, tool_calls
        FROM sessions WHERE status = 'active' ORDER BY started_at DESC LIMIT 1`
-    ).get() as Record<string, unknown> | undefined;
+      )
+      .get() as Record<string, unknown> | undefined;
 
     if (!row) return null;
 
@@ -380,7 +394,9 @@ export class MemoryStore {
 
   getSessionCount(): number {
     if (!this.db) throw new Error('Database not initialized');
-    const row = this.db.prepare('SELECT COUNT(*) as count FROM sessions').get() as { count: number };
+    const row = this.db.prepare('SELECT COUNT(*) as count FROM sessions').get() as {
+      count: number;
+    };
     return row.count;
   }
 
@@ -388,13 +404,17 @@ export class MemoryStore {
 
   getOldestMemoryTimestamp(): number | undefined {
     if (!this.db) return undefined;
-    const row = this.db.prepare('SELECT MIN(created_at) as ts FROM memories').get() as { ts: number | null };
+    const row = this.db.prepare('SELECT MIN(created_at) as ts FROM memories').get() as {
+      ts: number | null;
+    };
     return row.ts ?? undefined;
   }
 
   getNewestMemoryTimestamp(): number | undefined {
     if (!this.db) return undefined;
-    const row = this.db.prepare('SELECT MAX(created_at) as ts FROM memories').get() as { ts: number | null };
+    const row = this.db.prepare('SELECT MAX(created_at) as ts FROM memories').get() as {
+      ts: number | null;
+    };
     return row.ts ?? undefined;
   }
 
@@ -424,16 +444,17 @@ export class MemoryStore {
     if (!this.db) return [];
 
     // Get anchor memory's timestamp
-    const anchor = this.db.prepare(
-      `SELECT created_at FROM memories WHERE id = ?`
-    ).get(memoryId) as { created_at: number } | undefined;
+    const anchor = this.db.prepare(`SELECT created_at FROM memories WHERE id = ?`).get(memoryId) as
+      | { created_at: number }
+      | undefined;
 
     if (!anchor) return [];
     const anchorTs = anchor.created_at;
 
     // Get before + anchor + after
-    const rows = this.db.prepare(
-      `SELECT id, title, type, created_at FROM (
+    const rows = this.db
+      .prepare(
+        `SELECT id, title, type, created_at FROM (
          SELECT id, title, type, created_at FROM memories
          WHERE created_at <= ?
          ORDER BY created_at DESC LIMIT ?
@@ -445,7 +466,8 @@ export class MemoryStore {
          ORDER BY created_at ASC LIMIT ?
        )
        ORDER BY created_at ASC`
-    ).all(anchorTs, window + 1, anchorTs, window) as Array<Record<string, unknown>>;
+      )
+      .all(anchorTs, window + 1, anchorTs, window) as Array<Record<string, unknown>>;
 
     return rows.map((row) => ({
       id: row.id as string,
@@ -523,17 +545,21 @@ export class MemoryStore {
           trackWrite();
         },
         get: (...params: unknown[]) => {
-          const result = rawDb.exec(sql.replace(/\?/g, () => {
-            const p = params.shift();
-            if (p === null || p === undefined) return 'NULL';
-            if (typeof p === 'string') return `'${p.replace(/'/g, "''")}'`;
-            return String(p);
-          }));
+          const result = rawDb.exec(
+            sql.replace(/\?/g, () => {
+              const p = params.shift();
+              if (p === null || p === undefined) return 'NULL';
+              if (typeof p === 'string') return `'${p.replace(/'/g, "''")}'`;
+              return String(p);
+            })
+          );
           if (!result.length || !result[0].values.length) return undefined;
           const cols = result[0].columns;
           const row = result[0].values[0];
           const obj: Record<string, unknown> = {};
-          cols.forEach((c: string, i: number) => { obj[c] = row[i]; });
+          cols.forEach((c: string, i: number) => {
+            obj[c] = row[i];
+          });
           return obj;
         },
         all: (...params: unknown[]) => {
@@ -552,12 +578,17 @@ export class MemoryStore {
           const cols = result[0].columns;
           return result[0].values.map((row: unknown[]) => {
             const obj: Record<string, unknown> = {};
-            cols.forEach((c: string, i: number) => { obj[c] = row[i]; });
+            cols.forEach((c: string, i: number) => {
+              obj[c] = row[i];
+            });
             return obj;
           });
         },
       }),
-      close: () => { saveToDisk(); rawDb.close(); },
+      close: () => {
+        saveToDisk();
+        rawDb.close();
+      },
       // For saveToDisk() compatibility
       _sqlJsSave: saveToDisk,
       _isSqlJs: true,
@@ -584,37 +615,41 @@ export class MemoryStore {
   saveCodeNode(node: import('../core/indexer/indexer-types.js').CodeNode): void {
     if (!this.db) throw new Error('Database not initialized');
 
-    this.db.prepare(
-      `INSERT OR REPLACE INTO code_nodes (id, type, name, file_path, start_line, end_line, content, summary, hash, updated_at)
+    this.db
+      .prepare(
+        `INSERT OR REPLACE INTO code_nodes (id, type, name, file_path, start_line, end_line, content, summary, hash, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      node.id,
-      node.type,
-      node.name,
-      node.filePath,
-      node.startLine,
-      node.endLine,
-      node.content,
-      node.summary ?? null,
-      node.hash,
-      node.updatedAt,
-    );
+      )
+      .run(
+        node.id,
+        node.type,
+        node.name,
+        node.filePath,
+        node.startLine,
+        node.endLine,
+        node.content,
+        node.summary ?? null,
+        node.hash,
+        node.updatedAt
+      );
   }
 
   saveCodeEdge(edge: import('../core/indexer/indexer-types.js').CodeEdge): void {
     if (!this.db) throw new Error('Database not initialized');
 
-    this.db.prepare(
-      `INSERT OR IGNORE INTO code_edges (id, source_id, target_id, type, weight)
+    this.db
+      .prepare(
+        `INSERT OR IGNORE INTO code_edges (id, source_id, target_id, type, weight)
        VALUES (?, ?, ?, ?, ?)`
-    ).run(edge.id, edge.sourceId, edge.targetId, edge.type, edge.weight);
+      )
+      .run(edge.id, edge.sourceId, edge.targetId, edge.type, edge.weight);
   }
 
   getCodeNodeIdsByFile(filePath: string): string[] {
     if (!this.db) return [];
-    const rows = this.db.prepare(
-      `SELECT id FROM code_nodes WHERE file_path = ?`
-    ).all(filePath) as Array<{ id: string }>;
+    const rows = this.db
+      .prepare(`SELECT id FROM code_nodes WHERE file_path = ?`)
+      .all(filePath) as Array<{ id: string }>;
     return rows.map((row) => row.id);
   }
 
@@ -625,9 +660,9 @@ export class MemoryStore {
 
   getCodeNodeByHash(id: string): string | null {
     if (!this.db) throw new Error('Database not initialized');
-    const row = this.db.prepare(
-      `SELECT hash FROM code_nodes WHERE id = ?`
-    ).get(id) as { hash: string } | undefined;
+    const row = this.db.prepare(`SELECT hash FROM code_nodes WHERE id = ?`).get(id) as
+      | { hash: string }
+      | undefined;
     return row?.hash ?? null;
   }
 
@@ -641,9 +676,11 @@ export class MemoryStore {
     updatedAt: number;
   } | null {
     if (!this.db) throw new Error('Database not initialized');
-    const row = this.db.prepare(
-      `SELECT id, type, name, file_path, content, hash, updated_at FROM code_nodes WHERE id = ?`
-    ).get(id) as Record<string, unknown> | undefined;
+    const row = this.db
+      .prepare(
+        `SELECT id, type, name, file_path, content, hash, updated_at FROM code_nodes WHERE id = ?`
+      )
+      .get(id) as Record<string, unknown> | undefined;
 
     if (!row) return null;
     return {

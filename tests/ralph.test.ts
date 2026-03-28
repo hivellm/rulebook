@@ -851,7 +851,11 @@ describe('Ralph Autonomous Loop', () => {
         notes: '',
       };
 
-      const config = { enabled: false, requireApprovalForStories: 'none' as const, autoApproveAfterSeconds: 0 };
+      const config = {
+        enabled: false,
+        requireApprovalForStories: 'none' as const,
+        autoApproveAfterSeconds: 0,
+      };
       const result = await manager.runCheckpoint(story, 'claude', config);
       expect(result.proceed).toBe(true);
       expect(checkpoint.generateIterationPlan).not.toHaveBeenCalled();
@@ -872,7 +876,11 @@ describe('Ralph Autonomous Loop', () => {
         notes: '',
       };
 
-      const config = { enabled: true, requireApprovalForStories: 'all' as const, autoApproveAfterSeconds: 0 };
+      const config = {
+        enabled: true,
+        requireApprovalForStories: 'all' as const,
+        autoApproveAfterSeconds: 0,
+      };
       const result = await manager.runCheckpoint(story, 'claude', config);
       expect(result.proceed).toBe(true);
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('empty output'));
@@ -894,7 +902,11 @@ describe('Ralph Autonomous Loop', () => {
         notes: '',
       };
 
-      const config = { enabled: true, requireApprovalForStories: 'all' as const, autoApproveAfterSeconds: 0 };
+      const config = {
+        enabled: true,
+        requireApprovalForStories: 'all' as const,
+        autoApproveAfterSeconds: 0,
+      };
       const result = await manager.runCheckpoint(story, 'claude', config);
       expect(result.proceed).toBe(true);
       expect(result.feedback).toBeUndefined();
@@ -919,7 +931,11 @@ describe('Ralph Autonomous Loop', () => {
         notes: '',
       };
 
-      const config = { enabled: true, requireApprovalForStories: 'all' as const, autoApproveAfterSeconds: 0 };
+      const config = {
+        enabled: true,
+        requireApprovalForStories: 'all' as const,
+        autoApproveAfterSeconds: 0,
+      };
       const result = await manager.runCheckpoint(story, 'claude', config);
       expect(result.proceed).toBe(false);
       expect(result.feedback).toBe('Need more detail on step 2');

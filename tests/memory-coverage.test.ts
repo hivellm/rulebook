@@ -77,7 +77,11 @@ describe('MemoryManager — createMemoryManager factory', () => {
 
   it('should create a working manager that can save memories', async () => {
     const mgr = createMemoryManager(testDir, { dbPath: '.rulebook/memory/mem.db' });
-    const saved = await mgr.saveMemory({ type: 'observation', title: 'factory test', content: 'hello' });
+    const saved = await mgr.saveMemory({
+      type: 'observation',
+      title: 'factory test',
+      content: 'hello',
+    });
     expect(saved.id).toBeDefined();
     await mgr.close();
   });
@@ -151,9 +155,7 @@ describe('MemoryManager — saveCodeEdge', () => {
     // Nodes must exist for FK constraint
     await manager.saveCodeNode(makeCodeNode('src1', '/a.ts', 'ha'));
     await manager.saveCodeNode(makeCodeNode('tgt1', '/b.ts', 'hb'));
-    await expect(
-      manager.saveCodeEdge(makeCodeEdge('e1', 'src1', 'tgt1'))
-    ).resolves.not.toThrow();
+    await expect(manager.saveCodeEdge(makeCodeEdge('e1', 'src1', 'tgt1'))).resolves.not.toThrow();
   });
 
   it('should save multiple edges for same source node', async () => {
@@ -162,9 +164,7 @@ describe('MemoryManager — saveCodeEdge', () => {
     await manager.saveCodeNode(makeCodeNode('t2', '/c.ts', 'h3'));
 
     await manager.saveCodeEdge(makeCodeEdge('e1', 's1', 't1'));
-    await expect(
-      manager.saveCodeEdge(makeCodeEdge('e2', 's1', 't2'))
-    ).resolves.not.toThrow();
+    await expect(manager.saveCodeEdge(makeCodeEdge('e2', 's1', 't2'))).resolves.not.toThrow();
   });
 });
 
@@ -190,23 +190,17 @@ describe('MemoryManager — deleteCodeNodesByFile', () => {
     await manager.saveCodeNode(makeCodeNode('n2', '/src/target.ts', 'h2'));
     await manager.saveCodeNode(makeCodeNode('n3', '/src/other.ts', 'h3'));
 
-    await expect(
-      manager.deleteCodeNodesByFile('/src/target.ts')
-    ).resolves.not.toThrow();
+    await expect(manager.deleteCodeNodesByFile('/src/target.ts')).resolves.not.toThrow();
   });
 
   it('should not throw when deleting nodes from a file with no entries', async () => {
-    await expect(
-      manager.deleteCodeNodesByFile('/src/nonexistent.ts')
-    ).resolves.not.toThrow();
+    await expect(manager.deleteCodeNodesByFile('/src/nonexistent.ts')).resolves.not.toThrow();
   });
 
   it('should remove HNSW vectors for deleted code nodes', async () => {
     await manager.saveCodeNode(makeCodeNode('n1', '/src/cleanup.ts', 'hc'));
     // Delete should clean up the HNSW entry (covered by the __code__ prefix path)
-    await expect(
-      manager.deleteCodeNodesByFile('/src/cleanup.ts')
-    ).resolves.not.toThrow();
+    await expect(manager.deleteCodeNodesByFile('/src/cleanup.ts')).resolves.not.toThrow();
   });
 });
 
@@ -251,7 +245,11 @@ describe('MemoryManager — getTimeline and getFullDetails', () => {
 
   it('should retrieve full details for multiple IDs', async () => {
     const m1 = await manager.saveMemory({ type: 'bugfix', title: 'Bug 1', content: 'Fix 1' });
-    const m2 = await manager.saveMemory({ type: 'feature', title: 'Feature 1', content: 'Added 1' });
+    const m2 = await manager.saveMemory({
+      type: 'feature',
+      title: 'Feature 1',
+      content: 'Added 1',
+    });
 
     const details = await manager.getFullDetails([m1.id, m2.id]);
     expect(details).toHaveLength(2);
@@ -317,7 +315,11 @@ describe('MemoryStore — listMemories with project filter', () => {
   });
 
   afterEach(() => {
-    try { store.close(); } catch { /* ignore */ }
+    try {
+      store.close();
+    } catch {
+      /* ignore */
+    }
     rmSync(testDir, { recursive: true, force: true });
   });
 
@@ -364,26 +366,41 @@ describe('MemoryStore — searchBM25 with filters', () => {
   });
 
   afterEach(() => {
-    try { store.close(); } catch { /* ignore */ }
+    try {
+      store.close();
+    } catch {
+      /* ignore */
+    }
     rmSync(testDir, { recursive: true, force: true });
   });
 
   it('should filter BM25 results by type', () => {
-    const m1: Memory = { ...makeMemory('m1', 'authentication feature', 'oauth login'), type: 'feature' };
-    const m2: Memory = { ...makeMemory('m2', 'authentication bugfix', 'oauth login fix'), type: 'bugfix' };
+    const m1: Memory = {
+      ...makeMemory('m1', 'authentication feature', 'oauth login'),
+      type: 'feature',
+    };
+    const m2: Memory = {
+      ...makeMemory('m2', 'authentication bugfix', 'oauth login fix'),
+      type: 'bugfix',
+    };
     store.saveMemory(m1);
     store.saveMemory(m2);
 
     const results = store.searchBM25('authentication', 10, { type: 'feature' });
     // All returned results should be features only
-    expect(results.every((r) => {
-      // We just verify no error was thrown and results are filtered
-      return typeof r.id === 'string' && r.score >= 0;
-    })).toBe(true);
+    expect(
+      results.every((r) => {
+        // We just verify no error was thrown and results are filtered
+        return typeof r.id === 'string' && r.score >= 0;
+      })
+    ).toBe(true);
   });
 
   it('should filter BM25 results by project', () => {
-    const m1: Memory = { ...makeMemory('m1', 'deployment config', 'k8s deployment'), project: 'infra' };
+    const m1: Memory = {
+      ...makeMemory('m1', 'deployment config', 'k8s deployment'),
+      project: 'infra',
+    };
     const m2: Memory = { ...makeMemory('m2', 'deployment script', 'bash deploy'), project: 'app' };
     store.saveMemory(m1);
     store.saveMemory(m2);
@@ -397,11 +414,15 @@ describe('MemoryStore — searchBM25 with filters', () => {
   it('should filter BM25 results by both type and project', () => {
     const m1: Memory = {
       ...makeMemory('m1', 'database migration feature', 'schema change'),
-      type: 'feature', project: 'backend',
+      type: 'feature',
+      project: 'backend',
     };
     store.saveMemory(m1);
 
-    const results = store.searchBM25('database migration', 10, { type: 'feature', project: 'backend' });
+    const results = store.searchBM25('database migration', 10, {
+      type: 'feature',
+      project: 'backend',
+    });
     expect(Array.isArray(results)).toBe(true);
   });
 });
@@ -422,7 +443,11 @@ describe('MemoryStore — getEvictionCandidates with active session', () => {
   });
 
   afterEach(() => {
-    try { store.close(); } catch { /* ignore */ }
+    try {
+      store.close();
+    } catch {
+      /* ignore */
+    }
     rmSync(testDir, { recursive: true, force: true });
   });
 
@@ -498,7 +523,11 @@ describe('MemoryStore — searchLike fallback (FTS5 unavailable)', () => {
   });
 
   afterEach(() => {
-    try { store.close(); } catch { /* ignore */ }
+    try {
+      store.close();
+    } catch {
+      /* ignore */
+    }
     rmSync(testDir, { recursive: true, force: true });
   });
 
@@ -522,7 +551,10 @@ describe('MemoryStore — searchLike fallback (FTS5 unavailable)', () => {
 
   it('should filter searchLike results by type', () => {
     const m1: Memory = { ...makeMemory('m1', 'auth bugfix', 'authentication fix'), type: 'bugfix' };
-    const m2: Memory = { ...makeMemory('m2', 'auth feature', 'authentication addition'), type: 'feature' };
+    const m2: Memory = {
+      ...makeMemory('m2', 'auth feature', 'authentication addition'),
+      type: 'feature',
+    };
     store.saveMemory(m1);
     store.saveMemory(m2);
 
@@ -533,7 +565,10 @@ describe('MemoryStore — searchLike fallback (FTS5 unavailable)', () => {
   });
 
   it('should filter searchLike results by project', () => {
-    const m1: Memory = { ...makeMemory('m1', 'deploy script', 'kubernetes deploy'), project: 'infra' };
+    const m1: Memory = {
+      ...makeMemory('m1', 'deploy script', 'kubernetes deploy'),
+      project: 'infra',
+    };
     const m2: Memory = { ...makeMemory('m2', 'deploy docs', 'deployment guide'), project: 'docs' };
     store.saveMemory(m1);
     store.saveMemory(m2);

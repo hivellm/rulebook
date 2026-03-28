@@ -23,7 +23,11 @@ describe('MemoryStore — Backend Integration', () => {
   });
 
   afterEach(() => {
-    try { store.close(); } catch { /* ignore */ }
+    try {
+      store.close();
+    } catch {
+      /* ignore */
+    }
     rmSync(testDir, { recursive: true, force: true });
   });
 
@@ -81,7 +85,9 @@ describe('MemoryStore — Backend Integration', () => {
     });
 
     it('should handle special characters in content', () => {
-      store.saveMemory(makeMemory('m1', "It's a test", "Content with 'quotes' and \"double quotes\""));
+      store.saveMemory(
+        makeMemory('m1', "It's a test", 'Content with \'quotes\' and "double quotes"')
+      );
       const mem = store.getMemory('m1');
       expect(mem!.title).toBe("It's a test");
       expect(mem!.content).toContain("'quotes'");
@@ -239,8 +245,20 @@ describe('MemoryStore — Backend Integration', () => {
 
     it('should count sessions', () => {
       expect(store.getSessionCount()).toBe(0);
-      store.createSession({ id: 's1', project: 'test', status: 'active', startedAt: Date.now(), toolCalls: 0 });
-      store.createSession({ id: 's2', project: 'test', status: 'active', startedAt: Date.now(), toolCalls: 0 });
+      store.createSession({
+        id: 's1',
+        project: 'test',
+        status: 'active',
+        startedAt: Date.now(),
+        toolCalls: 0,
+      });
+      store.createSession({
+        id: 's2',
+        project: 'test',
+        status: 'active',
+        startedAt: Date.now(),
+        toolCalls: 0,
+      });
       expect(store.getSessionCount()).toBe(2);
     });
   });
@@ -365,16 +383,37 @@ describe('MemoryStore — Backend Integration', () => {
 
     it('should get code node IDs by file path', () => {
       store.saveCodeNode({
-        id: 'n1', type: 'function', name: 'f1', filePath: '/src/a.ts',
-        startLine: 1, endLine: 5, content: 'code', hash: 'h1', updatedAt: Date.now(),
+        id: 'n1',
+        type: 'function',
+        name: 'f1',
+        filePath: '/src/a.ts',
+        startLine: 1,
+        endLine: 5,
+        content: 'code',
+        hash: 'h1',
+        updatedAt: Date.now(),
       });
       store.saveCodeNode({
-        id: 'n2', type: 'function', name: 'f2', filePath: '/src/a.ts',
-        startLine: 6, endLine: 10, content: 'code', hash: 'h2', updatedAt: Date.now(),
+        id: 'n2',
+        type: 'function',
+        name: 'f2',
+        filePath: '/src/a.ts',
+        startLine: 6,
+        endLine: 10,
+        content: 'code',
+        hash: 'h2',
+        updatedAt: Date.now(),
       });
       store.saveCodeNode({
-        id: 'n3', type: 'function', name: 'f3', filePath: '/src/b.ts',
-        startLine: 1, endLine: 5, content: 'code', hash: 'h3', updatedAt: Date.now(),
+        id: 'n3',
+        type: 'function',
+        name: 'f3',
+        filePath: '/src/b.ts',
+        startLine: 1,
+        endLine: 5,
+        content: 'code',
+        hash: 'h3',
+        updatedAt: Date.now(),
       });
 
       const ids = store.getCodeNodeIdsByFile('/src/a.ts');
@@ -385,8 +424,15 @@ describe('MemoryStore — Backend Integration', () => {
 
     it('should delete code nodes by file path', () => {
       store.saveCodeNode({
-        id: 'n1', type: 'function', name: 'f1', filePath: '/src/a.ts',
-        startLine: 1, endLine: 5, content: 'code', hash: 'h1', updatedAt: Date.now(),
+        id: 'n1',
+        type: 'function',
+        name: 'f1',
+        filePath: '/src/a.ts',
+        startLine: 1,
+        endLine: 5,
+        content: 'code',
+        hash: 'h1',
+        updatedAt: Date.now(),
       });
 
       store.deleteCodeNodesByFile('/src/a.ts');
@@ -395,9 +441,16 @@ describe('MemoryStore — Backend Integration', () => {
 
     it('should get full code node', () => {
       store.saveCodeNode({
-        id: 'n1', type: 'class', name: 'MyClass', filePath: '/src/my.ts',
-        startLine: 1, endLine: 50, content: 'class MyClass {}',
-        summary: 'A test class', hash: 'xyz', updatedAt: 12345,
+        id: 'n1',
+        type: 'class',
+        name: 'MyClass',
+        filePath: '/src/my.ts',
+        startLine: 1,
+        endLine: 50,
+        content: 'class MyClass {}',
+        summary: 'A test class',
+        hash: 'xyz',
+        updatedAt: 12345,
       });
 
       const node = store.getCodeNode('n1');
@@ -413,17 +466,35 @@ describe('MemoryStore — Backend Integration', () => {
   describe('code edges', () => {
     it('should save code edge', () => {
       store.saveCodeNode({
-        id: 'n1', type: 'function', name: 'f1', filePath: '/a.ts',
-        startLine: 1, endLine: 5, content: 'c', hash: 'h1', updatedAt: Date.now(),
+        id: 'n1',
+        type: 'function',
+        name: 'f1',
+        filePath: '/a.ts',
+        startLine: 1,
+        endLine: 5,
+        content: 'c',
+        hash: 'h1',
+        updatedAt: Date.now(),
       });
       store.saveCodeNode({
-        id: 'n2', type: 'function', name: 'f2', filePath: '/b.ts',
-        startLine: 1, endLine: 5, content: 'c', hash: 'h2', updatedAt: Date.now(),
+        id: 'n2',
+        type: 'function',
+        name: 'f2',
+        filePath: '/b.ts',
+        startLine: 1,
+        endLine: 5,
+        content: 'c',
+        hash: 'h2',
+        updatedAt: Date.now(),
       });
 
       expect(() => {
         store.saveCodeEdge({
-          id: 'e1', sourceId: 'n1', targetId: 'n2', type: 'imports', weight: 1.0,
+          id: 'e1',
+          sourceId: 'n1',
+          targetId: 'n2',
+          type: 'imports',
+          weight: 1.0,
         });
       }).not.toThrow();
     });

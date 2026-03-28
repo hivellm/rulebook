@@ -321,7 +321,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '5.1.2',
+    version: '5.1.3',
   });
 
   // --- Wrap all tool handlers with timeout guard ---
@@ -963,7 +963,10 @@ export async function startRulebookMcpServer(): Promise<void> {
         // Boot Background Indexer only if memory is enabled (opt-in to save resources)
         const indexerEnabled = rulebookConfig.memory?.enabled === true;
         if (indexerEnabled) {
-          bgIndexer = new BackgroundIndexer(memoryManager, projectRoot, { enabled: true });
+          bgIndexer = new BackgroundIndexer(memoryManager, projectRoot, {
+            enabled: true,
+            ...rulebookConfig.indexer,
+          });
           setTimeout(() => {
             try {
               bgIndexer?.start();
@@ -2754,7 +2757,9 @@ export async function startRulebookMcpServer(): Promise<void> {
       description:
         'Save session summary to PLANS.md history section. Call at the end of every session.',
       inputSchema: {
-        summary: z.string().describe('Session summary: what was accomplished, key decisions, next steps'),
+        summary: z
+          .string()
+          .describe('Session summary: what was accomplished, key decisions, next steps'),
         projectId: projectIdSchema,
       },
     },
@@ -2805,7 +2810,10 @@ export async function startRulebookMcpServer(): Promise<void> {
 
         return {
           content: [
-            { type: 'text', text: JSON.stringify({ success: true, message: 'Session summary saved to PLANS.md' }) },
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, message: 'Session summary saved to PLANS.md' }),
+            },
           ],
         };
       } catch (error) {
@@ -2829,7 +2837,8 @@ export async function startRulebookMcpServer(): Promise<void> {
     'rulebook_rules_list',
     {
       title: 'List Rules',
-      description: 'List all canonical rules from .rulebook/rules/ with tier and tool targeting info',
+      description:
+        'List all canonical rules from .rulebook/rules/ with tier and tool targeting info',
       inputSchema: {
         projectId: projectIdSchema,
       },
@@ -2843,7 +2852,9 @@ export async function startRulebookMcpServer(): Promise<void> {
         const { listRules } = await import('../core/rule-engine.js');
         const rules = await listRules(root);
         return {
-          content: [{ type: 'text', text: JSON.stringify({ success: true, rules, count: rules.length }) }],
+          content: [
+            { type: 'text', text: JSON.stringify({ success: true, rules, count: rules.length }) },
+          ],
         };
       } catch (error) {
         return {
@@ -2886,8 +2897,10 @@ export async function startRulebookMcpServer(): Promise<void> {
 
         for (const task of tasks) {
           const metadata = await tm.getTaskMetadata(task.id);
-          const blocks = Array.isArray(metadata?.blocks) ? metadata.blocks as string[] : [];
-          const blockedBy = Array.isArray(metadata?.blockedBy) ? metadata.blockedBy as string[] : [];
+          const blocks = Array.isArray(metadata?.blocks) ? (metadata.blocks as string[]) : [];
+          const blockedBy = Array.isArray(metadata?.blockedBy)
+            ? (metadata.blockedBy as string[])
+            : [];
           if (blocks.length > 0 || blockedBy.length > 0) {
             blockers.push({
               taskId: task.id,

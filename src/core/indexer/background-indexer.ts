@@ -1,9 +1,31 @@
-import { existsSync, statSync } from 'fs';
-import { extname, resolve } from 'path';
+import { existsSync, statSync, type Stats } from 'fs';
+import { basename, extname, resolve } from 'path';
 import chokidar, { type FSWatcher } from 'chokidar';
 import type { MemoryManager } from '../../memory/memory-manager.js';
 import { CodeParser } from './file-parser.js';
 import type { IndexerConfig } from './indexer-types.js';
+
+// Binary/asset extensions to skip at the watcher level
+const IGNORED_EXTENSIONS = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+  '.ico',
+  '.mp3',
+  '.mp4',
+  '.pdf',
+  '.lock',
+  '.sqlite',
+  '.sqlite-wal',
+  '.sqlite-shm',
+  '.sqlite-journal',
+  '.db',
+  '.db-wal',
+  '.db-shm',
+  '.db-journal',
+]);
 
 export class BackgroundIndexer {
   private memoryManager: MemoryManager;
@@ -14,6 +36,7 @@ export class BackgroundIndexer {
   private processQueue: Set<string> = new Set();
   private debounceTimer: NodeJS.Timeout | null = null;
   private watcher: FSWatcher | null = null;
+  private hasRetriedWithPolling = false;
 
   // Stats
   private processedCount = 0;
@@ -40,31 +63,54 @@ export class BackgroundIndexer {
       ],
       chunkSize: config.chunkSize ?? 1500,
       debounceMs: config.debounceMs ?? 3000,
+      depth: config.depth ?? 4,
+      usePolling: config.usePolling ?? false,
     };
   }
 
   public start(): void {
     if (!this.config.enabled) return;
-    console.error(`[BackgroundIndexer] Starting watcher on: ${this.projectRoot}`);
 
-    // Use chokidar for reliable cross-platform file watching with proper ignore support.
-    // Unlike fs.watch({ recursive: true }), chokidar filters at the OS watcher level,
-    // preventing node_modules events from ever reaching the event loop.
-    const ignoredGlobs = this.config.ignorePatterns.map(p => `**/${p}/**`);
-    // Also ignore binary/asset files at the watcher level
-    ignoredGlobs.push(
-      '**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.gif', '**/*.svg', '**/*.ico',
-      '**/*.mp3', '**/*.mp4', '**/*.pdf', '**/*.lock',
-      '**/*.sqlite', '**/*.sqlite-wal', '**/*.sqlite-shm', '**/*.sqlite-journal',
-      '**/*.db', '**/*.db-wal', '**/*.db-shm', '**/*.db-journal',
-    );
+    // Resolve watch paths to absolute, filtering to those that actually exist
+    const watchTargets = this.config.watchPaths
+      .map((p) => (p === '.' ? this.projectRoot : resolve(this.projectRoot, p)))
+      .filter((p) => existsSync(p));
 
-    this.watcher = chokidar.watch(this.projectRoot, {
-      ignored: ignoredGlobs,
+    if (watchTargets.length === 0) {
+      console.error('[BackgroundIndexer] No valid watch paths found, falling back to project root');
+      watchTargets.push(this.projectRoot);
+    }
+
+    console.error(`[BackgroundIndexer] Starting watcher on: ${watchTargets.join(', ')}`);
+
+    // Build a Set for O(1) directory-name lookups
+    const ignoredDirNames = new Set(this.config.ignorePatterns);
+
+    // Function-based ignored: prevents chokidar from ENTERING ignored directories.
+    // Unlike glob strings (e.g. '**/node_modules/**'), a function-based filter stops
+    // chokidar from opening file descriptors for ignored directories at all.
+    const ignoredFn = (filePath: string, stats?: Stats): boolean => {
+      const base = basename(filePath);
+      // Block traversal into ignored directories
+      if (ignoredDirNames.has(base)) {
+        // When stats are available, only block directories (not files named 'dist' etc.)
+        if (stats) return stats.isDirectory();
+        return true;
+      }
+      // Skip binary/asset files by extension
+      if (IGNORED_EXTENSIONS.has(extname(base).toLowerCase())) {
+        return true;
+      }
+      return false;
+    };
+
+    this.watcher = chokidar.watch(watchTargets, {
+      ignored: ignoredFn,
       persistent: true,
       ignoreInitial: true,
-      depth: 8,
-      // Reduce CPU usage: aggregate events over 500ms
+      depth: this.config.depth,
+      usePolling: this.config.usePolling,
+      ...(this.config.usePolling ? { interval: 2000 } : {}),
       awaitWriteFinish: {
         stabilityThreshold: 500,
         pollInterval: 100,
@@ -76,6 +122,17 @@ export class BackgroundIndexer {
       .on('add', (filePath: string) => this.handleFileChange(filePath))
       .on('unlink', (filePath: string) => this.handleFileChange(filePath))
       .on('error', (error: unknown) => {
+        const errCode = (error as NodeJS.ErrnoException)?.code;
+        if ((errCode === 'EMFILE' || errCode === 'ENFILE') && !this.hasRetriedWithPolling) {
+          console.error(
+            '[BackgroundIndexer] Too many open files detected. Restarting with polling mode...'
+          );
+          this.hasRetriedWithPolling = true;
+          this.stop();
+          this.config.usePolling = true;
+          this.start();
+          return;
+        }
         console.error('[BackgroundIndexer] Watcher error:', error);
       });
   }
@@ -101,13 +158,45 @@ export class BackgroundIndexer {
   private isCodeFile(filePath: string): boolean {
     const ext = extname(filePath).toLowerCase();
     const codeExts = [
-      '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-      '.py', '.rs', '.go', '.java', '.kt', '.scala',
-      '.cs', '.cpp', '.cc', '.c', '.h', '.hpp',
-      '.swift', '.rb', '.php', '.ex', '.erl', '.zig',
-      '.sol', '.dart', '.lua', '.hs', '.r', '.R',
-      '.sh', '.bash', '.zsh', '.yaml', '.yml', '.json',
-      '.toml', '.md', '.mdx',
+      '.ts',
+      '.tsx',
+      '.js',
+      '.jsx',
+      '.mjs',
+      '.cjs',
+      '.py',
+      '.rs',
+      '.go',
+      '.java',
+      '.kt',
+      '.scala',
+      '.cs',
+      '.cpp',
+      '.cc',
+      '.c',
+      '.h',
+      '.hpp',
+      '.swift',
+      '.rb',
+      '.php',
+      '.ex',
+      '.erl',
+      '.zig',
+      '.sol',
+      '.dart',
+      '.lua',
+      '.hs',
+      '.r',
+      '.R',
+      '.sh',
+      '.bash',
+      '.zsh',
+      '.yaml',
+      '.yml',
+      '.json',
+      '.toml',
+      '.md',
+      '.mdx',
     ];
     return codeExts.includes(ext);
   }

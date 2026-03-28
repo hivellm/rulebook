@@ -74,7 +74,10 @@ Vectorizer-specific content here.
   };
 
   beforeEach(async () => {
-    testDir = path.join(tmpdir(), `rulebook-migrator-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+    testDir = path.join(
+      tmpdir(),
+      `rulebook-migrator-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    );
     await fs.mkdir(testDir, { recursive: true });
   });
 
@@ -478,8 +481,7 @@ React content here.
             name: 'REACT',
             startLine: 2,
             endLine: 4,
-            content:
-              '<!-- REACT:START -->\n# React Rules\nReact content here.\n<!-- REACT:END -->',
+            content: '<!-- REACT:START -->\n# React Rules\nReact content here.\n<!-- REACT:END -->',
           },
           // No VUE block — will trigger generateFrameworkRules
         ],

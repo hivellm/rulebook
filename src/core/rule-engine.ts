@@ -137,10 +137,7 @@ function shouldTarget(rule: CanonicalRule, tool: ToolTarget): boolean {
  * Project rules to Claude Code format: `.claude/rules/<name>.md`
  * Claude Code rules are plain markdown — no special frontmatter.
  */
-async function projectToClaudeCode(
-  projectRoot: string,
-  rules: CanonicalRule[]
-): Promise<string[]> {
+async function projectToClaudeCode(projectRoot: string, rules: CanonicalRule[]): Promise<string[]> {
   const targetRules = rules.filter((r) => shouldTarget(r, 'claude-code'));
   if (targetRules.length === 0) return [];
 
@@ -161,10 +158,7 @@ async function projectToClaudeCode(
  * Project rules to Cursor format: `.cursor/rules/<name>.mdc`
  * Cursor uses YAML frontmatter with `description`, `alwaysApply`, and `globs`.
  */
-async function projectToCursor(
-  projectRoot: string,
-  rules: CanonicalRule[]
-): Promise<string[]> {
+async function projectToCursor(projectRoot: string, rules: CanonicalRule[]): Promise<string[]> {
   const targetRules = rules.filter((r) => shouldTarget(r, 'cursor'));
   if (targetRules.length === 0) return [];
 
@@ -195,10 +189,7 @@ async function projectToCursor(
  * Project rules to Gemini format: sections in `GEMINI.md`.
  * Groups rules by tier with appropriate headings.
  */
-async function projectToGemini(
-  projectRoot: string,
-  rules: CanonicalRule[]
-): Promise<string[]> {
+async function projectToGemini(projectRoot: string, rules: CanonicalRule[]): Promise<string[]> {
   const targetRules = rules.filter((r) => shouldTarget(r, 'gemini'));
   if (targetRules.length === 0) return [];
 
@@ -257,10 +248,7 @@ async function projectToGemini(
 /**
  * Project rules to Copilot format: sections in `.github/copilot-instructions.md`.
  */
-async function projectToCopilot(
-  projectRoot: string,
-  rules: CanonicalRule[]
-): Promise<string[]> {
+async function projectToCopilot(projectRoot: string, rules: CanonicalRule[]): Promise<string[]> {
   const targetRules = rules.filter((r) => shouldTarget(r, 'copilot'));
   if (targetRules.length === 0) return [];
 
@@ -308,10 +296,7 @@ async function projectToCopilot(
 /**
  * Project rules to Windsurf format: `.windsurf/rules/<name>.md`
  */
-async function projectToWindsurf(
-  projectRoot: string,
-  rules: CanonicalRule[]
-): Promise<string[]> {
+async function projectToWindsurf(projectRoot: string, rules: CanonicalRule[]): Promise<string[]> {
   const targetRules = rules.filter((r) => shouldTarget(r, 'windsurf'));
   if (targetRules.length === 0) return [];
 
@@ -389,9 +374,7 @@ export async function projectRules(
     gemini: detectedTools.gemini ? await projectToGemini(projectRoot, rules) : [],
     copilot: detectedTools.copilot ? await projectToCopilot(projectRoot, rules) : [],
     windsurf: detectedTools.windsurf ? await projectToWindsurf(projectRoot, rules) : [],
-    continueDev: detectedTools.continueDev
-      ? await projectToContinueDev(projectRoot, rules)
-      : [],
+    continueDev: detectedTools.continueDev ? await projectToContinueDev(projectRoot, rules) : [],
   };
 
   return result;

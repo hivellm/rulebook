@@ -358,9 +358,21 @@ export async function initCommand(options: {
       const templatesDir = getTemplatesDir();
 
       // Tier 1 rules — always installed
-      const tier1Rules = ['no-shortcuts', 'git-safety', 'sequential-editing', 'research-first', 'follow-task-sequence', 'incremental-implementation'];
+      const tier1Rules = [
+        'no-shortcuts',
+        'git-safety',
+        'sequential-editing',
+        'research-first',
+        'follow-task-sequence',
+        'incremental-implementation',
+      ];
       // Tier 2 rules — installed for medium+ complexity
-      const tier2Rules = ['task-decomposition', 'incremental-tests', 'no-deferred', 'session-workflow'];
+      const tier2Rules = [
+        'task-decomposition',
+        'incremental-tests',
+        'no-deferred',
+        'session-workflow',
+      ];
 
       const rulesToInstall = [...tier1Rules];
       if (complexity.recommendations.tier2Rules) {
@@ -374,12 +386,15 @@ export async function initCommand(options: {
       }
 
       if (installedCount > 0) {
-        console.log(chalk.gray(`  • Installed ${installedCount} canonical rules to .rulebook/rules/`));
+        console.log(
+          chalk.gray(`  • Installed ${installedCount} canonical rules to .rulebook/rules/`)
+        );
       }
 
       // Project rules to detected tools
       const ruleResult = await projectRules(cwd, {
-        claudeCode: existsSync(path.join(cwd, '.claude')) || existsSync(path.join(cwd, 'CLAUDE.md')),
+        claudeCode:
+          existsSync(path.join(cwd, '.claude')) || existsSync(path.join(cwd, 'CLAUDE.md')),
         cursor: detection.cursor?.detected,
         gemini: detection.geminiCli?.detected,
         windsurf: detection.windsurf?.detected,
@@ -388,8 +403,12 @@ export async function initCommand(options: {
       });
 
       const totalProjected =
-        ruleResult.claudeCode.length + ruleResult.cursor.length + ruleResult.gemini.length +
-        ruleResult.copilot.length + ruleResult.windsurf.length + ruleResult.continueDev.length;
+        ruleResult.claudeCode.length +
+        ruleResult.cursor.length +
+        ruleResult.gemini.length +
+        ruleResult.copilot.length +
+        ruleResult.windsurf.length +
+        ruleResult.continueDev.length;
 
       if (totalProjected > 0) {
         console.log(chalk.gray(`  • Projected rules to ${totalProjected} tool-specific files`));
@@ -583,9 +602,7 @@ export async function initCommand(options: {
         )
       );
       console.log(
-        chalk.yellow(
-          '  The MCP server will auto-detect workspace mode. For explicit setup, run:'
-        )
+        chalk.yellow('  The MCP server will auto-detect workspace mode. For explicit setup, run:')
       );
       console.log(chalk.yellow('    rulebook workspace init'));
       console.log(
@@ -2035,7 +2052,9 @@ async function updateSingleProject(
   // Install + project canonical rules to all detected tools (v5 rule engine)
   // On update: if .rulebook/rules/ is empty (v4 project), auto-install based on complexity
   {
-    const { projectRules, installRule, loadCanonicalRules } = await import('../core/rule-engine.js');
+    const { projectRules, installRule, loadCanonicalRules } = await import(
+      '../core/rule-engine.js'
+    );
     const existingRules = await loadCanonicalRules(cwd);
 
     if (existingRules.length === 0) {
@@ -2045,7 +2064,14 @@ async function updateSingleProject(
       const complexity = assessComplexity(cwd);
       const templatesDir = getTemplatesDir();
 
-      const tier1 = ['no-shortcuts', 'git-safety', 'sequential-editing', 'research-first', 'follow-task-sequence', 'incremental-implementation'];
+      const tier1 = [
+        'no-shortcuts',
+        'git-safety',
+        'sequential-editing',
+        'research-first',
+        'follow-task-sequence',
+        'incremental-implementation',
+      ];
       const tier2 = ['task-decomposition', 'incremental-tests', 'no-deferred', 'session-workflow'];
 
       const toInstall = [...tier1];
@@ -4654,7 +4680,10 @@ export async function workspaceStatusCommand(): Promise<void> {
 
 // Context Intelligence Layer commands (v4.4)
 
-export async function decisionCreateCommand(title: string, options: { context?: string; relatedTask?: string }): Promise<void> {
+export async function decisionCreateCommand(
+  title: string,
+  options: { context?: string; relatedTask?: string }
+): Promise<void> {
   const { DecisionManager } = await import('../core/decision-manager.js');
   const mgr = new DecisionManager(process.cwd());
   const spinner = ora('Creating decision...').start();
@@ -4678,7 +4707,12 @@ export async function decisionListCommand(options: { status?: string }): Promise
     return;
   }
   for (const d of decisions) {
-    const badge = d.status === 'accepted' ? chalk.green(d.status) : d.status === 'superseded' ? chalk.dim(d.status) : chalk.yellow(d.status);
+    const badge =
+      d.status === 'accepted'
+        ? chalk.green(d.status)
+        : d.status === 'superseded'
+          ? chalk.dim(d.status)
+          : chalk.yellow(d.status);
     console.log(`  ADR-${String(d.id).padStart(3, '0')}  ${d.title}  ${badge}`);
   }
 }
@@ -4705,7 +4739,11 @@ export async function decisionSupersedeCommand(oldId: string, newId: string): Pr
   }
 }
 
-export async function knowledgeAddCommand(type: string, title: string, options: { category?: string; description?: string }): Promise<void> {
+export async function knowledgeAddCommand(
+  type: string,
+  title: string,
+  options: { category?: string; description?: string }
+): Promise<void> {
   const { KnowledgeManager } = await import('../core/knowledge-manager.js');
   const mgr = new KnowledgeManager(process.cwd());
   const spinner = ora('Adding knowledge entry...').start();
@@ -4720,7 +4758,10 @@ export async function knowledgeAddCommand(type: string, title: string, options: 
   }
 }
 
-export async function knowledgeListCommand(options: { type?: string; category?: string }): Promise<void> {
+export async function knowledgeListCommand(options: {
+  type?: string;
+  category?: string;
+}): Promise<void> {
   const { KnowledgeManager } = await import('../core/knowledge-manager.js');
   const mgr = new KnowledgeManager(process.cwd());
   const entries = await mgr.list(options.type as any, options.category as any);
@@ -4756,14 +4797,19 @@ export async function knowledgeRemoveCommand(id: string): Promise<void> {
   }
 }
 
-export async function learnCaptureCommand(options: { title?: string; content?: string; relatedTask?: string; tags?: string }): Promise<void> {
+export async function learnCaptureCommand(options: {
+  title?: string;
+  content?: string;
+  relatedTask?: string;
+  tags?: string;
+}): Promise<void> {
   const { LearnManager } = await import('../core/learn-manager.js');
   const mgr = new LearnManager(process.cwd());
 
   // If no title/content provided, this would be interactive (placeholder for prompts)
   const title = options.title ?? 'Untitled learning';
   const content = options.content ?? '';
-  const tags = options.tags ? options.tags.split(',').map(t => t.trim()) : [];
+  const tags = options.tags ? options.tags.split(',').map((t) => t.trim()) : [];
 
   const spinner = ora('Capturing learning...').start();
   try {
@@ -4804,13 +4850,22 @@ export async function learnListCommand(options: { limit?: string }): Promise<voi
     return;
   }
   for (const l of learnings) {
-    const badge = l.source === 'ralph' ? chalk.blue('ralph') : l.source === 'task-archive' ? chalk.yellow('archive') : chalk.dim('manual');
+    const badge =
+      l.source === 'ralph'
+        ? chalk.blue('ralph')
+        : l.source === 'task-archive'
+          ? chalk.yellow('archive')
+          : chalk.dim('manual');
     const promoted = l.promotedTo ? chalk.green(` → ${l.promotedTo.type}`) : '';
     console.log(`  ${badge}  ${l.title}${promoted}`);
   }
 }
 
-export async function learnPromoteCommand(id: string, target: string, options: { title?: string }): Promise<void> {
+export async function learnPromoteCommand(
+  id: string,
+  target: string,
+  options: { title?: string }
+): Promise<void> {
   const { LearnManager } = await import('../core/learn-manager.js');
   const mgr = new LearnManager(process.cwd());
 

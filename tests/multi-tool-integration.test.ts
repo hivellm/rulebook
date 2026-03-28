@@ -21,7 +21,10 @@ describe('Multi-Tool Integration', () => {
 
     // Create some source files for complexity detection
     for (let i = 0; i < 20; i++) {
-      writeFileSync(join(testDir, 'src', `module${i}.ts`), `export const x${i} = ${i};\n`.repeat(100));
+      writeFileSync(
+        join(testDir, 'src', `module${i}.ts`),
+        `export const x${i} = ${i};\n`.repeat(100)
+      );
     }
     writeFileSync(join(testDir, 'src', 'main.py'), 'x = 1\n'.repeat(100));
 
@@ -44,7 +47,13 @@ describe('Multi-Tool Integration', () => {
     });
 
     it('should install Tier 1 rules from template library', async () => {
-      const tier1Rules = ['no-shortcuts', 'git-safety', 'sequential-editing', 'research-first', 'follow-task-sequence'];
+      const tier1Rules = [
+        'no-shortcuts',
+        'git-safety',
+        'sequential-editing',
+        'research-first',
+        'follow-task-sequence',
+      ];
 
       for (const name of tier1Rules) {
         const result = await installRule(testDir, name, templatesDir);
@@ -54,14 +63,21 @@ describe('Multi-Tool Integration', () => {
       const rules = await loadCanonicalRules(testDir);
       expect(rules.length).toBe(tier1Rules.length);
 
-      const tier1 = rules.filter(r => r.tier === 1);
+      const tier1 = rules.filter((r) => r.tier === 1);
       expect(tier1.length).toBe(tier1Rules.length);
     });
 
     it('should install Tier 2 rules for medium+ complexity', async () => {
       const allRules = [
-        'no-shortcuts', 'git-safety', 'sequential-editing', 'research-first', 'follow-task-sequence',
-        'task-decomposition', 'incremental-tests', 'no-deferred', 'session-workflow',
+        'no-shortcuts',
+        'git-safety',
+        'sequential-editing',
+        'research-first',
+        'follow-task-sequence',
+        'task-decomposition',
+        'incremental-tests',
+        'no-deferred',
+        'session-workflow',
       ];
 
       for (const name of allRules) {
@@ -71,7 +87,7 @@ describe('Multi-Tool Integration', () => {
       const rules = await loadCanonicalRules(testDir);
       expect(rules.length).toBe(allRules.length);
 
-      const tier2 = rules.filter(r => r.tier === 2);
+      const tier2 = rules.filter((r) => r.tier === 2);
       expect(tier2.length).toBeGreaterThan(0);
     });
 
@@ -135,7 +151,9 @@ describe('Multi-Tool Integration', () => {
       expect(existsSync(join(testDir, '.claude', 'agents', 'researcher.md'))).toBe(true);
 
       // Verify memory dirs created
-      expect(existsSync(join(testDir, '.claude', 'agent-memory', 'frontend-engineer', 'MEMORY.md'))).toBe(true);
+      expect(
+        existsSync(join(testDir, '.claude', 'agent-memory', 'frontend-engineer', 'MEMORY.md'))
+      ).toBe(true);
     });
 
     it('should degrade agents to Cursor contextual rules', async () => {
@@ -170,7 +188,10 @@ describe('Multi-Tool Integration', () => {
       expect(ruleResult.cursor.length).toBeGreaterThanOrEqual(3);
 
       // 4. Generate agents
-      const agentResult = await generateAgents(testDir, 'web-app', { claudeCode: true, cursor: true });
+      const agentResult = await generateAgents(testDir, 'web-app', {
+        claudeCode: true,
+        cursor: true,
+      });
       expect(agentResult.claudeCode.length).toBeGreaterThan(0);
       expect(agentResult.cursor.length).toBeGreaterThan(0);
 
