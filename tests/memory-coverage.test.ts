@@ -218,7 +218,11 @@ describe('MemoryManager — getTimeline and getFullDetails', () => {
 
   afterEach(async () => {
     await manager.close();
-    rmSync(testDir, { recursive: true, force: true });
+    try {
+      rmSync(testDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+    } catch {
+      // Windows: SQLite WAL/journal may still be releasing — ignore cleanup errors
+    }
   });
 
   it('should return timeline entries around an anchor memory', async () => {
