@@ -2042,6 +2042,17 @@ async function updateSingleProject(
     }
   }
 
+  // Migrate legacy archive directory from tasks/archive to .rulebook/archive
+  {
+    const { createTaskManager } = await import('../core/task-manager.js');
+    const rulebookDirForArchive = config.rulebookDir || '.rulebook';
+    const tm = createTaskManager(cwd, rulebookDirForArchive);
+    const migrated = await tm.migrateArchive();
+    if (migrated) {
+      console.log(chalk.gray('  • Migrated task archive to .rulebook/archive/'));
+    }
+  }
+
   // Merge with existing AGENTS.md (with migration support)
   const mergeSpinner = ora('Updating AGENTS.md with latest templates...').start();
   config.modular = config.modular ?? true; // Enable modular by default
@@ -2071,6 +2082,7 @@ async function updateSingleProject(
         'research-first',
         'follow-task-sequence',
         'incremental-implementation',
+        'knowledge-base-usage',
       ];
       const tier2 = ['task-decomposition', 'incremental-tests', 'no-deferred', 'session-workflow'];
 

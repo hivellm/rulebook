@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.2.0] - 2026-03-28
+
+### Added — Phase-Based Task Organization & Knowledge Base Enforcement
+
+- **Phase-based task naming convention**: Task IDs now MUST use `phase<N>[subletter]_<description>` prefix (e.g., `phase1_add-auth`, `phase3a_fix-login`). Tasks without the phase prefix are rejected at creation. This enforces priority-based organization visible at a glance in the file explorer.
+- **Auto-generated `tasks/README.md` index**: A markdown index is automatically generated and updated in `.rulebook/tasks/README.md` on every task create, archive, delete, and status update. Shows tasks grouped by phase with status icons, progress counters, and descriptions — optimized for LLM context loading.
+- **Archive directory relocated**: Archive moved from `.rulebook/tasks/archive/` to `.rulebook/archive/` for cleaner organization. Legacy archives are automatically migrated during `rulebook update`.
+- **Task sizing directive**: Skills now enforce that tasks must fit a single implementation cycle. Large tasks should be split into multiple smaller phase-prefixed tasks.
+- **New Tier 1 Rule: `knowledge-base-usage`**: Dedicated rule enforcing knowledge base consultation before implementation and learning capture after completion. Installed automatically on all projects via `rulebook update`.
+- **Knowledge base enforcement in skills**: `/rulebook-task-apply` now requires checking `rulebook knowledge list` before starting (step 1) and capturing learnings after completion (step 9). `/rulebook-task-archive` requires at least 1 learning entry before archiving (step 1).
+
+### Changed
+
+- `TaskManager.archivePath` now points to `.rulebook/archive/` instead of `.rulebook/tasks/archive/`
+- `TaskManager.createTask()` validates phase prefix before creating task directory
+- `TaskManager.listTasks()` sorts tasks by phase number, subletter, then alphabetically
+- MCP `rulebook_task_create` and `rulebook_task_archive` descriptions updated with phase convention
+- Rule engine tier1 list now includes `knowledge-base-usage`
+
 ## [5.1.3] - 2026-03-27
 
 ### Fixed — MCP Server EMFILE (Too Many Open Files)

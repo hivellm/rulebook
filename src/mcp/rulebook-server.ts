@@ -321,7 +321,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '5.1.3',
+    version: '5.2.0',
   });
 
   // --- Wrap all tool handlers with timeout guard ---
@@ -361,7 +361,7 @@ export async function startRulebookMcpServer(): Promise<void> {
       title: 'Create Rulebook Task',
       description: 'Create a new Rulebook task',
       inputSchema: {
-        taskId: z.string().describe('Task ID in kebab-case'),
+        taskId: z.string().describe('Task ID with phase prefix: phase<N>_<description> (e.g., phase1_add-user-auth, phase2a_fix-login-bug)'),
         projectId: projectIdSchema,
       },
     },
@@ -526,7 +526,7 @@ export async function startRulebookMcpServer(): Promise<void> {
       title: 'Archive Rulebook Task',
       description: 'Archive a completed task',
       inputSchema: {
-        taskId: z.string().describe('Task ID to archive'),
+        taskId: z.string().describe('Task ID to archive (must use phase prefix, e.g., phase1_my-task)'),
         skipValidation: z.boolean().optional().describe('Skip validation before archiving'),
         projectId: projectIdSchema,
       },

@@ -24,7 +24,7 @@ description: Create a new Rulebook task following OpenSpec-compatible format wit
    - Review related code or docs (e.g., via `rg`/`ls`) to understand current behavior
    - Note any gaps that require clarification
 
-3. **Choose Task ID**: Use verb-led kebab-case (e.g., `add-feature`, `update-api`, `refactor-module`). Must be unique.
+3. **Choose Task ID**: MUST use phase prefix: `phase<N>[subletter]_<description>` in kebab-case (e.g., `phase1_add-feature`, `phase2a_fix-login`). Must be unique. Tasks must be sized to fit a single implementation cycle — if a task is too large, split it into multiple smaller tasks within the same phase or across phases.
 
 4. **Create Task Structure**:
    ```bash

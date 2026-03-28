@@ -63,62 +63,44 @@ npx @hivehub/rulebook@latest rules project   # Project to all tools
 
 See the full [CHANGELOG](CHANGELOG.md) for details.
 
+### v5.2.0 — Phase-Based Task Organization
+
+Tasks are now organized by **phases with enforced naming**: `phase<N>_<description>` (e.g., `phase0_setup`, `phase3a_fix-auth`). Inspired by real-world project management where priority and execution order must be visible at a glance in the file explorer.
+
+**Phase Naming Convention**
+- Task IDs MUST start with `phase<N>[subletter]_` prefix — rejected at creation otherwise
+- Phases define execution order and priority: `phase0` → `phase1` → `phase2a` → `phase2b` → ...
+- Tasks must fit a single implementation cycle — large tasks are split into multiple phase-prefixed tasks
+
+**Auto-Generated Tasks Index**
+- `tasks/README.md` auto-generated on every task create, archive, delete, and status update
+- Tasks grouped by phase with status icons, progress counters (`3/5`), and descriptions
+- Optimized for LLM context loading — one file gives full project status
+
+**Archive Relocated**
+- Moved from `.rulebook/tasks/archive/` to `.rulebook/archive/` for cleaner directory structure
+- Legacy archives auto-migrated during `rulebook update`
+
+**Knowledge Base Enforcement**
+- New Tier 1 rule: `knowledge-base-usage` — installed on all projects via `rulebook update`
+- `/rulebook-task-apply`: must check `rulebook knowledge list` before starting, capture learnings after completing
+- `/rulebook-task-archive`: must record at least 1 learning before archiving
+
 ### v5.1.3 — MCP Server EMFILE Fix
 
-Fixed a critical issue where the MCP server's background indexer opened 60,000+ file descriptors on macOS (default ulimit 256), causing `EMFILE: too many open files` crashes. Replaced glob-string ignore patterns with function-based filtering that prevents chokidar from entering `node_modules`/`.git`/`dist` directories. Reduced default watch depth from 8 to 4, added EMFILE auto-recovery to polling mode, and made indexer settings configurable via `.rulebook` config.
+Function-based chokidar ignore, reduced watch depth, EMFILE auto-recovery to polling mode, configurable indexer settings.
 
 ### v5.1.2 — MCP Per-Session PID Lock
 
-Fixed a critical issue where only one VSCode/Claude Code window could use the MCP server at a time. The PID lock now uses **session-scoped files** (`mcp-server.<pid>.pid`) instead of a single global lock, allowing multiple concurrent MCP instances. Stale PID files from dead processes are automatically cleaned on startup, with backward-compatible cleanup of the legacy format.
+Session-scoped PID files allow multiple concurrent MCP server instances. Auto-cleanup of stale processes.
 
 ### v5.1.0 — Incremental Implementation & Knowledge Base Integration
 
-Born from real-world experience: AI agents that implement everything at once produce cascading errors. This release makes **step-by-step implementation** and **knowledge base usage** mandatory for all agents.
-
-**New Tier 1 Rule: `incremental-implementation`**
-- Decompose, implement ONE step, test/verify, repeat
-- **3-attempt restart rule**: if stuck 3 times on the same error, STOP, record anti-pattern, restart from scratch
-- "The line between persistence and stubbornness is thin"
-
-**Knowledge Base as Mandatory Workflow**
-- All agents now check `.rulebook/knowledge/` BEFORE implementing
-- All agents record patterns/anti-patterns AFTER completing
-- Code reviewers validate against known patterns and anti-patterns
-- Project managers track KB health and remind agents to record learnings
-
-**41 New Memory Store Tests**
-- Comprehensive CRUD, FTS5 search, sessions, persistence, code nodes
-- sql.js fallback validation (for environments without native build tools)
+Step-by-step implementation and knowledge base usage mandatory for all agents. New `incremental-implementation` tier 1 rule with 3-attempt restart policy.
 
 ### v5.0.0 — Multi-Tool AI Framework
 
-The biggest release yet. Rulebook becomes a **tool-agnostic AI development framework** — same quality directives for every AI tool, with graceful degradation.
-
-**One Source, Multiple Projections**
-- Canonical rules live in `.rulebook/rules/` with YAML frontmatter
-- `rulebook update` projects them to **6 tool formats simultaneously**:
-  - Claude Code (`.claude/rules/*.md`), Cursor (`.cursor/rules/*.mdc`), Gemini (`GEMINI.md`), Copilot (`.github/copilot-instructions.md`), Windsurf (`.windsurf/rules/`), Continue.dev (`.continue/rules/`)
-
-**Adaptive Agent Framework**
-- 15 agent templates across 5 project types (game-engine, compiler, web-app, mobile, generic)
-- Claude Code: full agents with memory directories
-- Cursor: contextual `.mdc` rules activated by file glob patterns
-- Gemini/Codex: inline conditional sections
-
-**8 Tier 1 Prohibitions** (auto-installed, universal)
-- No shortcuts/stubs/TODOs, git safety allow-list, no delete without authorization, research-first, sequential editing, no deferred tasks, follow task sequence, **incremental implementation** (step by step, restart if stuck)
-
-**Project Complexity Detection**
-- `rulebook assess` — auto-detects LOC, languages, structure
-- Calibrated init: small projects get Tier 1 only, large/complex projects get full agent framework + Tier 2 rules
-
-**Critical Performance Fixes**
-- Replaced sql.js (WASM) with better-sqlite3 (native) — eliminates 100-500MB memory copies per save
-- Replaced fs.watch with chokidar — stops node_modules event flood
-- HNSW search optimized with MinHeap/MaxHeap (~100x faster)
-
-**New MCP Tools**: `rulebook_session_start`, `rulebook_session_end`, `rulebook_rules_list`, `rulebook_blockers`
-**New CLI**: `rulebook assess`, `rulebook rules list|add|project`, `rulebook task blockers|blocked-by`
+Tool-agnostic AI development framework — canonical rules in `.rulebook/rules/` projected to 6 tool formats simultaneously (Claude Code, Cursor, Gemini, Copilot, Windsurf, Continue.dev). 15 adaptive agent templates, complexity detection, and critical performance fixes (better-sqlite3, chokidar, HNSW optimization).
 
 ### v4.4.0 — Context Intelligence Layer
 
