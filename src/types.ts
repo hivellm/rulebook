@@ -266,6 +266,14 @@ export interface RulebookConfig {
     autoCapture?: boolean; // default: true
     vectorDimensions?: number; // default: 256
   };
+  // Background indexer configuration (file watcher)
+  indexer?: {
+    watchPaths?: string[]; // default: ['.'] — directories to watch relative to project root
+    ignorePatterns?: string[]; // default: ['node_modules', '.git', 'dist', 'build', '.rulebook', 'coverage']
+    depth?: number; // default: 4 — max directory depth for file watching
+    usePolling?: boolean; // default: false — use polling instead of native watchers (lower FD usage)
+    debounceMs?: number; // default: 3000 — debounce interval for file change events
+  };
   // Ralph autonomous loop configuration (v3.0)
   ralph?: {
     enabled?: boolean; // default: true

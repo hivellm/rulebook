@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.3] - 2026-03-27
+
+### Fixed — MCP Server EMFILE (Too Many Open Files)
+
+- **Function-based chokidar ignore**: Replaced glob-string `ignored` patterns with a function that prevents chokidar from entering `node_modules`, `.git`, `dist`, `build`, `.rulebook`, and `coverage` directories at the OS watcher level — eliminating the root cause of 60,000+ open file descriptors on macOS.
+- **Reduced default watch depth**: Changed from `depth: 8` to `depth: 4`, significantly reducing file descriptor consumption.
+- **Watch path resolution**: The `watchPaths` config is now actually used (previously always watched project root). Paths are resolved to absolute and validated before watching.
+- **EMFILE auto-recovery**: On `EMFILE`/`ENFILE` errors, the indexer automatically restarts in polling mode as a fallback (one retry only).
+- **Configurable indexer settings**: New `indexer` section in `.rulebook` config allows customizing `watchPaths`, `ignorePatterns`, `depth`, `usePolling`, and `debounceMs`.
+
 ## [5.1.2] - 2026-03-26
 
 ### Fixed — MCP Server Per-Session PID Lock

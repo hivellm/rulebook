@@ -63,6 +63,10 @@ npx @hivehub/rulebook@latest rules project   # Project to all tools
 
 See the full [CHANGELOG](CHANGELOG.md) for details.
 
+### v5.1.3 — MCP Server EMFILE Fix
+
+Fixed a critical issue where the MCP server's background indexer opened 60,000+ file descriptors on macOS (default ulimit 256), causing `EMFILE: too many open files` crashes. Replaced glob-string ignore patterns with function-based filtering that prevents chokidar from entering `node_modules`/`.git`/`dist` directories. Reduced default watch depth from 8 to 4, added EMFILE auto-recovery to polling mode, and made indexer settings configurable via `.rulebook` config.
+
 ### v5.1.2 — MCP Per-Session PID Lock
 
 Fixed a critical issue where only one VSCode/Claude Code window could use the MCP server at a time. The PID lock now uses **session-scoped files** (`mcp-server.<pid>.pid`) instead of a single global lock, allowing multiple concurrent MCP instances. Stale PID files from dead processes are automatically cleaned on startup, with backward-compatible cleanup of the legacy format.

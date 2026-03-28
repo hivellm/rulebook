@@ -43,4 +43,6 @@ export interface IndexerConfig {
   ignorePatterns: string[]; // e.g., ['node_modules', 'dist']
   chunkSize: number; // Default rough characters per chunk if AST fails
   debounceMs: number; // Default 3000ms
+  depth: number; // Max directory depth for file watching (default: 4)
+  usePolling: boolean; // Fallback to polling for FD-constrained envs (default: false)
 }

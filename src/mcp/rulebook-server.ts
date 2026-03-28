@@ -321,7 +321,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
   const server = new McpServer({
     name: 'rulebook-task-management',
-    version: '5.1.2',
+    version: '5.1.3',
   });
 
   // --- Wrap all tool handlers with timeout guard ---
@@ -963,7 +963,10 @@ export async function startRulebookMcpServer(): Promise<void> {
         // Boot Background Indexer only if memory is enabled (opt-in to save resources)
         const indexerEnabled = rulebookConfig.memory?.enabled === true;
         if (indexerEnabled) {
-          bgIndexer = new BackgroundIndexer(memoryManager, projectRoot, { enabled: true });
+          bgIndexer = new BackgroundIndexer(memoryManager, projectRoot, {
+            enabled: true,
+            ...rulebookConfig.indexer,
+          });
           setTimeout(() => {
             try {
               bgIndexer?.start();
