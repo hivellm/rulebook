@@ -14,7 +14,14 @@ describe('Task Blocker Chain', () => {
     // Create minimal .rulebook config
     writeFileSync(
       join(testDir, '.rulebook', 'rulebook.json'),
-      JSON.stringify({ version: '5.0.0', installedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), projectId: 'test', mode: 'full', features: {} })
+      JSON.stringify({
+        version: '5.0.0',
+        installedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        projectId: 'test',
+        mode: 'full',
+        features: {},
+      })
     );
     tm = new TaskManager(testDir, '.rulebook');
   });
@@ -32,7 +39,10 @@ describe('Task Blocker Chain', () => {
     // Create task directory with metadata
     const taskDir = join(testDir, '.rulebook', 'tasks', 'task-a');
     mkdirSync(taskDir, { recursive: true });
-    writeFileSync(join(taskDir, 'proposal.md'), '# Proposal\n\n## Why\nTest task\n\n## What Changes\nNothing');
+    writeFileSync(
+      join(taskDir, 'proposal.md'),
+      '# Proposal\n\n## Why\nTest task\n\n## What Changes\nNothing'
+    );
     writeFileSync(join(taskDir, 'tasks.md'), '- [ ] Item 1');
     writeFileSync(
       join(taskDir, '.metadata.json'),
@@ -55,7 +65,10 @@ describe('Task Blocker Chain', () => {
   it('should read blockedBy from metadata', async () => {
     const taskDir = join(testDir, '.rulebook', 'tasks', 'task-b');
     mkdirSync(taskDir, { recursive: true });
-    writeFileSync(join(taskDir, 'proposal.md'), '# Proposal\n\n## Why\nTest\n\n## What Changes\nN/A');
+    writeFileSync(
+      join(taskDir, 'proposal.md'),
+      '# Proposal\n\n## Why\nTest\n\n## What Changes\nN/A'
+    );
     writeFileSync(join(taskDir, 'tasks.md'), '- [ ] Item 1');
     writeFileSync(
       join(taskDir, '.metadata.json'),
@@ -76,7 +89,10 @@ describe('Task Blocker Chain', () => {
   it('should return metadata without blocker fields for legacy tasks', async () => {
     const taskDir = join(testDir, '.rulebook', 'tasks', 'old-task');
     mkdirSync(taskDir, { recursive: true });
-    writeFileSync(join(taskDir, 'proposal.md'), '# Proposal\n\n## Why\nTest\n\n## What Changes\nN/A');
+    writeFileSync(
+      join(taskDir, 'proposal.md'),
+      '# Proposal\n\n## Why\nTest\n\n## What Changes\nN/A'
+    );
     writeFileSync(join(taskDir, 'tasks.md'), '- [ ] Item 1');
     writeFileSync(
       join(taskDir, '.metadata.json'),

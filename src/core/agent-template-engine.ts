@@ -79,7 +79,11 @@ function parseFrontmatter(content: string): { meta: Record<string, unknown>; bod
 
     // Inline array: ["a", "b"]
     if (typeof val === 'string' && val.startsWith('[') && val.endsWith(']')) {
-      val = val.slice(1, -1).split(',').map(s => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+      val = val
+        .slice(1, -1)
+        .split(',')
+        .map((s) => s.trim().replace(/^["']|["']$/g, ''))
+        .filter(Boolean);
     } else if (val === 'true') val = true;
     else if (val === 'false') val = false;
     else if (typeof val === 'string') val = val.replace(/^["']|["']$/g, '');
@@ -132,11 +136,11 @@ async function loadFromDir(dir: string, templates: AgentTemplate[]): Promise<voi
     templates.push({
       name: (meta.name as string) || basename(file, '.md'),
       domain: (meta.domain as string) || 'general',
-      filePatterns: Array.isArray(meta.filePatterns) ? meta.filePatterns as string[] : ['*'],
+      filePatterns: Array.isArray(meta.filePatterns) ? (meta.filePatterns as string[]) : ['*'],
       tier: (meta.tier as ModelTier) || 'standard',
       model: (meta.model as string) || 'sonnet',
       description: (meta.description as string) || '',
-      checklist: Array.isArray(meta.checklist) ? meta.checklist as string[] : [],
+      checklist: Array.isArray(meta.checklist) ? (meta.checklist as string[]) : [],
       body: body.trim(),
     });
   }
@@ -251,7 +255,11 @@ async function generateCursorAgentRules(
 
   for (const tmpl of templates) {
     // Skip generic agents that don't have meaningful file patterns
-    if (tmpl.filePatterns.length === 1 && tmpl.filePatterns[0] === '*' && tmpl.domain === 'research') {
+    if (
+      tmpl.filePatterns.length === 1 &&
+      tmpl.filePatterns[0] === '*' &&
+      tmpl.domain === 'research'
+    ) {
       continue;
     }
 
@@ -363,7 +371,9 @@ export async function generateAgents(
 /**
  * List available project types and their agent counts.
  */
-export async function listProjectTypes(): Promise<Array<{ type: ProjectType; agentCount: number }>> {
+export async function listProjectTypes(): Promise<
+  Array<{ type: ProjectType; agentCount: number }>
+> {
   const types: ProjectType[] = ['game-engine', 'compiler', 'web-app', 'mobile', 'generic'];
   const result: Array<{ type: ProjectType; agentCount: number }> = [];
 

@@ -1,9 +1,6 @@
 import { existsSync, mkdirSync, readdirSync } from 'fs';
 import { join } from 'path';
-import {
-  readFile as readFileUtil,
-  writeFile as writeFileUtil,
-} from '../utils/file-system.js';
+import { readFile as readFileUtil, writeFile as writeFileUtil } from '../utils/file-system.js';
 import type { Learning, KnowledgeCategory } from '../types.js';
 import { DecisionManager } from './decision-manager.js';
 import { KnowledgeManager } from './knowledge-manager.js';
@@ -92,8 +89,8 @@ export class LearnManager {
     this.ensureDir();
     if (!existsSync(this.ralphHistoryPath)) return [];
 
-    const files = readdirSync(this.ralphHistoryPath).filter((f) =>
-      f.startsWith('iteration-') && f.endsWith('.json')
+    const files = readdirSync(this.ralphHistoryPath).filter(
+      (f) => f.startsWith('iteration-') && f.endsWith('.json')
     );
 
     // Load existing learning titles for dedup

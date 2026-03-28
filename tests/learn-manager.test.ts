@@ -31,8 +31,10 @@ describe('LearnManager', () => {
       const l = await mgr.capture('Test Learning', 'content');
       const dir = join(testDir, '.rulebook', 'learnings');
       const files = await fs.readdir(dir);
-      expect(files.some(f => f.endsWith('.md') && f.includes('test-learning'))).toBe(true);
-      expect(files.some(f => f.endsWith('.metadata.json') && f.includes('test-learning'))).toBe(true);
+      expect(files.some((f) => f.endsWith('.md') && f.includes('test-learning'))).toBe(true);
+      expect(files.some((f) => f.endsWith('.metadata.json') && f.includes('test-learning'))).toBe(
+        true
+      );
     });
 
     it('should store tags and related task', async () => {
@@ -56,7 +58,7 @@ describe('LearnManager', () => {
     it('should return learnings sorted newest first', async () => {
       await mgr.capture('First', 'content1');
       // Small delay to ensure different timestamps
-      await new Promise(r => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 10));
       await mgr.capture('Second', 'content2');
       const list = await mgr.list();
       expect(list.length).toBe(2);

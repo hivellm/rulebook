@@ -43,41 +43,84 @@ export interface ComplexityAssessment {
 // ── LOC Estimation ──────────────────────────────────────────────────────
 
 const CODE_EXTENSIONS = new Set([
-  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-  '.py', '.pyx',
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.py',
+  '.pyx',
   '.rs',
   '.go',
-  '.java', '.kt', '.scala',
+  '.java',
+  '.kt',
+  '.scala',
   '.cs',
-  '.cpp', '.cc', '.cxx', '.c', '.h', '.hpp',
-  '.swift', '.m', '.mm',
+  '.cpp',
+  '.cc',
+  '.cxx',
+  '.c',
+  '.h',
+  '.hpp',
+  '.swift',
+  '.m',
+  '.mm',
   '.rb',
   '.php',
-  '.ex', '.exs',
-  '.erl', '.hrl',
+  '.ex',
+  '.exs',
+  '.erl',
+  '.hrl',
   '.zig',
   '.sol',
   '.dart',
-  '.r', '.R',
+  '.r',
+  '.R',
   '.hs',
   '.lua',
-  '.hlsl', '.glsl', '.msl', '.wgsl',
+  '.hlsl',
+  '.glsl',
+  '.msl',
+  '.wgsl',
   '.sql',
-  '.sh', '.bash', '.zsh',
+  '.sh',
+  '.bash',
+  '.zsh',
 ]);
 
 const IGNORE_DIRS = new Set([
-  'node_modules', '.git', 'dist', 'build', 'out', '.next', '.nuxt',
-  'target', 'vendor', '__pycache__', '.venv', 'venv', 'env',
-  '.rulebook', '.claude', '.cursor', 'coverage', '.cache',
-  'zig-cache', 'zig-out', '.zig-cache',
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  'out',
+  '.next',
+  '.nuxt',
+  'target',
+  'vendor',
+  '__pycache__',
+  '.venv',
+  'venv',
+  'env',
+  '.rulebook',
+  '.claude',
+  '.cursor',
+  'coverage',
+  '.cache',
+  'zig-cache',
+  'zig-out',
+  '.zig-cache',
 ]);
 
 /**
  * Estimate lines of code by sampling files. Scans up to maxFiles to avoid
  * blocking on huge repos.
  */
-function estimateLoc(projectRoot: string, maxFiles: number = 500): { loc: number; languages: Set<string> } {
+function estimateLoc(
+  projectRoot: string,
+  maxFiles: number = 500
+): { loc: number; languages: Set<string> } {
   let totalLoc = 0;
   let filesScanned = 0;
   const languages = new Set<string>();
@@ -179,9 +222,26 @@ function countCodeFiles(projectRoot: string, max: number): number {
 // ── Source Directory Count ───────────────────────────────────────────────
 
 function countSourceDirs(projectRoot: string): number {
-  const srcDirs = ['src', 'lib', 'app', 'pages', 'components', 'modules',
-    'packages', 'crates', 'cmd', 'pkg', 'internal', 'runtime',
-    'compiler', 'engine', 'core', 'server', 'client', 'api'];
+  const srcDirs = [
+    'src',
+    'lib',
+    'app',
+    'pages',
+    'components',
+    'modules',
+    'packages',
+    'crates',
+    'cmd',
+    'pkg',
+    'internal',
+    'runtime',
+    'compiler',
+    'engine',
+    'core',
+    'server',
+    'client',
+    'api',
+  ];
 
   let count = 0;
   for (const dir of srcDirs) {
@@ -196,29 +256,47 @@ function detectTools(projectRoot: string): string[] {
   const tools: string[] = [];
   if (existsSync(join(projectRoot, '.claude')) || existsSync(join(projectRoot, 'CLAUDE.md')))
     tools.push('claude-code');
-  if (existsSync(join(projectRoot, '.cursor')))
-    tools.push('cursor');
-  if (existsSync(join(projectRoot, 'GEMINI.md')))
-    tools.push('gemini');
+  if (existsSync(join(projectRoot, '.cursor'))) tools.push('cursor');
+  if (existsSync(join(projectRoot, 'GEMINI.md'))) tools.push('gemini');
   if (existsSync(join(projectRoot, '.windsurf')) || existsSync(join(projectRoot, '.windsurfrules')))
     tools.push('windsurf');
-  if (existsSync(join(projectRoot, '.github', 'copilot-instructions.md')))
-    tools.push('copilot');
-  if (existsSync(join(projectRoot, '.continue')))
-    tools.push('continue');
+  if (existsSync(join(projectRoot, '.github', 'copilot-instructions.md'))) tools.push('copilot');
+  if (existsSync(join(projectRoot, '.continue'))) tools.push('continue');
   return tools;
 }
 
 // ── Main Assessment ─────────────────────────────────────────────────────
 
 const EXT_TO_LANGUAGE: Record<string, string> = {
-  '.ts': 'TypeScript', '.tsx': 'TypeScript', '.js': 'JavaScript', '.jsx': 'JavaScript',
-  '.py': 'Python', '.rs': 'Rust', '.go': 'Go', '.java': 'Java', '.kt': 'Kotlin',
-  '.cs': 'C#', '.cpp': 'C++', '.c': 'C', '.h': 'C/C++', '.hpp': 'C++',
-  '.swift': 'Swift', '.rb': 'Ruby', '.php': 'PHP', '.dart': 'Dart',
-  '.hlsl': 'HLSL', '.glsl': 'GLSL', '.lua': 'Lua', '.zig': 'Zig',
-  '.ex': 'Elixir', '.erl': 'Erlang', '.sol': 'Solidity', '.hs': 'Haskell',
-  '.scala': 'Scala', '.r': 'R', '.R': 'R',
+  '.ts': 'TypeScript',
+  '.tsx': 'TypeScript',
+  '.js': 'JavaScript',
+  '.jsx': 'JavaScript',
+  '.py': 'Python',
+  '.rs': 'Rust',
+  '.go': 'Go',
+  '.java': 'Java',
+  '.kt': 'Kotlin',
+  '.cs': 'C#',
+  '.cpp': 'C++',
+  '.c': 'C',
+  '.h': 'C/C++',
+  '.hpp': 'C++',
+  '.swift': 'Swift',
+  '.rb': 'Ruby',
+  '.php': 'PHP',
+  '.dart': 'Dart',
+  '.hlsl': 'HLSL',
+  '.glsl': 'GLSL',
+  '.lua': 'Lua',
+  '.zig': 'Zig',
+  '.ex': 'Elixir',
+  '.erl': 'Erlang',
+  '.sol': 'Solidity',
+  '.hs': 'Haskell',
+  '.scala': 'Scala',
+  '.r': 'R',
+  '.R': 'R',
 };
 
 export function assessComplexity(projectRoot: string): ComplexityAssessment {
@@ -232,12 +310,13 @@ export function assessComplexity(projectRoot: string): ComplexityAssessment {
 
   const sourceDirectories = countSourceDirs(projectRoot);
   const hasMultipleBuildTargets =
-    existsSync(join(projectRoot, 'Cargo.toml')) && existsSync(join(projectRoot, 'package.json')) ||
-    existsSync(join(projectRoot, 'CMakeLists.txt')) && existsSync(join(projectRoot, 'package.json')) ||
-    existsSync(join(projectRoot, 'build.zig')) && existsSync(join(projectRoot, 'package.json'));
+    (existsSync(join(projectRoot, 'Cargo.toml')) &&
+      existsSync(join(projectRoot, 'package.json'))) ||
+    (existsSync(join(projectRoot, 'CMakeLists.txt')) &&
+      existsSync(join(projectRoot, 'package.json'))) ||
+    (existsSync(join(projectRoot, 'build.zig')) && existsSync(join(projectRoot, 'package.json')));
   const hasCustomMcpServer =
-    existsSync(join(projectRoot, '.mcp.json')) ||
-    existsSync(join(projectRoot, 'mcp.json'));
+    existsSync(join(projectRoot, '.mcp.json')) || existsSync(join(projectRoot, 'mcp.json'));
   const hasReferenceSource = false; // Detected from config, not file system
 
   const detectedTools = detectTools(projectRoot);

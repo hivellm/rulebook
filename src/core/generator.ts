@@ -190,9 +190,7 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   );
 
   // RULEBOOK.md is second (task management)
-  sections.push(
-    `- \`/${rulebookDir}/specs/RULEBOOK.md\` - **Task management rules**`
-  );
+  sections.push(`- \`/${rulebookDir}/specs/RULEBOOK.md\` - **Task management rules**`);
 
   // Only reference QUALITY_ENFORCEMENT if not in light mode
   if (!config.lightMode) {
@@ -206,7 +204,9 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
 
   // Token optimization reference
   if (!config.lightMode) {
-    sections.push(`- \`/${rulebookDir}/specs/TOKEN_OPTIMIZATION.md\` - Model tier assignment and output verbosity rules`);
+    sections.push(
+      `- \`/${rulebookDir}/specs/TOKEN_OPTIMIZATION.md\` - Model tier assignment and output verbosity rules`
+    );
   }
 
   // Reference PLANS.md for session continuity
@@ -1039,7 +1039,12 @@ export async function generateModularAgents(
   if (!mergedConfig.lightMode) {
     const tokenOptContent = await generateCoreRules('TOKEN_OPTIMIZATION');
     if (tokenOptContent.trim()) {
-      await writeModularFile(projectRoot, 'TOKEN_OPTIMIZATION', tokenOptContent.trim(), rulebookDir);
+      await writeModularFile(
+        projectRoot,
+        'TOKEN_OPTIMIZATION',
+        tokenOptContent.trim(),
+        rulebookDir
+      );
     }
   }
 

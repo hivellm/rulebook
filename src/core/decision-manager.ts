@@ -1,9 +1,6 @@
 import { existsSync, mkdirSync, readdirSync } from 'fs';
 import { join } from 'path';
-import {
-  readFile as readFileUtil,
-  writeFile as writeFileUtil,
-} from '../utils/file-system.js';
+import { readFile as readFileUtil, writeFile as writeFileUtil } from '../utils/file-system.js';
 import type { Decision, DecisionStatus } from '../types.js';
 
 const DECISIONS_DIR = 'decisions';
@@ -138,7 +135,9 @@ export class DecisionManager {
 
   async update(
     id: number,
-    fields: Partial<Pick<Decision, 'status' | 'context' | 'decision' | 'consequences' | 'alternatives'>>
+    fields: Partial<
+      Pick<Decision, 'status' | 'context' | 'decision' | 'consequences' | 'alternatives'>
+    >
   ): Promise<Decision | null> {
     const result = await this.show(id);
     if (!result) return null;
@@ -212,19 +211,16 @@ export class DecisionManager {
     ];
     for (const d of active) {
       const prefix = `${pad(d.id)}-${d.slug}`;
-      lines.push(`- **ADR-${pad(d.id)}: ${d.title}** (${d.status}) → [details](/.rulebook/decisions/${prefix}.md)`);
+      lines.push(
+        `- **ADR-${pad(d.id)}: ${d.title}** (${d.status}) → [details](/.rulebook/decisions/${prefix}.md)`
+      );
     }
     lines.push('');
     return lines.join('\n');
   }
 
   private renderMarkdown(d: Decision): string {
-    const lines = [
-      `# ${d.id}. ${d.title}`,
-      '',
-      `**Status**: ${d.status}`,
-      `**Date**: ${d.date}`,
-    ];
+    const lines = [`# ${d.id}. ${d.title}`, '', `**Status**: ${d.status}`, `**Date**: ${d.date}`];
 
     if (d.relatedTasks && d.relatedTasks.length > 0) {
       lines.push(`**Related Tasks**: ${d.relatedTasks.join(', ')}`);

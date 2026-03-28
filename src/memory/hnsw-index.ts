@@ -25,9 +25,13 @@ interface SearchCandidate {
 class MinHeap {
   private heap: SearchCandidate[] = [];
 
-  get size(): number { return this.heap.length; }
+  get size(): number {
+    return this.heap.length;
+  }
 
-  peek(): SearchCandidate | undefined { return this.heap[0]; }
+  peek(): SearchCandidate | undefined {
+    return this.heap[0];
+  }
 
   push(item: SearchCandidate): void {
     this.heap.push(item);
@@ -80,9 +84,13 @@ class MinHeap {
 class MaxHeap {
   private heap: SearchCandidate[] = [];
 
-  get size(): number { return this.heap.length; }
+  get size(): number {
+    return this.heap.length;
+  }
 
-  peek(): SearchCandidate | undefined { return this.heap[0]; }
+  peek(): SearchCandidate | undefined {
+    return this.heap[0];
+  }
 
   push(item: SearchCandidate): void {
     this.heap.push(item);
@@ -201,8 +209,8 @@ export class HNSWIndex {
     layer: number
   ): SearchCandidate[] {
     const visited = new Set<string>();
-    const candidates = new MinHeap();  // closest-first extraction
-    const results = new MaxHeap();     // farthest-first for boundary check
+    const candidates = new MinHeap(); // closest-first extraction
+    const results = new MaxHeap(); // farthest-first for boundary check
 
     const entryNode = this.nodes.get(entryLabel);
     if (!entryNode) return [];

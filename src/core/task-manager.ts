@@ -392,9 +392,7 @@ export class TaskManager {
   /**
    * Get raw task metadata (including blocks/blockedBy/cascadeImpact for v5 blocker tracking)
    */
-  async getTaskMetadata(
-    taskId: string
-  ): Promise<Record<string, unknown> | null> {
+  async getTaskMetadata(taskId: string): Promise<Record<string, unknown> | null> {
     const taskPath = join(this.tasksPath, taskId);
     const metadataPath = join(taskPath, '.metadata.json');
     if (!(await fileExists(metadataPath))) return null;

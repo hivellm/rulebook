@@ -1,9 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, rmSync } from 'fs';
 import { join } from 'path';
-import {
-  readFile as readFileUtil,
-  writeFile as writeFileUtil,
-} from '../utils/file-system.js';
+import { readFile as readFileUtil, writeFile as writeFileUtil } from '../utils/file-system.js';
 import type { KnowledgeEntry, KnowledgeType, KnowledgeCategory } from '../types.js';
 
 const KNOWLEDGE_DIR = 'knowledge';
@@ -157,9 +154,7 @@ export class KnowledgeManager {
     if (patterns.length > 0) {
       lines.push('### Patterns', '', 'The following patterns are enforced in this project:', '');
       for (const p of patterns) {
-        lines.push(
-          `- **${p.title}** → [spec](/.rulebook/knowledge/patterns/${p.id}.md)`
-        );
+        lines.push(`- **${p.title}** → [spec](/.rulebook/knowledge/patterns/${p.id}.md)`);
       }
       lines.push('');
     }
@@ -167,9 +162,7 @@ export class KnowledgeManager {
     if (antiPatterns.length > 0) {
       lines.push('### Anti-Patterns to Avoid', '');
       for (const a of antiPatterns) {
-        lines.push(
-          `- **${a.title}** → [details](/.rulebook/knowledge/anti-patterns/${a.id}.md)`
-        );
+        lines.push(`- **${a.title}** → [details](/.rulebook/knowledge/anti-patterns/${a.id}.md)`);
       }
       lines.push('');
     }

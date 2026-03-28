@@ -7,10 +7,24 @@ import type { IndexerConfig } from './indexer-types.js';
 
 // Binary/asset extensions to skip at the watcher level
 const IGNORED_EXTENSIONS = new Set([
-  '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico',
-  '.mp3', '.mp4', '.pdf', '.lock',
-  '.sqlite', '.sqlite-wal', '.sqlite-shm', '.sqlite-journal',
-  '.db', '.db-wal', '.db-shm', '.db-journal',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+  '.ico',
+  '.mp3',
+  '.mp4',
+  '.pdf',
+  '.lock',
+  '.sqlite',
+  '.sqlite-wal',
+  '.sqlite-shm',
+  '.sqlite-journal',
+  '.db',
+  '.db-wal',
+  '.db-shm',
+  '.db-journal',
 ]);
 
 export class BackgroundIndexer {
@@ -59,8 +73,8 @@ export class BackgroundIndexer {
 
     // Resolve watch paths to absolute, filtering to those that actually exist
     const watchTargets = this.config.watchPaths
-      .map(p => (p === '.' ? this.projectRoot : resolve(this.projectRoot, p)))
-      .filter(p => existsSync(p));
+      .map((p) => (p === '.' ? this.projectRoot : resolve(this.projectRoot, p)))
+      .filter((p) => existsSync(p));
 
     if (watchTargets.length === 0) {
       console.error('[BackgroundIndexer] No valid watch paths found, falling back to project root');
@@ -144,13 +158,45 @@ export class BackgroundIndexer {
   private isCodeFile(filePath: string): boolean {
     const ext = extname(filePath).toLowerCase();
     const codeExts = [
-      '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-      '.py', '.rs', '.go', '.java', '.kt', '.scala',
-      '.cs', '.cpp', '.cc', '.c', '.h', '.hpp',
-      '.swift', '.rb', '.php', '.ex', '.erl', '.zig',
-      '.sol', '.dart', '.lua', '.hs', '.r', '.R',
-      '.sh', '.bash', '.zsh', '.yaml', '.yml', '.json',
-      '.toml', '.md', '.mdx',
+      '.ts',
+      '.tsx',
+      '.js',
+      '.jsx',
+      '.mjs',
+      '.cjs',
+      '.py',
+      '.rs',
+      '.go',
+      '.java',
+      '.kt',
+      '.scala',
+      '.cs',
+      '.cpp',
+      '.cc',
+      '.c',
+      '.h',
+      '.hpp',
+      '.swift',
+      '.rb',
+      '.php',
+      '.ex',
+      '.erl',
+      '.zig',
+      '.sol',
+      '.dart',
+      '.lua',
+      '.hs',
+      '.r',
+      '.R',
+      '.sh',
+      '.bash',
+      '.zsh',
+      '.yaml',
+      '.yml',
+      '.json',
+      '.toml',
+      '.md',
+      '.mdx',
     ];
     return codeExts.includes(ext);
   }

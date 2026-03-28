@@ -55,8 +55,14 @@ describe('MemoryStore — sql.js fallback', () => {
 function makeMemory(id: string, title: string, content = 'Test'): Memory {
   const now = Date.now();
   return {
-    id, type: 'observation', title, content,
-    project: 'test', tags: ['test'],
-    createdAt: now, updatedAt: now, accessedAt: now,
+    id,
+    type: 'observation',
+    title,
+    content,
+    project: 'test',
+    tags: ['test'],
+    createdAt: now,
+    updatedAt: now,
+    accessedAt: now,
   };
 }

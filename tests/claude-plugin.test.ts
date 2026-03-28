@@ -53,7 +53,6 @@ describe('Claude Plugin Structure', () => {
       expect(rulebookPlugin).toHaveProperty('description');
       expect(rulebookPlugin).toHaveProperty('version');
     });
-
   });
 
   describe('plugin.json manifest', () => {

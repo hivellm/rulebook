@@ -524,7 +524,13 @@ export interface Decision {
 }
 
 export type KnowledgeType = 'pattern' | 'anti-pattern';
-export type KnowledgeCategory = 'architecture' | 'code' | 'testing' | 'security' | 'performance' | 'devops';
+export type KnowledgeCategory =
+  | 'architecture'
+  | 'code'
+  | 'testing'
+  | 'security'
+  | 'performance'
+  | 'devops';
 
 export interface KnowledgeEntry {
   id: string;

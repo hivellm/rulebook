@@ -114,7 +114,10 @@ program
   .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
   .option('--package <name>', 'Initialize only a single package inside a monorepo')
   .option('--add-sequential-thinking', 'Auto-add sequential-thinking MCP to .mcp.json')
-  .option('--tools <tools>', 'Comma-separated AI tools to generate for (e.g., claude-code,cursor,gemini)')
+  .option(
+    '--tools <tools>',
+    'Comma-separated AI tools to generate for (e.g., claude-code,cursor,gemini)'
+  )
   .action(initCommand);
 
 program
@@ -282,15 +285,26 @@ taskCommand
     }
 
     if (blockers.length === 0) {
-      console.log(chalk.gray('No blocker chains found. Add "blocks" field to task .metadata.json to track dependencies.'));
+      console.log(
+        chalk.gray(
+          'No blocker chains found. Add "blocks" field to task .metadata.json to track dependencies.'
+        )
+      );
       return;
     }
 
     blockers.sort((a, b) => b.cascadeImpact - a.cascadeImpact);
     console.log(chalk.bold('\nBlocker Chain (highest cascade impact first)\n'));
     for (const b of blockers) {
-      const impact = b.cascadeImpact >= 3 ? chalk.red('HIGH') : b.cascadeImpact >= 2 ? chalk.yellow('MEDIUM') : chalk.gray('LOW');
-      console.log(`  ${chalk.green(b.taskId)} → blocks: ${b.blocks.join(', ')} (${b.cascadeImpact} tasks, ${impact} impact)`);
+      const impact =
+        b.cascadeImpact >= 3
+          ? chalk.red('HIGH')
+          : b.cascadeImpact >= 2
+            ? chalk.yellow('MEDIUM')
+            : chalk.gray('LOW');
+      console.log(
+        `  ${chalk.green(b.taskId)} → blocks: ${b.blocks.join(', ')} (${b.cascadeImpact} tasks, ${impact} impact)`
+      );
     }
     console.log('');
   });
@@ -312,7 +326,7 @@ taskCommand
       console.log(chalk.yellow(`Task "${taskId}" not found or has no metadata.`));
       return;
     }
-    const blockedBy = Array.isArray(metadata.blockedBy) ? metadata.blockedBy as string[] : [];
+    const blockedBy = Array.isArray(metadata.blockedBy) ? (metadata.blockedBy as string[]) : [];
     if (blockedBy.length === 0) {
       console.log(chalk.green(`Task "${taskId}" is not blocked by anything.`));
     } else {
@@ -346,7 +360,10 @@ program
   .option('--minimal', 'Regenerate using minimal mode (essentials only)')
   .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
   .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
-  .option('--tools <tools>', 'Comma-separated AI tools to generate for (e.g., claude-code,cursor,gemini)')
+  .option(
+    '--tools <tools>',
+    'Comma-separated AI tools to generate for (e.g., claude-code,cursor,gemini)'
+  )
   .action(updateCommand);
 
 // MCP commands
@@ -632,7 +649,9 @@ workspaceCommand
   .action(() => workspaceStatusCommand());
 
 // Context Intelligence commands (v4.4)
-const decisionCommand = program.command('decision').description('Manage Architecture Decision Records');
+const decisionCommand = program
+  .command('decision')
+  .description('Manage Architecture Decision Records');
 
 decisionCommand
   .command('create <title>')
@@ -664,7 +683,11 @@ const knowledgeCommand = program.command('knowledge').description('Manage projec
 knowledgeCommand
   .command('add <type> <title>')
   .description('Add a pattern or anti-pattern')
-  .option('--category <category>', 'Category: architecture, code, testing, security, performance, devops', 'code')
+  .option(
+    '--category <category>',
+    'Category: architecture, code, testing, security, performance, devops',
+    'code'
+  )
   .option('--description <desc>', 'Description of the pattern')
   .action((type: string, title: string, options: { category?: string; description?: string }) =>
     knowledgeAddCommand(type, title, options)
@@ -732,7 +755,9 @@ program
 
     const spinner = ora('Analyzing project complexity...').start();
     const result = assessComplexity(cwd);
-    spinner.succeed(`Project complexity: ${result.tier.toUpperCase()} (score: ${result.score}/100)`);
+    spinner.succeed(
+      `Project complexity: ${result.tier.toUpperCase()} (score: ${result.score}/100)`
+    );
 
     console.log(chalk.bold('\nMetrics'));
     console.log(`  Estimated LOC:      ${result.metrics.estimatedLoc.toLocaleString()}`);
@@ -747,19 +772,35 @@ program
 
     console.log(chalk.bold('\nRecommended Configuration'));
     const rec = result.recommendations;
-    console.log(`  ${rec.tier1Rules ? chalk.green('✓') : chalk.gray('·')} Tier 1 prohibitions (no-shortcuts, git-safety, etc.)`);
-    console.log(`  ${rec.tier2Rules ? chalk.green('✓') : chalk.gray('·')} Tier 2 workflow rules (decomposition, incremental tests)`);
-    console.log(`  ${rec.specializedAgents ? chalk.green('✓') : chalk.gray('·')} Specialized agents by project type`);
-    console.log(`  ${rec.teamCoordination ? chalk.green('✓') : chalk.gray('·')} Multi-agent team coordination`);
-    console.log(`  ${rec.blockerTracking ? chalk.green('✓') : chalk.gray('·')} Task blocker chain tracking`);
-    console.log(`  ${rec.dataFlowPlanning ? chalk.green('✓') : chalk.gray('·')} Data flow planning for cross-subsystem changes`);
-    console.log(`  ${rec.referenceWorkflow ? chalk.green('✓') : chalk.gray('·')} Reference implementation workflow`);
+    console.log(
+      `  ${rec.tier1Rules ? chalk.green('✓') : chalk.gray('·')} Tier 1 prohibitions (no-shortcuts, git-safety, etc.)`
+    );
+    console.log(
+      `  ${rec.tier2Rules ? chalk.green('✓') : chalk.gray('·')} Tier 2 workflow rules (decomposition, incremental tests)`
+    );
+    console.log(
+      `  ${rec.specializedAgents ? chalk.green('✓') : chalk.gray('·')} Specialized agents by project type`
+    );
+    console.log(
+      `  ${rec.teamCoordination ? chalk.green('✓') : chalk.gray('·')} Multi-agent team coordination`
+    );
+    console.log(
+      `  ${rec.blockerTracking ? chalk.green('✓') : chalk.gray('·')} Task blocker chain tracking`
+    );
+    console.log(
+      `  ${rec.dataFlowPlanning ? chalk.green('✓') : chalk.gray('·')} Data flow planning for cross-subsystem changes`
+    );
+    console.log(
+      `  ${rec.referenceWorkflow ? chalk.green('✓') : chalk.gray('·')} Reference implementation workflow`
+    );
     console.log('');
   });
 
 // ── Rules Management (v5.0) ─────────────────────────────────────────────
 
-const rulesCommand = program.command('rules').description('Manage canonical rules (.rulebook/rules/)');
+const rulesCommand = program
+  .command('rules')
+  .description('Manage canonical rules (.rulebook/rules/)');
 
 rulesCommand
   .command('list')
@@ -773,9 +814,13 @@ rulesCommand
       console.log(chalk.gray('Run "rulebook rules add <name>" to install from template library'));
       return;
     }
-    const tierLabels: Record<number, string> = { 1: 'Tier 1 (Prohibition)', 2: 'Tier 2 (Workflow)', 3: 'Tier 3 (Standard)' };
+    const tierLabels: Record<number, string> = {
+      1: 'Tier 1 (Prohibition)',
+      2: 'Tier 2 (Workflow)',
+      3: 'Tier 3 (Standard)',
+    };
     for (const tier of [1, 2, 3]) {
-      const tierRules = rules.filter(r => r.tier === tier);
+      const tierRules = rules.filter((r) => r.tier === tier);
       if (tierRules.length === 0) continue;
       console.log(chalk.bold(`\n${tierLabels[tier]}`));
       for (const r of tierRules) {
@@ -800,7 +845,11 @@ rulesCommand
       console.log(chalk.gray('Run "rulebook update" to project rules to all detected tools'));
     } else {
       console.log(chalk.red(`✗ Rule template "${name}" not found`));
-      console.log(chalk.gray('Available: no-shortcuts, git-safety, sequential-editing, task-decomposition, research-first, incremental-tests, incremental-implementation, no-deferred, follow-task-sequence, session-workflow'));
+      console.log(
+        chalk.gray(
+          'Available: no-shortcuts, git-safety, sequential-editing, task-decomposition, research-first, incremental-tests, incremental-implementation, no-deferred, follow-task-sequence, session-workflow'
+        )
+      );
     }
   });
 
@@ -825,15 +874,24 @@ rulesCommand
       copilot: detection.githubCopilot?.detected,
       continueDev: detection.continueDev?.detected,
     });
-    const total = result.claudeCode.length + result.cursor.length + result.gemini.length +
-      result.copilot.length + result.windsurf.length + result.continueDev.length;
+    const total =
+      result.claudeCode.length +
+      result.cursor.length +
+      result.gemini.length +
+      result.copilot.length +
+      result.windsurf.length +
+      result.continueDev.length;
     spinner.succeed(`Projected rules to ${total} tool-specific files`);
-    if (result.claudeCode.length) console.log(chalk.gray(`  • Claude Code: ${result.claudeCode.length} files`));
+    if (result.claudeCode.length)
+      console.log(chalk.gray(`  • Claude Code: ${result.claudeCode.length} files`));
     if (result.cursor.length) console.log(chalk.gray(`  • Cursor: ${result.cursor.length} files`));
     if (result.gemini.length) console.log(chalk.gray(`  • Gemini: ${result.gemini.length} files`));
-    if (result.copilot.length) console.log(chalk.gray(`  • Copilot: ${result.copilot.length} files`));
-    if (result.windsurf.length) console.log(chalk.gray(`  • Windsurf: ${result.windsurf.length} files`));
-    if (result.continueDev.length) console.log(chalk.gray(`  • Continue.dev: ${result.continueDev.length} files`));
+    if (result.copilot.length)
+      console.log(chalk.gray(`  • Copilot: ${result.copilot.length} files`));
+    if (result.windsurf.length)
+      console.log(chalk.gray(`  • Windsurf: ${result.windsurf.length} files`));
+    if (result.continueDev.length)
+      console.log(chalk.gray(`  • Continue.dev: ${result.continueDev.length} files`));
   });
 
 program.parse(process.argv);
