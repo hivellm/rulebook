@@ -63,6 +63,8 @@ export class TaskManager {
     if (!existsSync(this.archivePath)) {
       mkdirSync(this.archivePath, { recursive: true });
     }
+    // Auto-migrate legacy archive from tasks/archive to .rulebook/archive
+    await this.migrateArchive();
   }
 
   /**
