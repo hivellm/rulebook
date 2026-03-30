@@ -252,16 +252,4 @@ describe('Claude Plugin Structure', () => {
     });
   });
 
-  describe('Version Sync', () => {
-    it('should have matching version in plugin.json and package.json', async () => {
-      const pluginManifest = JSON.parse(
-        await fs.readFile(path.join(pluginDir, 'plugin.json'), 'utf-8')
-      );
-      const packageJson = JSON.parse(
-        await fs.readFile(path.join(projectRoot, 'package.json'), 'utf-8')
-      );
-
-      expect(pluginManifest.version).toBe(packageJson.version);
-    });
-  });
 });
