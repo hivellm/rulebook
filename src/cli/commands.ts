@@ -528,6 +528,37 @@ export async function initCommand(options: {
         // non-fatal
       }
 
+      // F6: CLAUDE.local.md stub + .gitignore hygiene
+      try {
+        const { ensureGitignoreEntries } = await import('../utils/gitignore.js');
+        const localMdPath = path.join(cwd, 'CLAUDE.local.md');
+        if (!existsSync(localMdPath)) {
+          const stub = [
+            '# CLAUDE.local.md',
+            '',
+            '<!-- Personal per-project overrides. Not committed to version control. -->',
+            '<!-- Loaded alongside CLAUDE.md with the same priority. -->',
+            '',
+            '# Add your personal preferences below. Examples:',
+            '# - Preferred test data or sandbox URLs',
+            '# - Personal tooling shortcuts',
+            '# - Debugging tips specific to your machine',
+            '',
+          ].join('\n');
+          const { writeFile: wf } = await import('../utils/file-system.js');
+          await wf(localMdPath, stub);
+          console.log(chalk.gray('  • created CLAUDE.local.md (personal overrides, gitignored)'));
+        }
+        await ensureGitignoreEntries(cwd, [
+          'CLAUDE.local.md',
+          '.rulebook/backup/',
+          '.rulebook/handoff/_pending.md',
+          '.rulebook/handoff/.urgent',
+        ]);
+      } catch {
+        // non-fatal
+      }
+
       // Seed .rulebook/COMPACT_CONTEXT.md from the stack-appropriate template
       try {
         const { seedCompactContext } = await import('../core/compact-context-manager.js');

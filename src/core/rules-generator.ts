@@ -45,6 +45,8 @@ export const ALWAYS_ON_RULES = [
   'multi-agent-teams',
   'consult-analysis-before-implementing',
   'respect-handoff-trigger',
+  'diagnostic-first',
+  'fail-twice-escalate',
 ] as const;
 
 export type SupportedRuleLanguage = (typeof SUPPORTED_RULE_LANGUAGES)[number];
