@@ -520,6 +520,26 @@ export async function initCommand(options: {
         );
       }
 
+      // Apply .claude/settings.json hooks (multi-agent, handoff, compact)
+      try {
+        const { applyClaudeSettings } = await import('../core/claude-settings-manager.js');
+        const rulebookCfg = await configManager.loadConfig();
+        const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
+        const handoffEnabled = rulebookCfg?.handoff?.enabled ?? true;
+        if (multiAgentEnabled || handoffEnabled) {
+          await applyClaudeSettings(cwd, {
+            teamEnforcement: multiAgentEnabled,
+            sessionHandoff: handoffEnabled,
+          });
+        }
+      } catch (err) {
+        console.log(
+          chalk.gray(
+            `  · .claude/settings.json skipped: ${err instanceof Error ? err.message : String(err)}`
+          )
+        );
+      }
+
       // Generate path-scoped .claude/rules/*.md for detected languages
       const rulesSpinner = ora('Generating path-scoped .claude/rules/ for detected languages...').start();
       try {
@@ -2163,6 +2183,31 @@ async function updateSingleProject(
   } catch (err) {
     claudeUpdateSpinner.warn(
       `CLAUDE.md update skipped: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+
+  // Refresh .claude/settings.json hooks for current config
+  try {
+    const { applyClaudeSettings } = await import('../core/claude-settings-manager.js');
+    const rulebookCfg = await configManager.loadConfig();
+    const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
+    const handoffEnabled = rulebookCfg?.handoff?.enabled ?? true;
+    if (multiAgentEnabled || handoffEnabled) {
+      const settingsResult = await applyClaudeSettings(cwd, {
+        teamEnforcement: multiAgentEnabled,
+        sessionHandoff: handoffEnabled,
+      });
+      if (settingsResult.changed) {
+        console.log(
+          chalk.gray(`  • .claude/settings.json refreshed (hooks wired)`)
+        );
+      }
+    }
+  } catch (err) {
+    console.log(
+      chalk.gray(
+        `  · .claude/settings.json refresh skipped: ${err instanceof Error ? err.message : String(err)}`
+      )
     );
   }
 

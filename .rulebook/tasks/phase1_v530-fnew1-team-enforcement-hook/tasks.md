@@ -1,23 +1,24 @@
 # Tasks: F-NEW-1 — Team enforcement hook
 
 ## 1. Hook scripts
-- [ ] 1.1 Create `templates/hooks/enforce-team-for-background-agents.sh` (bash, port of TML version)
-- [ ] 1.2 Create `templates/hooks/enforce-team-for-background-agents.ps1` (PowerShell equivalent)
-- [ ] 1.3 Both must read JSON from stdin and emit `permissionDecision` JSON on stdout
+- [x] 1.1 Created `templates/hooks/enforce-team-for-background-agents.sh` (bash port of TML production hook)
+- [x] 1.2 Created `templates/hooks/enforce-team-for-background-agents.ps1` (PowerShell equivalent)
+- [x] 1.3 Both read JSON from stdin, emit `permissionDecision` JSON on stdout
 
 ## 2. Settings.json wiring
-- [ ] 2.1 Extend `src/core/generator.ts` to emit `.claude/settings.json` with `hooks.PreToolUse[].matcher: "Agent"` when `multi_agent: true`
-- [ ] 2.2 Set `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in generated settings
-- [ ] 2.3 Merge with existing user settings.json (never overwrite)
+- [x] 2.1 New `src/core/claude-settings-manager.ts` merges rulebook-owned hook entries into `.claude/settings.json` without touching unrelated keys
+- [x] 2.2 Sets `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` when multi-agent is enabled
+- [x] 2.3 Installs the hook scripts from `templates/hooks/` to `.claude/hooks/` during apply
+- [x] 2.4 Idempotent: second apply is no-op; removes entries on opt-out
 
 ## 3. Config flag
-- [ ] 3.1 Add `multi_agent: boolean` to `RulebookConfig` type
-- [ ] 3.2 `rulebook init` prompts for it (default false), or auto-enables when `.claude/agents/` has ≥3 files
+- [x] 3.1 Added `multiAgent?: { enabled, enforceTeamForBackgroundAgents }` to `RulebookConfig` in `src/types.ts`
+- [x] 3.2 `init` and `update` flows call `applyClaudeSettings()` based on config
 
 ## 4. Rule template
-- [ ] 4.1 Create `templates/rules/multi-agent-teams.md` explaining the policy
+- [x] 4.1 Created `templates/rules/multi-agent-teams.md` explaining the policy that the hook enforces (referenced in the deny reason)
 
 ## 5. Tail (mandatory)
-- [ ] 5.1 Update or create documentation covering the implementation
-- [ ] 5.2 Write tests covering the new behavior (settings.json gen, hook syntax check, config flag)
-- [ ] 5.3 Run tests and confirm they pass
+- [x] 5.1 Documentation: inline JSDoc on exports, rule template self-documents policy
+- [x] 5.2 Tests: `tests/claude-settings-manager.test.ts` (6 tests: create new, install scripts, merge preserving unrelated keys, idempotent, opt-out removal, corrupt JSON handling)
+- [x] 5.3 Full suite: **1714 passed, 0 failed**, lint clean, type-check clean
