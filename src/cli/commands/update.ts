@@ -372,6 +372,7 @@ export async function updateSingleProject(
       teamEnforcement: multiAgentEnabled,
       sessionHandoff: handoffEnabled,
       compactContextReinject: true,
+      qualityEnforcement: true,
     });
     if (settingsResult.changed) {
       console.log(chalk.gray(`  • .claude/settings.json refreshed (hooks wired)`));

@@ -26,6 +26,8 @@ export interface ClaudeSettingsDesire {
   compactContextReinject?: boolean;
   /** Enable the Stop + SessionStart session handoff pair (F-NEW-5). */
   sessionHandoff?: boolean;
+  /** Enable PreToolUse enforcement hooks (no-deferred, no-shortcuts, mcp-for-tasks). */
+  qualityEnforcement?: boolean;
 }
 
 interface HookCommand {
@@ -52,6 +54,9 @@ const SIGNATURES = {
   compactReinject: 'on-compact-reinject',
   handoffCheck: 'check-context-and-handoff',
   handoffResume: 'resume-from-handoff',
+  noDeferred: 'enforce-no-deferred',
+  noShortcuts: 'enforce-no-shortcuts',
+  mcpForTasks: 'enforce-mcp-for-tasks',
 } as const;
 
 export function getClaudeSettingsPath(projectRoot: string): string {
@@ -138,6 +143,27 @@ export async function applyClaudeSettings(
   } else {
     removeHook(existing.hooks, 'Stop', SIGNATURES.handoffCheck);
     removeHook(existing.hooks, 'SessionStart', SIGNATURES.handoffResume);
+  }
+
+  // Quality enforcement hooks (no-deferred, no-shortcuts, mcp-for-tasks)
+  if (desire.qualityEnforcement) {
+    for (const [sig, script] of [
+      [SIGNATURES.noDeferred, 'enforce-no-deferred.sh'],
+      [SIGNATURES.noShortcuts, 'enforce-no-shortcuts.sh'],
+      [SIGNATURES.mcpForTasks, 'enforce-mcp-for-tasks.sh'],
+    ] as const) {
+      upsertHook(
+        existing.hooks,
+        'PreToolUse',
+        undefined,
+        sig,
+        buildCommandFor(projectRoot, script)
+      );
+    }
+  } else {
+    removeHook(existing.hooks, 'PreToolUse', SIGNATURES.noDeferred);
+    removeHook(existing.hooks, 'PreToolUse', SIGNATURES.noShortcuts);
+    removeHook(existing.hooks, 'PreToolUse', SIGNATURES.mcpForTasks);
   }
 
   // Collapse empty arrays/objects so we don't leave noise behind.
@@ -231,6 +257,11 @@ async function installHookScripts(
   if (desire.sessionHandoff) {
     scripts.push('check-context-and-handoff.sh');
     scripts.push('resume-from-handoff.sh');
+  }
+  if (desire.qualityEnforcement) {
+    scripts.push('enforce-no-deferred.sh');
+    scripts.push('enforce-no-shortcuts.sh');
+    scripts.push('enforce-mcp-for-tasks.sh');
   }
 
   for (const name of scripts) {

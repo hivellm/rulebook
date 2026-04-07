@@ -575,6 +575,7 @@ export async function initCommand(options: {
           teamEnforcement: multiAgentEnabled,
           sessionHandoff: handoffEnabled,
           compactContextReinject: true,
+          qualityEnforcement: true,
         });
       } catch (err) {
         console.log(
