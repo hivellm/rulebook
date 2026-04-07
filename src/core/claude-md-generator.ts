@@ -1,6 +1,6 @@
 import path from 'path';
 import { existsSync } from 'fs';
-import { readFile, writeFile, fileExists, createBackup } from '../utils/file-system.js';
+import { readFile, writeFile, fileExists, ensureDir } from '../utils/file-system.js';
 import { getTemplatesDir } from './generator.js';
 
 /**
@@ -99,9 +99,9 @@ function resolveImports(
 }
 
 /**
- * Write the CLAUDE.md file to disk. Creates a `.backup-<timestamp>` snapshot
- * of any existing file before overwriting. Returns the absolute path to the
- * written file.
+ * Write the CLAUDE.md file to disk. Creates a backup snapshot in
+ * `.rulebook/backup/` before overwriting. Returns the absolute path
+ * to the written file and the backup (if created).
  */
 export async function writeClaudeMd(
   projectRoot: string,
@@ -110,7 +110,12 @@ export async function writeClaudeMd(
   const target = getClaudeMdPath(projectRoot);
   let backupPath: string | null = null;
   if (await fileExists(target)) {
-    backupPath = await createBackup(target);
+    const backupDir = path.join(projectRoot, '.rulebook', 'backup');
+    await ensureDir(backupDir);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    backupPath = path.join(backupDir, `CLAUDE.md.backup-${timestamp}`);
+    const { promises: fs } = await import('fs');
+    await fs.copyFile(target, backupPath);
   }
   await writeFile(target, content);
   return { path: target, backupPath };
