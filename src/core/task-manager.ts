@@ -215,8 +215,9 @@ ${renderMandatoryTail(2)}`;
     };
     await writeFileAsync(join(taskPath, '.metadata.json'), JSON.stringify(metadata, null, 2));
 
-    // Update tasks README index
+    // Update tasks README index + STATE.md
     await this.updateReadme();
+    await this.refreshState();
   }
 
   /**
@@ -575,8 +576,9 @@ ${renderMandatoryTail(2)}`;
     const { renameSync } = await import('fs');
     renameSync(taskPath, archiveTaskPath);
 
-    // Update tasks README index
+    // Update tasks README index + STATE.md
     await this.updateReadme();
+    await this.refreshState();
   }
 
   /**
@@ -603,8 +605,37 @@ ${renderMandatoryTail(2)}`;
 
     await writeFileUtil(metadataPath, JSON.stringify(metadata, null, 2));
 
-    // Update tasks README index
+    // Update tasks README index + STATE.md
     await this.updateReadme();
+    await this.refreshState();
+  }
+
+  /**
+   * v5.3.0 F3: refresh .rulebook/STATE.md after task state changes.
+   */
+  private async refreshState(): Promise<void> {
+    try {
+      const { writeState } = await import('./state-writer.js');
+      const tasks = await this.listTasks(false);
+      const active = tasks.find((t) => t.status === 'in-progress') ?? tasks.find((t) => t.status === 'pending') ?? null;
+      const totalItems = tasks.reduce((n, t) => {
+        const m = t.tasks?.match(/- \[x\]/gi);
+        const u = t.tasks?.match(/- \[ \]/g);
+        return n + (m?.length ?? 0) + (u?.length ?? 0);
+      }, 0);
+      const checkedItems = tasks.reduce((n, t) => {
+        const m = t.tasks?.match(/- \[x\]/gi);
+        return n + (m?.length ?? 0);
+      }, 0);
+      await writeState(join(this.rulebookPath, '..'), {
+        activeTask: active
+          ? { id: active.id, phase: active.id.match(/^(phase\d+[a-z]?)_/)?.[1] ?? '?', progress: `${checkedItems}/${totalItems} items` }
+          : null,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch {
+      // Non-fatal — STATE.md refresh must never break task operations
+    }
   }
 
   /**

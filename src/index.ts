@@ -84,7 +84,9 @@ import {
   analysisCreateCommand,
   analysisListCommand,
   analysisShowCommand,
-} from './cli/commands.js';
+  // Doctor command (v5.3.0)
+  doctorCommand,
+} from './cli/commands/index.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -170,6 +172,7 @@ program
   .action(changelogCommand);
 
 program.command('health').description('Check project health score').action(healthCommand);
+program.command('doctor').description('Run rulebook health checks (file sizes, broken imports, stale state)').action(doctorCommand);
 
 program.command('fix').description('Auto-fix common project issues').action(fixCommand);
 

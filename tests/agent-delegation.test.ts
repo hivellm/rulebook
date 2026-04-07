@@ -37,6 +37,7 @@ const ALL_AGENTS = [
 
 const ALL_SKILLS = [
   'accessibility',
+  'analysis',
   'api-design',
   'architect',
   'build-fix',
@@ -139,7 +140,7 @@ describe('Agent Templates', () => {
 });
 
 describe('Dev Skills', () => {
-  it('has all 14 expected skill directories', () => {
+  it('has all 15 expected skill directories', () => {
     const dirs = readdirSync(SKILLS_DIR).sort();
     expect(dirs).toEqual(ALL_SKILLS);
   });
@@ -353,14 +354,14 @@ describe('installAgentsWithPlaceholders (integration)', () => {
       const skillsDir = join(tmpDir, '.claude', 'skills');
       expect(existsSync(skillsDir)).toBe(true);
 
-      // Check all 14 skills were installed
+      // Check all 15 skills were installed
       const skillDirs = readdirSync(skillsDir);
       expect(skillDirs).toContain('docs');
       expect(skillDirs).toContain('review');
       expect(skillDirs).toContain('debug');
       expect(skillDirs).toContain('architect');
       expect(skillDirs).toContain('security-audit');
-      expect(skillDirs.length).toBe(14);
+      expect(skillDirs.length).toBe(15);
 
       // Verify SKILL.md exists in each skill dir
       for (const dir of skillDirs) {

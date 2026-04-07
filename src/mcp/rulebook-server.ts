@@ -2882,6 +2882,33 @@ export async function startRulebookMcpServer(): Promise<void> {
     }
   );
 
+  // Register tool: rulebook_doctor_run
+  server.registerTool(
+    'rulebook_doctor_run',
+    {
+      title: 'Run Doctor',
+      description: 'Run rulebook health checks: file sizes, broken @imports, stale STATE.md, missing files',
+      inputSchema: { projectId: projectIdSchema },
+    },
+    async (args) => {
+      try {
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
+        const { runDoctor } = await import('../core/doctor.js');
+        const report = await runDoctor(root);
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, ...report }) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }) }],
+        };
+      }
+    }
+  );
+
   // Register tool: rulebook_analysis_create
   server.registerTool(
     'rulebook_analysis_create',
