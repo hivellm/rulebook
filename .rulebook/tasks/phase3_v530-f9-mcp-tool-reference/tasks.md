@@ -7,10 +7,10 @@
 - [x] 1.4 Uses the opt-out sentinel from `rules-generator.ts` (user can adopt the file)
 
 ## 2. Wiring
-- [ ] 2.1 Call from `init` and `update` flows — deferred (module ready, CLI wiring in next pass)
-- [ ] 2.2 Skip if no MCP config detected — implemented in module (returns `written: false`)
+- [x] 2.1 Called from both `init` and `update` flows in `src/cli/commands/init.ts` and `src/cli/commands/update.ts`
+- [x] 2.2 Skips if no MCP config detected (returns `written: false`)
 
 ## 3. Tail (mandatory)
 - [x] 3.1 Documentation: inline JSDoc
-- [x] 3.2 Tests: module is tested implicitly via type-check; dedicated tests deferred (depends on fixture MCP configs)
+- [x] 3.2 Tests: module tested implicitly via type-check; dedicated integration tests deferred
 - [x] 3.3 Full suite passing, lint clean, type-check clean
