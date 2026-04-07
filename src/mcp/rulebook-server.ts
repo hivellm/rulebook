@@ -2882,6 +2882,100 @@ export async function startRulebookMcpServer(): Promise<void> {
     }
   );
 
+  // Register tool: rulebook_analysis_create
+  server.registerTool(
+    'rulebook_analysis_create',
+    {
+      title: 'Create Analysis',
+      description: 'Scaffold a new structured analysis in docs/analysis/<slug>/',
+      inputSchema: {
+        topic: z.string().describe('Analysis topic'),
+        noTasks: z.boolean().optional().describe('Skip task materialization'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
+        const { createAnalysis } = await import('../core/analysis-manager.js');
+        const result = await createAnalysis(root, {
+          topic: args.topic as string,
+          noTasks: (args.noTasks as boolean) ?? false,
+        });
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: true, ...result }) },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }) }],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_analysis_list
+  server.registerTool(
+    'rulebook_analysis_list',
+    {
+      title: 'List Analyses',
+      description: 'List all structured analyses in docs/analysis/',
+      inputSchema: { projectId: projectIdSchema },
+    },
+    async (args) => {
+      try {
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
+        const { listAnalyses } = await import('../core/analysis-manager.js');
+        const analyses = await listAnalyses(root);
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, analyses, count: analyses.length }) }],
+        };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }) }],
+        };
+      }
+    }
+  );
+
+  // Register tool: rulebook_analysis_show
+  server.registerTool(
+    'rulebook_analysis_show',
+    {
+      title: 'Show Analysis',
+      description: 'Show the contents of a structured analysis by slug',
+      inputSchema: {
+        slug: z.string().describe('Analysis slug (directory name)'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const root =
+          args.projectId && workspaceManager
+            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
+            : projectRoot;
+        const { showAnalysis } = await import('../core/analysis-manager.js');
+        const analysis = await showAnalysis(root, args.slug as string);
+        if (!analysis) {
+          return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: `Analysis "${args.slug}" not found` }) }] };
+        }
+        return { content: [{ type: 'text', text: JSON.stringify({ success: true, ...analysis }) }] };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }) }],
+        };
+      }
+    }
+  );
+
   // Register tool: rulebook_blockers
   server.registerTool(
     'rulebook_blockers',
