@@ -230,7 +230,9 @@ export async function listRulesWithSource(projectRoot: string): Promise<ListedRu
  * parser.
  */
 function extractPathsFrontmatter(content: string): string[] | null {
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  // Handle both LF and CRLF line endings (Windows writes CRLF)
+  const normalized = content.replace(/\r\n/g, '\n');
+  const match = normalized.match(/^---\n([\s\S]*?)\n---/);
   if (!match) return null;
   const frontmatter = match[1];
   const pathsMatch = frontmatter.match(/^paths:\s*\n((?:\s*-\s+.+\n?)+)/m);

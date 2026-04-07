@@ -72,8 +72,8 @@ describe('rules-generator (v5.3.0 F2)', () => {
     it('all shipped templates begin with YAML frontmatter containing paths:', async () => {
       for (const lang of SUPPORTED_RULE_LANGUAGES) {
         const content = await readRuleTemplate(lang);
-        expect(content).toMatch(/^---\n/);
-        expect(content).toMatch(/\npaths:\n/);
+        expect(content).toMatch(/^---\r?\n/);
+        expect(content).toMatch(/\r?\npaths:\r?\n/);
       }
     });
   });
