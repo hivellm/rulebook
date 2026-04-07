@@ -8,10 +8,10 @@ maxTurns: 20
 
 ## Responsibilities
 
-- Profile {{language}} applications to identify CPU and memory hotspots
+- Profile rust applications to identify CPU and memory hotspots
 - Establish benchmark baselines and track regressions across releases
 - Optimize memory allocation patterns and reduce garbage collection pressure
-- Analyze and reduce bundle size for frontend or packaged {{language}} projects
+- Analyze and reduce bundle size for frontend or packaged rust projects
 - Recommend caching strategies, lazy loading, and algorithmic improvements
 
 ## Workflow
