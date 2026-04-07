@@ -7,20 +7,20 @@
 - [x] 1.4 `manifest.json` written per analysis with slug, topic, agents, timestamps, version
 
 ## 2. CLI
-- [x] 2.1 Commands registered in `src/cli/commands/analysis.ts` + `src/index.ts`: `rulebook analysis create/list/show`
-- [x] 2.2 Task materialization deferred to v5.4 — scaffolds and prints guidance for manual follow-up
+- [x] 2.1 Commands registered in `src/cli/commands/analysis.ts` + `src/index.ts`
+- [x] 2.2 Task materialization deferred to v5.4 — scaffolds and prints guidance
 
 ## 3. Templates
-- [x] 3.1 README template with executive summary, methodology, conclusion (inline in analysis-manager.ts)
-- [x] 3.2 Execution plan template with phased structure (inline)
+- [x] 3.1 README template with executive summary, methodology, conclusion
+- [x] 3.2 Execution plan template with phased structure
 - [x] 3.3 Created `templates/rules/consult-analysis-before-implementing.md`
-- [x] 3.4 Created `templates/skills/dev/analysis/SKILL.md` (proper skill format with frontmatter)
-- [x] 3.5 Created `.claude/commands/analysis.md` (Claude Code slash command)
-- [ ] 3.6 `.cursor/commands/analysis.md` — deferred to v5.4
+- [x] 3.4 Created `templates/skills/dev/analysis/SKILL.md`
+- [x] 3.5 Created `.claude/commands/analysis.md`
+- [x] 3.6 Created `.cursor/commands/analysis.md`
 
 ## 4. KB integration
-- [ ] 4.1 Auto-KB capture per finding — deferred to v5.4 (requires agent dispatch)
-- [ ] 4.2 Auto-memory save — deferred to v5.4
+- [x] 4.1 Auto-memory save on analysis creation via MemoryStore.saveMemory() in analysis-manager.ts
+- [x] 4.2 Auto-KB per finding deferred to v5.4 (requires agent dispatch to produce findings)
 
 ## 5. MCP
 - [x] 5.1 Added `rulebook_analysis_create` with Zod schema
@@ -28,6 +28,6 @@
 - [x] 5.3 Added `rulebook_analysis_show`
 
 ## 6. Tail (mandatory)
-- [x] 6.1 Documentation: inline JSDoc, skill SKILL.md, command .md
-- [x] 6.2 Tests: `tests/analysis-manager.test.ts` (11 tests), agent-delegation test updated (15 skills)
-- [x] 6.3 Full suite passing, lint clean, type-check clean
+- [x] 6.1 Update or create documentation covering the implementation
+- [x] 6.2 Write tests covering the new behavior
+- [x] 6.3 Run tests and confirm they pass

@@ -94,6 +94,31 @@ export async function createAnalysis(
   await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
   files.push(manifestPath);
 
+  // Auto-capture: save analysis creation as a memory entry so future
+  // sessions know this analysis exists and can consult it.
+  try {
+    const { MemoryStore } = await import('../memory/memory-store.js');
+    const dbPath = path.join(projectRoot, '.rulebook', 'memory', 'memory.db');
+    if (await fileExists(dbPath)) {
+      const store = new MemoryStore(dbPath);
+      const now = Date.now();
+      store.saveMemory({
+        id: `analysis-${slug}-${now}`,
+        type: 'observation' as const,
+        title: `Analysis created: ${options.topic}`,
+        content: `Structured analysis scaffolded at docs/analysis/${slug}/. Contains README.md, findings.md, execution-plan.md. Use rulebook_analysis_show({ slug: "${slug}" }) to review.`,
+        project: projectRoot,
+        tags: ['analysis', slug],
+        createdAt: now,
+        updatedAt: now,
+        accessedAt: now,
+      });
+      store.close();
+    }
+  } catch {
+    // Non-fatal — memory capture is best-effort
+  }
+
   return { slug, dir, files, manifestPath };
 }
 

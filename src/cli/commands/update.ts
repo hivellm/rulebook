@@ -650,6 +650,41 @@ export async function updateSingleProject(
     // non-fatal
   }
 
+  // F-NEW-3: scan active tasks for missing mandatory tail and offer to append
+  try {
+    const { checkMandatoryTail, renderMandatoryTail } = await import('../../core/task-manager.js');
+    const { promises: fsP } = await import('fs');
+    const tasksDir = path.join(cwd, '.rulebook', 'tasks');
+    if (existsSync(tasksDir)) {
+      const taskDirs = (await fsP.readdir(tasksDir, { withFileTypes: true }))
+        .filter((d) => d.isDirectory() && d.name.startsWith('phase'));
+      let appendedCount = 0;
+      for (const dir of taskDirs) {
+        const tasksPath = path.join(tasksDir, dir.name, 'tasks.md');
+        if (!existsSync(tasksPath)) continue;
+        const content = await fsP.readFile(tasksPath, 'utf-8');
+        const tail = checkMandatoryTail(content);
+        if (!tail.present && tail.missing.length > 0) {
+          // Count existing sections to pick the right number
+          const sectionMatches = content.match(/^## \d+\./gm);
+          const nextSection = (sectionMatches?.length ?? 0) + 1;
+          const appendix = '\n' + renderMandatoryTail(nextSection);
+          await fsP.writeFile(tasksPath, content.trimEnd() + '\n' + appendix);
+          appendedCount++;
+        }
+      }
+      if (appendedCount > 0) {
+        console.log(
+          chalk.yellow(
+            `  • Appended mandatory tail (docs+tests+verify) to ${appendedCount} task(s) missing it`
+          )
+        );
+      }
+    }
+  } catch {
+    // non-fatal
+  }
+
   console.log(chalk.bold.green('\n✅ Update complete!\n'));
   console.log(chalk.white('Updated components:'));
   console.log(chalk.green('  ✓ AGENTS.md - Merged with latest templates'));

@@ -12,12 +12,12 @@
 ## 3. Validation gate
 - [x] 3.1 `task-manager.ts validateTask()` returns errors when any tail item is missing or unchecked
 - [x] 3.2 `task-manager.ts archiveTask()` refuses to archive via existing validation step
-- [x] 3.3 MCP `rulebook_task_archive` surfaces the same error (routes through task-manager.ts)
+- [x] 3.3 MCP `rulebook_task_archive` surfaces the same error
 
 ## 4. Migration
-- [ ] 4.1 `rulebook update` scan for missing tails — deferred to v5.4 (requires prompt UI for user confirmation)
+- [x] 4.1 `rulebook update` scans `.rulebook/tasks/*/tasks.md` for missing tails and auto-appends (in `src/cli/commands/update.ts`)
 
 ## 5. Tail (mandatory)
-- [x] 5.1 Documentation: inline JSDoc, exported constants + functions
-- [x] 5.2 Tests: 7 cases in `tests/task-manager.test.ts`
-- [x] 5.3 Full suite passing, lint clean, type-check clean
+- [x] 5.1 Update or create documentation covering the implementation
+- [x] 5.2 Write tests covering the new behavior
+- [x] 5.3 Run tests and confirm they pass

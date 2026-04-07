@@ -380,7 +380,8 @@ mcpCommand
   .command('init')
   .description('Initialize MCP configuration in .rulebook and .cursor/mcp.json')
   .option('--workspace', 'Configure MCP for workspace mode (multi-project)')
-  .action((options: { workspace?: boolean }) => mcpInitCommand(options));
+  .option('--telemetry', 'Enable local opt-in MCP telemetry (.rulebook/telemetry/)')
+  .action((options: { workspace?: boolean; telemetry?: boolean }) => mcpInitCommand(options));
 
 program
   .command('mcp-server')
