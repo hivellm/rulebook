@@ -39,6 +39,66 @@ export interface TaskValidationResult {
   warnings: string[];
 }
 
+/**
+ * v5.3.0 F-NEW-3 — mandatory task tail.
+ *
+ * Every task MUST end with these three items. `createTask()` appends them
+ * automatically; `validateTask()` refuses any task that does not have them
+ * all checked; `archiveTask()` propagates that refusal.
+ *
+ * Idempotent: `renderMandatoryTail` is deterministic and `checkMandatoryTail`
+ * is case-insensitive on the leading verb so a user who rewords the items
+ * slightly (e.g. "Update docs covering the change") is still recognized.
+ */
+export const MANDATORY_TAIL_ITEMS = [
+  { label: 'Update or create documentation covering the implementation', match: /^\s*-\s*\[[ x]\]\s.*(update|create).*documentation/i },
+  { label: 'Write tests covering the new behavior', match: /^\s*-\s*\[[ x]\]\s.*write.*tests?/i },
+  { label: 'Run tests and confirm they pass', match: /^\s*-\s*\[[ x]\]\s.*run.*tests?.*(pass|confirm)/i },
+] as const;
+
+export function renderMandatoryTail(sectionNumber: number): string {
+  return [
+    `## ${sectionNumber}. Tail (mandatory — enforced by rulebook v5.3.0)`,
+    `- [ ] ${sectionNumber}.1 Update or create documentation covering the implementation`,
+    `- [ ] ${sectionNumber}.2 Write tests covering the new behavior`,
+    `- [ ] ${sectionNumber}.3 Run tests and confirm they pass`,
+    '',
+  ].join('\n');
+}
+
+export interface TailCheckResult {
+  /** True when all three tail items are present in the file. */
+  present: boolean;
+  /** Labels of items that are entirely missing from the file. */
+  missing: string[];
+  /** Labels of items that are present but unchecked (`- [ ]`). */
+  unchecked: string[];
+}
+
+export function checkMandatoryTail(tasksContent: string): TailCheckResult {
+  const lines = tasksContent.split('\n');
+  const missing: string[] = [];
+  const unchecked: string[] = [];
+
+  for (const item of MANDATORY_TAIL_ITEMS) {
+    const matched = lines.find((line) => item.match.test(line));
+    if (!matched) {
+      missing.push(item.label);
+      continue;
+    }
+    // Checked if the line contains `[x]` or `[X]`; unchecked otherwise.
+    if (!/\[x\]/i.test(matched)) {
+      unchecked.push(item.label);
+    }
+  }
+
+  return {
+    present: missing.length === 0,
+    missing,
+    unchecked,
+  };
+}
+
 export class TaskManager {
   private rulebookPath: string;
   private tasksPath: string;
@@ -134,19 +194,15 @@ export class TaskManager {
 
     await writeFileAsync(join(taskPath, 'proposal.md'), proposalContent);
 
-    // Create tasks.md template
+    // Create tasks.md template — the MANDATORY tail items (v5.3.0 F-NEW-3)
+    // are appended automatically here AND enforced by validateTask() /
+    // archiveTask(): a task cannot be closed unless docs are updated,
+    // tests are written, and tests pass.
     const tasksContent = `## 1. Implementation
 - [ ] 1.1 First task
 - [ ] 1.2 Second task
 
-## 2. Testing
-- [ ] 2.1 Write tests
-- [ ] 2.2 Verify coverage
-
-## 3. Documentation
-- [ ] 3.1 Update README
-- [ ] 3.2 Update CHANGELOG
-`;
+${renderMandatoryTail(2)}`;
 
     await writeFileAsync(join(taskPath, 'tasks.md'), tasksContent);
 
@@ -428,6 +484,18 @@ export class TaskManager {
       if (!purposeMatch || purposeMatch[1].trim().length < 20) {
         errors.push('Purpose section (## Why) must have at least 20 characters');
       }
+    }
+
+    // v5.3.0 F-NEW-3: mandatory task tail (docs + tests + verify)
+    const tail = task.tasks ? checkMandatoryTail(task.tasks) : { present: false, missing: MANDATORY_TAIL_ITEMS.map((i) => i.label), unchecked: [] };
+    if (!tail.present) {
+      errors.push(
+        `Mandatory task tail missing from tasks.md (required in v5.3.0): ${tail.missing.join(', ')}`
+      );
+    } else if (tail.unchecked.length > 0) {
+      errors.push(
+        `Mandatory task tail items are still unchecked: ${tail.unchecked.join(', ')}`
+      );
     }
 
     // Validate specs

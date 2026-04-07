@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { TaskManager, createTaskManager } from '../src/core/task-manager.js';
+import {
+  TaskManager,
+  createTaskManager,
+  checkMandatoryTail as checkMandatoryTailHelper,
+  renderMandatoryTail,
+  MANDATORY_TAIL_ITEMS,
+} from '../src/core/task-manager.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -17,6 +23,22 @@ describe('TaskManager', () => {
   afterEach(async () => {
     await fs.rm(testDir, { recursive: true, force: true });
   });
+
+  /**
+   * Test helper: marks the v5.3.0 mandatory task tail items as checked
+   * so that validation passes when the test is exercising archive behavior
+   * (not tail enforcement). Tests that specifically verify tail enforcement
+   * should NOT call this helper.
+   */
+  async function checkMandatoryTail(taskId: string): Promise<void> {
+    const tasksPath = join(testDir, '.rulebook', 'tasks', taskId, 'tasks.md');
+    const content = await fs.readFile(tasksPath, 'utf-8');
+    const fixed = content
+      .replace(/- \[ \] (\d+\.\d+ Update or create documentation)/, '- [x] $1')
+      .replace(/- \[ \] (\d+\.\d+ Write tests)/, '- [x] $1')
+      .replace(/- \[ \] (\d+\.\d+ Run tests)/, '- [x] $1');
+    await fs.writeFile(tasksPath, fixed);
+  }
 
   describe('initialize', () => {
     it('should create rulebook/tasks directory structure', async () => {
@@ -167,6 +189,8 @@ describe('TaskManager', () => {
         'This is a valid purpose with more than 20 characters to pass validation'
       );
       await fs.writeFile(proposalPath, updated);
+      // v5.3.0 F-NEW-3: tail must be checked for validation to pass
+      await checkMandatoryTail('phase1_valid-task');
 
       const validation = await taskManager.validateTask('phase1_valid-task');
       expect(validation.valid).toBe(true);
@@ -176,14 +200,15 @@ describe('TaskManager', () => {
     it('should fail validation for short purpose', async () => {
       await taskManager.createTask('phase1_invalid-task');
       const validation = await taskManager.validateTask('phase1_invalid-task');
-      // The template has placeholder text that might be >= 20 chars, so we check for errors
-      expect(validation.errors.length).toBeGreaterThanOrEqual(0);
-      // If there are errors, one should be about Purpose section
-      if (validation.errors.length > 0) {
-        expect(
-          validation.errors.some((e) => e.includes('Purpose section') || e.includes('Why'))
-        ).toBe(true);
-      }
+      // There should always be errors on a freshly created task: the
+      // placeholder purpose and the unchecked mandatory tail.
+      expect(validation.errors.length).toBeGreaterThan(0);
+      // Must mention either the Purpose section OR the mandatory tail.
+      expect(
+        validation.errors.some(
+          (e) => e.includes('Purpose section') || e.includes('Why') || e.includes('tail')
+        )
+      ).toBe(true);
     });
 
     it('should fail validation for non-existent task', async () => {
@@ -237,6 +262,7 @@ Then something occurs
         'This is a valid purpose with more than 20 characters to pass validation'
       );
       await fs.writeFile(proposalPath, updated);
+      await checkMandatoryTail('phase1_task-to-archive');
 
       await taskManager.archiveTask('phase1_task-to-archive');
 
@@ -287,6 +313,7 @@ Then something occurs
         'This is a valid purpose with more than 20 characters to pass validation'
       );
       await fs.writeFile(proposalPath, updated);
+      await checkMandatoryTail('phase1_task-archived-show');
 
       await taskManager.archiveTask('phase1_task-archived-show');
 
@@ -683,6 +710,7 @@ Then something occurs
         'This is a valid purpose with more than 20 characters to pass validation'
       );
       await fs.writeFile(proposalPath, updated);
+      await checkMandatoryTail('phase1_task-duplicate-archive');
 
       // Archive once
       await taskManager.archiveTask('phase1_task-duplicate-archive');
@@ -702,11 +730,95 @@ Then something occurs
         'This is a valid purpose with more than 20 characters to pass validation'
       );
       await fs.writeFile(proposalPath2, updated2);
+      await checkMandatoryTail('phase1_task-duplicate-archive');
 
       // This should fail because archive with same date prefix already exists
       await expect(taskManager.archiveTask('phase1_task-duplicate-archive')).rejects.toThrow(
         'already exists'
       );
+    });
+  });
+
+  describe('v5.3.0 F-NEW-3 mandatory task tail', () => {
+    it('createTask() appends the three tail items to tasks.md', async () => {
+      await taskManager.createTask('phase1_tail-autoappend');
+      const tasksPath = join(testDir, '.rulebook', 'tasks', 'phase1_tail-autoappend', 'tasks.md');
+      const content = await fs.readFile(tasksPath, 'utf-8');
+      expect(content).toContain('Update or create documentation');
+      expect(content).toContain('Write tests covering');
+      expect(content).toContain('Run tests and confirm');
+    });
+
+    it('checkMandatoryTail reports unchecked items on a freshly created task', async () => {
+      await taskManager.createTask('phase1_tail-unchecked');
+      const tasksPath = join(testDir, '.rulebook', 'tasks', 'phase1_tail-unchecked', 'tasks.md');
+      const content = await fs.readFile(tasksPath, 'utf-8');
+      const result = checkMandatoryTailHelper(content);
+      expect(result.present).toBe(true);
+      expect(result.unchecked).toHaveLength(3);
+      expect(result.missing).toHaveLength(0);
+    });
+
+    it('archiveTask refuses to archive when any tail item is unchecked', async () => {
+      await taskManager.createTask('phase1_tail-blocks-archive');
+      const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_tail-blocks-archive', 'proposal.md');
+      const content = await fs.readFile(proposalPath, 'utf-8');
+      await fs.writeFile(
+        proposalPath,
+        content.replace(
+          '[Explain why this change is needed - minimum 20 characters]',
+          'A valid purpose long enough to pass validation'
+        )
+      );
+
+      await expect(taskManager.archiveTask('phase1_tail-blocks-archive')).rejects.toThrow(
+        /Mandatory task tail items are still unchecked/
+      );
+    });
+
+    it('archiveTask succeeds after the tail is checked', async () => {
+      await taskManager.createTask('phase1_tail-allowed');
+      const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_tail-allowed', 'proposal.md');
+      const content = await fs.readFile(proposalPath, 'utf-8');
+      await fs.writeFile(
+        proposalPath,
+        content.replace(
+          '[Explain why this change is needed - minimum 20 characters]',
+          'A valid purpose long enough to pass validation'
+        )
+      );
+
+      // Check the mandatory tail
+      const tasksPath = join(testDir, '.rulebook', 'tasks', 'phase1_tail-allowed', 'tasks.md');
+      const tasksContent = await fs.readFile(tasksPath, 'utf-8');
+      await fs.writeFile(
+        tasksPath,
+        tasksContent
+          .replace(/- \[ \] 2\.1 Update/, '- [x] 2.1 Update')
+          .replace(/- \[ \] 2\.2 Write/, '- [x] 2.2 Write')
+          .replace(/- \[ \] 2\.3 Run/, '- [x] 2.3 Run')
+      );
+
+      await expect(taskManager.archiveTask('phase1_tail-allowed')).resolves.toBeUndefined();
+    });
+
+    it('renderMandatoryTail produces a section with three unchecked items', () => {
+      const rendered = renderMandatoryTail(5);
+      expect(rendered).toContain('## 5. Tail');
+      expect(rendered).toContain('- [ ] 5.1');
+      expect(rendered).toContain('- [ ] 5.2');
+      expect(rendered).toContain('- [ ] 5.3');
+    });
+
+    it('MANDATORY_TAIL_ITEMS is exactly three entries', () => {
+      expect(MANDATORY_TAIL_ITEMS).toHaveLength(3);
+    });
+
+    it('checkMandatoryTail reports missing items when the section is absent', () => {
+      const content = '## 1. Implementation\n- [ ] 1.1 Do the thing\n';
+      const result = checkMandatoryTailHelper(content);
+      expect(result.present).toBe(false);
+      expect(result.missing).toHaveLength(3);
     });
   });
 
