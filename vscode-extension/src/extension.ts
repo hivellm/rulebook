@@ -52,6 +52,40 @@ export function activate(context: vscode.ExtensionContext) {
                 await client.clearMemory();
                 dashboardProvider.refresh();
             }
+        }),
+        vscode.commands.registerCommand('rulebook.runDoctor', () => {
+            dashboardProvider.refresh();
+            vscode.window.showInformationMessage('Rulebook: Doctor checks refreshed');
+        }),
+        vscode.commands.registerCommand('rulebook.createAnalysis', async () => {
+            const topic = await vscode.window.showInputBox({
+                prompt: 'Analysis topic',
+                placeHolder: 'e.g. perf-startup',
+            });
+            if (!topic) return;
+            const { execSync } = await import('child_process');
+            try {
+                execSync(`npx --no-install rulebook analysis create "${topic.replace(/"/g, '\\"')}"`, {
+                    cwd: client.primaryRoot,
+                    timeout: 15000,
+                    stdio: ['pipe', 'pipe', 'pipe'],
+                });
+                dashboardProvider.refresh();
+                vscode.window.showInformationMessage(`Analysis "${topic}" created`);
+            } catch {
+                vscode.window.showErrorMessage('Failed to create analysis');
+            }
+        }),
+        vscode.commands.registerCommand('rulebook.triggerHandoff', () => {
+            const terminal = vscode.window.terminals.find(
+                t => t.name.includes('Claude') || t.name.includes('claude')
+            );
+            if (terminal) {
+                terminal.sendText('/handoff');
+                vscode.window.showInformationMessage('Handoff triggered');
+            } else {
+                vscode.window.showWarningMessage('No Claude Code terminal found');
+            }
         })
     );
 

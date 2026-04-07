@@ -57,11 +57,15 @@ After implementing, capture at least one entry per task:
 
 ## Task workflow
 
+**MANDATORY: ALWAYS use the Rulebook MCP tools for task management.** Never create task directories or files manually — use `rulebook_task_create`, `rulebook_task_update`, `rulebook_task_archive`, `rulebook_task_list`, `rulebook_task_show`, `rulebook_task_validate`. These tools enforce naming conventions, mandatory tail items, phase structure, and metadata that manual file creation skips.
+
 1. `rulebook_task_list` to see pending work.
-2. Pick the **first unchecked item from the lowest-numbered phase** — never reorder.
-3. Read the task's `proposal.md` and `tasks.md` before touching code.
-4. Implement step by step. Run lint + type-check after each significant change.
-5. Mark items `[x]` in `tasks.md` as you finish them.
-6. The mandatory tail (docs + tests + verify) is **not optional** — `rulebook_task_archive` will refuse to close the task otherwise.
+2. `rulebook_task_create` to create new tasks — **never `mkdir` + `Write` manually**.
+3. Pick the **first unchecked item from the lowest-numbered phase** — never reorder.
+4. Read the task's `proposal.md` and `tasks.md` before touching code.
+5. Implement step by step. Run lint + type-check after each significant change.
+6. `rulebook_task_update` to change task status as you progress.
+7. Mark items `[x]` in `tasks.md` as you finish them.
+8. The mandatory tail (docs + tests + verify) is **not optional** — `rulebook_task_archive` will refuse to close the task otherwise.
 
 <!-- RULEBOOK:END -->

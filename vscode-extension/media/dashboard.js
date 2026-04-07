@@ -57,9 +57,11 @@
       case 'fullUpdate':
         renderAgents(message.data.agents);
         renderTasks(message.data.tasks);
-        renderRalph(message.data.ralph);
         renderMemoryStats(message.data.memory);
         renderIndexer(message.data.indexer);
+        renderAnalyses(message.data.analyses);
+        renderDoctor(message.data.doctor);
+        renderTelemetry(message.data.telemetry);
         break;
       case 'taskDetails':
         showTaskDetails(message.taskId, message.data);
@@ -178,40 +180,6 @@
       .join('');
   }
 
-  // ---- Render: Ralph ----
-  function renderRalph(ralph) {
-    const container = document.getElementById('ralph-status');
-    if (!container) return;
-
-    const progress =
-      ralph.totalTasks > 0 ? ((ralph.completedTasks / ralph.totalTasks) * 100).toFixed(0) : 0;
-
-    container.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
-        <span class="badge ${ralph.running ? 'badge-running' : 'badge-idle'}">
-          ${ralph.running ? '● Running' : '○ Idle'}
-        </span>
-        ${ralph.currentTask ? `<span class="card-meta">Task: ${escapeHtml(ralph.currentTask)}</span>` : ''}
-      </div>
-      <div class="status-grid">
-        <div class="status-item">
-          <span class="status-label">Iteration</span>
-          <span class="status-value ${ralph.running ? 'highlight' : ''}">${ralph.iteration}</span>
-        </div>
-        <div class="status-item">
-          <span class="status-label">Progress</span>
-          <span class="status-value">${ralph.completedTasks}/${ralph.totalTasks}</span>
-        </div>
-      </div>
-      ${ralph.totalTasks > 0
-        ? `<div class="progress-bar" style="margin-top: 12px;">
-               <div class="progress-fill" style="width: ${progress}%"></div>
-             </div>`
-        : ''
-      }
-    `;
-  }
-
   // ---- Render: Memory Stats ----
   function renderMemoryStats(memory) {
     const container = document.getElementById('memory-stats');
@@ -287,6 +255,69 @@
       </div>
     `;
   }
+
+  // ---- Render: Analyses ----
+  function renderAnalyses(analyses) {
+    const container = document.getElementById('analysis-list');
+    if (!container) return;
+    if (!analyses || analyses.length === 0) {
+      container.innerHTML = `<div class="empty-state"><div class="icon">📊</div><p>No analyses yet.<br>Run <code>/analysis &lt;topic&gt;</code></p></div>`;
+      return;
+    }
+    container.innerHTML = analyses.map(a => `
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">${escapeHtml(a.slug)}</span>
+          <span class="card-meta">${a.createdAt ? a.createdAt.split('T')[0] : ''}</span>
+        </div>
+        <div class="card-meta">${escapeHtml(a.topic)}</div>
+      </div>
+    `).join('');
+  }
+
+  // ---- Render: Doctor ----
+  function renderDoctor(doctor) {
+    const container = document.getElementById('doctor-checks');
+    if (!container) return;
+    if (!doctor || !doctor.checks) {
+      container.innerHTML = '<div class="loading">Run doctor to see results</div>';
+      return;
+    }
+    container.innerHTML = `
+      <div class="stat-box"><div class="stat-number">${doctor.passCount}</div><div class="stat-label">Pass</div></div>
+      <div class="stat-box"><div class="stat-number">${doctor.warnCount}</div><div class="stat-label">Warn</div></div>
+      <div class="stat-box"><div class="stat-number">${doctor.failCount}</div><div class="stat-label">Fail</div></div>
+    ` + '<div class="card-list" style="margin-top:12px">' + doctor.checks.map(c => {
+      const icon = c.status === 'pass' ? '✅' : c.status === 'warn' ? '⚠️' : '❌';
+      return `<div class="memory-item"><div class="memory-item-title">${icon} ${escapeHtml(c.name)}</div><div class="memory-item-meta">${escapeHtml(c.message)}</div></div>`;
+    }).join('') + '</div>';
+  }
+
+  // ---- Render: Telemetry ----
+  function renderTelemetry(telemetry) {
+    const container = document.getElementById('telemetry-stats');
+    if (!container) return;
+    if (!telemetry || telemetry.totalCalls === 0) {
+      container.innerHTML = `<div class="empty-state"><div class="icon">📈</div><p>No telemetry data.<br>Enable with <code>rulebook mcp init --telemetry</code></p></div>`;
+      return;
+    }
+    const tools = Object.entries(telemetry.tools).sort((a, b) => b[1].calls - a[1].calls);
+    container.innerHTML = `
+      <div class="stat-box"><div class="stat-number">${telemetry.totalCalls}</div><div class="stat-label">Total Calls</div></div>
+    ` + '<div class="card-list" style="margin-top:12px">' + tools.map(([name, t]) =>
+      `<div class="memory-item"><div class="memory-item-title">${escapeHtml(name)}</div><div class="memory-item-meta">${t.calls} calls · avg ${t.avgLatencyMs}ms · ${(t.errorRate * 100).toFixed(1)}% errors</div></div>`
+    ).join('') + '</div>';
+  }
+
+  // ---- Create Analysis Button ----
+  document.getElementById('createAnalysisBtn')?.addEventListener('click', () => {
+    vscode.postMessage({ command: 'createAnalysis' });
+  });
+
+  // ---- Run Doctor Button ----
+  document.getElementById('runDoctorBtn')?.addEventListener('click', () => {
+    vscode.postMessage({ command: 'runDoctor' });
+  });
 
   // ---- Toggle Task Details ----
   window.toggleTaskDetails = function (taskId) {

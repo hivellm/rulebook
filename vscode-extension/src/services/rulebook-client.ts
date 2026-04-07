@@ -3,6 +3,11 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { basename, join } from 'path';
 
+// better-sqlite3 is a native module — require at runtime with graceful fallback
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+let Database: any;
+try { Database = require('better-sqlite3'); } catch { Database = null; }
+
 /** Read the last assistant text and tool call count from a subagent JSONL file */
 function readAgentActivity(jsonlPath: string): { text: string | null; timestamp: string | null; toolCallCount: number } {
     const result = { text: null as string | null, timestamp: null as string | null, toolCallCount: 0 };
@@ -71,14 +76,6 @@ export interface IndexerStatus {
     queue: number;
     processed: number;
     errors: number;
-}
-
-export interface RalphStatus {
-    running: boolean;
-    currentTask: string | null;
-    iteration: number;
-    totalTasks: number;
-    completedTasks: number;
 }
 
 export interface MemorySearchResult {
@@ -165,45 +162,30 @@ export class RulebookClient {
         return null;
     }
 
-    /** Get Ralph status (aggregated across all roots) */
-    getRalphStatus(): RalphStatus {
-        const status: RalphStatus = {
-            running: false, currentTask: null, iteration: 0, totalTasks: 0, completedTasks: 0,
-        };
-
-        for (const root of this.roots) {
-            const lockFile = join(root, '.rulebook', 'ralph', 'ralph.lock');
-            const stateFile = join(root, '.rulebook', 'ralph', 'state.json');
-
-            if (existsSync(lockFile)) {
-                status.running = true;
-                try {
-                    const lock = JSON.parse(readFileSync(lockFile, 'utf-8'));
-                    status.currentTask = lock.taskId || null;
-                    status.iteration = lock.iteration || 0;
-                } catch { /* ignore */ }
-            }
-
-            if (existsSync(stateFile)) {
-                try {
-                    const state = JSON.parse(readFileSync(stateFile, 'utf-8'));
-                    status.totalTasks += state.total_tasks || 0;
-                    status.completedTasks += state.completed_tasks || 0;
-                } catch { /* ignore */ }
-            }
-        }
-
-        return status;
-    }
-
     /** Get memory stats (aggregated across all roots) */
     getMemoryStats(): MemoryStats {
         const stats: MemoryStats = { totalMemories: 0, dbSizeBytes: 0, types: {} };
 
         for (const root of this.roots) {
             const dbPath = join(root, '.rulebook', 'memory', 'memory.db');
-            if (existsSync(dbPath)) {
-                try { stats.dbSizeBytes += statSync(dbPath).size; } catch { /* ignore */ }
+            if (!existsSync(dbPath)) continue;
+
+            try { stats.dbSizeBytes += statSync(dbPath).size; } catch { /* ignore */ }
+
+            if (!Database) continue;
+            let db: any;
+            try {
+                db = new Database(dbPath, { readonly: true, fileMustExist: true });
+                const countRow = db.prepare('SELECT COUNT(*) as count FROM memories').get() as { count: number } | undefined;
+                if (countRow) stats.totalMemories += countRow.count;
+
+                const typeRows = db.prepare('SELECT type, COUNT(*) as count FROM memories GROUP BY type').all() as Array<{ type: string; count: number }>;
+                for (const row of typeRows) {
+                    stats.types[row.type] = (stats.types[row.type] || 0) + row.count;
+                }
+            } catch { /* DB may be locked or schema differs */ }
+            finally {
+                try { db?.close(); } catch { /* ignore */ }
             }
         }
 
@@ -375,5 +357,197 @@ export class RulebookClient {
 
     async clearMemory(): Promise<boolean> {
         return this.reindexCodebase();
+    }
+
+    /** List analyses from docs/analysis/<slug>/manifest.json across all roots */
+    listAnalyses(): Array<{ slug: string; topic: string; createdAt: string }> {
+        const results: Array<{ slug: string; topic: string; createdAt: string }> = [];
+
+        for (const root of this.roots) {
+            const analysisDir = join(root, 'docs', 'analysis');
+            if (!existsSync(analysisDir)) continue;
+
+            try {
+                const entries = readdirSync(analysisDir);
+                for (const entry of entries) {
+                    const manifestPath = join(analysisDir, entry, 'manifest.json');
+                    if (!existsSync(manifestPath)) continue;
+                    try {
+                        const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+                        results.push({
+                            slug: entry,
+                            topic: manifest.topic || entry,
+                            createdAt: manifest.createdAt || '',
+                        });
+                    } catch { /* skip malformed manifest */ }
+                }
+            } catch { /* ignore */ }
+        }
+
+        return results;
+    }
+
+    /** Run inline doctor checks without shelling out to the CLI */
+    runDoctor(): { checks: Array<{ name: string; status: string; message: string }>; passCount: number; warnCount: number; failCount: number } {
+        const checks: Array<{ name: string; status: string; message: string }> = [];
+
+        for (const root of this.roots) {
+            // Check CLAUDE.md line count
+            const claudeMd = join(root, 'CLAUDE.md');
+            if (existsSync(claudeMd)) {
+                try {
+                    const lines = readFileSync(claudeMd, 'utf-8').split('\n').length;
+                    if (lines > 500) {
+                        checks.push({ name: 'CLAUDE.md size', status: 'warn', message: `${lines} lines — consider trimming (>500)` });
+                    } else {
+                        checks.push({ name: 'CLAUDE.md size', status: 'pass', message: `${lines} lines` });
+                    }
+                } catch {
+                    checks.push({ name: 'CLAUDE.md size', status: 'fail', message: 'Cannot read CLAUDE.md' });
+                }
+            } else {
+                checks.push({ name: 'CLAUDE.md', status: 'warn', message: 'CLAUDE.md not found' });
+            }
+
+            // Check required files
+            const requiredFiles = ['CLAUDE.md', '.rulebook'];
+            for (const file of requiredFiles) {
+                const filePath = join(root, file);
+                if (existsSync(filePath)) {
+                    checks.push({ name: `Required: ${file}`, status: 'pass', message: 'Present' });
+                } else {
+                    checks.push({ name: `Required: ${file}`, status: 'fail', message: `Missing: ${file}` });
+                }
+            }
+
+            // Check @imports in CLAUDE.md
+            if (existsSync(claudeMd)) {
+                try {
+                    const content = readFileSync(claudeMd, 'utf-8');
+                    const imports = content.match(/@import\s+(.+)/g) || [];
+                    let allImportsExist = true;
+                    for (const imp of imports) {
+                        const importPath = imp.replace(/@import\s+/, '').trim();
+                        const fullPath = join(root, importPath);
+                        if (!existsSync(fullPath)) {
+                            checks.push({ name: `@import ${importPath}`, status: 'fail', message: 'Referenced file not found' });
+                            allImportsExist = false;
+                        }
+                    }
+                    if (imports.length > 0 && allImportsExist) {
+                        checks.push({ name: '@imports', status: 'pass', message: `${imports.length} imports all resolve` });
+                    }
+                } catch { /* ignore */ }
+            }
+
+            // Check STATE.md staleness (warn if older than 7 days)
+            const stateMd = join(root, '.rulebook', 'STATE.md');
+            if (existsSync(stateMd)) {
+                try {
+                    const mtime = statSync(stateMd).mtimeMs;
+                    const ageDays = (Date.now() - mtime) / (1000 * 60 * 60 * 24);
+                    if (ageDays > 7) {
+                        checks.push({ name: 'STATE.md staleness', status: 'warn', message: `Last updated ${ageDays.toFixed(0)} days ago` });
+                    } else {
+                        checks.push({ name: 'STATE.md staleness', status: 'pass', message: `Updated ${ageDays.toFixed(0)} days ago` });
+                    }
+                } catch {
+                    checks.push({ name: 'STATE.md staleness', status: 'warn', message: 'Cannot stat STATE.md' });
+                }
+            } else {
+                checks.push({ name: 'STATE.md', status: 'warn', message: 'STATE.md not found in .rulebook/' });
+            }
+        }
+
+        const passCount = checks.filter(c => c.status === 'pass').length;
+        const warnCount = checks.filter(c => c.status === 'warn').length;
+        const failCount = checks.filter(c => c.status === 'fail').length;
+        return { checks, passCount, warnCount, failCount };
+    }
+
+    /** Get context usage estimate from the most recent Claude Code JSONL transcript */
+    getContextUsage(): { pct: number; transcriptBytes: number } {
+        const projectsDir = join(homedir(), '.claude', 'projects');
+        if (!existsSync(projectsDir)) return { pct: 0, transcriptBytes: 0 };
+
+        let latestMtime = 0;
+        let latestSize = 0;
+
+        try {
+            const projects = readdirSync(projectsDir);
+            for (const project of projects) {
+                const projectPath = join(projectsDir, project);
+                try {
+                    const sessions = readdirSync(projectPath);
+                    for (const session of sessions) {
+                        const sessionPath = join(projectPath, session);
+                        try {
+                            const files = readdirSync(sessionPath).filter(f => f.endsWith('.jsonl'));
+                            for (const file of files) {
+                                const filePath = join(sessionPath, file);
+                                try {
+                                    const st = statSync(filePath);
+                                    if (st.mtimeMs > latestMtime) {
+                                        latestMtime = st.mtimeMs;
+                                        latestSize = st.size;
+                                    }
+                                } catch { /* skip */ }
+                            }
+                        } catch { /* skip */ }
+                    }
+                } catch { /* skip */ }
+            }
+        } catch { /* ignore */ }
+
+        const pct = Math.min(100, Math.floor(latestSize * 100 / 800000));
+        return { pct, transcriptBytes: latestSize };
+    }
+
+    /** Read telemetry stats from .rulebook/telemetry/*.ndjson across all roots */
+    getTelemetryStats(): { totalCalls: number; tools: Record<string, { calls: number; avgLatencyMs: number; errorRate: number }> } {
+        const toolMap: Record<string, { calls: number; totalLatencyMs: number; errors: number }> = {};
+        let totalCalls = 0;
+
+        for (const root of this.roots) {
+            const telemetryDir = join(root, '.rulebook', 'telemetry');
+            if (!existsSync(telemetryDir)) continue;
+
+            try {
+                const files = readdirSync(telemetryDir).filter(f => f.endsWith('.ndjson'));
+                for (const file of files) {
+                    const filePath = join(telemetryDir, file);
+                    try {
+                        const lines = readFileSync(filePath, 'utf-8').split('\n').filter(l => l.trim());
+                        for (const line of lines) {
+                            try {
+                                const entry = JSON.parse(line);
+                                const toolName: string = entry.tool || entry.name || 'unknown';
+                                const latencyMs: number = entry.latencyMs || entry.duration_ms || 0;
+                                const isError: boolean = entry.error === true || entry.status === 'error';
+
+                                if (!toolMap[toolName]) {
+                                    toolMap[toolName] = { calls: 0, totalLatencyMs: 0, errors: 0 };
+                                }
+                                toolMap[toolName].calls++;
+                                toolMap[toolName].totalLatencyMs += latencyMs;
+                                if (isError) toolMap[toolName].errors++;
+                                totalCalls++;
+                            } catch { /* skip malformed lines */ }
+                        }
+                    } catch { /* skip unreadable files */ }
+                }
+            } catch { /* ignore */ }
+        }
+
+        const tools: Record<string, { calls: number; avgLatencyMs: number; errorRate: number }> = {};
+        for (const [name, data] of Object.entries(toolMap)) {
+            tools[name] = {
+                calls: data.calls,
+                avgLatencyMs: data.calls > 0 ? Math.round(data.totalLatencyMs / data.calls) : 0,
+                errorRate: data.calls > 0 ? data.errors / data.calls : 0,
+            };
+        }
+
+        return { totalCalls, tools };
     }
 }
