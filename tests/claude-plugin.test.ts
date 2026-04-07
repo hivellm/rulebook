@@ -251,5 +251,4 @@ describe('Claude Plugin Structure', () => {
       expect(skillDirs.length).toBe(18);
     });
   });
-
 });

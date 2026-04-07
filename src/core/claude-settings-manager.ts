@@ -193,7 +193,9 @@ function removeHook(
   if (!list) return;
   for (let i = list.length - 1; i >= 0; i--) {
     const entry = list[i];
-    entry.hooks = entry.hooks.filter((h) => !(h.type === 'command' && h.command.includes(signature)));
+    entry.hooks = entry.hooks.filter(
+      (h) => !(h.type === 'command' && h.command.includes(signature))
+    );
     if (entry.hooks.length === 0) list.splice(i, 1);
   }
 }

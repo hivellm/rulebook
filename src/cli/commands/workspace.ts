@@ -44,7 +44,9 @@ export async function workspaceInitCommand(): Promise<void> {
 
   const migration = await migrateLegacyMcpConfigs(cwd);
   if (migration.migratedFiles.length > 0) {
-    console.log(chalk.yellow(`\n  Migrated ${migration.migratedFiles.length} legacy .mcp.json files`));
+    console.log(
+      chalk.yellow(`\n  Migrated ${migration.migratedFiles.length} legacy .mcp.json files`)
+    );
   }
 
   console.log(chalk.dim('\n  Use `rulebook workspace add <path>` to add more projects'));
@@ -146,7 +148,9 @@ export async function workspaceStatusCommand(): Promise<void> {
     const status = await manager.getStatus();
     spinner.stop();
     console.log(chalk.bold(`\nWorkspace: ${status.name}`));
-    console.log(`  Projects: ${status.totalProjects}  |  Active workers: ${status.activeWorkers}\n`);
+    console.log(
+      `  Projects: ${status.totalProjects}  |  Active workers: ${status.activeWorkers}\n`
+    );
 
     for (const p of status.projects) {
       const configBadge = p.hasRulebookConfig ? chalk.green('.rulebook') : chalk.dim('no config');

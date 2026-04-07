@@ -172,7 +172,10 @@ program
   .action(changelogCommand);
 
 program.command('health').description('Check project health score').action(healthCommand);
-program.command('doctor').description('Run rulebook health checks (file sizes, broken imports, stale state)').action(doctorCommand);
+program
+  .command('doctor')
+  .description('Run rulebook health checks (file sizes, broken imports, stale state)')
+  .action(doctorCommand);
 
 program.command('fix').description('Auto-fix common project issues').action(fixCommand);
 

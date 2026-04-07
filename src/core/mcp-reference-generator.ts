@@ -11,7 +11,9 @@ import { GENERATED_SENTINEL } from './rules-generator.js';
  * sub-agents for tasks an MCP tool can handle.
  */
 
-export async function generateMcpReference(projectRoot: string): Promise<{ path: string; written: boolean }> {
+export async function generateMcpReference(
+  projectRoot: string
+): Promise<{ path: string; written: boolean }> {
   const rulesDir = path.join(projectRoot, '.claude', 'rules');
   const targetPath = path.join(rulesDir, 'mcp-tool-reference.md');
 
@@ -62,7 +64,7 @@ export async function generateMcpReference(projectRoot: string): Promise<{ path:
     '|--------|--------|',
     ...servers.map((s) => `| \`mcp__${s.name}__*\` | \`${s.source}\` |`),
     '',
-    'Use `mcp__<server>__<tool>` syntax in tool calls. Check the server\'s',
+    "Use `mcp__<server>__<tool>` syntax in tool calls. Check the server's",
     'tool list for available operations before falling back to shell commands.',
     '',
   ];

@@ -38,10 +38,7 @@ describe('doctor (v5.3.0 F7)', () => {
   });
 
   it('detects broken @imports in CLAUDE.md', async () => {
-    await fs.writeFile(
-      path.join(projectRoot, 'CLAUDE.md'),
-      '# Test\n@nonexistent-file.md\n'
-    );
+    await fs.writeFile(path.join(projectRoot, 'CLAUDE.md'), '# Test\n@nonexistent-file.md\n');
     const report = await runDoctor(projectRoot);
     const importCheck = report.checks.find((c) => c.name === 'CLAUDE.md @imports');
     expect(importCheck?.status).toBe('fail');
@@ -50,10 +47,7 @@ describe('doctor (v5.3.0 F7)', () => {
 
   it('passes when all @imports resolve', async () => {
     await fs.writeFile(path.join(projectRoot, 'AGENTS.md'), '# Agents');
-    await fs.writeFile(
-      path.join(projectRoot, 'CLAUDE.md'),
-      '# Test\n@AGENTS.md\n'
-    );
+    await fs.writeFile(path.join(projectRoot, 'CLAUDE.md'), '# Test\n@AGENTS.md\n');
     const report = await runDoctor(projectRoot);
     const importCheck = report.checks.find((c) => c.name === 'CLAUDE.md @imports');
     expect(importCheck?.status).toBe('pass');

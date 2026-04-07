@@ -21,14 +21,18 @@ describe('compact-context-manager (v5.3.0 F-NEW-2)', () => {
 
   describe('pickSeedTemplate', () => {
     it('returns the matching language slug', () => {
-      expect(pickSeedTemplate({ languages: [{ language: 'typescript', confidence: 1, indicators: [] }] })).toBe(
-        'typescript'
-      );
-      expect(pickSeedTemplate({ languages: [{ language: 'rust', confidence: 1, indicators: [] }] })).toBe('rust');
+      expect(
+        pickSeedTemplate({ languages: [{ language: 'typescript', confidence: 1, indicators: [] }] })
+      ).toBe('typescript');
+      expect(
+        pickSeedTemplate({ languages: [{ language: 'rust', confidence: 1, indicators: [] }] })
+      ).toBe('rust');
     });
 
     it('maps C to cpp', () => {
-      expect(pickSeedTemplate({ languages: [{ language: 'c', confidence: 1, indicators: [] }] })).toBe('cpp');
+      expect(
+        pickSeedTemplate({ languages: [{ language: 'c', confidence: 1, indicators: [] }] })
+      ).toBe('cpp');
     });
 
     it('falls back to _default when no language matches', () => {

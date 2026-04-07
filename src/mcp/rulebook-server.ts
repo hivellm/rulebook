@@ -382,7 +382,11 @@ export async function startRulebookMcpServer(): Promise<void> {
       title: 'Create Rulebook Task',
       description: 'Create a new Rulebook task',
       inputSchema: {
-        taskId: z.string().describe('Task ID with phase prefix: phase<N>_<description> (e.g., phase1_add-user-auth, phase2a_fix-login-bug)'),
+        taskId: z
+          .string()
+          .describe(
+            'Task ID with phase prefix: phase<N>_<description> (e.g., phase1_add-user-auth, phase2a_fix-login-bug)'
+          ),
         projectId: projectIdSchema,
       },
     },
@@ -547,7 +551,9 @@ export async function startRulebookMcpServer(): Promise<void> {
       title: 'Archive Rulebook Task',
       description: 'Archive a completed task',
       inputSchema: {
-        taskId: z.string().describe('Task ID to archive (must use phase prefix, e.g., phase1_my-task)'),
+        taskId: z
+          .string()
+          .describe('Task ID to archive (must use phase prefix, e.g., phase1_my-task)'),
         skipValidation: z.boolean().optional().describe('Skip validation before archiving'),
         projectId: projectIdSchema,
       },
@@ -2908,7 +2914,8 @@ export async function startRulebookMcpServer(): Promise<void> {
     'rulebook_doctor_run',
     {
       title: 'Run Doctor',
-      description: 'Run rulebook health checks: file sizes, broken @imports, stale STATE.md, missing files',
+      description:
+        'Run rulebook health checks: file sizes, broken @imports, stale STATE.md, missing files',
       inputSchema: { projectId: projectIdSchema },
     },
     async (args) => {
@@ -2924,7 +2931,15 @@ export async function startRulebookMcpServer(): Promise<void> {
         };
       } catch (error) {
         return {
-          content: [{ type: 'text', text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }) }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
         };
       }
     }
@@ -2954,13 +2969,19 @@ export async function startRulebookMcpServer(): Promise<void> {
           noTasks: (args.noTasks as boolean) ?? false,
         });
         return {
-          content: [
-            { type: 'text', text: JSON.stringify({ success: true, ...result }) },
-          ],
+          content: [{ type: 'text', text: JSON.stringify({ success: true, ...result }) }],
         };
       } catch (error) {
         return {
-          content: [{ type: 'text', text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }) }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
         };
       }
     }
@@ -2983,11 +3004,24 @@ export async function startRulebookMcpServer(): Promise<void> {
         const { listAnalyses } = await import('../core/analysis-manager.js');
         const analyses = await listAnalyses(root);
         return {
-          content: [{ type: 'text', text: JSON.stringify({ success: true, analyses, count: analyses.length }) }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, analyses, count: analyses.length }),
+            },
+          ],
         };
       } catch (error) {
         return {
-          content: [{ type: 'text', text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }) }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
         };
       }
     }
@@ -3013,12 +3047,32 @@ export async function startRulebookMcpServer(): Promise<void> {
         const { showAnalysis } = await import('../core/analysis-manager.js');
         const analysis = await showAnalysis(root, args.slug as string);
         if (!analysis) {
-          return { content: [{ type: 'text', text: JSON.stringify({ success: false, error: `Analysis "${args.slug}" not found` }) }] };
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: false,
+                  error: `Analysis "${args.slug}" not found`,
+                }),
+              },
+            ],
+          };
         }
-        return { content: [{ type: 'text', text: JSON.stringify({ success: true, ...analysis }) }] };
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, ...analysis }) }],
+        };
       } catch (error) {
         return {
-          content: [{ type: 'text', text: JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }) }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
         };
       }
     }

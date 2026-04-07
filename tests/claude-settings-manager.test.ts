@@ -2,10 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
-import {
-  applyClaudeSettings,
-  getClaudeSettingsPath,
-} from '../src/core/claude-settings-manager';
+import { applyClaudeSettings, getClaudeSettingsPath } from '../src/core/claude-settings-manager';
 
 describe('claude-settings-manager (v5.3.0 F-NEW-1)', () => {
   let projectRoot: string;
@@ -54,9 +51,7 @@ describe('claude-settings-manager (v5.3.0 F-NEW-1)', () => {
         permissions: { defaultMode: 'bypassPermissions', allow: ['Read(*)'] },
         env: { MY_CUSTOM: 'value' },
         hooks: {
-          PreToolUse: [
-            { matcher: 'Bash', hooks: [{ type: 'command', command: 'echo hi' }] },
-          ],
+          PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'echo hi' }] }],
         },
       };
       const target = getClaudeSettingsPath(projectRoot);
@@ -72,8 +67,12 @@ describe('claude-settings-manager (v5.3.0 F-NEW-1)', () => {
 
       // Custom hook preserved, rulebook hook appended
       expect(after.hooks.PreToolUse).toHaveLength(2);
-      const bashHook = after.hooks.PreToolUse.find((h: { matcher?: string }) => h.matcher === 'Bash');
-      const agentHook = after.hooks.PreToolUse.find((h: { matcher?: string }) => h.matcher === 'Agent');
+      const bashHook = after.hooks.PreToolUse.find(
+        (h: { matcher?: string }) => h.matcher === 'Bash'
+      );
+      const agentHook = after.hooks.PreToolUse.find(
+        (h: { matcher?: string }) => h.matcher === 'Agent'
+      );
       expect(bashHook).toBeDefined();
       expect(agentHook).toBeDefined();
 
@@ -86,7 +85,9 @@ describe('claude-settings-manager (v5.3.0 F-NEW-1)', () => {
       const r2 = await applyClaudeSettings(projectRoot, { teamEnforcement: true });
 
       const content = JSON.parse(await fs.readFile(r2.path, 'utf-8'));
-      const agentHooks = content.hooks.PreToolUse.filter((h: { matcher?: string }) => h.matcher === 'Agent');
+      const agentHooks = content.hooks.PreToolUse.filter(
+        (h: { matcher?: string }) => h.matcher === 'Agent'
+      );
       expect(agentHooks).toHaveLength(1);
 
       // Second apply produces no textual change
@@ -106,9 +107,9 @@ describe('claude-settings-manager (v5.3.0 F-NEW-1)', () => {
       await fs.mkdir(path.dirname(target), { recursive: true });
       await fs.writeFile(target, 'this is not json');
 
-      await expect(
-        applyClaudeSettings(projectRoot, { teamEnforcement: true })
-      ).rejects.toThrow(/not valid JSON/);
+      await expect(applyClaudeSettings(projectRoot, { teamEnforcement: true })).rejects.toThrow(
+        /not valid JSON/
+      );
     });
   });
 });

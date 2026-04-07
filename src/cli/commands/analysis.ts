@@ -69,9 +69,16 @@ export async function doctorCommand(): Promise<void> {
   try {
     const { runDoctor } = await import('../../core/doctor.js');
     const report = await runDoctor(cwd);
-    spinner.succeed(`Doctor: ${report.passCount} pass, ${report.warnCount} warn, ${report.failCount} fail`);
+    spinner.succeed(
+      `Doctor: ${report.passCount} pass, ${report.warnCount} warn, ${report.failCount} fail`
+    );
     for (const check of report.checks) {
-      const icon = check.status === 'pass' ? chalk.green('✓') : check.status === 'warn' ? chalk.yellow('⚠') : chalk.red('✗');
+      const icon =
+        check.status === 'pass'
+          ? chalk.green('✓')
+          : check.status === 'warn'
+            ? chalk.yellow('⚠')
+            : chalk.red('✗');
       console.log(`  ${icon} ${check.name}: ${check.message}`);
     }
   } catch (error) {

@@ -18,13 +18,28 @@ describe('telemetry (v5.3.0 F10)', () => {
   it('disabled middleware is a no-op', () => {
     const mw = createTelemetryMiddleware({ enabled: false, dir: tmpDir });
     // Should not throw or write anything
-    mw.record({ tool: 'test', latency_ms: 100, success: true, timestamp: new Date().toISOString() });
+    mw.record({
+      tool: 'test',
+      latency_ms: 100,
+      success: true,
+      timestamp: new Date().toISOString(),
+    });
   });
 
   it('enabled middleware writes NDJSON records', () => {
     const mw = createTelemetryMiddleware({ enabled: true, dir: tmpDir });
-    mw.record({ tool: 'rulebook_task_list', latency_ms: 42, success: true, timestamp: '2026-04-07T18:00:00Z' });
-    mw.record({ tool: 'rulebook_task_create', latency_ms: 15, success: false, timestamp: '2026-04-07T18:00:01Z' });
+    mw.record({
+      tool: 'rulebook_task_list',
+      latency_ms: 42,
+      success: true,
+      timestamp: '2026-04-07T18:00:00Z',
+    });
+    mw.record({
+      tool: 'rulebook_task_create',
+      latency_ms: 15,
+      success: false,
+      timestamp: '2026-04-07T18:00:01Z',
+    });
 
     const date = new Date().toISOString().split('T')[0];
     const filePath = path.join(tmpDir, `${date}.ndjson`);

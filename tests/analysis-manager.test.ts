@@ -2,12 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
-import {
-  createAnalysis,
-  listAnalyses,
-  showAnalysis,
-  slugify,
-} from '../src/core/analysis-manager';
+import { createAnalysis, listAnalyses, showAnalysis, slugify } from '../src/core/analysis-manager';
 
 describe('analysis-manager (v5.3.0 F-NEW-4)', () => {
   let projectRoot: string;

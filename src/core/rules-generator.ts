@@ -238,5 +238,10 @@ function extractPathsFrontmatter(content: string): string[] | null {
   const pathsMatch = frontmatter.match(/^paths:\s*\n((?:\s*-\s+.+\n?)+)/m);
   if (!pathsMatch) return null;
   const lines = pathsMatch[1].split('\n').filter((l) => l.trim().startsWith('-'));
-  return lines.map((l) => l.replace(/^\s*-\s+/, '').replace(/^["']|["']$/g, '').trim());
+  return lines.map((l) =>
+    l
+      .replace(/^\s*-\s+/, '')
+      .replace(/^["']|["']$/g, '')
+      .trim()
+  );
 }

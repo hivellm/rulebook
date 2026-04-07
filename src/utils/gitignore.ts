@@ -31,7 +31,11 @@ export async function ensureGitignoreEntries(
   }
 
   if (added.length > 0) {
-    const final = lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+    const final =
+      lines
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trimEnd() + '\n';
     await fs.writeFile(gitignorePath, final, 'utf-8');
   }
 

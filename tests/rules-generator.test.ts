@@ -193,16 +193,10 @@ describe('rules-generator (v5.3.0 F2)', () => {
         ],
       };
       await generateRules(projectRoot, langs);
-      const firstSnapshot = await fs.readFile(
-        getRulePath(projectRoot, 'typescript'),
-        'utf-8'
-      );
+      const firstSnapshot = await fs.readFile(getRulePath(projectRoot, 'typescript'), 'utf-8');
 
       await generateRules(projectRoot, langs);
-      const secondSnapshot = await fs.readFile(
-        getRulePath(projectRoot, 'typescript'),
-        'utf-8'
-      );
+      const secondSnapshot = await fs.readFile(getRulePath(projectRoot, 'typescript'), 'utf-8');
 
       expect(secondSnapshot).toBe(firstSnapshot);
     });

@@ -320,7 +320,9 @@ export async function changelogCommand(options: { version?: string }): Promise<v
 
     console.log(chalk.bold.blue('\n📝 Changelog Generation\n'));
 
-    const { generateChangelog, getCurrentVersion } = await import('../../core/changelog-generator.js');
+    const { generateChangelog, getCurrentVersion } = await import(
+      '../../core/changelog-generator.js'
+    );
 
     const version = options.version || (await getCurrentVersion(cwd));
 

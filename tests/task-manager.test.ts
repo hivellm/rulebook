@@ -221,7 +221,13 @@ describe('TaskManager', () => {
       await taskManager.createTask('phase1_task-with-3-hash');
 
       // Fix proposal
-      const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_task-with-3-hash', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_task-with-3-hash',
+        'proposal.md'
+      );
       const proposalContent = await fs.readFile(proposalPath, 'utf-8');
       const updatedProposal = proposalContent.replace(
         '[Explain why this change is needed - minimum 20 characters]',
@@ -230,7 +236,14 @@ describe('TaskManager', () => {
       await fs.writeFile(proposalPath, updatedProposal);
 
       // Create spec with invalid scenario (3 hashtags)
-      const specPath = join(testDir, '.rulebook', 'tasks', 'phase1_task-with-3-hash', 'specs', 'core');
+      const specPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_task-with-3-hash',
+        'specs',
+        'core'
+      );
       await fs.mkdir(specPath, { recursive: true });
       const specContent = `# Spec
 
@@ -255,7 +268,13 @@ Then something occurs
       await taskManager.createTask('phase1_task-to-archive');
 
       // Fix proposal
-      const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_task-to-archive', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_task-to-archive',
+        'proposal.md'
+      );
       const content = await fs.readFile(proposalPath, 'utf-8');
       const updated = content.replace(
         '[Explain why this change is needed - minimum 20 characters]',
@@ -306,7 +325,13 @@ Then something occurs
       await taskManager.createTask('phase1_task-archived-show');
 
       // Fix proposal
-      const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_task-archived-show', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_task-archived-show',
+        'proposal.md'
+      );
       const content = await fs.readFile(proposalPath, 'utf-8');
       const updated = content.replace(
         '[Explain why this change is needed - minimum 20 characters]',
@@ -347,7 +372,9 @@ Then something occurs
     it('should update task status to blocked (method executes)', async () => {
       await taskManager.createTask('phase1_task-blocked');
       // Method executes successfully
-      await expect(taskManager.updateTaskStatus('phase1_task-blocked', 'blocked')).resolves.not.toThrow();
+      await expect(
+        taskManager.updateTaskStatus('phase1_task-blocked', 'blocked')
+      ).resolves.not.toThrow();
     });
 
     it('should update updatedAt timestamp (method executes)', async () => {
@@ -395,7 +422,14 @@ Then something occurs
 
     it('should load task with specs', async () => {
       await taskManager.createTask('phase1_task-with-specs');
-      const specPath = join(testDir, '.rulebook', 'tasks', 'phase1_task-with-specs', 'specs', 'core');
+      const specPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_task-with-specs',
+        'specs',
+        'core'
+      );
       await fs.mkdir(specPath, { recursive: true });
       await fs.writeFile(join(specPath, 'spec.md'), '# Spec content');
 
@@ -487,7 +521,13 @@ Then something occurs
 
     it('should validate task with purpose match but short content', async () => {
       await taskManager.createTask('phase1_task-short-purpose');
-      const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_task-short-purpose', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_task-short-purpose',
+        'proposal.md'
+      );
       await fs.writeFile(
         proposalPath,
         `# Proposal: task-short-purpose
@@ -530,7 +570,13 @@ Test
 
     it('should validate task with requirement missing SHALL/MUST', async () => {
       await taskManager.createTask('phase1_task-no-shall');
-      const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_task-no-shall', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_task-no-shall',
+        'proposal.md'
+      );
       const proposalContent = await fs.readFile(proposalPath, 'utf-8');
       const updatedProposal = proposalContent.replace(
         '[Explain why this change is needed - minimum 20 characters]',
@@ -554,7 +600,13 @@ The system should do something.
 
     it('should validate task with requirement having SHALL', async () => {
       await taskManager.createTask('phase1_task-with-shall');
-      const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_task-with-shall', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_task-with-shall',
+        'proposal.md'
+      );
       const proposalContent = await fs.readFile(proposalPath, 'utf-8');
       const updatedProposal = proposalContent.replace(
         '[Explain why this change is needed - minimum 20 characters]',
@@ -562,7 +614,14 @@ The system should do something.
       );
       await fs.writeFile(proposalPath, updatedProposal);
 
-      const specPath = join(testDir, '.rulebook', 'tasks', 'phase1_task-with-shall', 'specs', 'core');
+      const specPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_task-with-shall',
+        'specs',
+        'core'
+      );
       await fs.mkdir(specPath, { recursive: true });
       const specContent = `# Spec
 
@@ -578,7 +637,13 @@ The system SHALL do something.
 
     it('should validate task with scenario missing Given', async () => {
       await taskManager.createTask('phase1_task-no-given');
-      const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_task-no-given', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_task-no-given',
+        'proposal.md'
+      );
       const proposalContent = await fs.readFile(proposalPath, 'utf-8');
       const updatedProposal = proposalContent.replace(
         '[Explain why this change is needed - minimum 20 characters]',
@@ -605,7 +670,13 @@ Then something occurs
 
     it('should validate task with scenario missing When', async () => {
       await taskManager.createTask('phase1_task-no-when');
-      const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_task-no-when', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_task-no-when',
+        'proposal.md'
+      );
       const proposalContent = await fs.readFile(proposalPath, 'utf-8');
       const updatedProposal = proposalContent.replace(
         '[Explain why this change is needed - minimum 20 characters]',
@@ -632,7 +703,13 @@ Then something occurs
 
     it('should validate task with scenario missing Then', async () => {
       await taskManager.createTask('phase1_task-no-then');
-      const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_task-no-then', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_task-no-then',
+        'proposal.md'
+      );
       const proposalContent = await fs.readFile(proposalPath, 'utf-8');
       const updatedProposal = proposalContent.replace(
         '[Explain why this change is needed - minimum 20 characters]',
@@ -673,7 +750,14 @@ When something happens
       );
       await fs.writeFile(proposalPath, updatedProposal);
 
-      const specPath = join(testDir, '.rulebook', 'tasks', 'phase1_task-valid-scenario', 'specs', 'core');
+      const specPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_task-valid-scenario',
+        'specs',
+        'core'
+      );
       await fs.mkdir(specPath, { recursive: true });
       const specContent = `# Spec
 
@@ -761,7 +845,13 @@ Then something occurs
 
     it('archiveTask refuses to archive when any tail item is unchecked', async () => {
       await taskManager.createTask('phase1_tail-blocks-archive');
-      const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_tail-blocks-archive', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_tail-blocks-archive',
+        'proposal.md'
+      );
       const content = await fs.readFile(proposalPath, 'utf-8');
       await fs.writeFile(
         proposalPath,
@@ -778,7 +868,13 @@ Then something occurs
 
     it('archiveTask succeeds after the tail is checked', async () => {
       await taskManager.createTask('phase1_tail-allowed');
-      const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_tail-allowed', 'proposal.md');
+      const proposalPath = join(
+        testDir,
+        '.rulebook',
+        'tasks',
+        'phase1_tail-allowed',
+        'proposal.md'
+      );
       const content = await fs.readFile(proposalPath, 'utf-8');
       await fs.writeFile(
         proposalPath,
@@ -824,11 +920,15 @@ Then something occurs
 
   describe('phase naming convention', () => {
     it('should reject task IDs without phase prefix', async () => {
-      await expect(taskManager.createTask('my-task')).rejects.toThrow('must start with a phase prefix');
+      await expect(taskManager.createTask('my-task')).rejects.toThrow(
+        'must start with a phase prefix'
+      );
     });
 
     it('should reject task IDs with invalid prefix format', async () => {
-      await expect(taskManager.createTask('phaseX_my-task')).rejects.toThrow('must start with a phase prefix');
+      await expect(taskManager.createTask('phaseX_my-task')).rejects.toThrow(
+        'must start with a phase prefix'
+      );
     });
 
     it('should accept task IDs with valid phase prefix', async () => {
@@ -872,7 +972,10 @@ Then something occurs
       await taskManager.createTask('phase2_feature-b');
 
       const readmePath = join(testDir, '.rulebook', 'tasks', 'README.md');
-      const exists = await fs.access(readmePath).then(() => true).catch(() => false);
+      const exists = await fs
+        .access(readmePath)
+        .then(() => true)
+        .catch(() => false);
       expect(exists).toBe(true);
 
       const content = await fs.readFile(readmePath, 'utf-8');
@@ -954,11 +1057,17 @@ Then something occurs
 
       // Check new location exists
       const newArchivePath = join(testDir, '.rulebook', 'archive', '2026-01-01-phase1_old-task');
-      const exists = await fs.access(newArchivePath).then(() => true).catch(() => false);
+      const exists = await fs
+        .access(newArchivePath)
+        .then(() => true)
+        .catch(() => false);
       expect(exists).toBe(true);
 
       // Check legacy was cleaned up
-      const legacyExists = await fs.access(legacyArchivePath).then(() => true).catch(() => false);
+      const legacyExists = await fs
+        .access(legacyArchivePath)
+        .then(() => true)
+        .catch(() => false);
       expect(legacyExists).toBe(false);
     });
 

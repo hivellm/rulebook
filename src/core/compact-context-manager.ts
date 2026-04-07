@@ -23,13 +23,7 @@ import { getTemplatesDir } from './generator.js';
 export const COMPACT_CONTEXT_FILE = '.rulebook/COMPACT_CONTEXT.md';
 
 /** Language slugs with a shipped stack-specific seed template. */
-const SEED_TEMPLATES: readonly string[] = [
-  'typescript',
-  'rust',
-  'python',
-  'go',
-  'cpp',
-];
+const SEED_TEMPLATES: readonly string[] = ['typescript', 'rust', 'python', 'go', 'cpp'];
 
 export function getCompactContextPath(projectRoot: string): string {
   return path.join(projectRoot, COMPACT_CONTEXT_FILE);

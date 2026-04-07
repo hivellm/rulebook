@@ -320,7 +320,9 @@ export async function reviewCommand(options: {
   }
 
   if (options.failOn && hasFailingIssues(result.issues, options.failOn)) {
-    console.log(chalkModule.red(`\nFailing: found issues at or above "${options.failOn}" severity`));
+    console.log(
+      chalkModule.red(`\nFailing: found issues at or above "${options.failOn}" severity`)
+    );
     process.exit(1);
   }
 }

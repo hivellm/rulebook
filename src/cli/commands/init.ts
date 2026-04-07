@@ -3,12 +3,22 @@ import ora from 'ora';
 import { detectProject } from '../../core/detector.js';
 import { generateFullAgents } from '../../core/generator.js';
 import { mergeFullAgents, mergeClaudeMd } from '../../core/merger.js';
-import { generateWorkflows, generateIDEFiles, generateAICLIFiles } from '../../core/workflow-generator.js';
+import {
+  generateWorkflows,
+  generateIDEFiles,
+  generateAICLIFiles,
+} from '../../core/workflow-generator.js';
 import { writeFile, ensureDir } from '../../utils/file-system.js';
 import { existsSync } from 'fs';
 import { parseRulesIgnore } from '../../utils/rulesignore.js';
 import { installGitHooks } from '../../utils/git-hooks.js';
-import type { LanguageDetection, ProjectConfig, FrameworkId, ModuleDetection, ServiceId } from '../../types.js';
+import type {
+  LanguageDetection,
+  ProjectConfig,
+  FrameworkId,
+  ModuleDetection,
+  ServiceId,
+} from '../../types.js';
 import { scaffoldMinimalProject } from '../../core/minimal-scaffolder.js';
 import path from 'path';
 import { SkillsManager, getDefaultTemplatesPath } from '../../core/skills-manager.js';
@@ -584,7 +594,9 @@ export async function initCommand(options: {
         // non-fatal
       }
 
-      const rulesSpinner = ora('Generating path-scoped .claude/rules/ for detected languages...').start();
+      const rulesSpinner = ora(
+        'Generating path-scoped .claude/rules/ for detected languages...'
+      ).start();
       try {
         const { generateRules } = await import('../../core/rules-generator.js');
         const rulesResult = await generateRules(cwd, { languages: detection.languages });
@@ -596,13 +608,13 @@ export async function initCommand(options: {
             console.log(chalk.gray(`  - ${path.relative(cwd, f)}`));
           }
         } else {
-          rulesSpinner.info('No language rule templates applicable (no supported languages detected)');
+          rulesSpinner.info(
+            'No language rule templates applicable (no supported languages detected)'
+          );
         }
         if (rulesResult.preserved.length > 0) {
           console.log(
-            chalk.gray(
-              `  · ${rulesResult.preserved.length} user-authored rule file(s) preserved`
-            )
+            chalk.gray(`  · ${rulesResult.preserved.length} user-authored rule file(s) preserved`)
           );
         }
       } catch (err) {

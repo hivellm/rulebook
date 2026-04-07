@@ -6,7 +6,13 @@ import { writeFile } from '../../utils/file-system.js';
 import { existsSync } from 'fs';
 import { RulebookConfig } from '../../types.js';
 import { installGitHooks } from '../../utils/git-hooks.js';
-import type { LanguageDetection, ProjectConfig, FrameworkId, ModuleDetection, ServiceId } from '../../types.js';
+import type {
+  LanguageDetection,
+  ProjectConfig,
+  FrameworkId,
+  ModuleDetection,
+  ServiceId,
+} from '../../types.js';
 import { scaffoldMinimalProject } from '../../core/minimal-scaffolder.js';
 import path from 'path';
 import { readFileSync } from 'fs';
@@ -313,9 +319,7 @@ export async function updateSingleProject(
         )
       );
       console.log(
-        chalk.yellow(
-          '    Claude Code still loads them at session start via @AGENTS.override.md.'
-        )
+        chalk.yellow('    Claude Code still loads them at session start via @AGENTS.override.md.')
       );
       console.log(
         chalk.yellow(
@@ -395,9 +399,7 @@ export async function updateSingleProject(
     }
     if (rulesResult.preserved.length > 0) {
       console.log(
-        chalk.gray(
-          `  · ${rulesResult.preserved.length} user-authored rule file(s) preserved`
-        )
+        chalk.gray(`  · ${rulesResult.preserved.length} user-authored rule file(s) preserved`)
       );
     }
   } catch (err) {
@@ -656,8 +658,9 @@ export async function updateSingleProject(
     const { promises: fsP } = await import('fs');
     const tasksDir = path.join(cwd, '.rulebook', 'tasks');
     if (existsSync(tasksDir)) {
-      const taskDirs = (await fsP.readdir(tasksDir, { withFileTypes: true }))
-        .filter((d) => d.isDirectory() && d.name.startsWith('phase'));
+      const taskDirs = (await fsP.readdir(tasksDir, { withFileTypes: true })).filter(
+        (d) => d.isDirectory() && d.name.startsWith('phase')
+      );
       let appendedCount = 0;
       for (const dir of taskDirs) {
         const tasksPath = path.join(tasksDir, dir.name, 'tasks.md');
@@ -744,7 +747,9 @@ export async function updateCommand(options: {
         })
         .join('\n');
 
-      const { getDefaultTemplatesPath: getTemplatesPath } = await import('../../core/skills-manager.js');
+      const { getDefaultTemplatesPath: getTemplatesPath } = await import(
+        '../../core/skills-manager.js'
+      );
       let workspaceTplContent = '';
       try {
         const tplPath = join(getTemplatesPath(), 'core', 'WORKSPACE.md');

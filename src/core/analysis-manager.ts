@@ -60,10 +60,7 @@ export async function createAnalysis(
   // README.md skeleton (only if missing)
   const readmePath = path.join(dir, 'README.md');
   if (!(await fileExists(readmePath))) {
-    await writeFile(
-      readmePath,
-      renderReadmeTemplate(options.topic, slug)
-    );
+    await writeFile(readmePath, renderReadmeTemplate(options.topic, slug));
     files.push(readmePath);
   }
 
@@ -166,12 +163,17 @@ export async function listAnalyses(
 export async function showAnalysis(
   projectRoot: string,
   slug: string
-): Promise<{ slug: string; readme: string; findings: string; plan: string; manifest: string } | null> {
+): Promise<{
+  slug: string;
+  readme: string;
+  findings: string;
+  plan: string;
+  manifest: string;
+} | null> {
   const dir = path.join(projectRoot, 'docs', 'analysis', slug);
   if (!(await fileExists(dir))) return null;
 
-  const readSafe = async (p: string) =>
-    (await fileExists(p)) ? await readFile(p) : '(not found)';
+  const readSafe = async (p: string) => ((await fileExists(p)) ? await readFile(p) : '(not found)');
 
   return {
     slug,
