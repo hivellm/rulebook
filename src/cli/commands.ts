@@ -520,6 +520,34 @@ export async function initCommand(options: {
         );
       }
 
+      // Generate path-scoped .claude/rules/*.md for detected languages
+      const rulesSpinner = ora('Generating path-scoped .claude/rules/ for detected languages...').start();
+      try {
+        const { generateRules } = await import('../core/rules-generator.js');
+        const rulesResult = await generateRules(cwd, { languages: detection.languages });
+        if (rulesResult.written.length > 0) {
+          rulesSpinner.succeed(
+            `Generated ${rulesResult.written.length} language rule file(s) in .claude/rules/`
+          );
+          for (const f of rulesResult.written) {
+            console.log(chalk.gray(`  - ${path.relative(cwd, f)}`));
+          }
+        } else {
+          rulesSpinner.info('No language rule templates applicable (no supported languages detected)');
+        }
+        if (rulesResult.preserved.length > 0) {
+          console.log(
+            chalk.gray(
+              `  · ${rulesResult.preserved.length} user-authored rule file(s) preserved`
+            )
+          );
+        }
+      } catch (err) {
+        rulesSpinner.warn(
+          `Rules generation skipped: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+
       const cliSpinner = ora('Generating AI CLI configuration files...').start();
       const cliFiles = await generateAICLIFiles(config, cwd);
 
@@ -2135,6 +2163,33 @@ async function updateSingleProject(
   } catch (err) {
     claudeUpdateSpinner.warn(
       `CLAUDE.md update skipped: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+
+  // Refresh path-scoped .claude/rules/*.md for currently detected languages
+  const rulesUpdateSpinner = ora(
+    'Refreshing path-scoped .claude/rules/ for detected languages...'
+  ).start();
+  try {
+    const { generateRules } = await import('../core/rules-generator.js');
+    const rulesResult = await generateRules(cwd, { languages: detection.languages });
+    if (rulesResult.written.length > 0) {
+      rulesUpdateSpinner.succeed(
+        `Refreshed ${rulesResult.written.length} language rule file(s) in .claude/rules/`
+      );
+    } else {
+      rulesUpdateSpinner.info('No language rule templates applicable');
+    }
+    if (rulesResult.preserved.length > 0) {
+      console.log(
+        chalk.gray(
+          `  · ${rulesResult.preserved.length} user-authored rule file(s) preserved`
+        )
+      );
+    }
+  } catch (err) {
+    rulesUpdateSpinner.warn(
+      `Rules refresh skipped: ${err instanceof Error ? err.message : String(err)}`
     );
   }
 
