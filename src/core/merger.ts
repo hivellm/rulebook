@@ -12,7 +12,8 @@ import {
   writeClaudeMd,
   CLAUDE_MD_SENTINEL_END,
 } from './claude-md-generator.js';
-import { fileExists, readFile } from '../utils/file-system.js';
+import { fileExists, readFile, writeFile } from '../utils/file-system.js';
+import { getOverridePath, initOverride } from './override-manager.js';
 
 export async function mergeAgents(
   existing: ExistingAgentsInfo,
@@ -141,43 +142,129 @@ export async function mergeFullAgents(
   return content;
 }
 
+export type MergeClaudeMdMode = 'create' | 'replace' | 'migrate';
+
+export interface MergeClaudeMdResult {
+  path: string;
+  backupPath: string | null;
+  mode: MergeClaudeMdMode;
+  /**
+   * Path of `AGENTS.override.md` if it was touched during migration.
+   * Null when mode !== 'migrate'.
+   */
+  overridePath: string | null;
+}
+
 /**
  * Merge a generated v5.3.0 CLAUDE.md block into an existing CLAUDE.md file
- * (or create the file if absent). Content outside the
- * `<!-- RULEBOOK:START v5.3.0 ... -->` / `<!-- RULEBOOK:END -->` sentinels
- * is preserved verbatim. A `.backup-<timestamp>` snapshot is created when an
- * existing file is overwritten.
+ * (or create the file if absent).
  *
- * Returns the absolute paths of the written file and (if applicable) the
- * backup snapshot.
+ * Three modes:
+ * - **create**: file does not exist → write the generated block.
+ * - **replace**: file already has `RULEBOOK:START v5.3.0` sentinels → in-place
+ *   block replacement, preserving everything outside the sentinels verbatim.
+ * - **migrate**: file exists without sentinels (legacy v5.2) → the entire
+ *   legacy file is appended into `AGENTS.override.md` inside the existing
+ *   `OVERRIDE:START/END` sentinels (so it survives every future
+ *   `rulebook update`), and a fresh thin CLAUDE.md is written. The new
+ *   CLAUDE.md imports `@AGENTS.override.md`, so Claude Code re-loads the
+ *   migrated directives at session start exactly as if they were still in
+ *   CLAUDE.md (per the official Anthropic memory docs, imports are
+ *   "expanded and loaded into context at launch alongside the CLAUDE.md
+ *   that references them").
+ *
+ * In all modes a `.backup-<timestamp>` snapshot of any pre-existing
+ * CLAUDE.md is created before overwrite.
  */
-export async function mergeClaudeMd(
-  projectRoot: string
-): Promise<{ path: string; backupPath: string | null; mode: 'create' | 'replace' | 'wrap' }> {
+export async function mergeClaudeMd(projectRoot: string): Promise<MergeClaudeMdResult> {
   const target = getClaudeMdPath(projectRoot);
-  const generated = await generateClaudeMd(projectRoot);
 
   if (!(await fileExists(target))) {
+    const generated = await generateClaudeMd(projectRoot);
     const written = await writeClaudeMd(projectRoot, generated);
-    return { ...written, mode: 'create' };
+    return { ...written, mode: 'create', overridePath: null };
   }
 
   const existing = await readFile(target);
 
   if (hasV2Sentinels(existing)) {
     // In-place block replacement: keep everything outside the sentinels.
+    const generated = await generateClaudeMd(projectRoot);
     const blockRegex = /<!--\s*RULEBOOK:START v5\.3\.0[\s\S]*?<!--\s*RULEBOOK:END\s*-->/;
     const merged = existing.replace(blockRegex, extractGeneratedBlock(generated));
     const written = await writeClaudeMd(projectRoot, merged);
-    return { ...written, mode: 'replace' };
+    return { ...written, mode: 'replace', overridePath: null };
   }
 
-  // No v5.3.0 block — wrap the existing file: prepend the generated block
-  // and keep the original content underneath. The existing content is
-  // preserved verbatim so any v5.2-style file survives the upgrade.
-  const wrapped = `${generated.trimEnd()}\n\n${existing.trimStart()}`;
-  const written = await writeClaudeMd(projectRoot, wrapped);
-  return { ...written, mode: 'wrap' };
+  // Legacy v5.2 CLAUDE.md without sentinels.
+  // 1. Migrate its full content into AGENTS.override.md (which is never
+  //    touched by future `rulebook update` runs).
+  // 2. THEN regenerate the CLAUDE.md so `@AGENTS.override.md` resolves as a
+  //    live import (otherwise the resolver would comment it out because the
+  //    override file did not exist yet at template-render time).
+  // 3. Claude Code re-loads the migrated directives at session start via
+  //    @AGENTS.override.md (per Anthropic memory docs: "imports are expanded
+  //    and loaded into context at launch alongside the CLAUDE.md that
+  //    references them").
+  const overridePath = await migrateLegacyClaudeMdToOverride(projectRoot, existing);
+  const generated = await generateClaudeMd(projectRoot);
+  const written = await writeClaudeMd(projectRoot, generated);
+  return { ...written, mode: 'migrate', overridePath };
+}
+
+/**
+ * Append the contents of a legacy CLAUDE.md to AGENTS.override.md inside its
+ * existing `OVERRIDE:START/END` sentinels. Idempotent: if the same migration
+ * marker is already present (e.g. a second update run on a project that was
+ * already migrated), the legacy content is not duplicated.
+ *
+ * Returns the absolute path of the override file.
+ */
+async function migrateLegacyClaudeMdToOverride(
+  projectRoot: string,
+  legacyClaudeMdContent: string
+): Promise<string> {
+  // Ensure the override file exists (creates from template if absent).
+  await initOverride(projectRoot);
+  const overridePath = getOverridePath(projectRoot);
+  const currentOverride = await readFile(overridePath);
+
+  const migrationMarker = '<!-- MIGRATED-FROM-CLAUDE-MD';
+  if (currentOverride.includes(migrationMarker)) {
+    // Already migrated — do not duplicate.
+    return overridePath;
+  }
+
+  const timestamp = new Date().toISOString();
+  const migrationBlock = [
+    '',
+    `${migrationMarker} on ${timestamp} by rulebook v5.3.0 -->`,
+    '<!-- The following directives were extracted from your previous CLAUDE.md. -->',
+    '<!-- They are now imported by the new CLAUDE.md via @AGENTS.override.md, so -->',
+    '<!-- Claude Code re-loads them at session start exactly as before. -->',
+    '<!-- Review and prune as needed — rulebook will never touch this section. -->',
+    '',
+    '# CLAUDE.md (legacy v5.2 content, preserved by rulebook v5.3.0)',
+    '',
+    legacyClaudeMdContent.trim(),
+    '',
+    '<!-- END MIGRATED-FROM-CLAUDE-MD -->',
+    '',
+  ].join('\n');
+
+  // Append inside the existing OVERRIDE:START/END sentinels. If the file
+  // does not have the sentinels (edge case: user wrote a flat override),
+  // append at the end.
+  const sentinelEnd = '<!-- OVERRIDE:END -->';
+  let newOverride: string;
+  if (currentOverride.includes(sentinelEnd)) {
+    newOverride = currentOverride.replace(sentinelEnd, `${migrationBlock}\n${sentinelEnd}`);
+  } else {
+    newOverride = `${currentOverride.trimEnd()}\n${migrationBlock}`;
+  }
+
+  await writeFile(overridePath, newOverride);
+  return overridePath;
 }
 
 /**

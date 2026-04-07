@@ -487,11 +487,32 @@ export async function initCommand(options: {
       const claudeSpinner = ora('Generating CLAUDE.md (v5.3.0 @import format)...').start();
       try {
         const result = await mergeClaudeMd(cwd);
-        claudeSpinner.succeed(
-          `CLAUDE.md ${result.mode === 'create' ? 'created' : result.mode === 'replace' ? 'updated' : 'wrapped (legacy preserved)'}`
-        );
+        const label =
+          result.mode === 'create'
+            ? 'created'
+            : result.mode === 'replace'
+              ? 'updated'
+              : 'migrated (legacy directives moved to AGENTS.override.md)';
+        claudeSpinner.succeed(`CLAUDE.md ${label}`);
         if (result.backupPath) {
           console.log(chalk.gray(`  - backup: ${path.relative(cwd, result.backupPath)}`));
+        }
+        if (result.mode === 'migrate' && result.overridePath) {
+          console.log(
+            chalk.yellow(
+              `  ! Your previous CLAUDE.md directives were migrated to ${path.relative(cwd, result.overridePath)}.`
+            )
+          );
+          console.log(
+            chalk.yellow(
+              '    Claude Code still loads them at session start via @AGENTS.override.md.'
+            )
+          );
+          console.log(
+            chalk.yellow(
+              '    Review and prune AGENTS.override.md when convenient — rulebook will never overwrite it.'
+            )
+          );
         }
       } catch (err) {
         claudeSpinner.warn(
@@ -2084,11 +2105,32 @@ async function updateSingleProject(
   const claudeUpdateSpinner = ora('Updating CLAUDE.md (v5.3.0 @import format)...').start();
   try {
     const claudeResult = await mergeClaudeMd(cwd);
-    claudeUpdateSpinner.succeed(
-      `CLAUDE.md ${claudeResult.mode === 'create' ? 'created' : claudeResult.mode === 'replace' ? 'updated in-place' : 'wrapped (legacy content preserved)'}`
-    );
+    const label =
+      claudeResult.mode === 'create'
+        ? 'created'
+        : claudeResult.mode === 'replace'
+          ? 'updated in-place'
+          : 'migrated (legacy directives moved to AGENTS.override.md)';
+    claudeUpdateSpinner.succeed(`CLAUDE.md ${label}`);
     if (claudeResult.backupPath) {
       console.log(chalk.gray(`  • backup: ${path.relative(cwd, claudeResult.backupPath)}`));
+    }
+    if (claudeResult.mode === 'migrate' && claudeResult.overridePath) {
+      console.log(
+        chalk.yellow(
+          `  ! Your previous CLAUDE.md directives were migrated to ${path.relative(cwd, claudeResult.overridePath)}.`
+        )
+      );
+      console.log(
+        chalk.yellow(
+          '    Claude Code still loads them at session start via @AGENTS.override.md.'
+        )
+      );
+      console.log(
+        chalk.yellow(
+          '    Review and prune AGENTS.override.md when convenient — rulebook will never overwrite it.'
+        )
+      );
     }
   } catch (err) {
     claudeUpdateSpinner.warn(

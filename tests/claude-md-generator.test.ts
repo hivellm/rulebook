@@ -133,23 +133,64 @@ describe('claude-md-generator (v5.3.0)', () => {
       expect(endCount).toBe(1);
     });
 
-    it('wraps a legacy v5.2 CLAUDE.md by prepending the new block', async () => {
+    it('migrates a legacy v5.2 CLAUDE.md into AGENTS.override.md and writes a fresh CLAUDE.md', async () => {
       const target = getClaudeMdPath(projectRoot);
-      const legacy = '# CLAUDE.md\n\nLegacy v5.2 content with no sentinels.\n';
+      const legacy =
+        '# CLAUDE.md\n\nLegacy v5.2 directives.\n- Use spaces, not tabs\n- Falcor is the rendering ground truth\n';
       await fs.writeFile(target, legacy);
 
       const result = await mergeClaudeMd(projectRoot);
-      expect(result.mode).toBe('wrap');
-      expect(result.backupPath).not.toBeNull();
 
-      const after = await fs.readFile(target, 'utf-8');
-      expect(hasV2Sentinels(after)).toBe(true);
-      expect(after).toContain('Legacy v5.2 content with no sentinels.');
-      // The generated block must come before the legacy content
-      const sentinelIdx = after.indexOf(CLAUDE_MD_SENTINEL_END);
-      const legacyIdx = after.indexOf('Legacy v5.2 content');
-      expect(sentinelIdx).toBeGreaterThan(-1);
-      expect(legacyIdx).toBeGreaterThan(sentinelIdx);
+      // Mode + bookkeeping
+      expect(result.mode).toBe('migrate');
+      expect(result.backupPath).not.toBeNull();
+      expect(result.overridePath).not.toBeNull();
+
+      // Backup contains the original content
+      const backup = await fs.readFile(result.backupPath!, 'utf-8');
+      expect(backup).toContain('Legacy v5.2 directives.');
+      expect(backup).toContain('Falcor is the rendering ground truth');
+
+      // The new CLAUDE.md is the clean v5.3.0 template — no legacy content inline
+      const newClaude = await fs.readFile(target, 'utf-8');
+      expect(hasV2Sentinels(newClaude)).toBe(true);
+      expect(newClaude).not.toContain('Falcor is the rendering ground truth');
+      // And it imports @AGENTS.override.md (not commented), so the migrated
+      // content is re-loaded by Claude Code at session start.
+      expect(newClaude).toMatch(/^@AGENTS\.override\.md\s*$/m);
+
+      // The override file now contains the migrated block inside the OVERRIDE sentinels
+      const override = await fs.readFile(result.overridePath!, 'utf-8');
+      expect(override).toContain('<!-- OVERRIDE:START -->');
+      expect(override).toContain('<!-- OVERRIDE:END -->');
+      expect(override).toContain('MIGRATED-FROM-CLAUDE-MD');
+      expect(override).toContain('Legacy v5.2 directives.');
+      expect(override).toContain('Falcor is the rendering ground truth');
+
+      // Migration block must be before the END sentinel (i.e. inside the override)
+      const migIdx = override.indexOf('MIGRATED-FROM-CLAUDE-MD');
+      const endIdx = override.indexOf('<!-- OVERRIDE:END -->');
+      expect(migIdx).toBeGreaterThan(-1);
+      expect(endIdx).toBeGreaterThan(migIdx);
+    });
+
+    it('migration is idempotent: a second migrate does not duplicate the block', async () => {
+      const target = getClaudeMdPath(projectRoot);
+      const legacy = '# CLAUDE.md\n\nLegacy line A\n';
+      await fs.writeFile(target, legacy);
+
+      // First migration
+      const first = await mergeClaudeMd(projectRoot);
+      expect(first.mode).toBe('migrate');
+
+      // Force the legacy state again (a paranoid second pass with the same legacy file)
+      await fs.writeFile(target, legacy);
+      const second = await mergeClaudeMd(projectRoot);
+      expect(second.mode).toBe('migrate');
+
+      const override = await fs.readFile(second.overridePath!, 'utf-8');
+      const occurrences = (override.match(/MIGRATED-FROM-CLAUDE-MD on/g) ?? []).length;
+      expect(occurrences).toBe(1);
     });
 
     it('is idempotent: a second replace produces no drift outside the block', async () => {
