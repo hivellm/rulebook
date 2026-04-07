@@ -520,18 +520,33 @@ export async function initCommand(options: {
         );
       }
 
+      // Seed .rulebook/COMPACT_CONTEXT.md from the stack-appropriate template
+      try {
+        const { seedCompactContext } = await import('../core/compact-context-manager.js');
+        const seedResult = await seedCompactContext(cwd, { languages: detection.languages });
+        if (seedResult.seeded) {
+          console.log(chalk.gray(`  • seeded ${path.relative(cwd, seedResult.path)}`));
+        }
+      } catch (err) {
+        console.log(
+          chalk.gray(
+            `  · COMPACT_CONTEXT seed skipped: ${err instanceof Error ? err.message : String(err)}`
+          )
+        );
+      }
+
       // Apply .claude/settings.json hooks (multi-agent, handoff, compact)
       try {
         const { applyClaudeSettings } = await import('../core/claude-settings-manager.js');
         const rulebookCfg = await configManager.loadConfig();
         const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
         const handoffEnabled = rulebookCfg?.handoff?.enabled ?? true;
-        if (multiAgentEnabled || handoffEnabled) {
-          await applyClaudeSettings(cwd, {
-            teamEnforcement: multiAgentEnabled,
-            sessionHandoff: handoffEnabled,
-          });
-        }
+        // Compact-context reinject is cheap and always useful — enable by default.
+        await applyClaudeSettings(cwd, {
+          teamEnforcement: multiAgentEnabled,
+          sessionHandoff: handoffEnabled,
+          compactContextReinject: true,
+        });
       } catch (err) {
         console.log(
           chalk.gray(
@@ -2186,22 +2201,27 @@ async function updateSingleProject(
     );
   }
 
+  // Seed .rulebook/COMPACT_CONTEXT.md if missing (preserved if user-owned)
+  try {
+    const { seedCompactContext } = await import('../core/compact-context-manager.js');
+    await seedCompactContext(cwd, { languages: detection.languages });
+  } catch {
+    // non-fatal
+  }
+
   // Refresh .claude/settings.json hooks for current config
   try {
     const { applyClaudeSettings } = await import('../core/claude-settings-manager.js');
     const rulebookCfg = await configManager.loadConfig();
     const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
     const handoffEnabled = rulebookCfg?.handoff?.enabled ?? true;
-    if (multiAgentEnabled || handoffEnabled) {
-      const settingsResult = await applyClaudeSettings(cwd, {
-        teamEnforcement: multiAgentEnabled,
-        sessionHandoff: handoffEnabled,
-      });
-      if (settingsResult.changed) {
-        console.log(
-          chalk.gray(`  • .claude/settings.json refreshed (hooks wired)`)
-        );
-      }
+    const settingsResult = await applyClaudeSettings(cwd, {
+      teamEnforcement: multiAgentEnabled,
+      sessionHandoff: handoffEnabled,
+      compactContextReinject: true,
+    });
+    if (settingsResult.changed) {
+      console.log(chalk.gray(`  • .claude/settings.json refreshed (hooks wired)`));
     }
   } catch (err) {
     console.log(
