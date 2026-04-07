@@ -13,5 +13,38 @@
       "Agent(*)"
     ]
   },
-  "enabledMcpjsonServers": ["rulebook"]
+  "enabledMcpjsonServers": [
+    "rulebook"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash F:/Node/hivellm/rulebook/.claude/hooks/on-compact-reinject.sh"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash F:/Node/hivellm/rulebook/.claude/hooks/resume-from-handoff.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash F:/Node/hivellm/rulebook/.claude/hooks/check-context-and-handoff.sh"
+          }
+        ]
+      }
+    ]
+  }
 }

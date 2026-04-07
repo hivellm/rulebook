@@ -11,22 +11,13 @@ description: Archive a completed Rulebook task and apply spec deltas to main spe
 - Refer to `/.rulebook/specs/RULEBOOK.md` for complete task management guidelines.
 
 **Steps**
-1. **Capture Learnings BEFORE Archiving (MANDATORY)**:
-   Before archiving, record what was learned during this task:
-   - **Patterns discovered** → `rulebook knowledge add pattern "<title>" --category <cat> --description "<desc>"`
-   - **Anti-patterns found** → `rulebook knowledge add anti-pattern "<title>" --category <cat> --description "<desc>"`
-   - **Implementation learnings** → `rulebook learn capture --title "<title>" --content "<what you learned>"`
-   - **Architectural decisions** → record via `rulebook decision create` if a significant design choice was made
-
-   Minimum: at least ONE learning must be captured per task archive. If the task was trivial, record: `rulebook learn capture --title "Completed <task-id>" --content "<1-line summary of what was done>"`
-
-2. **Verify Task Completion**:
+1. **Verify Task Completion**:
    - All items in `tasks.md` must be marked as `[x]`
    - All tests must pass
    - Code review complete (if applicable)
    - Documentation updated (README, CHANGELOG, specs)
 
-3. **Run Quality Checks**:
+2. **Run Quality Checks**:
    ```bash
    npm test
    npm run lint
@@ -35,13 +26,13 @@ description: Archive a completed Rulebook task and apply spec deltas to main spe
    ```
    Ensure all checks pass before archiving.
 
-4. **Validate Task Format**:
+3. **Validate Task Format**:
    ```bash
    rulebook task validate <task-id>
    ```
    Must pass all format checks.
 
-5. **Archive Task**:
+4. **Archive Task**:
    ```bash
    rulebook task archive <task-id>
    ```
@@ -51,27 +42,27 @@ description: Archive a completed Rulebook task and apply spec deltas to main spe
    ```
    (Only use `--skip-validation` if you're certain the task is valid)
 
-6. **Archive Process**:
+5. **Archive Process**:
    - Validates task format (unless skipped)
    - Checks task completion status
    - Applies spec deltas to main specifications
-   - Moves task to `/.rulebook/archive/YYYY-MM-DD-<task-id>/`
+   - Moves task to `/.rulebook/tasks/archive/YYYY-MM-DD-<task-id>/`
    - Updates related specifications
 
-7. **Verify Archive**:
+6. **Verify Archive**:
    ```bash
    rulebook task list --archived
    ```
    Task should appear in archived list.
 
-8. **Post-Archive Actions**:
+7. **Post-Archive Actions**:
    - Ensure spec deltas are applied to main specifications
    - Update CHANGELOG.md with the change
    - Document any breaking changes
    - Create migration guides (if needed)
    - Unblock related tasks (if any)
 
-9. **🚨 MANDATORY: Deferred Items → Tasks Rule**:
+8. **🚨 MANDATORY: Deferred Items → Tasks Rule**:
    **ABSOLUTE RULE — NO EXCEPTIONS**: Whenever a task is archived with items marked as "Deferred" or "Phase X+", you MUST immediately create Rulebook tasks for those deferred items **before archiving**.
 
    ```
@@ -81,7 +72,7 @@ description: Archive a completed Rulebook task and apply spec deltas to main spe
 
    ✅ CORRECT — defer with tracking:
    1. Add "- [ ] D1. feature X — deferred Phase 4" to tasks.md
-   2. Call rulebook_task_create("phase4_feature-x")
+   2. Call rulebook_task_create("phase4-feature-x")
    3. Write tasks.md for the new task with full context
    4. THEN call rulebook_task_archive
    ```

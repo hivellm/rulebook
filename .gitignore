@@ -69,3 +69,9 @@ mcp_tools.txt
 !/.rulebook/tasks/**/*.md
 !/.rulebook/archive/
 !/.rulebook/rulebook.json
+
+CLAUDE.local.md
+.rulebook/backup/
+.rulebook/handoff/_pending.md
+.rulebook/handoff/.urgent
+.rulebook/telemetry/
