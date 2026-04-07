@@ -76,6 +76,8 @@ Rulebook v5.3.0 shifts from "one big file" to a **modular, import-driven CLAUDE.
 - `COMPACT_CONTEXT.md` (post-compaction reinject) — short cheat sheet
 - `/handoff` skill (cross-session) — Stop hook monitors context, SessionStart hook auto-restores
 
+**Structural enforcement hooks** — 3 `PreToolUse` hooks block forbidden patterns before edits reach disk: no deferred tasks, no stubs/TODOs, no manual task file creation. Cross-platform (Node.js, no `jq`).
+
 **`/analysis <topic>`** — Repeatable research workflow: scaffolds `docs/analysis/<slug>/` with numbered findings, execution plan, KB capture. CLI + MCP + skill.
 
 **`rulebook doctor`** — 7 health checks with auto-run post-update.

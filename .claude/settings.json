@@ -45,6 +45,32 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash F:/Node/hivellm/rulebook/.claude/hooks/enforce-no-deferred.sh"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash F:/Node/hivellm/rulebook/.claude/hooks/enforce-no-shortcuts.sh"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash F:/Node/hivellm/rulebook/.claude/hooks/enforce-mcp-for-tasks.sh"
+          }
+        ]
+      }
     ]
   }
 }

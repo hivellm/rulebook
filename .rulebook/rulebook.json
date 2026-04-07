@@ -1,7 +1,7 @@
 {
   "version": "5.3.0",
-  "installedAt": "2026-04-07T21:35:41.925Z",
-  "updatedAt": "2026-04-07T21:39:39.556Z",
+  "installedAt": "2026-04-07T21:39:39.399Z",
+  "updatedAt": "2026-04-07T22:15:35.387Z",
   "projectId": "rulebook",
   "mode": "full",
   "features": {
@@ -63,6 +63,10 @@
       "core/dag",
       "core/ralph",
       "core/rulebook"
-    ]
+    ],
+    "disabled": [
+      "core/analysis"
+    ],
+    "order": []
   }
 }
