@@ -108,8 +108,13 @@ export class PRDGenerator {
       id: `US-${String(priority).padStart(3, '0')}`,
       title: title || task.id,
       description: description || 'Task extracted from rulebook proposal',
-      acceptanceCriteria:
-        allCriteria.length > 0 ? allCriteria.slice(0, 15) : ['Implementation complete'],
+      acceptanceCriteria: [
+        ...(allCriteria.length > 0 ? allCriteria.slice(0, 12) : ['Implementation complete']),
+        // v5.3.0 F-NEW-3: mandatory tail items
+        'Update or create documentation covering the implementation',
+        'Write tests covering the new behavior',
+        'Run tests and confirm they pass',
+      ],
       priority,
       passes: false,
       notes,

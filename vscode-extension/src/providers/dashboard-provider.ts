@@ -106,6 +106,39 @@ export class DashboardProvider implements vscode.WebviewViewProvider {
           }
           break;
         }
+        case 'runDoctor':
+          this.sendDataToWebview();
+          vscode.window.showInformationMessage('Rulebook: Doctor checks refreshed');
+          break;
+        case 'createAnalysis': {
+          const topic = await vscode.window.showInputBox({ prompt: 'Analysis topic', placeHolder: 'e.g. perf-startup' });
+          if (!topic) break;
+          const { execSync } = await import('child_process');
+          try {
+            execSync(`npx --no-install rulebook analysis create "${topic.replace(/"/g, '\\"')}"`, {
+              cwd: this.workspaceRoot,
+              timeout: 15000,
+              stdio: ['pipe', 'pipe', 'pipe'],
+            });
+            this.sendDataToWebview();
+            vscode.window.showInformationMessage(`Analysis "${topic}" created`);
+          } catch {
+            vscode.window.showErrorMessage('Failed to create analysis');
+          }
+          break;
+        }
+        case 'triggerHandoff': {
+          const terminal = vscode.window.terminals.find(
+            t => t.name.includes('Claude') || t.name.includes('claude')
+          );
+          if (terminal) {
+            terminal.sendText('/handoff');
+            vscode.window.showInformationMessage('Handoff triggered');
+          } else {
+            vscode.window.showWarningMessage('No Claude Code terminal found');
+          }
+          break;
+        }
       }
     });
 
@@ -131,13 +164,16 @@ export class DashboardProvider implements vscode.WebviewViewProvider {
 
     const tasks = this.client.listTasks();
     const agents = this.client.listAgents();
-    const ralph = this.client.getRalphStatus();
     const memory = this.client.getMemoryStats();
     const indexer = this.client.getIndexerStatus();
+    const analyses = this.client.listAnalyses();
+    const doctor = this.client.runDoctor();
+    const contextUsage = this.client.getContextUsage();
+    const telemetry = this.client.getTelemetryStats();
 
     this.view.webview.postMessage({
       type: 'fullUpdate',
-      data: { tasks, agents, ralph, memory, indexer },
+      data: { tasks, agents, memory, indexer, analyses, doctor, contextUsage, telemetry },
     });
   }
 
@@ -171,9 +207,11 @@ export class DashboardProvider implements vscode.WebviewViewProvider {
     <div class="tab-bar">
       <button class="tab active" data-tab="agents">🤖 Agents</button>
       <button class="tab" data-tab="tasks">📋 Tasks</button>
-      <button class="tab" data-tab="ralph">🔄 Ralph</button>
       <button class="tab" data-tab="memory">🧠 Memory</button>
       <button class="tab" data-tab="indexer">🔍 Indexer</button>
+      <button class="tab" data-tab="analysis">📊 Analysis</button>
+      <button class="tab" data-tab="doctor">🩺 Doctor</button>
+      <button class="tab" data-tab="telemetry">📈 Telemetry</button>
     </div>
 
     <!-- Agents Tab -->
@@ -193,16 +231,6 @@ export class DashboardProvider implements vscode.WebviewViewProvider {
       </div>
       <div id="tasks-list" class="card-list">
         <div class="loading">Loading tasks...</div>
-      </div>
-    </div>
-
-    <!-- Ralph Tab -->
-    <div class="tab-content" id="tab-ralph">
-      <div class="section-header">
-        <h2>Ralph Autonomous Loop</h2>
-      </div>
-      <div id="ralph-status" class="status-card">
-        <div class="loading">Loading Ralph status...</div>
       </div>
     </div>
 
@@ -232,6 +260,42 @@ export class DashboardProvider implements vscode.WebviewViewProvider {
       </div>
       <div class="action-bar">
         <button id="reindexBtn" class="btn-primary">🔄 Reindex Codebase</button>
+      </div>
+    </div>
+
+    <!-- Analysis Tab -->
+    <div class="tab-content" id="tab-analysis">
+      <div class="section-header">
+        <h2>Analysis</h2>
+      </div>
+      <div id="analysis-list" class="card-list">
+        <div class="loading">Loading analyses...</div>
+      </div>
+      <div class="action-bar">
+        <button id="createAnalysisBtn" class="btn-primary">+ Create Analysis</button>
+      </div>
+    </div>
+
+    <!-- Doctor Tab -->
+    <div class="tab-content" id="tab-doctor">
+      <div class="section-header">
+        <h2>Doctor</h2>
+      </div>
+      <div id="doctor-checks">
+        <div class="loading">Run doctor to see results</div>
+      </div>
+      <div class="action-bar">
+        <button id="runDoctorBtn" class="btn-primary">Run Doctor</button>
+      </div>
+    </div>
+
+    <!-- Telemetry Tab -->
+    <div class="tab-content" id="tab-telemetry">
+      <div class="section-header">
+        <h2>Telemetry</h2>
+      </div>
+      <div id="telemetry-stats">
+        <div class="loading">Loading telemetry...</div>
       </div>
     </div>
   </div>

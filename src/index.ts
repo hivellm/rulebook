@@ -80,7 +80,13 @@ import {
   learnFromRalphCommand,
   learnListCommand,
   learnPromoteCommand,
-} from './cli/commands.js';
+  // Analysis commands (v5.3.0)
+  analysisCreateCommand,
+  analysisListCommand,
+  analysisShowCommand,
+  // Doctor command (v5.3.0)
+  doctorCommand,
+} from './cli/commands/index.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -166,6 +172,7 @@ program
   .action(changelogCommand);
 
 program.command('health').description('Check project health score').action(healthCommand);
+program.command('doctor').description('Run rulebook health checks (file sizes, broken imports, stale state)').action(doctorCommand);
 
 program.command('fix').description('Auto-fix common project issues').action(fixCommand);
 
@@ -373,7 +380,8 @@ mcpCommand
   .command('init')
   .description('Initialize MCP configuration in .rulebook and .cursor/mcp.json')
   .option('--workspace', 'Configure MCP for workspace mode (multi-project)')
-  .action((options: { workspace?: boolean }) => mcpInitCommand(options));
+  .option('--telemetry', 'Enable local opt-in MCP telemetry (.rulebook/telemetry/)')
+  .action((options: { workspace?: boolean; telemetry?: boolean }) => mcpInitCommand(options));
 
 program
   .command('mcp-server')
@@ -741,6 +749,31 @@ learnCommand
   .action((id: string, target: string, options: { title?: string }) =>
     learnPromoteCommand(id, target, options)
   );
+
+// ── Analysis commands (v5.3.0) ──────────────────────────────────────────
+
+const analysisCommand = program
+  .command('analysis')
+  .description('Create and manage structured analyses in docs/analysis/');
+
+analysisCommand
+  .command('create <topic>')
+  .description('Scaffold a new analysis directory')
+  .option('--agents <list>', 'Comma-separated agent list override')
+  .option('--no-tasks', 'Skip task materialization')
+  .action((topic: string, options: { agents?: string; noTasks?: boolean }) =>
+    analysisCreateCommand(topic, options)
+  );
+
+analysisCommand
+  .command('list')
+  .description('List existing analyses')
+  .action(() => analysisListCommand());
+
+analysisCommand
+  .command('show <slug>')
+  .description('Show analysis README')
+  .action((slug: string) => analysisShowCommand(slug));
 
 // ── Project Assessment (v5.0) ───────────────────────────────────────────
 

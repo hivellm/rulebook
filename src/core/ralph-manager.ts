@@ -238,6 +238,23 @@ export class RalphManager {
       if (story.sourceTaskId) {
         await this.syncTasksCheckboxes(story.sourceTaskId, story.acceptanceCriteria);
       }
+
+      // v5.3.0 F3: refresh STATE.md after Ralph marks a story as passing
+      try {
+        const { writeState } = await import('./state-writer.js');
+        const completed = prd.userStories.filter((s: any) => s.passes).length;
+        const total = prd.userStories.length;
+        await writeState(this.projectRoot, {
+          activeTask: story.sourceTaskId
+            ? { id: story.sourceTaskId, phase: 'ralph', progress: `${completed}/${total} stories` }
+            : null,
+          lastRalphIteration: this.loopState?.current_iteration ?? null,
+          lastQualityGate: 'passed',
+          updatedAt: new Date().toISOString(),
+        });
+      } catch {
+        // Non-fatal
+      }
     }
   }
 

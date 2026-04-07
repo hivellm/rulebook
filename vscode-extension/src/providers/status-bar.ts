@@ -4,7 +4,7 @@ import { RulebookClient } from '../services/rulebook-client';
 export class StatusBarManager implements vscode.Disposable {
     private mainItem: vscode.StatusBarItem;
     private indexerItem: vscode.StatusBarItem;
-    private ralphItem: vscode.StatusBarItem;
+    private contextItem: vscode.StatusBarItem;
 
     constructor() {
         // Main Rulebook button (left side)
@@ -19,10 +19,10 @@ export class StatusBarManager implements vscode.Disposable {
         this.indexerItem.command = 'rulebook.openDashboard';
         this.indexerItem.show();
 
-        // Ralph status (right side)
-        this.ralphItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 49);
-        this.ralphItem.command = 'rulebook.openDashboard';
-        this.ralphItem.show();
+        // Context usage (right side)
+        this.contextItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 48);
+        this.contextItem.command = 'rulebook.openDashboard';
+        this.contextItem.show();
     }
 
     refresh(client: RulebookClient) {
@@ -39,17 +39,14 @@ export class StatusBarManager implements vscode.Disposable {
                 this.indexerItem.backgroundColor = undefined;
             }
 
-            // Ralph status
-            const ralph = client.getRalphStatus();
-            if (ralph.running) {
-                this.ralphItem.text = `$(sync~spin) Ralph: ${ralph.iteration}`;
-                this.ralphItem.tooltip = `Ralph running — Task: ${ralph.currentTask}, Iteration: ${ralph.iteration}`;
-                this.ralphItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
-            } else {
-                this.ralphItem.text = `$(check) Ralph`;
-                this.ralphItem.tooltip = `Ralph idle — ${ralph.completedTasks}/${ralph.totalTasks} tasks done`;
-                this.ralphItem.backgroundColor = undefined;
-            }
+            // Context usage
+            const ctx = client.getContextUsage();
+            const filled = Math.floor(ctx.pct / 10);
+            const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(10 - filled);
+            const colorName = ctx.pct >= 90 ? 'Red' : ctx.pct >= 75 ? 'Yellow' : 'Green';
+            this.contextItem.text = `ctx ${ctx.pct}% ${bar}`;
+            this.contextItem.tooltip = `Claude context usage: ${ctx.pct}% (${ctx.transcriptBytes} bytes)`;
+            this.contextItem.color = new vscode.ThemeColor(`terminal.ansi${colorName}`);
         } catch {
             // Silently ignore errors in status bar updates
         }
@@ -58,6 +55,6 @@ export class StatusBarManager implements vscode.Disposable {
     dispose() {
         this.mainItem.dispose();
         this.indexerItem.dispose();
-        this.ralphItem.dispose();
+        this.contextItem.dispose();
     }
 }

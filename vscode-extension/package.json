@@ -2,7 +2,7 @@
   "name": "rulebook-dashboard",
   "displayName": "Rulebook Dashboard",
   "description": "Visual dashboard for Rulebook — monitor tasks, agents, Ralph, memory, and the background indexer",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "publisher": "hivehub",
   "repository": {
     "type": "git",
@@ -56,12 +56,24 @@
       {
         "command": "rulebook.clearMemory",
         "title": "Rulebook: Clear Memory"
+      },
+      {
+        "command": "rulebook.runDoctor",
+        "title": "Rulebook: Run Doctor"
+      },
+      {
+        "command": "rulebook.createAnalysis",
+        "title": "Rulebook: Create Analysis"
+      },
+      {
+        "command": "rulebook.triggerHandoff",
+        "title": "Rulebook: Trigger Handoff"
       }
     ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile -- --minify",
-    "compile": "esbuild src/extension.ts --bundle --outdir=dist --external:vscode --format=cjs --platform=node --sourcemap",
+    "compile": "esbuild src/extension.ts --bundle --outdir=dist --external:vscode --external:better-sqlite3 --format=cjs --platform=node --sourcemap",
     "watch": "npm run compile -- --watch",
     "package": "npx @vscode/vsce package --allow-missing-repository",
     "publish": "npx @vscode/vsce publish",

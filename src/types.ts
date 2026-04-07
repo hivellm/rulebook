@@ -293,6 +293,19 @@ export interface RulebookConfig {
     parallel?: ParallelRalphConfig;
     planCheckpoint?: PlanCheckpointConfig;
   };
+  // Multi-agent / Teams enforcement (v5.3.0)
+  multiAgent?: {
+    enabled?: boolean; // default: false — auto-detected when `.claude/agents/` has ≥3 files
+    enforceTeamForBackgroundAgents?: boolean; // default: true when enabled
+  };
+  // Session handoff & freshness (v5.3.0)
+  handoff?: {
+    enabled?: boolean; // default: true
+    warnThresholdPct?: number; // default: 75
+    forceThresholdPct?: number; // default: 90
+    tokenizer?: 'auto' | 'chars' | 'tiktoken'; // default: 'auto'
+    maxHistoryFiles?: number; // default: 50
+  };
   // Skills configuration (v2.0)
   skills?: {
     enabled: string[]; // List of enabled skill IDs
