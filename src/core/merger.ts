@@ -5,6 +5,14 @@ import {
   migrateEmbeddedTemplates,
   replaceEmbeddedWithReferences,
 } from './migrator.js';
+import {
+  generateClaudeMd,
+  getClaudeMdPath,
+  hasV2Sentinels,
+  writeClaudeMd,
+  CLAUDE_MD_SENTINEL_END,
+} from './claude-md-generator.js';
+import { fileExists, readFile } from '../utils/file-system.js';
 
 export async function mergeAgents(
   existing: ExistingAgentsInfo,
@@ -132,6 +140,64 @@ export async function mergeFullAgents(
 
   return content;
 }
+
+/**
+ * Merge a generated v5.3.0 CLAUDE.md block into an existing CLAUDE.md file
+ * (or create the file if absent). Content outside the
+ * `<!-- RULEBOOK:START v5.3.0 ... -->` / `<!-- RULEBOOK:END -->` sentinels
+ * is preserved verbatim. A `.backup-<timestamp>` snapshot is created when an
+ * existing file is overwritten.
+ *
+ * Returns the absolute paths of the written file and (if applicable) the
+ * backup snapshot.
+ */
+export async function mergeClaudeMd(
+  projectRoot: string
+): Promise<{ path: string; backupPath: string | null; mode: 'create' | 'replace' | 'wrap' }> {
+  const target = getClaudeMdPath(projectRoot);
+  const generated = await generateClaudeMd(projectRoot);
+
+  if (!(await fileExists(target))) {
+    const written = await writeClaudeMd(projectRoot, generated);
+    return { ...written, mode: 'create' };
+  }
+
+  const existing = await readFile(target);
+
+  if (hasV2Sentinels(existing)) {
+    // In-place block replacement: keep everything outside the sentinels.
+    const blockRegex = /<!--\s*RULEBOOK:START v5\.3\.0[\s\S]*?<!--\s*RULEBOOK:END\s*-->/;
+    const merged = existing.replace(blockRegex, extractGeneratedBlock(generated));
+    const written = await writeClaudeMd(projectRoot, merged);
+    return { ...written, mode: 'replace' };
+  }
+
+  // No v5.3.0 block — wrap the existing file: prepend the generated block
+  // and keep the original content underneath. The existing content is
+  // preserved verbatim so any v5.2-style file survives the upgrade.
+  const wrapped = `${generated.trimEnd()}\n\n${existing.trimStart()}`;
+  const written = await writeClaudeMd(projectRoot, wrapped);
+  return { ...written, mode: 'wrap' };
+}
+
+/**
+ * Extract just the sentinel-bounded block from a freshly generated CLAUDE.md
+ * (the template always includes the sentinels at the very top, but defensive
+ * extraction makes the merger robust if the template changes).
+ */
+function extractGeneratedBlock(generated: string): string {
+  const blockRegex = /<!--\s*RULEBOOK:START v5\.3\.0[\s\S]*?<!--\s*RULEBOOK:END\s*-->/;
+  const match = generated.match(blockRegex);
+  if (!match) {
+    // Fall back to the whole file rather than losing content.
+    return generated.trim();
+  }
+  return match[0];
+}
+
+// Re-export the END sentinel constant so callers needing it (e.g. tests)
+// have a single source of truth.
+export { CLAUDE_MD_SENTINEL_END };
 
 // Helper function to parse blocks
 function parseBlocks(content: string): AgentBlock[] {

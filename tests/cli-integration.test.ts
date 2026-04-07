@@ -39,22 +39,9 @@ describe('AI CLI Integration Files', () => {
   });
 
   describe('generateAICLIFiles', () => {
-    it('should generate CLAUDE.md for Claude Code CLI', async () => {
-      const files = await generateAICLIFiles(config, testDir);
-
-      const claudePath = path.join(testDir, 'CLAUDE.md');
-      const exists = await fs
-        .access(claudePath)
-        .then(() => true)
-        .catch(() => false);
-
-      expect(exists).toBe(true);
-      expect(files).toContain(claudePath);
-
-      const content = await fs.readFile(claudePath, 'utf-8');
-      expect(content).toContain('Claude Code');
-      expect(content).toContain('AGENTS.md');
-    });
+    // CLAUDE.md generation moved to `src/core/claude-md-generator.ts` in
+    // v5.3.0. Coverage is in `tests/claude-md-generator.test.ts`. This file
+    // now only verifies the remaining CODEX/GEMINI outputs of generateAICLIFiles.
 
     it('should generate CODEX.md for Codex CLI', async () => {
       const files = await generateAICLIFiles(config, testDir);
@@ -109,26 +96,22 @@ describe('AI CLI Integration Files', () => {
       expect(jsonContent.name).toBeDefined();
     });
 
-    it('should not overwrite existing files', async () => {
-      // Create existing CLAUDE.md
-      const claudePath = path.join(testDir, 'CLAUDE.md');
-      const customContent = '# Custom CLAUDE.md content';
-      await fs.writeFile(claudePath, customContent);
+    it('should not overwrite existing CODEX.md', async () => {
+      const codexPath = path.join(testDir, 'CODEX.md');
+      const customContent = '# Custom CODEX.md content';
+      await fs.writeFile(codexPath, customContent);
 
       const files = await generateAICLIFiles(config, testDir);
 
-      // Should not include the path since it wasn't generated
-      expect(files).not.toContain(claudePath);
-
-      // Content should be preserved
-      const content = await fs.readFile(claudePath, 'utf-8');
+      expect(files).not.toContain(codexPath);
+      const content = await fs.readFile(codexPath, 'utf-8');
       expect(content).toBe(customContent);
     });
 
     it('should generate all files in correct directory', async () => {
       await generateAICLIFiles(config, testDir);
 
-      const expectedFiles = ['CLAUDE.md', 'CODEX.md', 'GEMINI.md', 'gemini-extension.json'];
+      const expectedFiles = ['CODEX.md', 'GEMINI.md', 'gemini-extension.json'];
 
       for (const file of expectedFiles) {
         const filePath = path.join(testDir, file);
@@ -141,32 +124,8 @@ describe('AI CLI Integration Files', () => {
     });
   });
 
-  describe('CLAUDE.md content', () => {
-    it('should include project languages', async () => {
-      config.languages = ['typescript', 'python'];
-      await generateAICLIFiles(config, testDir);
-
-      const content = await fs.readFile(path.join(testDir, 'CLAUDE.md'), 'utf-8');
-      expect(content).toContain('Typescript');
-      expect(content).toContain('Python');
-    });
-
-    it('should reference AGENTS.md for framework rules', async () => {
-      config.frameworks = ['nestjs', 'react'];
-      await generateAICLIFiles(config, testDir);
-
-      const content = await fs.readFile(path.join(testDir, 'CLAUDE.md'), 'utf-8');
-      // Frameworks are in AGENTS.md, CLAUDE.md should reference it
-      expect(content).toContain('AGENTS.md');
-    });
-
-    it('should reference AGENTS.md for full rules', async () => {
-      await generateAICLIFiles(config, testDir);
-
-      const content = await fs.readFile(path.join(testDir, 'CLAUDE.md'), 'utf-8');
-      expect(content).toContain('AGENTS.md');
-    });
-  });
+  // CLAUDE.md content tests moved to tests/claude-md-generator.test.ts
+  // (v5.3.0 @import-based generator).
 
   describe('CODEX.md content', () => {
     it('should include project languages', async () => {

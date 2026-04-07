@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { detectProject } from '../core/detector.js';
 import { generateFullAgents } from '../core/generator.js';
-import { mergeFullAgents } from '../core/merger.js';
+import { mergeFullAgents, mergeClaudeMd } from '../core/merger.js';
 import {
   generateWorkflows,
   generateIDEFiles,
@@ -479,8 +479,26 @@ export async function initCommand(options: {
       }
     }
 
-    // Generate AI CLI configuration files (CLAUDE.md, CODEX.md, GEMINI.md)
+    // Generate AI CLI configuration files (CODEX.md, GEMINI.md, …).
+    // CLAUDE.md is now produced by the v5.3.0 @import-based generator below
+    // (claude-md-generator.ts) so it stays under Anthropic's 200-line budget
+    // and is regenerated on every `rulebook update`.
     if (!minimalMode) {
+      const claudeSpinner = ora('Generating CLAUDE.md (v5.3.0 @import format)...').start();
+      try {
+        const result = await mergeClaudeMd(cwd);
+        claudeSpinner.succeed(
+          `CLAUDE.md ${result.mode === 'create' ? 'created' : result.mode === 'replace' ? 'updated' : 'wrapped (legacy preserved)'}`
+        );
+        if (result.backupPath) {
+          console.log(chalk.gray(`  - backup: ${path.relative(cwd, result.backupPath)}`));
+        }
+      } catch (err) {
+        claudeSpinner.warn(
+          `CLAUDE.md generation skipped: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+
       const cliSpinner = ora('Generating AI CLI configuration files...').start();
       const cliFiles = await generateAICLIFiles(config, cwd);
 
@@ -2059,6 +2077,24 @@ async function updateSingleProject(
   const mergedContent = await mergeFullAgents(detection.existingAgents, config, cwd);
   await writeFile(agentsPath, mergedContent);
   mergeSpinner.succeed('AGENTS.md updated');
+
+  // Update CLAUDE.md to the v5.3.0 @import format. The merger preserves
+  // anything outside the RULEBOOK:START/END sentinels, so user-edited
+  // content survives the upgrade.
+  const claudeUpdateSpinner = ora('Updating CLAUDE.md (v5.3.0 @import format)...').start();
+  try {
+    const claudeResult = await mergeClaudeMd(cwd);
+    claudeUpdateSpinner.succeed(
+      `CLAUDE.md ${claudeResult.mode === 'create' ? 'created' : claudeResult.mode === 'replace' ? 'updated in-place' : 'wrapped (legacy content preserved)'}`
+    );
+    if (claudeResult.backupPath) {
+      console.log(chalk.gray(`  • backup: ${path.relative(cwd, claudeResult.backupPath)}`));
+    }
+  } catch (err) {
+    claudeUpdateSpinner.warn(
+      `CLAUDE.md update skipped: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
 
   // Install + project canonical rules to all detected tools (v5 rule engine)
   // On update: if .rulebook/rules/ is empty (v4 project), auto-install based on complexity
