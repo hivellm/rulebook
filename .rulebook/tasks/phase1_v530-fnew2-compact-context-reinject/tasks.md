@@ -1,20 +1,20 @@
 # Tasks: F-NEW-2 — COMPACT_CONTEXT + reinject hook
 
 ## 1. Templates
-- [ ] 1.1 Create `templates/hooks/on-compact-reinject.sh`
-- [ ] 1.2 Create `templates/compact-context/rust.md`
-- [ ] 1.3 Create `templates/compact-context/typescript.md`
-- [ ] 1.4 Create `templates/compact-context/cpp.md`
-- [ ] 1.5 Create `templates/compact-context/python.md`
-- [ ] 1.6 Create `templates/compact-context/go.md`
-- [ ] 1.7 Create `templates/compact-context/_default.md`
+- [x] 1.1 Created `templates/hooks/on-compact-reinject.sh` (reads COMPACT_CONTEXT.md, emits additionalContext via jq)
+- [x] 1.2 Created `templates/compact-context/rust.md`
+- [x] 1.3 Created `templates/compact-context/typescript.md`
+- [x] 1.4 Created `templates/compact-context/cpp.md`
+- [x] 1.5 Created `templates/compact-context/python.md`
+- [x] 1.6 Created `templates/compact-context/go.md`
+- [x] 1.7 Created `templates/compact-context/_default.md` (generic fallback)
 
 ## 2. Generator
-- [ ] 2.1 `src/core/generator.ts` writes `.rulebook/COMPACT_CONTEXT.md` from matching stack template during init
-- [ ] 2.2 Wire `hooks.SessionStart[].matcher: "compact"` into generated `.claude/settings.json`
-- [ ] 2.3 Preserve user-edited COMPACT_CONTEXT.md on `update` (never overwrite if exists)
+- [x] 2.1 Created `src/core/compact-context-manager.ts` with `seedCompactContext()` + `pickSeedTemplate()` — seeds from matching stack template, never overwrites
+- [x] 2.2 Wired `hooks.SessionStart` compact reinject via `applyClaudeSettings({ compactContextReinject: true })` in both init and update
+- [x] 2.3 Existing COMPACT_CONTEXT.md preserved on update (seedCompactContext is no-op when file exists)
 
 ## 3. Tail (mandatory)
-- [ ] 3.1 Update or create documentation covering the implementation
-- [ ] 3.2 Write tests covering the new behavior (seed selection per stack, preservation on update)
-- [ ] 3.3 Run tests and confirm they pass
+- [x] 3.1 Documentation: inline JSDoc, defense-in-depth note re: Anthropic native re-read
+- [x] 3.2 Tests: `tests/compact-context-manager.test.ts` (6 tests: pickSeedTemplate, seed creation, preservation, fallback)
+- [x] 3.3 Full suite passing, lint clean, type-check clean

@@ -520,6 +520,14 @@ export async function initCommand(options: {
         );
       }
 
+      // Bootstrap .rulebook/handoff/ directory for session handoff (F-NEW-5)
+      try {
+        const { ensureDir } = await import('../utils/file-system.js');
+        await ensureDir(path.join(cwd, '.rulebook', 'handoff'));
+      } catch {
+        // non-fatal
+      }
+
       // Seed .rulebook/COMPACT_CONTEXT.md from the stack-appropriate template
       try {
         const { seedCompactContext } = await import('../core/compact-context-manager.js');

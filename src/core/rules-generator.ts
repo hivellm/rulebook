@@ -37,6 +37,16 @@ export const SUPPORTED_RULE_LANGUAGES = [
   'csharp',
 ] as const;
 
+/**
+ * Generic (non-language) rules shipped by rulebook v5.3.0.
+ * These are always emitted regardless of detection result.
+ */
+export const ALWAYS_ON_RULES = [
+  'multi-agent-teams',
+  'consult-analysis-before-implementing',
+  'respect-handoff-trigger',
+] as const;
+
 export type SupportedRuleLanguage = (typeof SUPPORTED_RULE_LANGUAGES)[number];
 
 /**
@@ -151,6 +161,24 @@ export async function generateRules(
     const template = await readRuleTemplate(slug);
     await writeFile(targetPath, template);
     result.written.push(targetPath);
+  }
+
+  // Always-on rules (not language-scoped) — emit if sentinel-based skip allows
+  for (const ruleName of ALWAYS_ON_RULES) {
+    const targetPath = path.join(rulesDir, `${ruleName}.md`);
+    if (await fileExists(targetPath)) {
+      const existing = await readFile(targetPath);
+      if (!hasGeneratedSentinel(existing)) {
+        result.preserved.push(targetPath);
+        continue;
+      }
+    }
+    const templatePath = path.join(getTemplatesDir(), 'rules', `${ruleName}.md`);
+    if (await fileExists(templatePath)) {
+      const template = await readFile(templatePath);
+      await writeFile(targetPath, template);
+      result.written.push(targetPath);
+    }
   }
 
   return result;
