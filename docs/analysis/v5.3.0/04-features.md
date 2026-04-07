@@ -7,6 +7,7 @@ P0 features additionally documented in their own files:
 - **F-NEW-2** COMPACT_CONTEXT.md + reinject hook → see [05-tml-hooks.md §B.2](./05-tml-hooks.md#b2-on-compact-reinjectsh-sessionstart-matcher-compact)
 - **F-NEW-3** Mandatory task tail → see [06-task-tail.md](./06-task-tail.md)
 - **F-NEW-4** `/analysis <topic>` workflow → see [07-analysis-workflow.md](./07-analysis-workflow.md)
+- **F-NEW-5** Session handoff & freshness manager → see [10-session-handoff.md](./10-session-handoff.md)
 
 ## F1 — Generic CLAUDE.md with `@import` chain  — P0
 - **Problem:** Current CLAUDE.md is a mix of generic + project-specific content. tml's is 1021 lines, UzEngine's is 355, violating Anthropic's 200-line guidance.
@@ -96,6 +97,7 @@ P0 features additionally documented in their own files:
 | F-NEW-2 | COMPACT_CONTEXT + reinject hook | **P0** |
 | F-NEW-3 | Mandatory task tail (docs+tests+verify) | **P0** |
 | F-NEW-4 | `/analysis <topic>` workflow | **P0** |
+| F-NEW-5 | Session handoff & freshness manager | **P0** |
 | F1 | Generic CLAUDE.md + @import chain | **P0** |
 | F2 | `.claude/rules/` first-class generation | **P0** |
 | F3 | `.rulebook/STATE.md` auto-regen | P1 |
