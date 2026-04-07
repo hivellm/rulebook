@@ -93,22 +93,22 @@ describeOrSkip('MCP Server', () => {
       const taskManager = new TaskManager(testDir, 'rulebook');
       await taskManager.initialize();
 
-      await taskManager.createTask('test-task-1');
+      await taskManager.createTask('phase1_test-task-1');
       const tasks = await taskManager.listTasks();
 
       expect(tasks.length).toBe(1);
-      expect(tasks[0].id).toBe('test-task-1');
+      expect(tasks[0].id).toBe('phase1_test-task-1');
     });
 
     it('should show task details', async () => {
       const taskManager = new TaskManager(testDir, 'rulebook');
       await taskManager.initialize();
 
-      await taskManager.createTask('test-show-task');
-      const task = await taskManager.showTask('test-show-task');
+      await taskManager.createTask('phase1_test-show-task');
+      const task = await taskManager.showTask('phase1_test-show-task');
 
       expect(task).toBeDefined();
-      expect(task?.id).toBe('test-show-task');
+      expect(task?.id).toBe('phase1_test-show-task');
       expect(task?.status).toBe('pending');
     });
 
@@ -116,10 +116,10 @@ describeOrSkip('MCP Server', () => {
       const taskManager = new TaskManager(testDir, 'rulebook');
       await taskManager.initialize();
 
-      await taskManager.createTask('test-update-task');
-      await taskManager.updateTaskStatus('test-update-task', 'in-progress');
+      await taskManager.createTask('phase1_test-update-task');
+      await taskManager.updateTaskStatus('phase1_test-update-task', 'in-progress');
 
-      const task = await taskManager.showTask('test-update-task');
+      const task = await taskManager.showTask('phase1_test-update-task');
       expect(task?.status).toBe('in-progress');
     });
 
@@ -127,8 +127,8 @@ describeOrSkip('MCP Server', () => {
       const taskManager = new TaskManager(testDir, 'rulebook');
       await taskManager.initialize();
 
-      await taskManager.createTask('test-validate-task');
-      const validation = await taskManager.validateTask('test-validate-task');
+      await taskManager.createTask('phase1_test-validate-task');
+      const validation = await taskManager.validateTask('phase1_test-validate-task');
 
       expect(validation).toBeDefined();
       expect(validation.valid).toBeDefined();
@@ -138,23 +138,23 @@ describeOrSkip('MCP Server', () => {
       const taskManager = new TaskManager(testDir, 'rulebook');
       await taskManager.initialize();
 
-      await taskManager.createTask('test-archive-task');
-      await taskManager.updateTaskStatus('test-archive-task', 'completed');
-      await taskManager.archiveTask('test-archive-task', true);
+      await taskManager.createTask('phase1_test-archive-task');
+      await taskManager.updateTaskStatus('phase1_test-archive-task', 'completed');
+      await taskManager.archiveTask('phase1_test-archive-task', true);
 
       const tasks = await taskManager.listTasks(false);
-      expect(tasks.find((t) => t.id === 'test-archive-task')).toBeUndefined();
+      expect(tasks.find((t) => t.id === 'phase1_test-archive-task')).toBeUndefined();
 
       const archivedTasks = await taskManager.listTasks(true);
-      expect(archivedTasks.find((t) => t.id === 'test-archive-task')).toBeDefined();
+      expect(archivedTasks.find((t) => t.id === 'phase1_test-archive-task')).toBeDefined();
     });
 
     it('should delete tasks', async () => {
       const taskManager = new TaskManager(testDir, 'rulebook');
       await taskManager.initialize();
 
-      await taskManager.createTask('test-delete-task');
-      await taskManager.deleteTask('test-delete-task');
+      await taskManager.createTask('phase1_test-delete-task');
+      await taskManager.deleteTask('phase1_test-delete-task');
 
       const tasks = await taskManager.listTasks();
       expect(tasks.length).toBe(0);
@@ -164,16 +164,16 @@ describeOrSkip('MCP Server', () => {
       const taskManager = new TaskManager(testDir, 'rulebook');
       await taskManager.initialize();
 
-      await taskManager.createTask('task-1');
-      await taskManager.createTask('task-2');
-      await taskManager.updateTaskStatus('task-2', 'in-progress');
+      await taskManager.createTask('phase1_task-1');
+      await taskManager.createTask('phase1_task-2');
+      await taskManager.updateTaskStatus('phase1_task-2', 'in-progress');
 
       const allTasks = await taskManager.listTasks();
       expect(allTasks.length).toBe(2);
 
       const inProgressTasks = allTasks.filter((t) => t.status === 'in-progress');
       expect(inProgressTasks.length).toBe(1);
-      expect(inProgressTasks[0].id).toBe('task-2');
+      expect(inProgressTasks[0].id).toBe('phase1_task-2');
     });
   });
 
@@ -256,7 +256,7 @@ describeOrSkip('MCP Server', () => {
       const taskManager = new TaskManager(testDir, 'rulebook');
       await taskManager.initialize();
 
-      const taskId = 'simulated-task';
+      const taskId = 'phase1_simulated-task';
       await taskManager.createTask(taskId);
 
       const tasks = await taskManager.listTasks();
@@ -267,15 +267,15 @@ describeOrSkip('MCP Server', () => {
       const taskManager = new TaskManager(testDir, 'rulebook');
       await taskManager.initialize();
 
-      await taskManager.createTask('task-a');
-      await taskManager.createTask('task-b');
-      await taskManager.updateTaskStatus('task-b', 'completed');
+      await taskManager.createTask('phase1_task-a');
+      await taskManager.createTask('phase1_task-b');
+      await taskManager.updateTaskStatus('phase1_task-b', 'completed');
 
       const allTasks = await taskManager.listTasks(false);
       const completedTasks = allTasks.filter((t) => t.status === 'completed');
 
       expect(completedTasks.length).toBe(1);
-      expect(completedTasks[0].id).toBe('task-b');
+      expect(completedTasks[0].id).toBe('phase1_task-b');
     });
 
     it('should simulate rulebook_skill_list tool', async () => {

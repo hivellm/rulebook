@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.0] - 2026-04-07
+
+### Added — Modular CLAUDE.md, Path-Scoped Rules, Session Continuity
+
+- **Generic CLAUDE.md with `@import` chain** (F1): CLAUDE.md is now a thin (<150 line) file composed of `@imports`, aligned with Anthropic's official memory model. Regenerated safely on every `rulebook update`. Legacy v5.2 content is auto-migrated to `AGENTS.override.md` — Claude Code re-loads it via `@import` at session start.
+- **`.claude/rules/` first-class generation** (F2): Ships 8 language rule templates (TypeScript, JavaScript, Rust, Python, Go, C/C++, Java, C#) with YAML `paths:` frontmatter. Path-scoped rules load only when Claude touches matching files. Opt-out sentinel pattern: delete the generated comment to adopt the file as your own.
+- **5 always-on rules** generated automatically: `diagnostic-first`, `fail-twice-escalate`, `multi-agent-teams`, `consult-analysis-before-implementing`, `respect-handoff-trigger`.
+- **Team enforcement hook** (F-NEW-1): `PreToolUse` hook blocks standalone background `Agent` calls — forces parallel work through Teams. Paired with `.claude/rules/multi-agent-teams.md` and `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var. Opt-in via `multiAgent.enabled` in config.
+- **COMPACT_CONTEXT.md + SessionStart reinject hook** (F-NEW-2): Seeds a short cheat sheet per detected stack (TypeScript, Rust, Python, Go, C/C++), re-injected after every conversation compaction. Defense-in-depth — CLAUDE.md survives compaction natively per Anthropic docs.
+- **Mandatory task tail** (F-NEW-3): Every task created via `rulebook task create` ends with 3 fixed items: update docs, write tests, run tests. `archiveTask()` refuses to close a task with unchecked tail items. `rulebook update` auto-appends the tail to existing tasks missing it.
+- **`/analysis <topic>` command** (F-NEW-4): Scaffolds `docs/analysis/<slug>/` with README, numbered findings (F-001..F-NNN), execution plan, and manifest. CLI (`rulebook analysis create/list/show`), MCP tools (`rulebook_analysis_create/list/show`), skill, and `.claude/commands/analysis.md`. Auto-saves to memory on creation.
+- **Session handoff & freshness manager** (F-NEW-5): Stop hook estimates context usage from JSONL transcript and forces `/handoff` at configurable thresholds (warn: 75%, force: 90%). SessionStart hook auto-restores from `.rulebook/handoff/_pending.md`. Extension-free — one keystroke (`/clear`) of residual friction.
+- **`.rulebook/STATE.md` auto-regeneration** (F3): Machine-written status file (<40 lines) updated on every task create/update/archive and Ralph iteration. Imported by CLAUDE.md. Opt-out via `manual: true` frontmatter.
+- **`CLAUDE.local.md` bootstrap** (F6): `rulebook init` creates a commented stub and adds `CLAUDE.local.md` + `.rulebook/backup/` + `.rulebook/handoff/` to `.gitignore`.
+- **`rulebook doctor`** (F7): 7 health checks — CLAUDE.md size vs 200-line budget, AGENTS.md size, STATE.md staleness, broken `@imports`, orphaned rules, override conflicts, missing required files. CLI subcommand + `rulebook_doctor_run` MCP tool + auto-runs post-update.
+- **MCP tool reference auto-generation** (F9): Walks `.mcp.json` / `.cursor/mcp.json` / `.claude/mcp.json` and emits `.claude/rules/mcp-tool-reference.md` with a server table.
+- **Opt-in MCP telemetry** (F10): Records `{ tool, latency_ms, success, timestamp }` to `.rulebook/telemetry/YYYY-MM-DD.ndjson`. Privacy-first: never records arguments or content. Zero overhead when disabled. `--telemetry` flag on `rulebook mcp init`. Middleware installed in MCP server.
+- **`/handoff` skill**: Writes `.rulebook/handoff/_pending.md` with active task, decisions, files touched, next steps, and resume command.
+- **3 new MCP tools**: `rulebook_analysis_create`, `rulebook_analysis_list`, `rulebook_analysis_show`.
+- **`rulebook_doctor_run` MCP tool**: Run health checks programmatically.
+- **`rulebook_rules_list` extended**: Now returns both canonical rules (from `.rulebook/rules/`) and language rules (from `.claude/rules/`) with `source: "generated" | "user"` classification.
+
+### Changed
+
+- **`commands.ts` split into 13 modules**: The monolithic 5273-line `src/cli/commands.ts` is now `src/cli/commands/` directory with 13 themed files, all under 900 lines. Barrel re-export preserves the same import surface.
+- **`.claude/settings.json` management**: New `src/core/claude-settings-manager.ts` surgically merges rulebook-owned hook/env entries without touching unrelated keys. Idempotent.
+- **CLAUDE.md backups** stored in `.rulebook/backup/` instead of polluting the project root.
+- **`extractPathsFrontmatter()`** normalizes CRLF before parsing (Windows compatibility).
+- **Ralph `prd-generator.ts`**: Injects mandatory tail items into every user story's `acceptanceCriteria`.
+- **Ralph `ralph-manager.ts`**: Calls `writeState()` after marking a story as passing.
+
+### New Modules
+
+- `src/core/claude-md-generator.ts` — CLAUDE.md generation with conditional `@imports`
+- `src/core/rules-generator.ts` — Path-scoped language rules with opt-out sentinel
+- `src/core/claude-settings-manager.ts` — `.claude/settings.json` surgical merger
+- `src/core/compact-context-manager.ts` — Stack-specific COMPACT_CONTEXT.md seeder
+- `src/core/analysis-manager.ts` — `/analysis` workflow orchestrator
+- `src/core/state-writer.ts` — `.rulebook/STATE.md` auto-regeneration
+- `src/core/doctor.ts` — 7 health checks
+- `src/core/mcp-reference-generator.ts` — MCP tool reference auto-generation
+- `src/core/telemetry.ts` — Opt-in MCP telemetry middleware
+- `src/utils/gitignore.ts` — Idempotent `.gitignore` entry management
+
+### VSCode Extension v0.7.0
+
+- **Fixed**: Memory tab now shows real counts (queries SQLite with `better-sqlite3`)
+- **Removed**: Ralph tab and Ralph status bar item (non-functional)
+- **Added**: Analysis tab, Doctor tab, Telemetry tab
+- **Added**: Context usage indicator in status bar (`ctx 78%` with green/yellow/red)
+- **Added**: Commands `rulebook.runDoctor`, `rulebook.createAnalysis`, `rulebook.triggerHandoff`
+- **Changed**: `--external:better-sqlite3` in esbuild for native module support
+
 ## [5.2.1] - 2026-03-30
 
 ### Fixed — Archive Auto-Migration on Initialize

@@ -63,19 +63,26 @@ npx @hivehub/rulebook@latest rules project   # Project to all tools
 
 See the full [CHANGELOG](CHANGELOG.md) for details.
 
-### v5.2.0 — Phase-Based Task Organization
+### v5.3.0 — Modular CLAUDE.md, Path-Scoped Rules, Session Continuity
 
-Tasks are now organized by **phases with enforced naming**: `phase<N>_<description>` (e.g., `phase0_setup`, `phase3a_fix-auth`). Inspired by real-world project management where priority and execution order must be visible at a glance in the file explorer.
+Rulebook v5.3.0 shifts from "one big file" to a **modular, import-driven CLAUDE.md** aligned with Anthropic's official memory model.
 
-**Phase Naming Convention**
-- Task IDs MUST start with `phase<N>[subletter]_` prefix — rejected at creation otherwise
-- Phases define execution order and priority: `phase0` → `phase1` → `phase2a` → `phase2b` → ...
-- Tasks must fit a single implementation cycle — large tasks are split into multiple phase-prefixed tasks
+**CLAUDE.md @import chain** — CLAUDE.md is now a thin (<150 line) file composed of `@imports`. Legacy content auto-migrates to `AGENTS.override.md` on update. Per Anthropic docs: "imports are expanded and loaded into context at launch alongside the CLAUDE.md that references them."
 
-**Auto-Generated Tasks Index**
-- `tasks/README.md` auto-generated on every task create, archive, delete, and status update
-- Tasks grouped by phase with status icons, progress counters (`3/5`), and descriptions
-- Optimized for LLM context loading — one file gives full project status
+**Path-scoped `.claude/rules/`** — 8 language rule templates (TS, JS, Rust, Python, Go, C++, Java, C#) + 5 always-on rules. Each carries YAML `paths:` frontmatter so it loads only when Claude touches matching files.
+
+**Session continuity stack:**
+- `STATE.md` (machine-written, per-turn) — active task, Ralph iteration, health
+- `COMPACT_CONTEXT.md` (post-compaction reinject) — short cheat sheet
+- `/handoff` skill (cross-session) — Stop hook monitors context, SessionStart hook auto-restores
+
+**`/analysis <topic>`** — Repeatable research workflow: scaffolds `docs/analysis/<slug>/` with numbered findings, execution plan, KB capture. CLI + MCP + skill.
+
+**`rulebook doctor`** — 7 health checks with auto-run post-update.
+
+**VSCode extension v0.7.0** — Analysis/Doctor/Telemetry tabs, context usage indicator, memory fix.
+
+See the full [CHANGELOG](CHANGELOG.md) for details.
 
 **Archive Relocated**
 - Moved from `.rulebook/tasks/archive/` to `.rulebook/archive/` for cleaner directory structure
