@@ -18,7 +18,7 @@ HANDOFF_DIR="${PROJECT_ROOT}/.rulebook/handoff"
 # Defaults
 WARN_PCT=75
 FORCE_PCT=90
-MAX_CONTEXT_CHARS=800000  # ~200k tokens ≈ 800k chars (rough 1:4 ratio)
+MAX_CONTEXT_CHARS=1600000  # ~400k tokens ≈ 1.6M chars (rough 1:4 ratio)
 
 # Override from config if available
 if [[ -f "$CONFIG_FILE" ]] && command -v jq &>/dev/null; then

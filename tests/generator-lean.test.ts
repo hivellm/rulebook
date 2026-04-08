@@ -31,11 +31,11 @@ const baseConfig: ProjectConfig = {
 };
 
 describe('generateLeanAgents', () => {
-  it('generates AGENTS.md smaller than 3KB', async () => {
+  it('generates AGENTS.md smaller than 16KB', async () => {
     const dir = await setup();
     try {
       const content = await generateLeanAgents(baseConfig, dir);
-      expect(Buffer.byteLength(content, 'utf-8')).toBeLessThan(3 * 1024);
+      expect(Buffer.byteLength(content, 'utf-8')).toBeLessThan(16 * 1024);
     } finally {
       await teardown();
     }

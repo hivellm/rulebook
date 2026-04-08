@@ -207,7 +207,7 @@ export class ConfigManager {
           requireApprovalForStories: 'all',
         },
       },
-      agentsMode: 'full',
+      agentsMode: 'lean',
       monorepo: {
         detected: false,
         tool: null,

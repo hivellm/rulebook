@@ -1453,7 +1453,9 @@ export async function generateFullAgents(
   config: ProjectConfig,
   projectRoot: string = process.cwd()
 ): Promise<string> {
-  // Lean mode: generate a lightweight index AGENTS.md
+  // Lean mode is the default: generate a lightweight index AGENTS.md.
+  // Only the explicit opt-in `agentsMode === 'full'` returns the legacy
+  // 6k-line procedural output.
   if (config.agentsMode === 'lean') {
     return await generateLeanAgents(config, projectRoot);
   }

@@ -144,7 +144,8 @@ export async function updateSingleProject(
 
   const minimalMode = options.minimal ?? existingMode === 'minimal';
   const lightMode = options.light !== undefined ? options.light : (existingLightMode ?? false);
-  const leanMode = options.lean ?? existingConfig?.agentsMode === 'lean';
+  // Default to lean mode unless the user explicitly stored 'full' in their config.
+  const leanMode = options.lean ?? existingConfig?.agentsMode !== 'full';
 
   const config: ProjectConfig = {
     languages: detection.languages.map((l) => l.language),

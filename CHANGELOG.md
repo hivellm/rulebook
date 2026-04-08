@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.2] - 2026-04-08
+
+### Fixed
+
+- **`rulebook update` no longer regenerates a 6k-line bloated AGENTS.md.** Lean mode is now the default for `agentsMode` (`config-manager.ts`), and `update.ts` treats existing configs without `agentsMode` as lean. Existing projects upgrading to 5.3.2 will get the condensed 224-line AGENTS.md on next `rulebook update`.
+- **`templates/core/AGENTS_LEAN.md` replaced** with the full 224-line condensed AGENTS.md (was a 25-line index that didn't match the root `AGENTS.md`). Includes Tier 1 prohibitions (rule #8: full-task-no-questions), Critical Rules, Task Management, Agent Automation, Memory, Knowledge Base, DAG, Quality Enforcement, Token Optimization, Ralph, Multi-Agent Teams, Workspace, Agent Delegation, Plans, Decision Records, with `LANGUAGE_REFS`/`MODULE_REFS` placeholders.
+
+### Changed
+
+- **`MAX_CONTEXT_CHARS` doubled** from 800k → 1.6M (~200k → ~400k tokens) in `.claude/hooks/check-context-and-handoff.sh` and `templates/hooks/check-context-and-handoff.sh`. Handoff thresholds now match the larger context windows of current models.
+
 ## [5.3.1] - 2026-04-08
 
 ### Changed — Context optimization & rule template normalization
