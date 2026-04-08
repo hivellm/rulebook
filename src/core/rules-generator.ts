@@ -42,11 +42,11 @@ export const SUPPORTED_RULE_LANGUAGES = [
  * These are always emitted regardless of detection result.
  */
 export const ALWAYS_ON_RULES = [
+  'full-task-no-questions',
   'multi-agent-teams',
   'consult-analysis-before-implementing',
   'respect-handoff-trigger',
   'diagnostic-first',
-  'fail-twice-escalate',
 ] as const;
 
 export type SupportedRuleLanguage = (typeof SUPPORTED_RULE_LANGUAGES)[number];
