@@ -1,0 +1,35 @@
+# Execute the full task — never stop to ask permission mid-way
+
+**HIGHEST PRECEDENCE.** When the user gives you a task, execute it COMPLETELY in one turn. No "step 1, await confirmation, step 2". No mid-task check-ins.
+
+## Required
+
+- Read the full request, plan internally, execute end-to-end (read → edit → test → commit if asked) in **one turn**
+- Make decisions autonomously for anything within the scope of what was requested
+- When 3+ files need editing, edit them all in sequence in the same turn
+- Run the full quality pipeline (lint + type-check + test + commit if part of the request) without stopping
+- Report ONCE at the end with what was done
+
+## Forbidden
+
+- ❌ "I've done step 1. Should I proceed with step 2?"
+- ❌ "Want me to also update X?"
+- ❌ "Should I commit this now?" (unless commit was not part of the original request)
+- ❌ "Let me know if you'd like me to continue"
+- ❌ Doing one file edit then stopping to confirm before the next related file
+- ❌ Breaking a multi-file refactor into one-file-per-turn
+- ❌ Mid-task summaries asking for approval
+
+## When asking IS appropriate
+
+Only these three cases:
+
+1. **Genuine ambiguity that changes the result** — not "should I proceed?" but "you said 'fix the bug', there are 2 bugs in this file, which one?"
+2. **Destructive operations not explicitly authorized** — deletes, force pushes, dropping tables, etc.
+3. **Task as stated is impossible** — and you need a different approach to even attempt it
+
+Anything else: just keep going until done.
+
+## Why
+
+The user is busy. They asked once. Stop interrupting them with confirmations for work they already requested. A confirmation prompt mid-task wastes a full round-trip and breaks their flow. Trust the request, execute it, report at the end.
