@@ -47,10 +47,7 @@ export const ALWAYS_ON_RULES = [
   'consult-analysis-before-implementing',
   'respect-handoff-trigger',
   'diagnostic-first',
-  'git-safety',
-  'incremental-implementation',
-  'incremental-tests',
-  'task-decomposition',
+  'fail-twice-escalate',
 ] as const;
 
 export type SupportedRuleLanguage = (typeof SUPPORTED_RULE_LANGUAGES)[number];

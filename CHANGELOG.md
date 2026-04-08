@@ -18,17 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - New `templates/rules/full-task-no-questions.md` shipped as an always-on rule. Mandates end-to-end task execution in a single turn — no mid-task confirmation prompts, no "should I proceed?" check-ins. Auto-installed on `init`/`update` for all projects.
 
-### Refactor — Rule template normalization
-
-- **Normalized 4 rule templates** to Claude Code's native format per [Anthropic memory docs](https://code.claude.com/docs/en/memory): `git-safety`, `incremental-implementation`, `incremental-tests`, `task-decomposition`. Previously these used the rulebook canonical schema (`name`/`tier`/`alwaysApply`/`filePatterns`/`tools`) which is internal to `rule-engine.ts` and not what Claude Code reads. Now use only `paths:` frontmatter (path-scoped) or no frontmatter (always-on).
-- **`incremental-tests`** is now properly path-scoped to `**/*.test.*`, `**/*.spec.*`, `**/*_test.*`, `tests/**/*`, etc.
-- **Added 4 normalized rules to `ALWAYS_ON_RULES`** so they ship via `rulebook update`: `git-safety`, `incremental-implementation`, `incremental-tests`, `task-decomposition`. Total always-on rules: 5 → 9.
-- **Removed `fail-twice-escalate` from `ALWAYS_ON_RULES`** — already covered by AGENTS.md Critical Rules section.
-
 ### Removed
 
-- **8 obsolete rule templates** (already covered by lean AGENTS.md, were never installed via `ALWAYS_ON_RULES`, used the wrong canonical schema): `no-deferred`, `no-shortcuts`, `follow-task-sequence`, `research-first`, `sequential-editing`, `fail-twice-escalate`, `session-workflow`, `knowledge-base-usage`.
-- **8 redundant local `.claude/rules/`** files matching the deleted templates.
+- **8 redundant local `.claude/rules/`** files in this repo only — `no-deferred`, `no-shortcuts`, `follow-task-sequence`, `research-first`, `sequential-editing`, `fail-twice-escalate`, `session-workflow`, `knowledge-base-usage`. These are now covered by the lean AGENTS.md. Templates remain in `templates/rules/` and are still installed by the canonical rule engine for new projects via `rulebook init` (Tier 1 + Tier 2 multi-tool projection).
 
 ### Documentation
 
