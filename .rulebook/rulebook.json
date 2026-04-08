@@ -1,7 +1,7 @@
 {
-  "version": "5.3.0",
-  "installedAt": "2026-04-07T21:39:39.399Z",
-  "updatedAt": "2026-04-07T22:15:35.387Z",
+  "version": "5.3.2",
+  "installedAt": "2026-04-08T16:01:05.317Z",
+  "updatedAt": "2026-04-08T16:02:03.518Z",
   "projectId": "rulebook",
   "mode": "full",
   "features": {
@@ -68,5 +68,6 @@
       "core/analysis"
     ],
     "order": []
-  }
+  },
+  "agentsMode": "lean"
 }

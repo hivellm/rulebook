@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`mergeFullAgents` now honors lean mode.** `rulebook update` was still emitting a 6300-line AGENTS.md because `mergeFullAgents` (used by the update command) called `generateModularAgents` directly without checking `agentsMode`. Added an early-return that routes to `generateLeanAgents` when `agentsMode === 'lean'`. Verified end-to-end: `rulebook update` now produces a 211-line AGENTS.md.
+- **Hooks now resolve project root from stdin `cwd`**, not `$(pwd)` / `Get-Location`. The previous behavior caused `.rulebook/handoff/` to be created inside whatever sub-directory the user was editing instead of the actual project root. Fixed in both `.sh` and `.ps1` variants of `check-context-and-handoff` and `resume-from-handoff`, in `.claude/hooks/` and `templates/hooks/`. Falls back to `CLAUDE_PROJECT_DIR` then `pwd` if stdin doesn't include `cwd`.
+
 - **`rulebook update` no longer regenerates a 6k-line bloated AGENTS.md.** Lean mode is now the default for `agentsMode` (`config-manager.ts`), and `update.ts` treats existing configs without `agentsMode` as lean. Existing projects upgrading to 5.3.2 will get the condensed 224-line AGENTS.md on next `rulebook update`.
 - **`templates/core/AGENTS_LEAN.md` replaced** with the full 224-line condensed AGENTS.md (was a 25-line index that didn't match the root `AGENTS.md`). Includes Tier 1 prohibitions (rule #8: full-task-no-questions), Critical Rules, Task Management, Agent Automation, Memory, Knowledge Base, DAG, Quality Enforcement, Token Optimization, Ralph, Multi-Agent Teams, Workspace, Agent Delegation, Plans, Decision Records, with `LANGUAGE_REFS`/`MODULE_REFS` placeholders.
 

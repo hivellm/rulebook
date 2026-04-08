@@ -14,12 +14,13 @@ These override everything else. Violation = output rejected.
 5. **Sequential file editing.** Read file1 → Edit file1 → Read file2 → Edit file2. Never batch-read then batch-edit. For 3+ files, decompose into 1–2 file sub-tasks.
 6. **No deferred tasks.** If it's in the checklist, implement it. No "Deferred" labels. If a dependency blocks you, implement the dependency first.
 7. **Follow task sequence.** Execute `tasks.md` items in the EXACT order listed. No reordering, no cherry-picking, no starting Phase N+1 before Phase N is 100% done. The list is an ORDER, not a MENU.
+8. **Execute the full task in one turn.** Never stop mid-task to ask "should I proceed?" or "want me to also...?". Make autonomous decisions within scope. Only ask for genuine ambiguity, destructive ops, or impossible tasks.
 
 ## Critical Rules
 
 - **ALWAYS read `/.rulebook/specs/RULEBOOK.md`** before creating tasks.
 - **Use Rulebook MCP tools** (`mcp__rulebook__*`) for task management. Never `mkdir` + `Write` in `.rulebook/tasks/` — the structural enforcement hook will block you.
-- **Never run destructive deletions (`rm -rf`)** in this repository. Use `git submodule add` for submodules.
+- **Never run destructive deletions (`rm -rf`)** in this repository.
 - **Temporary files**: must live in `/scripts` and be removed immediately after use.
 - **Diagnostic-first**: run type-check/lint before tests.
 - **Fail twice → escalate**: if a fix fails twice with the same approach, stop and research/ask.
@@ -77,7 +78,7 @@ After ANY implementation, execute in order:
 4. **Update task**: `rulebook_task_update` + mark items `[x]`.
 5. **Update docs**: CHANGELOG (conventional commits), README if public API changed.
 6. **Commit** (English only): `<type>(<scope>): <description>` — types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`.
-7. **Report minimally**: "✅ Done. Committed: <hash>". Skip emoji tables, "Next Steps" sections, status boxes.
+7. **Report minimally**: "Done. Committed: <hash>". Skip emoji tables, "Next Steps" sections, status boxes.
 
 **Skip steps only with explicit user permission.**
 
@@ -105,7 +106,7 @@ After implementing, capture ≥1 entry per task:
 
 ## Dependency Architecture (DAG)
 
-- **No circular dependencies.** Validate with `tsc --noEmit` / `madge --circular src/`.
+- **No circular dependencies.** Validate with the project's check tool (`tsc --noEmit`, `cargo check`, `madge --circular`, etc.).
 - **Layers**: Foundation → Core → Features → Presentation. Higher layers depend on lower; never the reverse.
 - **Use interfaces** for cross-layer communication. No tight coupling.
 
@@ -139,28 +140,15 @@ After implementing, capture ≥1 entry per task:
 
 Avoid: emoji status tables, "Next Steps" sections, repeating the question, markdown abuse.
 
-## TypeScript Project Rules
+## Language & Framework Rules
 
-**Detailed spec**: `/.rulebook/specs/TYPESCRIPT.md`
+- **TYPESCRIPT**: `/.rulebook/specs/TYPESCRIPT.md`
 
-Quick reference:
-- TypeScript 5.3+, strict mode, ES2022 target, ESNext modules
-- Vitest with `--run` flag (never enter watch mode in CI)
-- ESLint with `@typescript-eslint`, zero warnings
-- Prettier for formatting
-- 95%+ coverage threshold
-- ES modules with `.js` import extensions
-- Commit `package-lock.json` (required for `cache: 'npm'` in CI)
-- Use `npm ci` not `npm install` in CI
+## Module Rules
 
-**Quality command sequence:**
-```bash
-npm run type-check && npm run lint && npx prettier --check 'src/**/*.ts' 'tests/**/*.ts' && npm test && npm run build && npm run test:coverage
-```
-
-**S2S / slow tests**: gate behind `RUN_S2S_TESTS=1` / `RUN_SLOW_TESTS=1` env vars. Fast tests must complete in ≤20s.
-
-**No `any`** — use `unknown` + type guards. Custom error classes, document via JSDoc.
+- **AGENT_AUTOMATION**: `/.rulebook/specs/AGENT_AUTOMATION.md`
+- **MULTI_AGENT**: `/.rulebook/specs/MULTI_AGENT.md`
+- **RULEBOOK_MCP**: `/.rulebook/specs/RULEBOOK_MCP.md`
 
 ## Ralph Autonomous Loop
 
@@ -219,6 +207,5 @@ For full detail, see `/.rulebook/specs/`:
 - `QUALITY_ENFORCEMENT.md` — quality gates
 - `GIT.md` — git workflow
 - `TOKEN_OPTIMIZATION.md` — verbosity by tier
-- `TYPESCRIPT.md` — TypeScript rules
 - `AGENT_AUTOMATION.md`, `MULTI_AGENT.md`, `RULEBOOK_MCP.md` — module specifics
 <!-- RULEBOOK:END -->
