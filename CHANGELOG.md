@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.1] - 2026-04-08
+
+### Changed — Context optimization & rule template normalization
+
+- **AGENTS.md condensed** from 6641 → 224 lines (211KB → 11KB, ~95% reduction). Removed extensive duplication (TypeScript Rules x2, DAG x2, Quality Enforcement x2, Task Management x2, Documentation x2, Agent Automation x2, embedded legacy CLAUDE.md x2). All base directives preserved — Tier 1 prohibitions, task workflow, quality gates, memory, knowledge base, Ralph, multi-agent, workspace, agent delegation. Detailed specs still available in `/.rulebook/specs/`.
+- **CLAUDE.md `@imports` removed**: No longer auto-imports `AGENTS.md`, `AGENTS.override.md`, `STATE.md`, `PLANS.md`. These are now read on demand to save context. CLAUDE.md trimmed to ~28 lines containing only the critical rules pointer.
+- **AGENTS.override.md cleaned**: Removed the embedded legacy v5.2 CLAUDE.md content (~25KB). Override file is now ~44 lines focused on project-specific directives.
+- **Total auto-loaded context**: ~250KB → ~1.4KB at session start.
+
+### Added — `full-task-no-questions` always-on rule
+
+- New `templates/rules/full-task-no-questions.md` shipped as an always-on rule. Mandates end-to-end task execution in a single turn — no mid-task confirmation prompts, no "should I proceed?" check-ins. Auto-installed on `init`/`update` for all projects.
+
+### Refactor — Rule template normalization
+
+- **Normalized 4 rule templates** to Claude Code's native format per [Anthropic memory docs](https://code.claude.com/docs/en/memory): `git-safety`, `incremental-implementation`, `incremental-tests`, `task-decomposition`. Previously these used the rulebook canonical schema (`name`/`tier`/`alwaysApply`/`filePatterns`/`tools`) which is internal to `rule-engine.ts` and not what Claude Code reads. Now use only `paths:` frontmatter (path-scoped) or no frontmatter (always-on).
+- **`incremental-tests`** is now properly path-scoped to `**/*.test.*`, `**/*.spec.*`, `**/*_test.*`, `tests/**/*`, etc.
+- **Added 4 normalized rules to `ALWAYS_ON_RULES`** so they ship via `rulebook update`: `git-safety`, `incremental-implementation`, `incremental-tests`, `task-decomposition`. Total always-on rules: 5 → 9.
+- **Removed `fail-twice-escalate` from `ALWAYS_ON_RULES`** — already covered by AGENTS.md Critical Rules section.
+
+### Removed
+
+- **8 obsolete rule templates** (already covered by lean AGENTS.md, were never installed via `ALWAYS_ON_RULES`, used the wrong canonical schema): `no-deferred`, `no-shortcuts`, `follow-task-sequence`, `research-first`, `sequential-editing`, `fail-twice-escalate`, `session-workflow`, `knowledge-base-usage`.
+- **8 redundant local `.claude/rules/`** files matching the deleted templates.
+
+### Documentation
+
+- **Complete README rewrite** (974 → 354 lines, 63% reduction). Removed duplicated troubleshooting, per-version changelog summaries, wrong MCP tool counts, "NEW in vX" labels. New structure focuses on Quick Start, Core Features, MCP Server (40+ tools), CLI Reference, and Supported Stack.
+
 ## [5.3.0] - 2026-04-07
 
 ### Added — Modular CLAUDE.md, Path-Scoped Rules, Session Continuity
