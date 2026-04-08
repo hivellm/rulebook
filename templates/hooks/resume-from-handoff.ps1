@@ -3,7 +3,14 @@
 
 $ErrorActionPreference = 'Stop'
 
-$ProjectRoot = Get-Location
+# Read hook input from stdin to get the actual project cwd
+$input = [Console]::In.ReadToEnd()
+$ProjectRoot = $null
+if ($input) {
+    try { $ProjectRoot = ($input | ConvertFrom-Json).cwd } catch {}
+}
+if (-not $ProjectRoot) { $ProjectRoot = $env:CLAUDE_PROJECT_DIR }
+if (-not $ProjectRoot) { $ProjectRoot = (Get-Location).Path }
 $HandoffDir = Join-Path $ProjectRoot '.rulebook/handoff'
 $Pending = Join-Path $HandoffDir '_pending.md'
 $Urgent = Join-Path $HandoffDir '.urgent'

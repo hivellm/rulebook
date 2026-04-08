@@ -8,7 +8,13 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="$(pwd)"
+# Read hook input from stdin to get the actual project cwd
+input="$(cat || true)"
+PROJECT_ROOT=""
+if [[ -n "$input" ]] && command -v jq &>/dev/null; then
+  PROJECT_ROOT="$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null || true)"
+fi
+[[ -z "$PROJECT_ROOT" ]] && PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 HANDOFF_DIR="${PROJECT_ROOT}/.rulebook/handoff"
 PENDING="${HANDOFF_DIR}/_pending.md"
 URGENT="${HANDOFF_DIR}/.urgent"
