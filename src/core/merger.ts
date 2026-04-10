@@ -83,8 +83,8 @@ export async function mergeFullAgents(
   config: ProjectConfig,
   projectRoot?: string
 ): Promise<string> {
-  // Lean mode: bypass merging and emit the lightweight index template.
-  if (config.agentsMode === 'lean' && projectRoot) {
+  // Always use lean template — the procedural 6k-line output is deprecated.
+  if (projectRoot) {
     const { generateLeanAgents } = await import('./generator.js');
     return await generateLeanAgents(config, projectRoot);
   }

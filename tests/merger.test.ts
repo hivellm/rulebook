@@ -370,7 +370,7 @@ TypeScript content
       expect(merged).toContain('<!-- RULEBOOK:START -->');
     });
 
-    it('should handle migration when needsMigration but modular is false', async () => {
+    it('should always use lean template even when modular is false', async () => {
       const existing: ExistingAgentsInfo = {
         exists: true,
         path: '/test/AGENTS.md',
@@ -398,15 +398,16 @@ TypeScript content
         ...baseConfig,
         languages: ['typescript'],
         modules: [],
-        modular: false, // Explicitly false
+        modular: false, // Legacy flag is ignored — lean always wins
       };
 
       const projectRoot = '/tmp/test-no-migration';
       const merged = await mergeFullAgents(existing, config, projectRoot);
 
-      // Should use legacy merge (modular is false)
-      // In legacy mode, content is embedded, not referenced
-      expect(merged).toContain('<!-- TYPESCRIPT:START -->');
+      // Lean template — references, not embedded blocks
+      expect(merged).toContain('<!-- RULEBOOK:START -->');
+      expect(merged).toContain('/.rulebook/specs/TYPESCRIPT.md');
+      expect(merged).not.toContain('<!-- TYPESCRIPT:START -->');
     });
   });
 

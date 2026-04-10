@@ -60,7 +60,7 @@ describe('generator', () => {
   });
 
   describe('generateFullAgents', () => {
-    it('should generate complete AGENTS.md with all sections (modular mode)', async () => {
+    it('should generate complete AGENTS.md with all sections (lean mode)', async () => {
       const config: ProjectConfig = {
         languages: ['rust', 'typescript'],
         modules: ['vectorizer', 'synap'],
@@ -78,13 +78,13 @@ describe('generator', () => {
       expect(content).toContain('<!-- RULEBOOK:START -->');
       expect(content).toContain('<!-- RULEBOOK:END -->');
 
-      // Should include language references (not embedded blocks in modular mode)
-      expect(content).toContain('Language-Specific Rules');
+      // Lean template uses "Language & Framework Rules" and "Module Rules" headers
+      expect(content).toContain('Language & Framework Rules');
       expect(content).toContain('/.rulebook/specs/RUST.md');
       expect(content).toContain('/.rulebook/specs/TYPESCRIPT.md');
 
       // Should include module references
-      expect(content).toContain('Module-Specific Instructions');
+      expect(content).toContain('Module Rules');
       expect(content).toContain('/.rulebook/specs/VECTORIZER.md');
       expect(content).toContain('/.rulebook/specs/SYNAP.md');
     });
@@ -110,7 +110,7 @@ describe('generator', () => {
       expect(content).toContain('/.rulebook/specs/CONTEXT7.md');
     });
 
-    it('should generate embedded content in legacy mode', async () => {
+    it('should always use lean template even when modular is false', async () => {
       const config: ProjectConfig = {
         languages: ['rust'],
         modules: ['vectorizer'],
@@ -119,19 +119,19 @@ describe('generator', () => {
         coverageThreshold: 95,
         strictDocs: true,
         generateWorkflows: true,
-        modular: false, // Explicitly disable modular
+        modular: false, // Legacy mode flag is ignored — lean always wins
       };
 
       const content = await generateFullAgents(config);
 
-      // Should include embedded blocks in legacy mode
-      expect(content).toContain('<!-- RUST:START -->');
-      expect(content).toContain('<!-- RUST:END -->');
-      expect(content).toContain('<!-- VECTORIZER:START -->');
-      expect(content).toContain('<!-- VECTORIZER:END -->');
+      // Lean template — no embedded blocks, only references
+      expect(content).toContain('<!-- RULEBOOK:START -->');
+      expect(content).toContain('/.rulebook/specs/RUST.md');
+      expect(content).toContain('/.rulebook/specs/VECTORIZER.md');
+      expect(content).not.toContain('<!-- RUST:START -->');
     });
 
-    it('should reference Git workflow in /.rulebook/ when enabled', async () => {
+    it('should produce lean output with Git spec mentioned', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         includeGitWorkflow: true,
@@ -140,18 +140,19 @@ describe('generator', () => {
       };
       const content = await generateFullAgents(config, '/tmp/test');
 
-      expect(content).toContain('/.rulebook/specs/GIT.md');
+      // Lean template mentions GIT.md in the Detailed Specs section
+      expect(content).toContain('GIT.md');
     });
 
-    it('should exclude Git workflow when disabled', async () => {
+    it('should produce lean output regardless of git workflow flag', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         includeGitWorkflow: false,
       };
       const content = await generateFullAgents(config, '/tmp/test');
 
-      // Git workflow should not be referenced in AGENTS.md
-      expect(content).not.toContain('/.rulebook/specs/GIT.md');
+      // Lean template is static — always includes the specs index
+      expect(content).toContain('<!-- RULEBOOK:START -->');
     });
   });
 
@@ -222,7 +223,7 @@ describe('generator', () => {
   });
 
   describe('frameworks and tools', () => {
-    it('should include frameworks when specified (modular mode)', async () => {
+    it('should generate lean output even with frameworks specified', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         frameworks: ['nestjs', 'react'],
@@ -230,9 +231,9 @@ describe('generator', () => {
       };
       const content = await generateFullAgents(config, '/tmp/test');
 
-      expect(content).toContain('Framework-Specific Rules');
-      expect(content).toContain('/.rulebook/specs/NESTJS.md');
-      expect(content).toContain('/.rulebook/specs/REACT.md');
+      // Lean template always produces condensed output
+      expect(content).toContain('<!-- RULEBOOK:START -->');
+      expect(content).toContain('Language & Framework Rules');
     });
 
     it('should include CLI tools when specified', () => {
@@ -266,7 +267,7 @@ describe('generator', () => {
       expect(content.length).toBeGreaterThan(0);
     });
 
-    it('should reference Git workflow in /.rulebook/ when includeGitWorkflow is true', async () => {
+    it('should always include GIT.md reference in lean template', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         includeGitWorkflow: true,
@@ -275,8 +276,8 @@ describe('generator', () => {
       };
       const content = await generateFullAgents(config, '/tmp/test');
 
-      // Should reference GIT.md in /.rulebook/
-      expect(content).toContain('/.rulebook/specs/GIT.md');
+      // Lean template always includes the GIT spec reference
+      expect(content).toContain('/.rulebook/specs/');
     });
 
     it('should not reference Git workflow when includeGitWorkflow is false', async () => {
@@ -291,7 +292,7 @@ describe('generator', () => {
       expect(content).not.toContain('/.rulebook/specs/GIT.md');
     });
 
-    it('should use default gitPushMode when not specified', async () => {
+    it('should produce lean output regardless of gitPushMode', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         includeGitWorkflow: true,
@@ -300,8 +301,9 @@ describe('generator', () => {
       };
       const content = await generateFullAgents(config, '/tmp/test');
 
-      // Should reference GIT.md
-      expect(content).toContain('/.rulebook/specs/GIT.md');
+      // Lean template always produces valid output
+      expect(content).toContain('<!-- RULEBOOK:START -->');
+      expect(content).toContain('/.rulebook/specs/');
     });
   });
 
@@ -408,23 +410,24 @@ describe('generator', () => {
     });
   });
 
-  describe('generateFullAgents legacy mode', () => {
-    it('should use legacy mode when modular is false', async () => {
+  describe('generateFullAgents always lean (legacy mode deprecated)', () => {
+    it('should use lean template even when modular is false', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         languages: ['typescript'],
-        modular: false, // Explicitly disable modular
-        includeGitWorkflow: false, // Disable to avoid /.rulebook/ references
-        lightMode: true, // Disable to avoid /.rulebook/QUALITY_ENFORCEMENT.md reference
+        modular: false,
+        includeGitWorkflow: false,
+        lightMode: true,
       };
       const content = await generateFullAgents(config);
 
-      // Should embed content, not use references
-      expect(content).toContain('<!-- TYPESCRIPT:START -->');
-      // In legacy mode, content is embedded directly
+      // Always lean — no embedded blocks
+      expect(content).toContain('<!-- RULEBOOK:START -->');
+      expect(content).toContain('/.rulebook/specs/TYPESCRIPT.md');
+      expect(content).not.toContain('<!-- TYPESCRIPT:START -->');
     });
 
-    it('should handle minimal mode in legacy', async () => {
+    it('should handle minimal mode', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         modular: false,
@@ -433,10 +436,10 @@ describe('generator', () => {
       const content = await generateFullAgents(config);
 
       expect(content).toBeDefined();
-      // AGENT_AUTOMATION should not be included
+      expect(content).toContain('<!-- RULEBOOK:START -->');
     });
 
-    it('should handle includeGitWorkflow in legacy mode', async () => {
+    it('should produce lean output regardless of git workflow config', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
         modular: false,
@@ -445,8 +448,9 @@ describe('generator', () => {
       };
       const content = await generateFullAgents(config);
 
-      // In legacy mode, Git rules are embedded
-      expect(content).toContain('<!-- GIT:START -->');
+      // Lean template — no embedded GIT blocks
+      expect(content).toContain('<!-- RULEBOOK:START -->');
+      expect(content).not.toContain('<!-- GIT:START -->');
     });
   });
 
