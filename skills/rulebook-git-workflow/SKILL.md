@@ -1,6 +1,6 @@
 ---
 name: rulebook-git-workflow
-description: Git workflow standards including branching strategy, commit conventions, and PR guidelines. Use when creating branches, writing commit messages, preparing pull requests, or following git best practices.
+description: "Defines branch naming conventions, conventional commit message format, and pull request description templates. Use when creating feature branches, writing commit messages, preparing pull request descriptions, or reviewing git workflow standards."
 version: "1.0.0"
 category: core
 author: "HiveLLM"
@@ -77,9 +77,26 @@ How this was tested.
 
 ## Workflow Steps
 
-1. Create feature branch from main
-2. Make commits following conventions
-3. Run quality checks before push
-4. Create PR with description
-5. Address review feedback
-6. Squash and merge
+```bash
+# 1. Create feature branch from main
+git checkout -b feature/<task-id>-<description> main
+
+# 2. Make commits following conventions
+git add <files>
+git commit -m "feat(scope): description"
+
+# 3. Run quality checks before push
+npm run type-check && npm run lint && npm test
+
+# 4. Push and create PR
+git push -u origin feature/<task-id>-<description>
+gh pr create --title "feat(scope): description" --body "..."
+
+# 5. Address review feedback with fixup commits
+git add <files>
+git commit -m "fix(scope): address review feedback"
+git push
+
+# 6. Squash and merge (via GitHub UI or CLI)
+gh pr merge --squash
+```
