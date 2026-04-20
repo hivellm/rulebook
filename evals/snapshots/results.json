@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-04-20T00:00:00Z",
+  "note": "Phase 0 smoke-test fixture. Hand-authored sample outputs. NOT a real API snapshot. Phase 4 replaces this with llm_run.ts output.",
+  "prompts": [
+    {
+      "id": "p1-react-rerender",
+      "prompt": "Explain why a React component might re-render unnecessarily and how to fix it.",
+      "responses": {
+        "baseline": "A React component can re-render unnecessarily for several reasons. The most common cause is when a parent component passes new object or function references as props on every render. React's default shallow-comparison behavior sees these as different from the previous render, even if the underlying data is identical, which triggers a re-render of the child. To fix this, wrap the prop value in useMemo (for objects) or useCallback (for functions) so the reference stays stable across renders. You can also use React.memo on the child component so it skips re-renders when its props haven't actually changed.",
+        "terse": "Components re-render when their parent passes new object/function references each render. React's shallow comparison treats those as changed props. Fix: wrap objects in useMemo, functions in useCallback, and optionally wrap the child in React.memo.",
+        "rulebook-terse": "New object/fn ref each parent render → shallow comparison fails → child re-renders. Fix: useMemo for objects, useCallback for fns, React.memo on child."
+      }
+    },
+    {
+      "id": "p2-db-pool",
+      "prompt": "Describe how database connection pooling works and when to use it.",
+      "responses": {
+        "baseline": "Database connection pooling is a technique where a pool of pre-opened database connections is maintained and reused across requests rather than opening a new connection per request. Opening a database connection is expensive because it involves a TCP handshake, TLS negotiation, and authentication round-trips. A connection pool keeps a configured number of connections open and hands them out to application threads on demand. You should use pooling any time your application makes more than a trivial number of database requests per second, especially under concurrent load, because the per-connection setup cost dominates request latency otherwise.",
+        "terse": "Connection pooling reuses pre-opened DB connections instead of opening one per request. Avoids TCP handshake, TLS, and auth overhead on every query. Use it whenever your app makes more than a handful of queries per second under concurrent load.",
+        "rulebook-terse": "Pool reuses open DB connections. Skip handshake + TLS + auth per request. Use under concurrent load."
+      }
+    },
+    {
+      "id": "p3-diff-review",
+      "prompt": "Review this diff line: `if (user.email) { sendEmail(user.email); }` — does it have any bugs?",
+      "responses": {
+        "baseline": "The line `if (user.email) { sendEmail(user.email); }` has a subtle issue: it doesn't guard against `user` itself being null or undefined. If `user` is null, accessing `user.email` will throw a TypeError. You should check for the user object first, like `if (user && user.email)`, or use optional chaining: `if (user?.email) { sendEmail(user.email); }`. Also, depending on your business rules, you may want to validate the email format before sending, but that's a separate concern.",
+        "terse": "Doesn't guard against `user` being null — `user.email` throws if `user` is null. Use `user?.email` or `if (user && user.email)`.",
+        "rulebook-terse": "🟡 risk: user can be null → user.email throws. Use `user?.email`."
+      }
+    }
+  ]
+}
