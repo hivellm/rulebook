@@ -355,14 +355,18 @@ describe('installAgentsWithPlaceholders (integration)', () => {
       const skillsDir = join(tmpDir, '.claude', 'skills');
       expect(existsSync(skillsDir)).toBe(true);
 
-      // Check all 15 skills were installed
+      // Check core + dev skills were installed. v5.4.0 added the three
+      // invocable `rulebook-terse*` core skills alongside the dev set.
       const skillDirs = readdirSync(skillsDir);
       expect(skillDirs).toContain('docs');
       expect(skillDirs).toContain('review');
       expect(skillDirs).toContain('debug');
       expect(skillDirs).toContain('architect');
       expect(skillDirs).toContain('security-audit');
-      expect(skillDirs.length).toBe(16);
+      expect(skillDirs).toContain('rulebook-terse');
+      expect(skillDirs).toContain('rulebook-terse-commit');
+      expect(skillDirs).toContain('rulebook-terse-review');
+      expect(skillDirs.length).toBe(19);
 
       // Verify SKILL.md exists in each skill dir
       for (const dir of skillDirs) {

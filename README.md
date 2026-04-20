@@ -44,7 +44,7 @@ AI coding assistants produce inconsistent, error-prone code without clear guidel
 |------|-----|
 | **Rules for every AI tool** | `AGENTS.md` + `CLAUDE.md` + `.cursor/rules/` + Gemini/Copilot/Windsurf configs — all generated from a single source of truth |
 | **Quality gates** | Pre-commit hooks (lint, type-check, format) + pre-push hooks (build, tests) — language-aware, cross-platform |
-| **40+ MCP tools** | Task management, persistent memory, skills, decisions, knowledge, learnings, Ralph loop, workspace — all via Model Context Protocol |
+| **44+ MCP tools** | Task management, persistent memory, skills, decisions, knowledge, learnings, Ralph loop, workspace, terse compression + evals — all via Model Context Protocol |
 | **Structural enforcement** | `PreToolUse` hooks block forbidden patterns (deferred tasks, stubs/TODOs, manual task files) before edits reach disk |
 | **Session continuity** | Persistent memory across sessions, automatic handoff at context limits, STATE.md live status |
 | **Autonomous task solving** | Ralph loop: multi-iteration AI agent with quality gates, learning extraction, pause/resume |
@@ -84,6 +84,29 @@ rulebook memory search "authentication approach"   # Hybrid search
 rulebook memory save "Chose JWT over sessions"     # Save context
 rulebook memory stats                               # DB health
 ```
+
+### Terse Mode — Output & Input Compression (v5.4.0)
+
+Structurally-enforced output compression via a SessionStart hook that injects a filtered SKILL.md and a per-turn UserPromptSubmit attention anchor. Four intensity levels aligned with Rulebook's agent tiers — `off` for opus-class reasoning, `brief` for sonnet, `terse` for haiku, `ultra` for CI/automation. Auto-clarity drops compression for security warnings, destructive ops, and quality-gate failures.
+
+```bash
+/rulebook-terse              # Activate using tier default
+/rulebook-terse ultra        # Maximum compression
+/rulebook-terse off          # Disable
+```
+
+Paired with `rulebook compress` — input-side compression for memory files (`CLAUDE.md`, `AGENTS.override.md`, `.rulebook/PLANS.md`):
+
+```bash
+rulebook compress --check CLAUDE.md          # Report ratio + validator
+rulebook compress --dry-run CLAUDE.md        # Preview
+rulebook compress CLAUDE.md                  # Rewrite + backup
+rulebook compress --restore CLAUDE.md        # Revert from backup
+```
+
+Preserves code blocks, URLs, file paths, dates, and version numbers byte-for-byte. Measured against a three-arm eval harness (`baseline` / `terse` / `rulebook-terse`) with 35% average lift over the terse control on the committed prompt set.
+
+See [docs/analysis/caveman/](docs/analysis/caveman/) for the design rationale and [docs/guides/rulebook-terse.md](docs/guides/rulebook-terse.md) for the user guide.
 
 ### Task Management
 
@@ -139,7 +162,7 @@ Cross-platform (Node.js, no `jq` dependency).
 
 ## MCP Server
 
-40+ MCP tools exposed via stdio transport. Zero configuration after `rulebook mcp init`.
+44+ MCP tools exposed via stdio transport. Zero configuration after `rulebook mcp init`.
 
 ```bash
 rulebook mcp init    # One-time setup — configures .mcp.json automatically
@@ -156,6 +179,8 @@ rulebook mcp init    # One-time setup — configures .mcp.json automatically
 | Decisions (4) | Create, list, show, update | `rulebook_decision_create`, `rulebook_decision_list` |
 | Learnings (3) | Capture, list, promote | `rulebook_learn_capture`, `rulebook_learn_list` |
 | Analysis (3) | Create, list, show | `rulebook_analysis_create`, `rulebook_analysis_list` |
+| Compress (2) | Compress memory files, list candidates | `rulebook_compress`, `rulebook_compress_list` |
+| Evals (2) | Offline measurement, live API regeneration | `rulebook_evals_measure`, `rulebook_evals_run` |
 | Other (3+) | Doctor, rules list, blockers, session, codebase | `rulebook_doctor_run`, `rulebook_rules_list` |
 
 All tools accept optional `projectId` for workspace routing.
