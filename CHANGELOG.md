@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.0-pre] - unreleased
+
+### Planned — “Terse mode” (Caveman-inspired output compression)
+
+Driven by the analysis in `docs/analysis/caveman/` and its v5.4.0 adoption proposal. Scope:
+
+- **`rulebook-terse` skill family** (`rulebook-terse`, `rulebook-terse-commit`, `rulebook-terse-review`): structurally-enforced output compression with four intensity levels (`off`/`brief`/`terse`/`ultra`), auto-clarity escape hatch (security, destructive ops, quality-gate failures), and tier-aware defaults (haiku→terse, sonnet→brief, opus→off).
+- **SessionStart + UserPromptSubmit hooks** (TS): hidden rule injection on session start + ~45-token per-turn attention anchor. Flag-file state at `.rulebook/.terse-mode`. Project-local, no cross-project bleed.
+- **`safe-flag-io` TS module**: `lstat`/`O_NOFOLLOW`/atomic-rename/`0600`/size-cap/whitelist primitives. Closes the symlink-clobber and symlink-exfil attack surfaces on predictable flag paths. Retrofits existing hooks where applicable.
+- **`rulebook compress` CLI + MCP tools**: input-side compression for memory files (`CLAUDE.md`, `AGENTS.override.md`, `.rulebook/PLANS.md`). Preserves code/URLs/paths/commands byte-for-byte. 2 retry budget on validator failure.
+- **Three-arm evaluation harness** (`evals/`): `baseline`/`terse`/`skill` arms with offline tiktoken measurement. Honest delta = skill vs terse. CI posts PR comment on any SKILL.md change.
+- **Rule-sync CI fan-out**: GitHub Actions workflow that syncs `templates/skills/` + `templates/rules/` to agent-specific drop points on push to `main`.
+
+Task IDs (in `.rulebook/tasks/`): `phase0_terse-foundations` → `phase6_v540-release`. See `docs/analysis/caveman/05-rulebook-adoption-proposal.md` and `docs/analysis/caveman/06-hook-deep-dive.md` for the full design.
+
+No breaking changes. Additive over v5.3.x. Users opt in via `rulebook update` or stay on their current behavior.
+
 ## [5.3.3] - 2026-04-10
 
 ### Fixed
