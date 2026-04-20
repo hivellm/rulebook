@@ -86,6 +86,8 @@ import {
   analysisShowCommand,
   // Doctor command (v5.3.0)
   doctorCommand,
+  // Compress command (v5.4.0)
+  compressCommand,
 } from './cli/commands/index.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -777,6 +779,18 @@ analysisCommand
   .command('show <slug>')
   .description('Show analysis README')
   .action((slug: string) => analysisShowCommand(slug));
+
+// ── Compress command (v5.4.0) ───────────────────────────────────────────
+
+program
+  .command('compress <file>')
+  .description('Compress a markdown memory file (preserves code, URLs, paths, versions byte-for-byte)')
+  .option('--dry-run', 'Print compression stats without writing')
+  .option('--restore', 'Restore <file> from <file>.original.md backup')
+  .option('--check', 'Report compression ratio + validator result only')
+  .action((file: string, options: { dryRun?: boolean; restore?: boolean; check?: boolean }) =>
+    compressCommand(file, options)
+  );
 
 // ── Project Assessment (v5.0) ───────────────────────────────────────────
 

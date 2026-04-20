@@ -145,6 +145,44 @@ The MCP server integrates seamlessly with:
 
 All task operations are available through MCP functions, eliminating the need for terminal command execution.
 
+## Compression tools (v5.4.0)
+
+### rulebook_compress
+
+Compress a markdown memory file in place, preserving code blocks,
+URLs, file paths, dates, and version numbers byte-for-byte. Writes a
+backup to `<file>.original.md` before overwriting. Returns before/after
+byte counts, compression percentage, retry count, and backup path.
+
+```
+rulebook_compress({
+  filePath: "CLAUDE.md",           // or absolute path
+  dryRun: false                    // when true, returns stats without writing
+})
+```
+
+Rejects the result if the prose rewriter breaks any invariant (heading
+text/level, fenced-code content, inline code, URL, path, date, version).
+`success: false` is returned with the first 10 violations.
+
+### rulebook_compress_list
+
+List candidate markdown memory files in the project:
+`CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `AGENTS.override.md`,
+`.rulebook/PLANS.md`, `.rulebook/STATE.md`, and every `.md` under
+`.rulebook/knowledge/` and `.rulebook/learnings/`. Excludes
+`*.original.md` backups from the candidate listing. For each candidate,
+reports current size, whether a backup exists, and the backup's size +
+ratio when present.
+
+```
+rulebook_compress_list({})
+// → { success: true, count: N, candidates: [ { relPath, absPath, bytes, hasBackup, backupBytes?, backupRatio? }, ... ] }
+```
+
+Results are sorted by size descending so the biggest-win targets surface
+first.
+
 ## Documentation
 
 For complete API documentation, see:

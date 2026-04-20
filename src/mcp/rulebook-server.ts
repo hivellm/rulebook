@@ -3144,6 +3144,138 @@ export async function startRulebookMcpServer(): Promise<void> {
     }
   );
 
+  // ── v5.4.0 compress tools ──────────────────────────────────────────
+
+  server.registerTool(
+    'rulebook_compress',
+    {
+      title: 'Compress Memory File',
+      description:
+        'Compress a markdown memory file (prose-only rewriter; preserves code, URLs, paths, dates, versions byte-for-byte). Writes a backup to <file>.original.md and replaces the file in place. Returns before/after byte counts and validator result.',
+      inputSchema: {
+        filePath: z.string().describe('Absolute or project-relative path to the .md file to compress'),
+        dryRun: z.boolean().optional().describe('Return the would-be result without writing anything'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const { readFile, writeFile, fileExists } = await import('../utils/file-system.js');
+        const { compress } = await import('../core/compress/compressor.js');
+        const path = await import('path');
+        const projectRoot = process.cwd();
+        const abs = path.default.isAbsolute(args.filePath)
+          ? args.filePath
+          : path.default.join(projectRoot, args.filePath);
+
+        if (!(await fileExists(abs))) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({ success: false, error: `File not found: ${abs}` }),
+              },
+            ],
+          };
+        }
+
+        const original = await readFile(abs);
+        const result = compress(original);
+
+        if (!result.validation.ok) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: false,
+                  error: 'Validator rejected the compressed output',
+                  violations: result.validation.violations.slice(0, 10),
+                }),
+              },
+            ],
+          };
+        }
+
+        const backupPath = abs.replace(/\.md$/i, '.original.md');
+        if (!args.dryRun) {
+          if (!(await fileExists(backupPath))) {
+            await writeFile(backupPath, original);
+          }
+          await writeFile(abs, result.output);
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                filePath: abs,
+                dryRun: !!args.dryRun,
+                originalBytes: result.validation.stats.originalBytes,
+                compressedBytes: result.validation.stats.compressedBytes,
+                savedPct: Math.round((1 - result.validation.stats.ratio) * 100),
+                retries: result.retries,
+                backup: args.dryRun ? null : backupPath,
+              }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    'rulebook_compress_list',
+    {
+      title: 'List Compression Candidates',
+      description:
+        'List markdown memory files in the project that are compression candidates (CLAUDE.md, AGENTS.md, AGENTS.override.md, .rulebook/PLANS.md, .rulebook/STATE.md, and all .md under .rulebook/knowledge/ + .rulebook/learnings/). Reports current size + backup state.',
+      inputSchema: {
+        projectId: projectIdSchema,
+      },
+    },
+    async () => {
+      try {
+        const { listCompressCandidates } = await import('../core/compress/discover.js');
+        const candidates = await listCompressCandidates(process.cwd());
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, candidates, count: candidates.length }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
