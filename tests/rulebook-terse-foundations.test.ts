@@ -27,7 +27,9 @@ interface SkillFrontmatter {
 
 function readSkillFile(relPath: string): { raw: string; frontmatter: SkillFrontmatter; body: string } {
   const abs = resolve(ROOT, relPath);
-  const raw = readFileSync(abs, 'utf8');
+  // Normalize CRLF → LF so the regex below matches regardless of
+  // how git checked out the file (Windows pulls often yield CRLF).
+  const raw = readFileSync(abs, 'utf8').replace(/\r\n/g, '\n');
   const fmMatch = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (!fmMatch) throw new Error(`No YAML frontmatter in ${relPath}`);
 
