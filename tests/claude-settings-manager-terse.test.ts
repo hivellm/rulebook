@@ -2,34 +2,22 @@
  * Integration tests for the `terseMode` branch of claude-settings-manager.
  *
  * Verifies that enabling terseMode produces the correct settings.json
- * structure and copies the compiled JS hooks into the project's
- * `.claude/hooks/` directory. Complements the existing
- * `claude-settings-manager.test.ts` which covers the other desire
- * flags.
+ * structure and copies the terse shell + PowerShell hooks into the
+ * project's `.claude/hooks/` directory. Complements the existing
+ * `claude-settings-manager.test.ts` which covers the other desire flags.
+ *
+ * The hooks are pure bash / PowerShell (templates/hooks/terse-*.sh +
+ * terse-*.ps1) — no compiled JS is involved, matching Rulebook's
+ * existing hook convention.
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-} from 'node:fs';
-import { execSync } from 'node:child_process';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { applyClaudeSettings } from '../src/core/claude-settings-manager.js';
 
 const ROOT = resolve(__dirname, '..');
-
-// Ensure dist/hooks/ is built once for the whole suite — the install
-// step copies from there. `npm run build` is idempotent.
-beforeAll(() => {
-  const distHooks = join(ROOT, 'dist', 'hooks');
-  if (!existsSync(join(distHooks, 'terse-activate.js'))) {
-    execSync('npm run build', { cwd: ROOT, stdio: 'ignore' });
-  }
-}, 120_000);
 
 let projectRoot: string;
 
@@ -60,7 +48,7 @@ describe('claude-settings-manager — terseMode enabled', () => {
     expect(Array.isArray(settings.hooks?.UserPromptSubmit)).toBe(true);
   });
 
-  it('SessionStart hook invokes terse-activate.js via node', async () => {
+  it('SessionStart hook invokes terse-activate.sh via bash', async () => {
     await applyClaudeSettings(projectRoot, { terseMode: true });
     const settings = JSON.parse(
       readFileSync(join(projectRoot, '.claude', 'settings.json'), 'utf8')
@@ -69,10 +57,10 @@ describe('claude-settings-manager — terseMode enabled', () => {
       .flatMap((e: { hooks: { command: string }[] }) => e.hooks)
       .map((h: { command: string }) => h.command);
 
-    expect(commands.some((c: string) => /node .*terse-activate\.js/.test(c))).toBe(true);
+    expect(commands.some((c: string) => /bash .*terse-activate\.sh/.test(c))).toBe(true);
   });
 
-  it('UserPromptSubmit hook invokes terse-mode-tracker.js via node', async () => {
+  it('UserPromptSubmit hook invokes terse-mode-tracker.sh via bash', async () => {
     await applyClaudeSettings(projectRoot, { terseMode: true });
     const settings = JSON.parse(
       readFileSync(join(projectRoot, '.claude', 'settings.json'), 'utf8')
@@ -81,26 +69,26 @@ describe('claude-settings-manager — terseMode enabled', () => {
       .flatMap((e: { hooks: { command: string }[] }) => e.hooks)
       .map((h: { command: string }) => h.command);
 
-    expect(commands.some((c: string) => /node .*terse-mode-tracker\.js/.test(c))).toBe(true);
+    expect(commands.some((c: string) => /bash .*terse-mode-tracker\.sh/.test(c))).toBe(true);
   });
 
-  it('copies the four compiled JS hook files into .claude/hooks/', async () => {
+  it('copies both .sh + .ps1 variants into .claude/hooks/', async () => {
     await applyClaudeSettings(projectRoot, { terseMode: true });
     const hookDir = join(projectRoot, '.claude', 'hooks');
     for (const name of [
-      'terse-activate.js',
-      'terse-mode-tracker.js',
-      'safe-flag-io.js',
-      'terse-config.js',
+      'terse-activate.sh',
+      'terse-activate.ps1',
+      'terse-mode-tracker.sh',
+      'terse-mode-tracker.ps1',
     ]) {
       expect(existsSync(join(hookDir, name)), `missing ${name}`).toBe(true);
     }
   });
 
-  it('copied JS hooks match dist/hooks/ content byte-for-byte', async () => {
+  it('copied hooks match template content byte-for-byte', async () => {
     await applyClaudeSettings(projectRoot, { terseMode: true });
-    const installed = join(projectRoot, '.claude', 'hooks', 'terse-activate.js');
-    const source = join(ROOT, 'dist', 'hooks', 'terse-activate.js');
+    const installed = join(projectRoot, '.claude', 'hooks', 'terse-activate.sh');
+    const source = join(ROOT, 'templates', 'hooks', 'terse-activate.sh');
     expect(readFileSync(installed, 'utf8')).toBe(readFileSync(source, 'utf8'));
   });
 
@@ -132,10 +120,10 @@ describe('claude-settings-manager — terseMode disabled removes entries', () =>
 
     const hasTerseActivate = sessionStart
       .flatMap((e: { hooks: { command: string }[] }) => e.hooks)
-      .some((h: { command: string }) => h.command.includes('terse-activate.js'));
+      .some((h: { command: string }) => h.command.includes('terse-activate.sh'));
     const hasTracker = userPromptSubmit
       .flatMap((e: { hooks: { command: string }[] }) => e.hooks)
-      .some((h: { command: string }) => h.command.includes('terse-mode-tracker.js'));
+      .some((h: { command: string }) => h.command.includes('terse-mode-tracker.sh'));
 
     expect(hasTerseActivate).toBe(false);
     expect(hasTracker).toBe(false);
@@ -152,7 +140,7 @@ describe('claude-settings-manager — terseMode does not collide with other hook
       .flatMap((e: { hooks: { command: string }[] }) => e.hooks)
       .map((h: { command: string }) => h.command);
 
-    expect(commands.some((c: string) => c.includes('terse-activate.js'))).toBe(true);
+    expect(commands.some((c: string) => c.includes('terse-activate.sh'))).toBe(true);
     expect(commands.some((c: string) => c.includes('resume-from-handoff.sh'))).toBe(true);
   });
 
@@ -168,7 +156,7 @@ describe('claude-settings-manager — terseMode does not collide with other hook
       .flatMap((e: { hooks: { command: string }[] }) => e.hooks)
       .map((h: { command: string }) => h.command);
 
-    expect(commands.some((c: string) => c.includes('terse-activate.js'))).toBe(true);
+    expect(commands.some((c: string) => c.includes('terse-activate.sh'))).toBe(true);
     expect(commands.some((c: string) => c.includes('on-compact-reinject.sh'))).toBe(true);
   });
 });

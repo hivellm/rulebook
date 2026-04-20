@@ -1,21 +1,6 @@
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { readFile, writeFile, fileExists, ensureDir } from '../utils/file-system.js';
 import { getTemplatesDir } from './generator.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-/**
- * Resolve the directory that contains compiled hook `.js` files.
- * Same navigation pattern as `getTemplatesDir()` so behavior is
- * consistent whether we're running from `dist/core/` (production) or
- * `src/core/` (dev under tsx). Both resolve to `<pkgRoot>/dist/hooks`,
- * which `npm run build` populates from `src/hooks/*.ts`.
- */
-function getCompiledHooksDir(): string {
-  return path.join(__dirname, '..', '..', 'dist', 'hooks');
-}
 
 /**
  * v5.3.0 `.claude/settings.json` manager.
@@ -79,8 +64,8 @@ const SIGNATURES = {
   noDeferred: 'enforce-no-deferred',
   noShortcuts: 'enforce-no-shortcuts',
   mcpForTasks: 'enforce-mcp-for-tasks',
-  terseActivate: 'terse-activate.js',
-  terseModeTracker: 'terse-mode-tracker.js',
+  terseActivate: 'terse-activate.sh',
+  terseModeTracker: 'terse-mode-tracker.sh',
 } as const;
 
 export function getClaudeSettingsPath(projectRoot: string): string {
@@ -176,14 +161,14 @@ export async function applyClaudeSettings(
       'SessionStart',
       undefined,
       SIGNATURES.terseActivate,
-      buildNodeCommandFor(projectRoot, 'terse-activate.js')
+      buildCommandFor(projectRoot, 'terse-activate.sh')
     );
     upsertHook(
       existing.hooks,
       'UserPromptSubmit',
       undefined,
       SIGNATURES.terseModeTracker,
-      buildNodeCommandFor(projectRoot, 'terse-mode-tracker.js')
+      buildCommandFor(projectRoot, 'terse-mode-tracker.sh')
     );
   } else {
     removeHook(existing.hooks, 'SessionStart', SIGNATURES.terseActivate);
@@ -226,11 +211,6 @@ export async function applyClaudeSettings(
 function buildCommandFor(projectRoot: string, scriptName: string): string {
   const scriptPath = getHookScriptPath(projectRoot, scriptName);
   return `bash ${scriptPath.replace(/\\/g, '/')}`;
-}
-
-function buildNodeCommandFor(projectRoot: string, scriptName: string): string {
-  const scriptPath = getHookScriptPath(projectRoot, scriptName);
-  return `node "${scriptPath.replace(/\\/g, '/')}"`;
 }
 
 type HookEvent =
@@ -299,11 +279,9 @@ async function installHookScripts(
   desire: ClaudeSettingsDesire
 ): Promise<void> {
   const templatesHookDir = path.join(getTemplatesDir(), 'hooks');
-  const compiledHookDir = getCompiledHooksDir();
   const destDir = path.join(projectRoot, '.claude', 'hooks');
   await ensureDir(destDir);
 
-  // Shell scripts sourced from `templates/hooks/`.
   const shellScripts: string[] = [];
   if (desire.teamEnforcement) {
     shellScripts.push('enforce-team-for-background-agents.sh');
@@ -321,32 +299,17 @@ async function installHookScripts(
     shellScripts.push('enforce-no-shortcuts.sh');
     shellScripts.push('enforce-mcp-for-tasks.sh');
   }
+  if (desire.terseMode) {
+    shellScripts.push('terse-activate.sh');
+    shellScripts.push('terse-activate.ps1');
+    shellScripts.push('terse-mode-tracker.sh');
+    shellScripts.push('terse-mode-tracker.ps1');
+  }
 
   for (const name of shellScripts) {
     const src = path.join(templatesHookDir, name);
-    if (!(await fileExists(src))) continue; // template not present yet (other feature task)
+    if (!(await fileExists(src))) continue; // template not present yet
     const content = await readFile(src);
     await writeFile(path.join(destDir, name), content);
-  }
-
-  // Compiled JS hooks sourced from `dist/hooks/`. Run `npm run build`
-  // first; if the dist output is absent (pure source checkout), skip
-  // silently — consistent with the shell-hook best-effort contract.
-  if (desire.terseMode) {
-    const jsHooks = [
-      'terse-activate.js',
-      'terse-mode-tracker.js',
-      // Dependencies the hooks import at runtime — copy them alongside
-      // so relative imports resolve in `.claude/hooks/` without needing
-      // the installed rulebook package on the user's project path.
-      'safe-flag-io.js',
-      'terse-config.js',
-    ];
-    for (const name of jsHooks) {
-      const src = path.join(compiledHookDir, name);
-      if (!(await fileExists(src))) continue;
-      const content = await readFile(src);
-      await writeFile(path.join(destDir, name), content);
-    }
   }
 }
