@@ -784,7 +784,9 @@ analysisCommand
 
 program
   .command('compress <file>')
-  .description('Compress a markdown memory file (preserves code, URLs, paths, versions byte-for-byte)')
+  .description(
+    'Compress a markdown memory file (preserves code, URLs, paths, versions byte-for-byte)'
+  )
   .option('--dry-run', 'Print compression stats without writing')
   .option('--restore', 'Restore <file> from <file>.original.md backup')
   .option('--check', 'Report compression ratio + validator result only')

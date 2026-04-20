@@ -25,7 +25,11 @@ interface SkillFrontmatter {
   conflicts: string[];
 }
 
-function readSkillFile(relPath: string): { raw: string; frontmatter: SkillFrontmatter; body: string } {
+function readSkillFile(relPath: string): {
+  raw: string;
+  frontmatter: SkillFrontmatter;
+  body: string;
+} {
   const abs = resolve(ROOT, relPath);
   // Normalize CRLF → LF so the regex below matches regardless of
   // how git checked out the file (Windows pulls often yield CRLF).
@@ -97,7 +101,9 @@ describe('phase0_terse-foundations — project spec', () => {
 
   it('project spec pins the evaluation contract to skill-vs-terse', () => {
     const raw = readFileSync(resolve(ROOT, SPEC_PATH), 'utf8');
-    expect(raw).toMatch(/rulebook-terse.*vs.*terse|terse.*vs.*baseline|baseline.*terse.*rulebook-terse/s);
+    expect(raw).toMatch(
+      /rulebook-terse.*vs.*terse|terse.*vs.*baseline|baseline.*terse.*rulebook-terse/s
+    );
   });
 });
 
@@ -315,7 +321,10 @@ describe('phase0_terse-foundations — eval harness smoke test', () => {
 
   it('evals/prompts/en.txt has at least three prompts', () => {
     const raw = readFileSync(resolve(ROOT, 'evals/prompts/en.txt'), 'utf8');
-    const lines = raw.trim().split('\n').filter((l) => l.trim().length > 0);
+    const lines = raw
+      .trim()
+      .split('\n')
+      .filter((l) => l.trim().length > 0);
     expect(lines.length).toBeGreaterThanOrEqual(3);
   });
 

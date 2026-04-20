@@ -129,7 +129,11 @@ export function validate(original: string, compressed: string): ValidationResult
 
   // Fenced code blocks — byte-for-byte, ordered.
   violations.push(
-    ...diff('fenced-code-changed', extract(original, FENCED_CODE_RE), extract(compressed, FENCED_CODE_RE))
+    ...diff(
+      'fenced-code-changed',
+      extract(original, FENCED_CODE_RE),
+      extract(compressed, FENCED_CODE_RE)
+    )
   );
 
   // Inline code bodies.
@@ -141,10 +145,14 @@ export function validate(original: string, compressed: string): ValidationResult
   violations.push(...diff('url-changed', extract(original, URL_RE), extract(compressed, URL_RE)));
 
   // File paths.
-  violations.push(...diff('path-changed', extract(original, PATH_RE), extract(compressed, PATH_RE)));
+  violations.push(
+    ...diff('path-changed', extract(original, PATH_RE), extract(compressed, PATH_RE))
+  );
 
   // Dates.
-  violations.push(...diff('date-changed', extract(original, DATE_RE), extract(compressed, DATE_RE)));
+  violations.push(
+    ...diff('date-changed', extract(original, DATE_RE), extract(compressed, DATE_RE))
+  );
 
   // Version numbers.
   violations.push(

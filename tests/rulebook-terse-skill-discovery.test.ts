@@ -25,7 +25,9 @@ describe('phase1_terse-skill-source — SkillsManager integration', () => {
     const mgr = new SkillsManager(TEMPLATES_PATH);
     const index = await mgr.discoverSkills();
     discovered = index.skills;
-    terse = discovered.find((s) => /rulebook-terse$/i.test(s.id) || s.metadata.name === 'Rulebook Terse');
+    terse = discovered.find(
+      (s) => /rulebook-terse$/i.test(s.id) || s.metadata.name === 'Rulebook Terse'
+    );
   });
 
   it('SkillsManager discovers the base rulebook-terse skill', () => {

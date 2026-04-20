@@ -213,11 +213,7 @@ function buildCommandFor(projectRoot: string, scriptName: string): string {
   return `bash ${scriptPath.replace(/\\/g, '/')}`;
 }
 
-type HookEvent =
-  | 'PreToolUse'
-  | 'SessionStart'
-  | 'Stop'
-  | 'UserPromptSubmit';
+type HookEvent = 'PreToolUse' | 'SessionStart' | 'Stop' | 'UserPromptSubmit';
 
 function upsertHook(
   hooks: NonNullable<SettingsShape['hooks']>,

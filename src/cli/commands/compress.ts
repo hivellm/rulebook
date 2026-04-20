@@ -71,7 +71,9 @@ export async function compressCommand(
     console.log(`  Original bytes:  ${result.validation.stats.originalBytes}`);
     console.log(`  Compressed bytes: ${result.validation.stats.compressedBytes}`);
     console.log(`  Savings:         ${pct(result.validation.stats.ratio)}`);
-    console.log(`  Validator:       ${result.validation.ok ? chalk.green('OK') : chalk.red('FAILED')}`);
+    console.log(
+      `  Validator:       ${result.validation.ok ? chalk.green('OK') : chalk.red('FAILED')}`
+    );
     if (!result.validation.ok) {
       for (const v of result.validation.violations.slice(0, 5)) {
         console.log(chalk.red(`    - [${v.kind}] ${v.detail}`));
@@ -116,6 +118,10 @@ export async function compressCommand(
   console.log(`  Savings:    ${pct(result.validation.stats.ratio)}`);
   console.log(chalk.gray(`  Backup:     ${backup}`));
   if (result.retries > 0) {
-    console.log(chalk.yellow(`  Note: ${result.retries} retry(ies) used — some transforms disabled to preserve invariants.`));
+    console.log(
+      chalk.yellow(
+        `  Note: ${result.retries} retry(ies) used — some transforms disabled to preserve invariants.`
+      )
+    );
   }
 }

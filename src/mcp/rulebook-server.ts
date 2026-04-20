@@ -3153,8 +3153,13 @@ export async function startRulebookMcpServer(): Promise<void> {
       description:
         'Compress a markdown memory file (prose-only rewriter; preserves code, URLs, paths, dates, versions byte-for-byte). Writes a backup to <file>.original.md and replaces the file in place. Returns before/after byte counts and validator result.',
       inputSchema: {
-        filePath: z.string().describe('Absolute or project-relative path to the .md file to compress'),
-        dryRun: z.boolean().optional().describe('Return the would-be result without writing anything'),
+        filePath: z
+          .string()
+          .describe('Absolute or project-relative path to the .md file to compress'),
+        dryRun: z
+          .boolean()
+          .optional()
+          .describe('Return the would-be result without writing anything'),
         projectId: projectIdSchema,
       },
     },
@@ -3283,9 +3288,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           path.default.resolve(root, 'evals/arms.json')
         );
         return {
-          content: [
-            { type: 'text', text: JSON.stringify({ success: true, report }) },
-          ],
+          content: [{ type: 'text', text: JSON.stringify({ success: true, report }) }],
         };
       } catch (error) {
         return {
@@ -3341,9 +3344,7 @@ export async function startRulebookMcpServer(): Promise<void> {
             let stderr = '';
             child.stdout.on('data', (d) => (stdout += String(d)));
             child.stderr.on('data', (d) => (stderr += String(d)));
-            child.on('close', (code) =>
-              resolvePromise({ stdout, stderr, code: code ?? 1 })
-            );
+            child.on('close', (code) => resolvePromise({ stdout, stderr, code: code ?? 1 }));
           }
         );
         return {

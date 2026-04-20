@@ -22,12 +22,7 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import {
-  safeWriteFlag,
-  readFlag,
-  VALID_MODES,
-  MAX_FLAG_BYTES,
-} from '../src/hooks/safe-flag-io.js';
+import { safeWriteFlag, readFlag, VALID_MODES, MAX_FLAG_BYTES } from '../src/hooks/safe-flag-io.js';
 
 let testDir: string;
 let flagPath: string;
@@ -75,14 +70,7 @@ const SYMLINK_SUPPORTED: boolean = (() => {
 
 describe('safe-flag-io — VALID_MODES + MAX_FLAG_BYTES contract', () => {
   it('VALID_MODES is the authoritative whitelist', () => {
-    expect([...VALID_MODES].sort()).toEqual([
-      'brief',
-      'commit',
-      'off',
-      'review',
-      'terse',
-      'ultra',
-    ]);
+    expect([...VALID_MODES].sort()).toEqual(['brief', 'commit', 'off', 'review', 'terse', 'ultra']);
   });
 
   it('every VALID_MODES entry fits well under MAX_FLAG_BYTES', () => {
@@ -115,14 +103,11 @@ describe('safe-flag-io — safeWriteFlag happy path', () => {
     expect(existsSync(deep)).toBe(true);
   });
 
-  it.skipIf(process.platform === 'win32')(
-    'writes file with 0600 permissions',
-    () => {
-      safeWriteFlag(flagPath, 'brief');
-      const mode = statSync(flagPath).mode & 0o777;
-      expect(mode).toBe(0o600);
-    }
-  );
+  it.skipIf(process.platform === 'win32')('writes file with 0600 permissions', () => {
+    safeWriteFlag(flagPath, 'brief');
+    const mode = statSync(flagPath).mode & 0o777;
+    expect(mode).toBe(0o600);
+  });
 
   it('leaves no leftover temp files on success', () => {
     safeWriteFlag(flagPath, 'brief');

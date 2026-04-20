@@ -201,10 +201,7 @@ function compressProse(prose: string): string {
  * case in the splitter. Retries progressively disable classes of
  * transformations to preserve as much safety as possible.
  */
-export function compress(
-  input: string,
-  options: CompressOptions = {}
-): CompressResult {
+export function compress(input: string, options: CompressOptions = {}): CompressResult {
   const maxRetries = options.maxRetries ?? 2;
   let retries = 0;
   let output = applyCompression(input, {
@@ -265,9 +262,7 @@ function applyCompression(
     }
     // Whitespace normalization INSIDE prose segments only. Keep
     // inter-paragraph blank lines (don't collapse \n\n → \n).
-    rewritten = rewritten
-      .replace(/ +([,.;:!?])/g, '$1')
-      .replace(/[ \t]{2,}/g, ' ');
+    rewritten = rewritten.replace(/ +([,.;:!?])/g, '$1').replace(/[ \t]{2,}/g, ' ');
     pieces.push(rewritten);
   }
   return pieces.join('');

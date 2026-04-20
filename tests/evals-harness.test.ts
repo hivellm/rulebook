@@ -71,60 +71,82 @@ describe('evals harness — custom fixture', () => {
   });
 
   it('reports pass=false when skill does not beat terse by threshold', async () => {
-    writeFileSync(armsPath, JSON.stringify({
-      arms: [],
-      liftThreshold: 0.5,
-      honestDelta: { numerator: 'rulebook-terse', denominator: 'terse' },
-    }));
-    writeFileSync(snapshotPath, JSON.stringify({
-      generatedAt: '2026-04-20T00:00:00Z',
-      prompts: [{
-        id: 'p',
-        prompt: 'test',
-        responses: {
-          baseline: 'AAAAAAAAAA',     // 10 chars
-          terse: 'BBBBBB',             // 6 chars
-          'rulebook-terse': 'CCCCC',   // 5 chars — only 17% lift
-        },
-      }],
-    }));
+    writeFileSync(
+      armsPath,
+      JSON.stringify({
+        arms: [],
+        liftThreshold: 0.5,
+        honestDelta: { numerator: 'rulebook-terse', denominator: 'terse' },
+      })
+    );
+    writeFileSync(
+      snapshotPath,
+      JSON.stringify({
+        generatedAt: '2026-04-20T00:00:00Z',
+        prompts: [
+          {
+            id: 'p',
+            prompt: 'test',
+            responses: {
+              baseline: 'AAAAAAAAAA', // 10 chars
+              terse: 'BBBBBB', // 6 chars
+              'rulebook-terse': 'CCCCC', // 5 chars — only 17% lift
+            },
+          },
+        ],
+      })
+    );
     const report = await measure(snapshotPath, armsPath);
     expect(report.pass).toBe(false);
   });
 
   it('pass=true when skill beats terse by threshold', async () => {
-    writeFileSync(armsPath, JSON.stringify({
-      arms: [],
-      liftThreshold: 0.3,
-      honestDelta: { numerator: 'rulebook-terse', denominator: 'terse' },
-    }));
-    writeFileSync(snapshotPath, JSON.stringify({
-      generatedAt: '2026-04-20T00:00:00Z',
-      prompts: [{
-        id: 'p',
-        prompt: 'test',
-        responses: {
-          baseline: 'AAAAAAAAAAAAAAAAAAAA',  // 20
-          terse: 'BBBBBBBBBB',               // 10
-          'rulebook-terse': 'CCC',           // 3 — 70% lift vs terse
-        },
-      }],
-    }));
+    writeFileSync(
+      armsPath,
+      JSON.stringify({
+        arms: [],
+        liftThreshold: 0.3,
+        honestDelta: { numerator: 'rulebook-terse', denominator: 'terse' },
+      })
+    );
+    writeFileSync(
+      snapshotPath,
+      JSON.stringify({
+        generatedAt: '2026-04-20T00:00:00Z',
+        prompts: [
+          {
+            id: 'p',
+            prompt: 'test',
+            responses: {
+              baseline: 'AAAAAAAAAAAAAAAAAAAA', // 20
+              terse: 'BBBBBBBBBB', // 10
+              'rulebook-terse': 'CCC', // 3 — 70% lift vs terse
+            },
+          },
+        ],
+      })
+    );
     const report = await measure(snapshotPath, armsPath);
     expect(report.pass).toBe(true);
     expect(report.totals.liftVsTerse).toBeGreaterThanOrEqual(0.5);
   });
 
   it('handles empty prompts array', async () => {
-    writeFileSync(armsPath, JSON.stringify({
-      arms: [],
-      liftThreshold: 0.15,
-      honestDelta: { numerator: 'rulebook-terse', denominator: 'terse' },
-    }));
-    writeFileSync(snapshotPath, JSON.stringify({
-      generatedAt: '2026-04-20T00:00:00Z',
-      prompts: [],
-    }));
+    writeFileSync(
+      armsPath,
+      JSON.stringify({
+        arms: [],
+        liftThreshold: 0.15,
+        honestDelta: { numerator: 'rulebook-terse', denominator: 'terse' },
+      })
+    );
+    writeFileSync(
+      snapshotPath,
+      JSON.stringify({
+        generatedAt: '2026-04-20T00:00:00Z',
+        prompts: [],
+      })
+    );
     const report = await measure(snapshotPath, armsPath);
     expect(report.prompts).toHaveLength(0);
     expect(report.totals.liftVsTerse).toBe(0);

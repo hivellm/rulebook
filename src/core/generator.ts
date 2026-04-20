@@ -1010,10 +1010,7 @@ async function installDevSkillsFromTemplates(projectRoot: string): Promise<void>
   const skillsTargetDir = path.join(projectRoot, '.claude', 'skills');
   const templatesRoot = getTemplatesDir();
 
-  await installSkillsFromSource(
-    path.join(templatesRoot, 'skills', 'dev'),
-    skillsTargetDir
-  );
+  await installSkillsFromSource(path.join(templatesRoot, 'skills', 'dev'), skillsTargetDir);
   await installSkillsFromSource(
     path.join(templatesRoot, 'skills', 'core'),
     skillsTargetDir,

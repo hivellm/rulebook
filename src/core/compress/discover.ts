@@ -20,12 +20,7 @@ export interface Candidate {
   backupRatio?: number;
 }
 
-const ROOT_FILE_GLOB = [
-  'CLAUDE.md',
-  'CLAUDE.local.md',
-  'AGENTS.md',
-  'AGENTS.override.md',
-];
+const ROOT_FILE_GLOB = ['CLAUDE.md', 'CLAUDE.local.md', 'AGENTS.md', 'AGENTS.override.md'];
 
 const RULEBOOK_SUBPATHS: readonly string[] = [
   '.rulebook/PLANS.md',

@@ -22,10 +22,7 @@ const ROOT = resolve(__dirname, '..');
 let projectRoot: string;
 
 beforeEach(() => {
-  projectRoot = join(
-    tmpdir(),
-    `rulebook-terse-settings-${Date.now()}-${process.pid}`
-  );
+  projectRoot = join(tmpdir(), `rulebook-terse-settings-${Date.now()}-${process.pid}`);
   mkdirSync(projectRoot, { recursive: true });
 });
 
@@ -94,15 +91,9 @@ describe('claude-settings-manager — terseMode enabled', () => {
 
   it('is idempotent — re-applying produces the same settings + files', async () => {
     await applyClaudeSettings(projectRoot, { terseMode: true });
-    const first = readFileSync(
-      join(projectRoot, '.claude', 'settings.json'),
-      'utf8'
-    );
+    const first = readFileSync(join(projectRoot, '.claude', 'settings.json'), 'utf8');
     await applyClaudeSettings(projectRoot, { terseMode: true });
-    const second = readFileSync(
-      join(projectRoot, '.claude', 'settings.json'),
-      'utf8'
-    );
+    const second = readFileSync(join(projectRoot, '.claude', 'settings.json'), 'utf8');
     expect(second).toBe(first);
   });
 });

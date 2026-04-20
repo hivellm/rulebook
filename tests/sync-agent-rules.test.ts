@@ -11,10 +11,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import {
-  buildProjectionContent,
-  syncAgentRules,
-} from '../scripts/sync-agent-rules.js';
+import { buildProjectionContent, syncAgentRules } from '../scripts/sync-agent-rules.js';
 
 describe('sync-agent-rules — buildProjectionContent', () => {
   it('strips the source YAML frontmatter', () => {
@@ -85,41 +82,26 @@ describe('sync-agent-rules — syncAgentRules end-to-end', () => {
 
   it('Cursor rule file carries alwaysApply frontmatter for base skill', () => {
     syncAgentRules(repoRoot);
-    const content = readFileSync(
-      join(repoRoot, '.cursor/rules/rulebook-terse.mdc'),
-      'utf8'
-    );
+    const content = readFileSync(join(repoRoot, '.cursor/rules/rulebook-terse.mdc'), 'utf8');
     expect(content).toMatch(/alwaysApply:\s*true/);
   });
 
   it('Windsurf rule file carries trigger: always_on for base skill', () => {
     syncAgentRules(repoRoot);
-    const content = readFileSync(
-      join(repoRoot, '.windsurf/rules/rulebook-terse.md'),
-      'utf8'
-    );
+    const content = readFileSync(join(repoRoot, '.windsurf/rules/rulebook-terse.md'), 'utf8');
     expect(content).toMatch(/trigger:\s*always_on/);
   });
 
   it('Claude skill directory preserves the full SKILL.md including frontmatter', () => {
     syncAgentRules(repoRoot);
-    const content = readFileSync(
-      join(repoRoot, '.claude/skills/rulebook-terse/SKILL.md'),
-      'utf8'
-    );
+    const content = readFileSync(join(repoRoot, '.claude/skills/rulebook-terse/SKILL.md'), 'utf8');
     expect(content).toMatch(/^---\s*\nname: rulebook-terse/);
   });
 
   it('Cline + Codex rule files have no YAML frontmatter (stripped source only)', () => {
     syncAgentRules(repoRoot);
-    const cline = readFileSync(
-      join(repoRoot, '.clinerules/rulebook-terse.md'),
-      'utf8'
-    );
-    const codex = readFileSync(
-      join(repoRoot, '.codex/rulebook-terse.md'),
-      'utf8'
-    );
+    const cline = readFileSync(join(repoRoot, '.clinerules/rulebook-terse.md'), 'utf8');
+    const codex = readFileSync(join(repoRoot, '.codex/rulebook-terse.md'), 'utf8');
     for (const content of [cline, codex]) {
       // Banner comment is present, but no ---...--- YAML block.
       expect(content).toContain('AUTO-GENERATED');
@@ -152,15 +134,9 @@ describe('sync-agent-rules — syncAgentRules end-to-end', () => {
 
   it('is idempotent — running twice produces identical files', () => {
     syncAgentRules(repoRoot);
-    const first = readFileSync(
-      join(repoRoot, '.cursor/rules/rulebook-terse.mdc'),
-      'utf8'
-    );
+    const first = readFileSync(join(repoRoot, '.cursor/rules/rulebook-terse.mdc'), 'utf8');
     syncAgentRules(repoRoot);
-    const second = readFileSync(
-      join(repoRoot, '.cursor/rules/rulebook-terse.mdc'),
-      'utf8'
-    );
+    const second = readFileSync(join(repoRoot, '.cursor/rules/rulebook-terse.mdc'), 'utf8');
     expect(second).toBe(first);
   });
 });

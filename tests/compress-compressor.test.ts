@@ -23,7 +23,7 @@ describe('compress-compressor — basic filler removal', () => {
     const input = `Sure! I'd be happy to help. The bug is in auth.`;
     const { output } = compress(input);
     expect(output.toLowerCase()).not.toContain('sure');
-    expect(output.toLowerCase()).not.toContain("happy to help");
+    expect(output.toLowerCase()).not.toContain('happy to help');
     expect(output).toContain('The bug is in auth');
   });
 
@@ -46,8 +46,7 @@ describe('compress-compressor — basic filler removal', () => {
 
 describe('compress-compressor — protected regions are inviolable', () => {
   it('does not touch fenced code blocks', () => {
-    const input =
-      '```ts\nconst really = "just a value";\n```\n\nReally just prose.';
+    const input = '```ts\nconst really = "just a value";\n```\n\nReally just prose.';
     const { output, validation } = compress(input);
     expect(validation.ok).toBe(true);
     expect(output).toContain('const really = "just a value"');

@@ -52,14 +52,7 @@ import { dirname, join } from 'node:path';
  * and §Sub-skills. Every string here is a possible contents of the flag
  * file; anything else read from disk is rejected.
  */
-export const VALID_MODES = [
-  'off',
-  'brief',
-  'terse',
-  'ultra',
-  'commit',
-  'review',
-] as const;
+export const VALID_MODES = ['off', 'brief', 'terse', 'ultra', 'commit', 'review'] as const;
 
 export type TerseMode = (typeof VALID_MODES)[number];
 
@@ -76,8 +69,7 @@ export const MAX_FLAG_BYTES = 32;
  * pre-check alone. That still protects against the pre-open symlink
  * case; Windows symlinks are also far less common on user profiles.
  */
-const O_NOFOLLOW =
-  typeof constants.O_NOFOLLOW === 'number' ? constants.O_NOFOLLOW : 0;
+const O_NOFOLLOW = typeof constants.O_NOFOLLOW === 'number' ? constants.O_NOFOLLOW : 0;
 
 function isValidMode(s: string): s is TerseMode {
   return (VALID_MODES as readonly string[]).includes(s);
@@ -123,8 +115,7 @@ export function safeWriteFlag(flagPath: string, content: string): void {
     }
 
     const tempPath = join(flagDir, `.terse-mode.tmp.${process.pid}.${Date.now()}`);
-    const flags =
-      constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | O_NOFOLLOW;
+    const flags = constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | O_NOFOLLOW;
 
     let fd: number | undefined;
     try {

@@ -199,10 +199,7 @@ async function checkMissingFiles(root: string, checks: DoctorCheck[]): Promise<v
   }
 }
 
-async function checkCompressionBackups(
-  root: string,
-  checks: DoctorCheck[]
-): Promise<void> {
+async function checkCompressionBackups(root: string, checks: DoctorCheck[]): Promise<void> {
   // Find every *.original.md in the project — these are compression
   // backups produced by `rulebook compress`. Report unhealthy ratios
   // (close to 1.0 = no real savings) which usually mean a compression
@@ -239,10 +236,7 @@ async function checkCompressionBackups(
   }
 }
 
-async function checkEvalsFreshness(
-  root: string,
-  checks: DoctorCheck[]
-): Promise<void> {
+async function checkEvalsFreshness(root: string, checks: DoctorCheck[]): Promise<void> {
   const snapshotPath = path.join(root, 'evals', 'snapshots', 'results.json');
   if (!(await fileExists(snapshotPath))) {
     checks.push({

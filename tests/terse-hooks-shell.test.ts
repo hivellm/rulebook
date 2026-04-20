@@ -8,13 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { spawnSync, execSync } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -68,19 +62,13 @@ function runHook(
 let projectRoot: string;
 
 beforeEach(() => {
-  projectRoot = join(
-    tmpdir(),
-    `rulebook-terse-hook-shell-${Date.now()}-${process.pid}`
-  );
+  projectRoot = join(tmpdir(), `rulebook-terse-hook-shell-${Date.now()}-${process.pid}`);
   mkdirSync(join(projectRoot, '.rulebook'), { recursive: true });
   // Install the base skill so activate has a SKILL.md to filter.
   mkdirSync(join(projectRoot, '.claude/skills/rulebook-terse'), { recursive: true });
   writeFileSync(
     join(projectRoot, '.claude/skills/rulebook-terse/SKILL.md'),
-    readFileSync(
-      join(REPO_ROOT, 'templates/skills/core/rulebook-terse/SKILL.md'),
-      'utf8'
-    )
+    readFileSync(join(REPO_ROOT, 'templates/skills/core/rulebook-terse/SKILL.md'), 'utf8')
   );
 });
 
@@ -99,9 +87,7 @@ describe.skipIf(!BASH_OK)('terse-activate.sh — mode resolution', () => {
       env: { RULEBOOK_TERSE_MODE: '' },
     });
     expect(r.status).toBe(0);
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe(
-      'terse'
-    );
+    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('terse');
   });
 
   it('env var RULEBOOK_TERSE_MODE overrides everything', () => {
@@ -114,9 +100,7 @@ describe.skipIf(!BASH_OK)('terse-activate.sh — mode resolution', () => {
       env: { RULEBOOK_TERSE_MODE: 'ultra' },
     });
     expect(r.status).toBe(0);
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe(
-      'ultra'
-    );
+    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('ultra');
   });
 
   it('invalid env var falls through to project config', () => {
@@ -129,9 +113,7 @@ describe.skipIf(!BASH_OK)('terse-activate.sh — mode resolution', () => {
       env: { RULEBOOK_TERSE_MODE: 'not-a-mode' },
     });
     expect(r.status).toBe(0);
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe(
-      'brief'
-    );
+    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('brief');
   });
 
   it('mode=off removes the flag (no hidden context emitted)', () => {
@@ -154,9 +136,7 @@ describe.skipIf(!BASH_OK)('terse-activate.sh — mode resolution', () => {
       cwd: projectRoot,
       env: { RULEBOOK_TERSE_MODE: '' },
     });
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe(
-      'ultra'
-    );
+    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('ultra');
   });
 
   it('parses cwd from stdin JSON when piped', () => {
@@ -170,9 +150,7 @@ describe.skipIf(!BASH_OK)('terse-activate.sh — mode resolution', () => {
       });
       expect(r.status).toBe(0);
       // Flag lands in the project passed via stdin.cwd, NOT cwd of the shell.
-      expect(
-        readFileSync(join(otherProject, '.rulebook/.terse-mode'), 'utf8')
-      ).toBe('brief');
+      expect(readFileSync(join(otherProject, '.rulebook/.terse-mode'), 'utf8')).toBe('brief');
     } finally {
       rmSync(otherProject, { recursive: true, force: true });
     }
@@ -255,17 +233,13 @@ describe.skipIf(!BASH_OK)('terse-mode-tracker.sh — slash commands', () => {
   it('/rulebook-terse ultra sets flag to ultra', () => {
     const r = run('/rulebook-terse ultra');
     expect(r.status).toBe(0);
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe(
-      'ultra'
-    );
+    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('ultra');
   });
 
   it('/rulebook-terse brief sets flag to brief', () => {
     const r = run('/rulebook-terse brief');
     expect(r.status).toBe(0);
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe(
-      'brief'
-    );
+    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('brief');
   });
 
   it('/rulebook-terse (no arg) uses resolved default', () => {
@@ -274,9 +248,7 @@ describe.skipIf(!BASH_OK)('terse-mode-tracker.sh — slash commands', () => {
       JSON.stringify({ terse: { defaultMode: 'terse' } })
     );
     const r = run('/rulebook-terse');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe(
-      'terse'
-    );
+    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('terse');
   });
 
   it('/rulebook-terse off removes the flag', () => {
@@ -287,24 +259,18 @@ describe.skipIf(!BASH_OK)('terse-mode-tracker.sh — slash commands', () => {
 
   it('/rulebook-terse-commit flips to commit sub-skill', () => {
     run('/rulebook-terse-commit');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe(
-      'commit'
-    );
+    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('commit');
   });
 
   it('/rulebook-terse-review flips to review sub-skill', () => {
     run('/rulebook-terse-review');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe(
-      'review'
-    );
+    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('review');
   });
 
   it('unknown slash arg leaves flag unchanged', () => {
     writeFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'brief');
     run('/rulebook-terse xyzzy');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe(
-      'brief'
-    );
+    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('brief');
   });
 });
 
@@ -318,16 +284,12 @@ describe.skipIf(!BASH_OK)('terse-mode-tracker.sh — natural-language triggers',
 
   it('"be terse" activates the default mode', () => {
     run('be terse please');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe(
-      'terse'
-    );
+    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('terse');
   });
 
   it('"less tokens please" activates the default mode', () => {
     run('give me less tokens please');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe(
-      'terse'
-    );
+    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('terse');
   });
 
   it('"stop terse" deactivates', () => {
@@ -345,9 +307,7 @@ describe.skipIf(!BASH_OK)('terse-mode-tracker.sh — natural-language triggers',
   it('unrelated prompts do not change flag state', () => {
     writeFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'brief');
     run('help me fix this bug');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe(
-      'brief'
-    );
+    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('brief');
   });
 });
 
