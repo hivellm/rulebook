@@ -1,6 +1,21 @@
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { readFile, writeFile, fileExists, ensureDir } from '../utils/file-system.js';
 import { getTemplatesDir } from './generator.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Resolve the directory that contains compiled hook `.js` files.
+ * Same navigation pattern as `getTemplatesDir()` so behavior is
+ * consistent whether we're running from `dist/core/` (production) or
+ * `src/core/` (dev under tsx). Both resolve to `<pkgRoot>/dist/hooks`,
+ * which `npm run build` populates from `src/hooks/*.ts`.
+ */
+function getCompiledHooksDir(): string {
+  return path.join(__dirname, '..', '..', 'dist', 'hooks');
+}
 
 /**
  * v5.3.0 `.claude/settings.json` manager.
@@ -28,6 +43,13 @@ export interface ClaudeSettingsDesire {
   sessionHandoff?: boolean;
   /** Enable PreToolUse enforcement hooks (no-deferred, no-shortcuts, mcp-for-tasks). */
   qualityEnforcement?: boolean;
+  /**
+   * Enable rulebook-terse hooks (v5.4.0). Installs SessionStart hook
+   * `terse-activate.js` and UserPromptSubmit hook `terse-mode-tracker.js`,
+   * both invoked as `node <path>`. Requires `npm run build` to have
+   * produced `dist/hooks/*.js`.
+   */
+  terseMode?: boolean;
 }
 
 interface HookCommand {
@@ -57,6 +79,8 @@ const SIGNATURES = {
   noDeferred: 'enforce-no-deferred',
   noShortcuts: 'enforce-no-shortcuts',
   mcpForTasks: 'enforce-mcp-for-tasks',
+  terseActivate: 'terse-activate.js',
+  terseModeTracker: 'terse-mode-tracker.js',
 } as const;
 
 export function getClaudeSettingsPath(projectRoot: string): string {
@@ -145,6 +169,27 @@ export async function applyClaudeSettings(
     removeHook(existing.hooks, 'SessionStart', SIGNATURES.handoffResume);
   }
 
+  // rulebook-terse: SessionStart + UserPromptSubmit (v5.4.0)
+  if (desire.terseMode) {
+    upsertHook(
+      existing.hooks,
+      'SessionStart',
+      undefined,
+      SIGNATURES.terseActivate,
+      buildNodeCommandFor(projectRoot, 'terse-activate.js')
+    );
+    upsertHook(
+      existing.hooks,
+      'UserPromptSubmit',
+      undefined,
+      SIGNATURES.terseModeTracker,
+      buildNodeCommandFor(projectRoot, 'terse-mode-tracker.js')
+    );
+  } else {
+    removeHook(existing.hooks, 'SessionStart', SIGNATURES.terseActivate);
+    removeHook(existing.hooks, 'UserPromptSubmit', SIGNATURES.terseModeTracker);
+  }
+
   // Quality enforcement hooks (no-deferred, no-shortcuts, mcp-for-tasks)
   if (desire.qualityEnforcement) {
     for (const [sig, script] of [
@@ -183,9 +228,20 @@ function buildCommandFor(projectRoot: string, scriptName: string): string {
   return `bash ${scriptPath.replace(/\\/g, '/')}`;
 }
 
+function buildNodeCommandFor(projectRoot: string, scriptName: string): string {
+  const scriptPath = getHookScriptPath(projectRoot, scriptName);
+  return `node "${scriptPath.replace(/\\/g, '/')}"`;
+}
+
+type HookEvent =
+  | 'PreToolUse'
+  | 'SessionStart'
+  | 'Stop'
+  | 'UserPromptSubmit';
+
 function upsertHook(
   hooks: NonNullable<SettingsShape['hooks']>,
-  event: 'PreToolUse' | 'SessionStart' | 'Stop',
+  event: HookEvent,
   matcher: string | undefined,
   signature: string,
   command: string
@@ -212,7 +268,7 @@ function upsertHook(
 
 function removeHook(
   hooks: NonNullable<SettingsShape['hooks']>,
-  event: 'PreToolUse' | 'SessionStart' | 'Stop',
+  event: HookEvent,
   signature: string
 ): void {
   const list = hooks[event] as HookEntry[] | undefined;
@@ -242,32 +298,55 @@ async function installHookScripts(
   projectRoot: string,
   desire: ClaudeSettingsDesire
 ): Promise<void> {
-  const sourceDir = path.join(getTemplatesDir(), 'hooks');
+  const templatesHookDir = path.join(getTemplatesDir(), 'hooks');
+  const compiledHookDir = getCompiledHooksDir();
   const destDir = path.join(projectRoot, '.claude', 'hooks');
   await ensureDir(destDir);
 
-  const scripts: string[] = [];
+  // Shell scripts sourced from `templates/hooks/`.
+  const shellScripts: string[] = [];
   if (desire.teamEnforcement) {
-    scripts.push('enforce-team-for-background-agents.sh');
-    scripts.push('enforce-team-for-background-agents.ps1');
+    shellScripts.push('enforce-team-for-background-agents.sh');
+    shellScripts.push('enforce-team-for-background-agents.ps1');
   }
   if (desire.compactContextReinject) {
-    scripts.push('on-compact-reinject.sh');
+    shellScripts.push('on-compact-reinject.sh');
   }
   if (desire.sessionHandoff) {
-    scripts.push('check-context-and-handoff.sh');
-    scripts.push('resume-from-handoff.sh');
+    shellScripts.push('check-context-and-handoff.sh');
+    shellScripts.push('resume-from-handoff.sh');
   }
   if (desire.qualityEnforcement) {
-    scripts.push('enforce-no-deferred.sh');
-    scripts.push('enforce-no-shortcuts.sh');
-    scripts.push('enforce-mcp-for-tasks.sh');
+    shellScripts.push('enforce-no-deferred.sh');
+    shellScripts.push('enforce-no-shortcuts.sh');
+    shellScripts.push('enforce-mcp-for-tasks.sh');
   }
 
-  for (const name of scripts) {
-    const src = path.join(sourceDir, name);
+  for (const name of shellScripts) {
+    const src = path.join(templatesHookDir, name);
     if (!(await fileExists(src))) continue; // template not present yet (other feature task)
     const content = await readFile(src);
     await writeFile(path.join(destDir, name), content);
+  }
+
+  // Compiled JS hooks sourced from `dist/hooks/`. Run `npm run build`
+  // first; if the dist output is absent (pure source checkout), skip
+  // silently — consistent with the shell-hook best-effort contract.
+  if (desire.terseMode) {
+    const jsHooks = [
+      'terse-activate.js',
+      'terse-mode-tracker.js',
+      // Dependencies the hooks import at runtime — copy them alongside
+      // so relative imports resolve in `.claude/hooks/` without needing
+      // the installed rulebook package on the user's project path.
+      'safe-flag-io.js',
+      'terse-config.js',
+    ];
+    for (const name of jsHooks) {
+      const src = path.join(compiledHookDir, name);
+      if (!(await fileExists(src))) continue;
+      const content = await readFile(src);
+      await writeFile(path.join(destDir, name), content);
+    }
   }
 }
