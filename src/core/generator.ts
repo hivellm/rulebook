@@ -954,34 +954,71 @@ async function installAgentsWithPlaceholders(
 }
 
 /**
- * Install dev skills to .claude/skills/ (modern Claude Code skills format).
- * Each skill is a directory with a SKILL.md file.
- * Always installed on init/update — useful for any project regardless of size.
+ * Names of `core/` skills that are user-invocable (slash-command or
+ * natural-language trigger), so their SKILL.md files must land in
+ * `.claude/skills/` alongside the `dev/` skills. Non-invocable core
+ * skills (agent-automation, dag, documentation-rules, quality-enforcement,
+ * rulebook) stay referenced via AGENTS.md only.
  */
-async function installDevSkillsFromTemplates(projectRoot: string): Promise<void> {
+export const INVOCABLE_CORE_SKILLS = [
+  'rulebook-terse',
+  'rulebook-terse-commit',
+  'rulebook-terse-review',
+] as const;
+
+/**
+ * Copy every SKILL.md under a source directory into .claude/skills/.
+ * Used for both the full `dev/` category and a curated subset of `core/`
+ * skills (see INVOCABLE_CORE_SKILLS).
+ *
+ * Exported for test coverage of the install pipeline.
+ */
+export async function installSkillsFromSource(
+  sourceDir: string,
+  targetSkillsDir: string,
+  filter?: ReadonlyArray<string>
+): Promise<void> {
   const { readdirSync, statSync } = await import('fs');
-  const skillsSourceDir = path.join(getTemplatesDir(), 'skills', 'dev');
-  const skillsTargetDir = path.join(projectRoot, '.claude', 'skills');
+  if (!(await fileExists(sourceDir))) return;
 
-  if (!(await fileExists(skillsSourceDir))) return;
+  await ensureDir(targetSkillsDir);
 
-  await ensureDir(skillsTargetDir);
-
-  const entries = readdirSync(skillsSourceDir);
-
+  const entries = readdirSync(sourceDir);
   for (const entry of entries) {
-    const entryPath = path.join(skillsSourceDir, entry);
+    if (filter && !filter.includes(entry)) continue;
+
+    const entryPath = path.join(sourceDir, entry);
     if (!statSync(entryPath).isDirectory()) continue;
 
     const skillFile = path.join(entryPath, 'SKILL.md');
     if (!(await fileExists(skillFile))) continue;
 
-    const targetSkillDir = path.join(skillsTargetDir, entry);
+    const targetSkillDir = path.join(targetSkillsDir, entry);
     await ensureDir(targetSkillDir);
 
     const content = await readFile(skillFile);
     await writeFile(path.join(targetSkillDir, 'SKILL.md'), content);
   }
+}
+
+/**
+ * Install dev skills + invocable core skills to .claude/skills/ (modern
+ * Claude Code skills format). Each skill is a directory with a SKILL.md
+ * file. Always installed on init/update — useful for any project.
+ */
+async function installDevSkillsFromTemplates(projectRoot: string): Promise<void> {
+  const skillsTargetDir = path.join(projectRoot, '.claude', 'skills');
+  const templatesRoot = getTemplatesDir();
+
+  await installSkillsFromSource(
+    path.join(templatesRoot, 'skills', 'dev'),
+    skillsTargetDir
+  );
+  await installSkillsFromSource(
+    path.join(templatesRoot, 'skills', 'core'),
+    skillsTargetDir,
+    INVOCABLE_CORE_SKILLS
+  );
 }
 
 /**

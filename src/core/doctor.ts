@@ -34,6 +34,8 @@ export async function runDoctor(projectRoot: string): Promise<DoctorReport> {
   await checkOrphanedRules(projectRoot, checks);
   await checkOverrideConflicts(projectRoot, checks);
   await checkMissingFiles(projectRoot, checks);
+  await checkCompressionBackups(projectRoot, checks);
+  await checkEvalsFreshness(projectRoot, checks);
 
   return {
     checks,
@@ -193,6 +195,78 @@ async function checkMissingFiles(root: string, checks: DoctorCheck[]): Promise<v
       name: 'Required files',
       status: 'pass',
       message: 'All required files present',
+    });
+  }
+}
+
+async function checkCompressionBackups(
+  root: string,
+  checks: DoctorCheck[]
+): Promise<void> {
+  // Find every *.original.md in the project — these are compression
+  // backups produced by `rulebook compress`. Report unhealthy ratios
+  // (close to 1.0 = no real savings) which usually mean a compression
+  // was applied but the target was already terse.
+  const { listCompressCandidates } = await import('./compress/discover.js');
+  const candidates = await listCompressCandidates(root);
+  const withBackups = candidates.filter((c) => c.hasBackup && c.backupRatio !== undefined);
+
+  if (withBackups.length === 0) {
+    checks.push({
+      name: 'Compression backups',
+      status: 'pass',
+      message: 'No compression backups present (nothing to verify)',
+    });
+    return;
+  }
+
+  const unhealthy = withBackups.filter((c) => (c.backupRatio ?? 1) >= 0.9);
+  if (unhealthy.length > 0) {
+    const detail = unhealthy
+      .map((c) => `${c.relPath} (${Math.round(((c.backupRatio ?? 1) - 0) * 100)}%)`)
+      .join(', ');
+    checks.push({
+      name: 'Compression backups',
+      status: 'warn',
+      message: `${unhealthy.length} compression(s) with < 10% savings — consider restoring: ${detail}`,
+    });
+  } else {
+    checks.push({
+      name: 'Compression backups',
+      status: 'pass',
+      message: `${withBackups.length} healthy compression(s) present`,
+    });
+  }
+}
+
+async function checkEvalsFreshness(
+  root: string,
+  checks: DoctorCheck[]
+): Promise<void> {
+  const snapshotPath = path.join(root, 'evals', 'snapshots', 'results.json');
+  if (!(await fileExists(snapshotPath))) {
+    checks.push({
+      name: 'Terse evals',
+      status: 'pass',
+      message: 'No evals/ directory (not required for downstream projects)',
+    });
+    return;
+  }
+  const { promises: fs } = await import('fs');
+  const stat = await fs.stat(snapshotPath);
+  const ageDays = (Date.now() - stat.mtimeMs) / (1000 * 60 * 60 * 24);
+  const MAX_AGE = 30;
+  if (ageDays > MAX_AGE) {
+    checks.push({
+      name: 'Terse evals',
+      status: 'warn',
+      message: `evals/snapshots/results.json is ${Math.floor(ageDays)} days old (threshold ${MAX_AGE}). Regenerate with evals-snapshot workflow.`,
+    });
+  } else {
+    checks.push({
+      name: 'Terse evals',
+      status: 'pass',
+      message: `evals snapshot is fresh (${Math.floor(ageDays)} days old)`,
     });
   }
 }

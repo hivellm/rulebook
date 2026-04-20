@@ -1,6 +1,6 @@
 {
   "name": "@hivehub/rulebook",
-  "version": "5.3.3",
+  "version": "5.4.0",
   "description": "Tool-agnostic AI development framework. Standardize projects across Claude Code, Cursor, Gemini, Codex, Windsurf, Copilot with automated templates, quality gates, persistent memory, and framework detection for 28 languages, 17 frameworks, 13 MCP modules, and 20 services",
   "type": "module",
   "main": "dist/index.js",
@@ -90,6 +90,7 @@
     "eslint": "^9.37.0",
     "globals": "^15.11.0",
     "prettier": "^3.2.0",
+    "tiktoken": "^1.0.22",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "vitest": "^4.0.13"

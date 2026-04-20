@@ -369,11 +369,13 @@ export async function updateSingleProject(
     const rulebookCfg = await configManager.loadConfig();
     const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
     const handoffEnabled = rulebookCfg?.handoff?.enabled ?? true;
+    const terseEnabled = rulebookCfg?.terse?.enabled ?? true;
     const settingsResult = await applyClaudeSettings(cwd, {
       teamEnforcement: multiAgentEnabled,
       sessionHandoff: handoffEnabled,
       compactContextReinject: true,
       qualityEnforcement: true,
+      terseMode: terseEnabled,
     });
     if (settingsResult.changed) {
       console.log(chalk.gray(`  • .claude/settings.json refreshed (hooks wired)`));

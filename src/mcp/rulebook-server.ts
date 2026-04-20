@@ -3144,6 +3144,275 @@ export async function startRulebookMcpServer(): Promise<void> {
     }
   );
 
+  // ── v5.4.0 compress tools ──────────────────────────────────────────
+
+  server.registerTool(
+    'rulebook_compress',
+    {
+      title: 'Compress Memory File',
+      description:
+        'Compress a markdown memory file (prose-only rewriter; preserves code, URLs, paths, dates, versions byte-for-byte). Writes a backup to <file>.original.md and replaces the file in place. Returns before/after byte counts and validator result.',
+      inputSchema: {
+        filePath: z.string().describe('Absolute or project-relative path to the .md file to compress'),
+        dryRun: z.boolean().optional().describe('Return the would-be result without writing anything'),
+        projectId: projectIdSchema,
+      },
+    },
+    async (args) => {
+      try {
+        const { readFile, writeFile, fileExists } = await import('../utils/file-system.js');
+        const { compress } = await import('../core/compress/compressor.js');
+        const path = await import('path');
+        const projectRoot = process.cwd();
+        const abs = path.default.isAbsolute(args.filePath)
+          ? args.filePath
+          : path.default.join(projectRoot, args.filePath);
+
+        if (!(await fileExists(abs))) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({ success: false, error: `File not found: ${abs}` }),
+              },
+            ],
+          };
+        }
+
+        const original = await readFile(abs);
+        const result = compress(original);
+
+        if (!result.validation.ok) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: false,
+                  error: 'Validator rejected the compressed output',
+                  violations: result.validation.violations.slice(0, 10),
+                }),
+              },
+            ],
+          };
+        }
+
+        const backupPath = abs.replace(/\.md$/i, '.original.md');
+        if (!args.dryRun) {
+          if (!(await fileExists(backupPath))) {
+            await writeFile(backupPath, original);
+          }
+          await writeFile(abs, result.output);
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                filePath: abs,
+                dryRun: !!args.dryRun,
+                originalBytes: result.validation.stats.originalBytes,
+                compressedBytes: result.validation.stats.compressedBytes,
+                savedPct: Math.round((1 - result.validation.stats.ratio) * 100),
+                retries: result.retries,
+                backup: args.dryRun ? null : backupPath,
+              }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    'rulebook_evals_measure',
+    {
+      title: 'Measure Terse Evals',
+      description:
+        'Run the offline three-arm evaluation measurement (baseline/terse/rulebook-terse). Reads snapshots committed under evals/snapshots/, uses tiktoken when installed (falls back to UTF-8 byte counts otherwise). Returns per-prompt lift, total lift, and pass/fail against arms.json liftThreshold. Does NOT call the Anthropic API — safe for CI without credentials.',
+      inputSchema: {
+        projectId: projectIdSchema,
+      },
+    },
+    async () => {
+      try {
+        const path = await import('path');
+        const root = process.cwd();
+        const measurePath = path.default.resolve(root, 'evals/measure.js');
+        const { existsSync } = await import('fs');
+        // Resolve the project-local evals path so rulebook run from a
+        // user project (no evals/ directory) fails cleanly.
+        const measureModulePath = existsSync(measurePath)
+          ? measurePath
+          : path.default.resolve(root, 'evals/measure.ts');
+        if (!existsSync(measureModulePath)) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: false,
+                  error:
+                    'evals/ directory not found in project — this tool targets the Rulebook repo itself, not downstream projects.',
+                }),
+              },
+            ],
+          };
+        }
+        // Use a bare URL import so Node resolves the project-local file
+        // regardless of where the MCP server was installed from.
+        const mod = (await import(/* @vite-ignore */ measureModulePath)) as {
+          measure: (s: string, a: string) => Promise<unknown>;
+        };
+        const report = await mod.measure(
+          path.default.resolve(root, 'evals/snapshots/results.json'),
+          path.default.resolve(root, 'evals/arms.json')
+        );
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: true, report }) },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    'rulebook_evals_run',
+    {
+      title: 'Run Terse Evals Against Live API',
+      description:
+        'Regenerate evals/snapshots/results.json by calling the Anthropic API for every (prompt, arm) pair. Requires ANTHROPIC_API_KEY in the environment and @anthropic-ai/sdk in the project. Expensive — run only when SKILL.md or prompts change. Use rulebook_evals_measure for the cheap offline comparison.',
+      inputSchema: {
+        projectId: projectIdSchema,
+      },
+    },
+    async () => {
+      try {
+        if (!process.env.ANTHROPIC_API_KEY) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: false,
+                  error: 'ANTHROPIC_API_KEY is not set.',
+                }),
+              },
+            ],
+          };
+        }
+        // Delegate to the CLI script — spawning keeps this non-blocking
+        // and isolates the API dependency from the MCP server process.
+        const { spawn } = await import('child_process');
+        const result: { stdout: string; stderr: string; code: number } = await new Promise(
+          (resolvePromise) => {
+            const child = spawn('npx', ['tsx', 'evals/llm_run.ts'], {
+              cwd: process.cwd(),
+              shell: true,
+            });
+            let stdout = '';
+            let stderr = '';
+            child.stdout.on('data', (d) => (stdout += String(d)));
+            child.stderr.on('data', (d) => (stderr += String(d)));
+            child.on('close', (code) =>
+              resolvePromise({ stdout, stderr, code: code ?? 1 })
+            );
+          }
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: result.code === 0,
+                exitCode: result.code,
+                stdout: result.stdout.slice(-4000),
+                stderr: result.stderr.slice(-2000),
+              }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    'rulebook_compress_list',
+    {
+      title: 'List Compression Candidates',
+      description:
+        'List markdown memory files in the project that are compression candidates (CLAUDE.md, AGENTS.md, AGENTS.override.md, .rulebook/PLANS.md, .rulebook/STATE.md, and all .md under .rulebook/knowledge/ + .rulebook/learnings/). Reports current size + backup state.',
+      inputSchema: {
+        projectId: projectIdSchema,
+      },
+    },
+    async () => {
+      try {
+        const { listCompressCandidates } = await import('../core/compress/discover.js');
+        const candidates = await listCompressCandidates(process.cwd());
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, candidates, count: candidates.length }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

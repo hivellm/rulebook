@@ -1,0 +1,22 @@
+{
+  "arms": [
+    {
+      "id": "baseline",
+      "systemPrompt": ""
+    },
+    {
+      "id": "terse",
+      "systemPrompt": "Answer concisely. No preamble, no restating the question."
+    },
+    {
+      "id": "rulebook-terse",
+      "systemPromptPrefix": "Answer concisely.",
+      "skillFile": "templates/skills/core/rulebook-terse/SKILL.md"
+    }
+  ],
+  "honestDelta": {
+    "numerator": "rulebook-terse",
+    "denominator": "terse"
+  },
+  "liftThreshold": 0.15
+}

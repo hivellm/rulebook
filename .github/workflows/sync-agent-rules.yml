@@ -1,0 +1,59 @@
+name: Sync agent-specific rule files
+
+# Fans out the single-source-of-truth skill files under
+# `templates/skills/core/rulebook-terse*/SKILL.md` into agent-specific
+# drop points (`.cursor/`, `.windsurf/`, `.clinerules/`, `.codex/`, and
+# `.claude/skills/`). Triggered when the source SKILL.md files change
+# on main; commits the regenerated files back with `[skip ci]` so the
+# workflow never loops on its own output.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "templates/skills/core/rulebook-terse/SKILL.md"
+      - "templates/skills/core/rulebook-terse-commit/SKILL.md"
+      - "templates/skills/core/rulebook-terse-review/SKILL.md"
+      - "scripts/sync-agent-rules.ts"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run fan-out
+        run: npx tsx scripts/sync-agent-rules.ts
+
+      - name: Commit + push synced files
+        run: |
+          if [[ -z "$(git status --porcelain)" ]]; then
+            echo "No projection changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add \
+            .claude/skills/rulebook-terse*/SKILL.md \
+            .cursor/rules/rulebook-terse*.mdc \
+            .windsurf/rules/rulebook-terse*.md \
+            .clinerules/rulebook-terse*.md \
+            .codex/rulebook-terse*.md 2>/dev/null || true
+          if [[ -n "$(git diff --staged --name-only)" ]]; then
+            git commit -m "chore(sync): regenerate agent rule projections [skip ci]"
+            git push
+          fi

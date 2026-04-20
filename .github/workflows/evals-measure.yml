@@ -1,0 +1,60 @@
+name: Evals — measure (offline)
+
+# Runs on every PR that touches the terse skill, its dependencies, the
+# prompt set, or the eval harness itself. No API key required — uses
+# committed snapshots under `evals/snapshots/` and offline `tiktoken`
+# or byte-count measurement. Posts a Markdown delta table as a PR
+# comment and gates the merge on the skill-vs-terse lift threshold.
+
+on:
+  pull_request:
+    paths:
+      - "templates/skills/core/rulebook-terse*/**"
+      - "templates/rules/**"
+      - "evals/**"
+      - "src/hooks/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install tiktoken (ephemeral)
+        run: npm install --no-save tiktoken
+
+      - name: Run offline measurement
+        id: measure
+        run: |
+          set -o pipefail
+          npx tsx evals/measure.ts > measure.out
+          tail -n 5 measure.out
+
+      - name: Generate Markdown report
+        run: npx tsx evals/report.ts --out evals-report.md
+
+      - name: Post PR comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          header: rulebook-terse-evals
+          path: evals-report.md
+
+      - name: Gate merge on threshold
+        run: |
+          if grep -q "Status: ❌" evals-report.md; then
+            echo "Eval threshold FAILED — see PR comment above."
+            exit 1
+          fi

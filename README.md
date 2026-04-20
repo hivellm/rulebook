@@ -7,7 +7,6 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
 [![Tests](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/test.yml?label=tests&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/test.yml)
-[![Coverage](https://img.shields.io/codecov/c/github/hivellm/rulebook?logo=codecov&logoColor=white)](https://codecov.io/gh/hivellm/rulebook)
 [![Build](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/build.yml?label=build&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/build.yml)
 [![Lint](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/lint.yml?label=lint&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/lint.yml)
 
@@ -44,7 +43,7 @@ AI coding assistants produce inconsistent, error-prone code without clear guidel
 |------|-----|
 | **Rules for every AI tool** | `AGENTS.md` + `CLAUDE.md` + `.cursor/rules/` + Gemini/Copilot/Windsurf configs — all generated from a single source of truth |
 | **Quality gates** | Pre-commit hooks (lint, type-check, format) + pre-push hooks (build, tests) — language-aware, cross-platform |
-| **40+ MCP tools** | Task management, persistent memory, skills, decisions, knowledge, learnings, Ralph loop, workspace — all via Model Context Protocol |
+| **44+ MCP tools** | Task management, persistent memory, skills, decisions, knowledge, learnings, Ralph loop, workspace, terse compression + evals — all via Model Context Protocol |
 | **Structural enforcement** | `PreToolUse` hooks block forbidden patterns (deferred tasks, stubs/TODOs, manual task files) before edits reach disk |
 | **Session continuity** | Persistent memory across sessions, automatic handoff at context limits, STATE.md live status |
 | **Autonomous task solving** | Ralph loop: multi-iteration AI agent with quality gates, learning extraction, pause/resume |
@@ -84,6 +83,43 @@ rulebook memory search "authentication approach"   # Hybrid search
 rulebook memory save "Chose JWT over sessions"     # Save context
 rulebook memory stats                               # DB health
 ```
+
+### Terse Mode — Output & Input Compression (v5.4.0)
+
+Structurally-enforced output compression via a SessionStart hook that injects a filtered SKILL.md and a per-turn UserPromptSubmit attention anchor. Four intensity levels aligned with Rulebook's agent tiers — `off` for opus-class reasoning, `brief` for sonnet, `terse` for haiku, `ultra` for CI/automation. Auto-clarity drops compression for security warnings, destructive ops, and quality-gate failures.
+
+```bash
+/rulebook-terse              # Activate using tier default
+/rulebook-terse ultra        # Maximum compression
+/rulebook-terse off          # Disable
+```
+
+Paired with `rulebook compress` — input-side compression for memory files (`CLAUDE.md`, `AGENTS.override.md`, `.rulebook/PLANS.md`):
+
+```bash
+rulebook compress --check CLAUDE.md          # Report ratio + validator
+rulebook compress --dry-run CLAUDE.md        # Preview
+rulebook compress CLAUDE.md                  # Rewrite + backup
+rulebook compress --restore CLAUDE.md        # Revert from backup
+```
+
+Preserves code blocks, URLs, file paths, dates, and version numbers byte-for-byte.
+
+**Measured** against a three-arm eval harness (`baseline` / `terse` / `rulebook-terse`) on 10 real prompts executed through the Claude Code CLI, tokens counted with `tiktoken`:
+
+| Arm | Total tokens | vs baseline | vs terse |
+|---|---:|---:|---:|
+| `baseline` (no system prompt) | 2,696 | — | −42% |
+| `terse` (control: `Answer concisely.`) | 4,611 | +71% | — |
+| `rulebook-terse` (skill active) | **1,940** | **−28%** | **−58%** |
+
+Honest delta is **`rulebook-terse` vs `terse` = 57.9% average lift**, per-prompt range **34% → 77%**. All ten prompts clear the 15% threshold individually. Interestingly, the `terse` control is 71% *larger* than `baseline` — `Answer concisely.` alone steers the model toward structured output (headings, code blocks), which inflates tokens. The skill's explicit rules reverse that effect.
+
+Regenerate snapshots against live Claude: `npx tsx evals/cli_run.ts` (shells out to `claude -p`, reuses existing CLI auth). Re-measure offline: `npx tsx evals/measure.ts`.
+
+Auto-activates after `rulebook init` or `rulebook update` — SessionStart hook writes to `.rulebook/.terse-mode`, UserPromptSubmit hook emits a ~45-token attention anchor per user message. Opt-out: set `.rulebook/rulebook.json` → `"terse": {"enabled": false}`. Override level: `"terse": {"defaultMode": "brief"}` or export `RULEBOOK_TERSE_MODE=ultra`.
+
+See [docs/analysis/caveman/](docs/analysis/caveman/) for the design rationale, [docs/guides/rulebook-terse.md](docs/guides/rulebook-terse.md) for the user guide, and `templates/hooks/terse-*.sh` for the hook source.
 
 ### Task Management
 
@@ -139,7 +175,7 @@ Cross-platform (Node.js, no `jq` dependency).
 
 ## MCP Server
 
-40+ MCP tools exposed via stdio transport. Zero configuration after `rulebook mcp init`.
+44+ MCP tools exposed via stdio transport. Zero configuration after `rulebook mcp init`.
 
 ```bash
 rulebook mcp init    # One-time setup — configures .mcp.json automatically
@@ -156,6 +192,8 @@ rulebook mcp init    # One-time setup — configures .mcp.json automatically
 | Decisions (4) | Create, list, show, update | `rulebook_decision_create`, `rulebook_decision_list` |
 | Learnings (3) | Capture, list, promote | `rulebook_learn_capture`, `rulebook_learn_list` |
 | Analysis (3) | Create, list, show | `rulebook_analysis_create`, `rulebook_analysis_list` |
+| Compress (2) | Compress memory files, list candidates | `rulebook_compress`, `rulebook_compress_list` |
+| Evals (2) | Offline measurement, live API regeneration | `rulebook_evals_measure`, `rulebook_evals_run` |
 | Other (3+) | Doctor, rules list, blockers, session, codebase | `rulebook_doctor_run`, `rulebook_rules_list` |
 
 All tools accept optional `projectId` for workspace routing.
@@ -344,6 +382,7 @@ npm run build
 
 - **[Ralph](https://github.com/snarktank/ralph)** — Inspired the autonomous loop integration (multi-iteration AI task solving with fresh context per iteration)
 - **[OpenSpec](https://github.com/Fission-AI/openspec)** — Influenced the task management format (delta-based specs, Given/When/Then scenarios, requirement-focused organization)
+- **[Caveman](https://github.com/JuliusBrussee/caveman)** — Grounding for the v5.4.0 terse-mode design (SessionStart + UserPromptSubmit hook pattern, intensity-filtered SKILL.md injection, three-arm eval harness). See [docs/analysis/caveman/](docs/analysis/caveman/) for the full analysis.
 
 ---
 

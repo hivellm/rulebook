@@ -483,6 +483,30 @@ describe('MemoryStore — searchLike fallback (FTS5 unavailable)', () => {
   let dbPath: string;
   let store: MemoryStore;
 
+  /**
+   * Load better-sqlite3 on demand. Returns null on platforms where the
+   * native bindings are not built (e.g. Windows dev env without MSVC +
+   * node-gyp). The MemoryStore itself falls back to sql.js in that
+   * scenario — and sql.js does not implement FTS5, so searchBM25
+   * automatically takes the searchLike path without needing us to drop
+   * the FTS5 table at all. When better-sqlite3 IS available, we drop
+   * the FTS5 table explicitly to force the same code path.
+   */
+  async function loadBetterSqlite3(): Promise<typeof import('better-sqlite3') | null> {
+    try {
+      const mod = await import('better-sqlite3');
+      // Force a constructor call — the bindings-not-found error only throws
+      // when Database is actually instantiated, not on import alone.
+      const probePath = join(tmpdir(), `bsqlite3-probe-${Date.now()}.db`);
+      const probe = new mod.default(probePath);
+      probe.close();
+      rmSync(probePath, { force: true });
+      return mod;
+    } catch {
+      return null;
+    }
+  }
+
   beforeEach(async () => {
     testDir = join(tmpdir(), `rulebook-store-like-${Date.now()}`);
     mkdirSync(join(testDir, 'memory'), { recursive: true });
@@ -490,13 +514,19 @@ describe('MemoryStore — searchLike fallback (FTS5 unavailable)', () => {
     store = new MemoryStore(dbPath);
     await store.initialize();
 
-    // Drop the FTS virtual table AFTER initialization so searchBM25 falls through to searchLike.
-    // We must drop on the live connection held by store (no direct access), so we
-    // use a second connection to the same WAL file with checkpoint forced first.
+    const betterSqlite3 = await loadBetterSqlite3();
+    if (betterSqlite3 === null) {
+      // sql.js backend — no FTS5 table exists, so searchBM25 already falls
+      // through to searchLike. Nothing to drop.
+      return;
+    }
+
+    // better-sqlite3 backend — drop the FTS virtual table so searchBM25
+    // falls through to searchLike.
     store.saveToDisk(); // checkpoint WAL so second connection sees all data
     store.close();
 
-    const Database = (await import('better-sqlite3')).default;
+    const Database = betterSqlite3.default;
     const db = new Database(dbPath);
     try {
       db.exec('DROP TABLE IF EXISTS memory_fts');

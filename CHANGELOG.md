@@ -5,6 +5,98 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.0] - 2026-04-20
+
+### Added — “Terse mode”: structurally-enforced output compression
+
+Full implementation of the design in `docs/analysis/caveman/`. Inspired by the `JuliusBrussee/caveman` Claude Code skill; adapted to Rulebook's existing tier system, hook pipeline, and MCP server.
+
+**Output compression — `rulebook-terse` skill family.** Three independent skills under `templates/skills/core/`:
+
+- `rulebook-terse` — four intensity levels (`off`/`brief`/`terse`/`ultra`) aligned with Rulebook's Research/Standard/Core agent tiers. Auto-clarity escape hatch drops compression for security warnings, destructive-op confirmations, quality-gate failures, multi-step sequences, and user confusion. Code blocks + tests + commits + specs pass through unchanged.
+- `rulebook-terse-commit` — Conventional Commits with ≤50-char subject, body required only for breaking changes / security fixes / migrations / reverts, no AI attribution.
+- `rulebook-terse-review` — one-line PR review comments in `L<line>: <severity> <problem>. <fix>.` format with 🔴/🟡/🔵/❓ severity prefixes; auto-clarity drops to prose for CVE-class findings and architectural disagreements.
+
+**Shell hooks — `templates/hooks/`.** Two Claude Code hooks coordinated via a size-capped, symlink-safe flag file. Pure bash + PowerShell (matches Rulebook's existing hook convention — `on-compact-reinject.sh`, `enforce-*.sh`, etc.). JSON parsing uses inline `node -e` (always available in Claude Code hook env). No jq dependency.
+
+- `terse-activate.sh` / `.ps1` (SessionStart): resolves mode via env → project config → user-global → agent tier → `terse` default, writes to `.rulebook/.terse-mode`, loads SKILL.md, filters the intensity table + example lines to the active level only (via awk in bash, regex in PS1), emits the filtered body as hidden `additionalContext`.
+- `terse-mode-tracker.sh` / `.ps1` (UserPromptSubmit): parses 7 slash commands + natural-language activation/deactivation, updates flag, emits ~45-token attention anchor as `hookSpecificOutput` JSON for persistent modes only (commit/review sub-skills get no anchor — they own the turn's behavior).
+- Safe-write invariants implemented directly in bash/PowerShell: `mkdir -p`, `[ -L ]` symlink refusal on target + parent, `umask 077` + `mktemp` + atomic `mv -f`. Size-capped reads (32 bytes) with whitelist validation. Closes symlink-clobber + symlink-exfil local-attack surfaces from the Caveman analysis.
+- `src/hooks/safe-flag-io.ts` retained as a TS library (testable, reusable) for potential future consumers — not a hook entry point.
+- Wired into `claude-settings-manager.ts` via new `terseMode` field on `ClaudeSettingsDesire`. `installHookScripts` copies the four `.sh`/`.ps1` variants into `.claude/hooks/` alongside every other shell hook.
+- `init.ts` + `update.ts` pass `terseMode: rulebookCfg?.terse?.enabled ?? true` by default. Opt-out via `.rulebook/rulebook.json` → `"terse": {"enabled": false}`.
+
+**Input-side compression — `rulebook compress` CLI + MCP.** Reduces tokens the agent READS on every session:
+
+- `rulebook compress <file>` — four subcommands: default rewrite + `.original.md` backup, `--dry-run` (stats only), `--restore` (from backup), `--check` (ratio + validator).
+- `rulebook_compress` + `rulebook_compress_list` MCP tools for agent/automation use.
+- Deterministic prose rewriter (filler words, pleasantry prefixes, redundant-phrase replacements, hedging patterns). Code blocks, inline code, URLs, file paths, dates, and version numbers round-trip byte-identically. Validator rejects any output that mutates a protected region. 2-retry budget that progressively disables transformation classes.
+- Doctor check `Compression backups` warns on backups with <10% savings.
+- Observed on a fluff-heavy fixture: 19% savings with validator OK.
+
+**Evaluation harness — `evals/`.** Three-arm comparison (`baseline` / `terse` / `rulebook-terse`). Honest delta is pinned to `rulebook-terse` vs `terse` — comparing to baseline would conflate the skill with generic brevity-asking.
+
+- `measure.ts` — offline measurement, dynamic `tiktoken` import with UTF-8 byte-count fallback.
+- `llm_run.ts` — snapshot regeneration via `@anthropic-ai/sdk` (optional dep, dynamic import).
+- `report.ts` — Markdown delta table for PR comments.
+- `rulebook_evals_measure` + `rulebook_evals_run` MCP tools.
+- Doctor check `Terse evals` warns on snapshots >30 days old.
+- Committed fixture: 10 prompts × 3 arms, **35% average lift** over the terse control (threshold 15% → PASS).
+
+**CI integration — .github/workflows/.**
+
+- `evals-measure.yml` — runs on every PR that touches terse source files; installs `tiktoken` ephemerally, posts a sticky Markdown comment with the per-prompt delta table, fails the gate when the threshold is missed.
+- `evals-snapshot.yml` — manual-dispatch workflow that regenerates snapshots via the live API using `ANTHROPIC_API_KEY`; commits back with `[skip ci]`.
+- `sync-agent-rules.yml` — fans out the three source SKILL.md files to `.claude/`, `.cursor/`, `.windsurf/`, `.clinerules/`, `.codex/` on every push to `main`. Commits back with `[skip ci]`.
+
+**Fan-out script — `scripts/sync-agent-rules.ts`.** Single source of truth, 5 agent-specific projections per skill, 15 files total. Strips source YAML frontmatter and prepends platform-specific frontmatter (Cursor `alwaysApply`, Windsurf `trigger`). Banner marks synced files as auto-generated.
+
+**Test coverage.** 194 tests across the terse suite, split into:
+
+- 22 — `safe-flag-io` TS library (symlink-safe read/write invariants, 4 Windows-skip)
+- 37 — `rulebook-terse-foundations` (spec + SKILL.md structure)
+- 9 — `rulebook-terse-skill-discovery` (via `SkillsManager`)
+- 18 — `rulebook-terse-sub-skills-discovery` (commit + review independence)
+- 9 — `rulebook-terse-templates-wiring` (`installSkillsFromSource`, filter correctness)
+- 31 — `terse-hooks-shell` (subprocess tests invoking real `.sh` hooks: mode resolution, SKILL.md filter, slash-command parsing, NL activation, attention-anchor emission, symlink-safe clobber refusal)
+- 9 — `claude-settings-manager-terse` (settings.json wiring)
+- 19 — `compress-validator` + 16 — `compress-compressor` + 8 — `compress-discover`
+- 8 — `evals-harness` (measure + Markdown render)
+- 12 — `sync-agent-rules` (fan-out to agent-specific rule locations)
+
+**Measured compression (live Claude CLI, 10 prompts, tiktoken):**
+
+| Arm | Total tokens | vs baseline | vs terse |
+|---|---:|---:|---:|
+| `baseline` (no system prompt) | 2,696 | — | −42% |
+| `terse` (control: `Answer concisely.`) | 4,611 | +71% | — |
+| `rulebook-terse` (skill active) | 1,940 | **−28%** | **−58%** |
+
+Honest delta = **rulebook-terse vs terse = 57.9% average lift**. Per-prompt range 34% → 77%. All 10 prompts clear the 15% threshold individually. Notable finding: the `terse` control inflates 71% above `baseline` because `Answer concisely.` alone steers the model to structured headings + code blocks, which are token-heavy. The skill's explicit drop-rules reverse that effect — the final token count is also below baseline.
+
+Snapshots committed under `evals/snapshots/results.json` (regenerate via `npx tsx evals/cli_run.ts` — uses Claude Code CLI, no API-key env var needed).
+
+See `docs/analysis/caveman/03-evaluation.md` for methodology.
+
+### Fixed
+
+- `tests/memory-coverage.test.ts` `searchLike fallback` tests now work on both sqlite backends. Previously failed in Windows dev environments where `better-sqlite3` native bindings are not built; the MemoryStore falls back to `sql.js` there, and `sql.js` has no FTS5 so the `searchLike` path is already the default.
+
+### Changed
+
+- `rulebook doctor` now runs seven checks (added `Compression backups` + `Terse evals` freshness).
+- `rulebook init` / `rulebook update` install the three terse skills into `.claude/skills/` by default (auto-detected as core skills).
+- `.rulebook/specs/RULEBOOK_TERSE.md` is the new project-level spec for the feature.
+- `.rulebook/specs/RULEBOOK_MCP.md` documents the three new MCP tools (`rulebook_compress`, `rulebook_compress_list`, `rulebook_evals_measure`, `rulebook_evals_run`).
+
+### Migration
+
+No breaking changes — v5.4.0 is fully additive over v5.3.x.
+
+- **Fresh install (npm)**: `npm install @hivehub/rulebook@5.4.0`, then `rulebook init`.
+- **Upgrading from v5.3.x**: `rulebook update` installs the terse skills and wires the hooks. Mode can be set with `/rulebook-terse brief|terse|ultra|off` or via the `terse.defaultMode` field in `.rulebook/rulebook.json`. Export `RULEBOOK_TERSE_MODE` to override per session.
+- **Opt-out**: skip `rulebook update` and continue using v5.3.x features. The new skill family can also be disabled per-project with `rulebook skill remove rulebook-terse` after install.
+
 ## [5.3.3] - 2026-04-10
 
 ### Fixed

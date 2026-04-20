@@ -306,6 +306,11 @@ export interface RulebookConfig {
     tokenizer?: 'auto' | 'chars' | 'tiktoken'; // default: 'auto'
     maxHistoryFiles?: number; // default: 50
   };
+  // Terse mode — output-verbosity compression (v5.4.0)
+  terse?: {
+    enabled?: boolean; // default: true — installs skills + hooks on init/update
+    defaultMode?: 'off' | 'brief' | 'terse' | 'ultra' | 'commit' | 'review'; // default: 'terse'
+  };
   // Skills configuration (v2.0)
   skills?: {
     enabled: string[]; // List of enabled skill IDs

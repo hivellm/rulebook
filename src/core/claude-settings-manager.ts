@@ -28,6 +28,13 @@ export interface ClaudeSettingsDesire {
   sessionHandoff?: boolean;
   /** Enable PreToolUse enforcement hooks (no-deferred, no-shortcuts, mcp-for-tasks). */
   qualityEnforcement?: boolean;
+  /**
+   * Enable rulebook-terse hooks (v5.4.0). Installs SessionStart hook
+   * `terse-activate.js` and UserPromptSubmit hook `terse-mode-tracker.js`,
+   * both invoked as `node <path>`. Requires `npm run build` to have
+   * produced `dist/hooks/*.js`.
+   */
+  terseMode?: boolean;
 }
 
 interface HookCommand {
@@ -57,6 +64,8 @@ const SIGNATURES = {
   noDeferred: 'enforce-no-deferred',
   noShortcuts: 'enforce-no-shortcuts',
   mcpForTasks: 'enforce-mcp-for-tasks',
+  terseActivate: 'terse-activate.sh',
+  terseModeTracker: 'terse-mode-tracker.sh',
 } as const;
 
 export function getClaudeSettingsPath(projectRoot: string): string {
@@ -145,6 +154,27 @@ export async function applyClaudeSettings(
     removeHook(existing.hooks, 'SessionStart', SIGNATURES.handoffResume);
   }
 
+  // rulebook-terse: SessionStart + UserPromptSubmit (v5.4.0)
+  if (desire.terseMode) {
+    upsertHook(
+      existing.hooks,
+      'SessionStart',
+      undefined,
+      SIGNATURES.terseActivate,
+      buildCommandFor(projectRoot, 'terse-activate.sh')
+    );
+    upsertHook(
+      existing.hooks,
+      'UserPromptSubmit',
+      undefined,
+      SIGNATURES.terseModeTracker,
+      buildCommandFor(projectRoot, 'terse-mode-tracker.sh')
+    );
+  } else {
+    removeHook(existing.hooks, 'SessionStart', SIGNATURES.terseActivate);
+    removeHook(existing.hooks, 'UserPromptSubmit', SIGNATURES.terseModeTracker);
+  }
+
   // Quality enforcement hooks (no-deferred, no-shortcuts, mcp-for-tasks)
   if (desire.qualityEnforcement) {
     for (const [sig, script] of [
@@ -183,9 +213,15 @@ function buildCommandFor(projectRoot: string, scriptName: string): string {
   return `bash ${scriptPath.replace(/\\/g, '/')}`;
 }
 
+type HookEvent =
+  | 'PreToolUse'
+  | 'SessionStart'
+  | 'Stop'
+  | 'UserPromptSubmit';
+
 function upsertHook(
   hooks: NonNullable<SettingsShape['hooks']>,
-  event: 'PreToolUse' | 'SessionStart' | 'Stop',
+  event: HookEvent,
   matcher: string | undefined,
   signature: string,
   command: string
@@ -212,7 +248,7 @@ function upsertHook(
 
 function removeHook(
   hooks: NonNullable<SettingsShape['hooks']>,
-  event: 'PreToolUse' | 'SessionStart' | 'Stop',
+  event: HookEvent,
   signature: string
 ): void {
   const list = hooks[event] as HookEntry[] | undefined;
@@ -242,31 +278,37 @@ async function installHookScripts(
   projectRoot: string,
   desire: ClaudeSettingsDesire
 ): Promise<void> {
-  const sourceDir = path.join(getTemplatesDir(), 'hooks');
+  const templatesHookDir = path.join(getTemplatesDir(), 'hooks');
   const destDir = path.join(projectRoot, '.claude', 'hooks');
   await ensureDir(destDir);
 
-  const scripts: string[] = [];
+  const shellScripts: string[] = [];
   if (desire.teamEnforcement) {
-    scripts.push('enforce-team-for-background-agents.sh');
-    scripts.push('enforce-team-for-background-agents.ps1');
+    shellScripts.push('enforce-team-for-background-agents.sh');
+    shellScripts.push('enforce-team-for-background-agents.ps1');
   }
   if (desire.compactContextReinject) {
-    scripts.push('on-compact-reinject.sh');
+    shellScripts.push('on-compact-reinject.sh');
   }
   if (desire.sessionHandoff) {
-    scripts.push('check-context-and-handoff.sh');
-    scripts.push('resume-from-handoff.sh');
+    shellScripts.push('check-context-and-handoff.sh');
+    shellScripts.push('resume-from-handoff.sh');
   }
   if (desire.qualityEnforcement) {
-    scripts.push('enforce-no-deferred.sh');
-    scripts.push('enforce-no-shortcuts.sh');
-    scripts.push('enforce-mcp-for-tasks.sh');
+    shellScripts.push('enforce-no-deferred.sh');
+    shellScripts.push('enforce-no-shortcuts.sh');
+    shellScripts.push('enforce-mcp-for-tasks.sh');
+  }
+  if (desire.terseMode) {
+    shellScripts.push('terse-activate.sh');
+    shellScripts.push('terse-activate.ps1');
+    shellScripts.push('terse-mode-tracker.sh');
+    shellScripts.push('terse-mode-tracker.ps1');
   }
 
-  for (const name of scripts) {
-    const src = path.join(sourceDir, name);
-    if (!(await fileExists(src))) continue; // template not present yet (other feature task)
+  for (const name of shellScripts) {
+    const src = path.join(templatesHookDir, name);
+    if (!(await fileExists(src))) continue; // template not present yet
     const content = await readFile(src);
     await writeFile(path.join(destDir, name), content);
   }
