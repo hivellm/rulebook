@@ -571,11 +571,13 @@ export async function initCommand(options: {
         const rulebookCfg = await configManager.loadConfig();
         const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
         const handoffEnabled = rulebookCfg?.handoff?.enabled ?? true;
+        const terseEnabled = rulebookCfg?.terse?.enabled ?? true;
         await applyClaudeSettings(cwd, {
           teamEnforcement: multiAgentEnabled,
           sessionHandoff: handoffEnabled,
           compactContextReinject: true,
           qualityEnforcement: true,
+          terseMode: terseEnabled,
         });
       } catch (err) {
         console.log(

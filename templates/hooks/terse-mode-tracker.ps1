@@ -48,7 +48,7 @@ function Resolve-DefaultMode {
       if ($validModes -contains $m) { return $m }
     }
   }
-  return 'brief'
+  return 'terse'
 }
 
 function Write-SafeFlag([string]$content) {

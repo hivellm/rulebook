@@ -38,7 +38,7 @@ function Resolve-Mode {
       if ($validModes -contains $m) { return $m }
     }
   }
-  return 'brief'
+  return 'terse'
 }
 
 function Get-ConfigMode([string]$path) {

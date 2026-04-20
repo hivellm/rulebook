@@ -65,7 +65,7 @@ resolve_default_mode() {
     " "$USER_CONFIG" 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]' || true)"
     if [ -n "$m" ] && [[ "$m" =~ $VALID_MODES_RE ]]; then printf '%s' "$m"; return; fi
   fi
-  printf 'brief'
+  printf 'terse'
 }
 
 safe_write_flag() {

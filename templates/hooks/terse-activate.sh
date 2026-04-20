@@ -16,7 +16,7 @@
 #   2. $PROJECT_ROOT/.rulebook/rulebook.json → terse.defaultMode
 #   3. $XDG_CONFIG_HOME/rulebook/config.json → terse.defaultMode
 #   4. ~/.config/rulebook/config.json       → terse.defaultMode
-#   5. "brief"
+#   5. "terse"
 
 set -u
 
@@ -86,7 +86,7 @@ resolve_mode() {
     fi
   fi
 
-  printf 'brief'
+  printf 'terse'
 }
 
 # Symlink-safe flag-file write. Refuses if target or parent is a

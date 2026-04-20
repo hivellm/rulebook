@@ -19,7 +19,7 @@ Full implementation of the design in `docs/analysis/caveman/`. Inspired by the `
 
 **TS hooks — src/hooks/.** Two Claude Code hooks coordinated via a size-capped, symlink-safe flag file:
 
-- `terse-activate.ts` (SessionStart): resolves mode via `terse-config.ts` (env → project config → user-global → agent tier → `brief`), writes to `.rulebook/.terse-mode`, loads SKILL.md, filters the intensity table + examples to the active level, emits the filtered body as hidden `additionalContext`.
+- `terse-activate.sh` / `.ps1` (SessionStart): resolves mode via env → project config → user-global → agent tier → `terse` default, writes to `.rulebook/.terse-mode`, loads SKILL.md, filters the intensity table + examples to the active level, emits the filtered body as hidden `additionalContext`.
 - `terse-mode-tracker.ts` (UserPromptSubmit): parses 7 slash commands + natural-language activation/deactivation, emits ~45-token attention anchor for persistent modes (skipped for commit/review independent modes).
 - `safe-flag-io.ts`: `lstat` target + parent, `O_NOFOLLOW`, atomic temp+rename, `0600`, size cap `MAX_FLAG_BYTES=32`, whitelist validation. Closes symlink-clobber and symlink-exfil local-attack surfaces. Shared module for any future flag-file coordination.
 - Wired into `claude-settings-manager.ts` via new `terseMode` field on `ClaudeSettingsDesire`. `installHookScripts` now copies compiled hooks from `dist/hooks/` alongside the existing shell hooks.

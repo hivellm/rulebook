@@ -17,7 +17,7 @@ Rulebook Terse makes the agent speak less — drops filler, hedging, pleasantrie
 | `terse` | Read-only exploration, research, doc lookups (Research tier / haiku). | Drop articles. Fragments OK. Short synonyms. |
 | `ultra` | CI / non-interactive automation. | Abbreviate, arrows for causality, one word when enough. |
 
-Default intensity resolves from: `RULEBOOK_TERSE_MODE` env → `.rulebook/rulebook.json` `terse.defaultMode` → active agent tier → `brief`.
+Default intensity resolves from: `RULEBOOK_TERSE_MODE` env → `.rulebook/rulebook.json` `terse.defaultMode` → active agent tier → `terse`.
 
 ## Activation
 
