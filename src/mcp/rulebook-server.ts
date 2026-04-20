@@ -3239,6 +3239,143 @@ export async function startRulebookMcpServer(): Promise<void> {
   );
 
   server.registerTool(
+    'rulebook_evals_measure',
+    {
+      title: 'Measure Terse Evals',
+      description:
+        'Run the offline three-arm evaluation measurement (baseline/terse/rulebook-terse). Reads snapshots committed under evals/snapshots/, uses tiktoken when installed (falls back to UTF-8 byte counts otherwise). Returns per-prompt lift, total lift, and pass/fail against arms.json liftThreshold. Does NOT call the Anthropic API — safe for CI without credentials.',
+      inputSchema: {
+        projectId: projectIdSchema,
+      },
+    },
+    async () => {
+      try {
+        const path = await import('path');
+        const root = process.cwd();
+        const measurePath = path.default.resolve(root, 'evals/measure.js');
+        const { existsSync } = await import('fs');
+        // Resolve the project-local evals path so rulebook run from a
+        // user project (no evals/ directory) fails cleanly.
+        const measureModulePath = existsSync(measurePath)
+          ? measurePath
+          : path.default.resolve(root, 'evals/measure.ts');
+        if (!existsSync(measureModulePath)) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: false,
+                  error:
+                    'evals/ directory not found in project — this tool targets the Rulebook repo itself, not downstream projects.',
+                }),
+              },
+            ],
+          };
+        }
+        // Use a bare URL import so Node resolves the project-local file
+        // regardless of where the MCP server was installed from.
+        const mod = (await import(/* @vite-ignore */ measureModulePath)) as {
+          measure: (s: string, a: string) => Promise<unknown>;
+        };
+        const report = await mod.measure(
+          path.default.resolve(root, 'evals/snapshots/results.json'),
+          path.default.resolve(root, 'evals/arms.json')
+        );
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ success: true, report }) },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    'rulebook_evals_run',
+    {
+      title: 'Run Terse Evals Against Live API',
+      description:
+        'Regenerate evals/snapshots/results.json by calling the Anthropic API for every (prompt, arm) pair. Requires ANTHROPIC_API_KEY in the environment and @anthropic-ai/sdk in the project. Expensive — run only when SKILL.md or prompts change. Use rulebook_evals_measure for the cheap offline comparison.',
+      inputSchema: {
+        projectId: projectIdSchema,
+      },
+    },
+    async () => {
+      try {
+        if (!process.env.ANTHROPIC_API_KEY) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: false,
+                  error: 'ANTHROPIC_API_KEY is not set.',
+                }),
+              },
+            ],
+          };
+        }
+        // Delegate to the CLI script — spawning keeps this non-blocking
+        // and isolates the API dependency from the MCP server process.
+        const { spawn } = await import('child_process');
+        const result: { stdout: string; stderr: string; code: number } = await new Promise(
+          (resolvePromise) => {
+            const child = spawn('npx', ['tsx', 'evals/llm_run.ts'], {
+              cwd: process.cwd(),
+              shell: true,
+            });
+            let stdout = '';
+            let stderr = '';
+            child.stdout.on('data', (d) => (stdout += String(d)));
+            child.stderr.on('data', (d) => (stderr += String(d)));
+            child.on('close', (code) =>
+              resolvePromise({ stdout, stderr, code: code ?? 1 })
+            );
+          }
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: result.code === 0,
+                exitCode: result.code,
+                stdout: result.stdout.slice(-4000),
+                stderr: result.stderr.slice(-2000),
+              }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.registerTool(
     'rulebook_compress_list',
     {
       title: 'List Compression Candidates',

@@ -1,3 +1,10 @@
 Explain why a React component might re-render unnecessarily and how to fix it.
 Describe how database connection pooling works and when to use it.
 Review this diff line: `if (user.email) { sendEmail(user.email); }` — does it have any bugs?
+Explain the difference between git rebase and git merge.
+Walk me through setting up a PostgreSQL connection pool in Node.js with typical settings.
+Refactor this callback-based function to use async/await.
+Compare microservices and monolithic architectures — when would you pick each?
+What are the typical signs of a database race condition and how do you debug one?
+Write a Dockerfile for a Node.js app with a multi-stage build.
+Explain how a React error boundary works and when it catches or misses errors.

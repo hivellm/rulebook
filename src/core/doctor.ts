@@ -35,6 +35,7 @@ export async function runDoctor(projectRoot: string): Promise<DoctorReport> {
   await checkOverrideConflicts(projectRoot, checks);
   await checkMissingFiles(projectRoot, checks);
   await checkCompressionBackups(projectRoot, checks);
+  await checkEvalsFreshness(projectRoot, checks);
 
   return {
     checks,
@@ -234,6 +235,38 @@ async function checkCompressionBackups(
       name: 'Compression backups',
       status: 'pass',
       message: `${withBackups.length} healthy compression(s) present`,
+    });
+  }
+}
+
+async function checkEvalsFreshness(
+  root: string,
+  checks: DoctorCheck[]
+): Promise<void> {
+  const snapshotPath = path.join(root, 'evals', 'snapshots', 'results.json');
+  if (!(await fileExists(snapshotPath))) {
+    checks.push({
+      name: 'Terse evals',
+      status: 'pass',
+      message: 'No evals/ directory (not required for downstream projects)',
+    });
+    return;
+  }
+  const { promises: fs } = await import('fs');
+  const stat = await fs.stat(snapshotPath);
+  const ageDays = (Date.now() - stat.mtimeMs) / (1000 * 60 * 60 * 24);
+  const MAX_AGE = 30;
+  if (ageDays > MAX_AGE) {
+    checks.push({
+      name: 'Terse evals',
+      status: 'warn',
+      message: `evals/snapshots/results.json is ${Math.floor(ageDays)} days old (threshold ${MAX_AGE}). Regenerate with evals-snapshot workflow.`,
+    });
+  } else {
+    checks.push({
+      name: 'Terse evals',
+      status: 'pass',
+      message: `evals snapshot is fresh (${Math.floor(ageDays)} days old)`,
     });
   }
 }

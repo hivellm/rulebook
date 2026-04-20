@@ -27,16 +27,24 @@ evals/
 └── report.ts                       # TODO (phase 4): Markdown delta-table output
 ```
 
-## Current status (phase 0 smoke test)
+## Status
 
-This is a scaffold to validate the harness shape end-to-end before phase 4 lands the full Anthropic-API + `tiktoken` integration. Right now:
+Phase 4 complete. The harness is fully wired:
 
-- `arms.json` and `prompts/en.txt` have minimal fixture data (3 prompts, 3 arms).
-- `snapshots/results.json` is a hand-authored fixture — not a real API snapshot.
-- `measure.ts` uses byte counts as a stand-in for token counts. Phase 4 replaces this with `tiktoken`.
-- `llm_run.ts` + `report.ts` are deferred to phase 4.
-
-Running `measure.ts` on the fixture should produce a sensible per-arm table, demonstrating the shape of the CI-facing comparison.
+- `arms.json` defines three arms + `liftThreshold` + `honestDelta`.
+- `prompts/en.txt` has 10 representative prompts (add to this file to
+  extend coverage).
+- `snapshots/results.json` is a hand-authored fixture for the initial
+  commit. Regeneration is done by `llm_run.ts` + the
+  `evals-snapshot` GitHub Actions workflow (both require
+  `ANTHROPIC_API_KEY`).
+- `measure.ts` uses `tiktoken` when installed (`npm i --save-dev tiktoken`
+  or `npm install --no-save tiktoken` in CI) and falls back to UTF-8
+  byte counts otherwise. Ratios between arms are stable in both modes;
+  absolute numbers are approximate only in byte-count mode.
+- `report.ts` emits a Markdown table consumed by the PR-comment bot.
+- `evals-measure.yml` gates every PR touching terse source files on the
+  skill-vs-terse lift threshold.
 
 ## Running the smoke test
 

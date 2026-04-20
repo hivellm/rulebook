@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-04-20T00:00:00Z",
-  "note": "Phase 0 smoke-test fixture. Hand-authored sample outputs. NOT a real API snapshot. Phase 4 replaces this with llm_run.ts output.",
+  "note": "Hand-authored fixture covering 10 representative prompts per arm. Values plausibly track what Claude Sonnet would emit for each arm but are NOT live API snapshots. Phase 4 CI workflow regenerates this file via evals/llm_run.ts when ANTHROPIC_API_KEY is available.",
   "prompts": [
     {
       "id": "p1-react-rerender",
@@ -27,6 +27,69 @@
         "baseline": "The line `if (user.email) { sendEmail(user.email); }` has a subtle issue: it doesn't guard against `user` itself being null or undefined. If `user` is null, accessing `user.email` will throw a TypeError. You should check for the user object first, like `if (user && user.email)`, or use optional chaining: `if (user?.email) { sendEmail(user.email); }`. Also, depending on your business rules, you may want to validate the email format before sending, but that's a separate concern.",
         "terse": "Doesn't guard against `user` being null — `user.email` throws if `user` is null. Use `user?.email` or `if (user && user.email)`.",
         "rulebook-terse": "🟡 risk: user can be null → user.email throws. Use `user?.email`."
+      }
+    },
+    {
+      "id": "p4-rebase-vs-merge",
+      "prompt": "Explain the difference between git rebase and git merge.",
+      "responses": {
+        "baseline": "`git merge` integrates changes from one branch into another by creating a new merge commit that has two parent commits. This preserves the exact branch history — you can see exactly when the branch diverged and when it was merged back. `git rebase` takes the commits from your branch and replays them on top of another branch, producing a linear history as if you had developed your work directly on top of the target branch. Use merge when you want an audit trail of how work came together; use rebase when you want a clean linear history before pushing a feature branch for review. Never rebase commits that have already been published to a shared branch — it rewrites hashes and breaks everyone downstream.",
+        "terse": "Merge creates a merge commit preserving branch history. Rebase replays your commits on top of the target branch for a linear history. Use merge for audit trails, rebase for clean history before PR. Never rebase pushed commits on shared branches.",
+        "rulebook-terse": "Merge = merge commit, preserves history. Rebase = replay commits, linear history. Merge for audit trail. Rebase before PR. Never rebase shared history."
+      }
+    },
+    {
+      "id": "p5-pg-pool-setup",
+      "prompt": "Walk me through setting up a PostgreSQL connection pool in Node.js with typical settings.",
+      "responses": {
+        "baseline": "To set up a PostgreSQL connection pool in Node.js, install the `pg` package with `npm install pg`. Then create a pool instance by calling `new Pool()` from the `pg` library. You should pass configuration options including the connection string (or individual host/port/database/user/password fields), the maximum pool size (typically 10-20 connections for a standard web service), an idle timeout (around 30 seconds), and a connection timeout (around 2 seconds). Use `pool.query(sql, params)` for simple queries, and `pool.connect()` to acquire a client for transactions, remembering to call `client.release()` when done.",
+        "terse": "Install `pg`. Create `new Pool({ connectionString, max: 10-20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 2000 })`. Use `pool.query()` for single statements, `pool.connect()` + `client.release()` for transactions.",
+        "rulebook-terse": "`npm i pg`. `new Pool({max:10-20, idleTimeoutMillis:30000, connectionTimeoutMillis:2000})`. `pool.query()` simple. `pool.connect()`+`release()` for tx."
+      }
+    },
+    {
+      "id": "p6-cb-to-async",
+      "prompt": "Refactor this callback-based function to use async/await.",
+      "responses": {
+        "baseline": "To refactor a callback-based function to async/await, first wrap the callback API in a Promise (or use `util.promisify` if it follows the Node.js error-first callback convention). Then mark your outer function `async`, replace `someAsyncOp(args, (err, result) => {...})` with `const result = await promisifiedOp(args);`, and use try/catch for error handling. The resulting code is linear and easier to reason about. If the original function returns a value via the callback, the refactored version returns it via the Promise — callers must likewise await it.",
+        "terse": "Wrap the callback API in a Promise (or `util.promisify`). Mark caller `async`. Replace `fn(args, cb)` with `await promisified(args)`. Use try/catch for errors.",
+        "rulebook-terse": "`util.promisify` or `new Promise`. Mark caller `async`. `await` instead of callback. `try/catch` for errors."
+      }
+    },
+    {
+      "id": "p7-micro-vs-mono",
+      "prompt": "Compare microservices and monolithic architectures — when would you pick each?",
+      "responses": {
+        "baseline": "A monolith is a single deployable unit where all features share the same codebase, runtime, and database. Microservices split the application into independent services that communicate over the network and usually own their own data. Monoliths are simpler to develop, test, and deploy when the team is small and the domain is still taking shape — all the code is in one place, refactoring is easy, and you don't pay for network hops. Microservices pay off when you need independent deployment cadences, when you have multiple teams that need autonomy, or when different parts of the system have wildly different scaling or reliability requirements. Start with a monolith; split to services only when a concrete operational reason demands it.",
+        "terse": "Monolith = one deployable, shared codebase and DB. Microservices = independent services, own their data, network calls. Monolith for small teams and evolving domains; microservices for independent deploy cadences, team autonomy, divergent scaling needs. Start monolith, split when operationally justified.",
+        "rulebook-terse": "Mono = one deploy, one DB. Micro = many services, own data. Mono: small team / fluid domain. Micro: indep deploys / team autonomy / diff scaling. Start mono → split when needed."
+      }
+    },
+    {
+      "id": "p8-race-debug",
+      "prompt": "What are the typical signs of a database race condition and how do you debug one?",
+      "responses": {
+        "baseline": "Classic signs of a database race condition include sporadic data inconsistency (two writes to the same row produce unexpected final state), phantom reads where a query returns different rows in the same transaction, or lost updates where one transaction's changes silently disappear after a concurrent transaction commits. To debug, first reproduce under load — races usually only manifest at concurrency > 1. Enable statement-level logging (`log_statement = all` in Postgres) and correlate by session id. Inspect the isolation level you're running at (read committed is the default and is NOT enough for write-write conflicts). Add targeted `SELECT ... FOR UPDATE` locks or raise the isolation level to `SERIALIZABLE` where you see interleaving matter. Deterministic repro shrinks the search space dramatically.",
+        "terse": "Signs: sporadic data inconsistency, phantom reads, lost updates under concurrency. Debug: reproduce under load (concurrency > 1), enable statement logging, check isolation level (read committed is default and unsafe for write-write), add `SELECT FOR UPDATE` or raise to `SERIALIZABLE` at the hot point.",
+        "rulebook-terse": "Signs: sporadic inconsistency, phantom reads, lost updates. Debug: repro w/ concurrency, log statements, check isolation (read committed = unsafe), `SELECT FOR UPDATE` or `SERIALIZABLE`."
+      }
+    },
+    {
+      "id": "p9-multistage-docker",
+      "prompt": "Write a Dockerfile for a Node.js app with a multi-stage build.",
+      "responses": {
+        "baseline": "Here is a Dockerfile that uses a multi-stage build to produce a small final image. The first stage installs all dependencies (including dev dependencies) and compiles the TypeScript source. The second stage starts from a clean base image, copies only the production dependencies and the compiled output, and runs as a non-root user:\n\n```dockerfile\nFROM node:20-alpine AS builder\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\nRUN npm run build\n\nFROM node:20-alpine AS runtime\nWORKDIR /app\nCOPY --from=builder /app/package*.json ./\nRUN npm ci --omit=dev\nCOPY --from=builder /app/dist ./dist\nUSER node\nCMD [\"node\", \"dist/index.js\"]\n```\n\nThis keeps the final image lean (no source, no dev deps, no toolchain) and runs with the built-in non-root user for safety.",
+        "terse": "Multi-stage Node.js Dockerfile:\n\n```dockerfile\nFROM node:20-alpine AS builder\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\nRUN npm run build\n\nFROM node:20-alpine AS runtime\nWORKDIR /app\nCOPY --from=builder /app/package*.json ./\nRUN npm ci --omit=dev\nCOPY --from=builder /app/dist ./dist\nUSER node\nCMD [\"node\", \"dist/index.js\"]\n```\n\nBuilder compiles; runtime copies only prod deps and dist; non-root user.",
+        "rulebook-terse": "```dockerfile\nFROM node:20-alpine AS builder\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\nRUN npm run build\n\nFROM node:20-alpine AS runtime\nWORKDIR /app\nCOPY --from=builder /app/package*.json ./\nRUN npm ci --omit=dev\nCOPY --from=builder /app/dist ./dist\nUSER node\nCMD [\"node\", \"dist/index.js\"]\n```\n\nBuilder builds; runtime = prod deps + dist; non-root."
+      }
+    },
+    {
+      "id": "p10-error-boundary",
+      "prompt": "Explain how a React error boundary works and when it catches or misses errors.",
+      "responses": {
+        "baseline": "A React error boundary is a class component that implements either `componentDidCatch` or the static `getDerivedStateFromError` lifecycle (or both). When any child component throws during render, a lifecycle method, or a constructor, React walks up the tree to the nearest error boundary and renders its fallback UI instead of crashing the whole component tree. Error boundaries catch errors in their descendants during the render phase. They do NOT catch errors inside event handlers (handle those with try/catch directly), asynchronous code like setTimeout or promise rejections (unwrapped ones), or errors thrown in the error boundary itself. In React 18 and later, you can use libraries like react-error-boundary for a hooks-friendly API. The boundary also resets on its own by unmounting and remounting when a key prop changes, which is a common pattern for 'retry' buttons.",
+        "terse": "Class component with `componentDidCatch` or `getDerivedStateFromError`. Catches errors in render/lifecycle/constructor of children. Does NOT catch: event handlers (use try/catch), async code, errors in the boundary itself. `react-error-boundary` for hooks API. Reset via key prop change.",
+        "rulebook-terse": "Class w/ `componentDidCatch` or `getDerivedStateFromError`. Catches render/lifecycle/ctor errors. Misses: event handlers, async, self errors. `react-error-boundary` = hooks API. Reset via `key` prop."
       }
     }
   ]

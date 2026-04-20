@@ -1,0 +1,55 @@
+name: Evals — regenerate snapshots
+
+# Manually-dispatched workflow that regenerates `evals/snapshots/results.json`
+# by calling the live Anthropic API. Requires the `ANTHROPIC_API_KEY`
+# GitHub secret. Commits the new snapshot back to the dispatching ref
+# so the PR-measurement workflow picks it up on the next run.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch / ref to regenerate on (defaults to main)"
+        required: false
+        default: "main"
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Anthropic SDK (ephemeral)
+        run: npm install --no-save @anthropic-ai/sdk
+
+      - name: Regenerate snapshot
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: claude-sonnet-4-6
+        run: npx tsx evals/llm_run.ts
+
+      - name: Commit snapshot if changed
+        run: |
+          if [[ -n "$(git status --porcelain evals/snapshots/results.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add evals/snapshots/results.json
+            git commit -m "chore(evals): regenerate snapshots [skip ci]"
+            git push
+          else
+            echo "Snapshot unchanged — no commit."
+          fi
