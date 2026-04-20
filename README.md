@@ -105,17 +105,17 @@ rulebook compress --restore CLAUDE.md        # Revert from backup
 
 Preserves code blocks, URLs, file paths, dates, and version numbers byte-for-byte.
 
-**Measured** against a three-arm eval harness (`baseline` / `terse` / `rulebook-terse`) on a 10-prompt fixture (`evals/snapshots/results.json`):
+**Measured** against a three-arm eval harness (`baseline` / `terse` / `rulebook-terse`) on 10 real prompts executed through the Claude Code CLI, tokens counted with `tiktoken`:
 
-| Arm | Total bytes | % of baseline |
-|---|---:|---:|
-| `baseline` (no system prompt) | 6,837 | 100% |
-| `terse` (control: `Answer concisely.`) | 2,555 | 37% |
-| `rulebook-terse` (skill active) | 1,660 | 24% |
+| Arm | Total tokens | vs baseline | vs terse |
+|---|---:|---:|---:|
+| `baseline` (no system prompt) | 2,696 | — | −42% |
+| `terse` (control: `Answer concisely.`) | 4,611 | +71% | — |
+| `rulebook-terse` (skill active) | **1,940** | **−28%** | **−58%** |
 
-Honest delta is **`rulebook-terse` vs `terse` = 35% average lift** (per-prompt range 13%–59%). Threshold 15% → PASS. Comparing to `baseline` alone would conflate the skill with generic brevity-asking — the `terse` control isolates the skill's specific contribution.
+Honest delta is **`rulebook-terse` vs `terse` = 57.9% average lift**, per-prompt range **34% → 77%**. All ten prompts clear the 15% threshold individually. Interestingly, the `terse` control is 71% *larger* than `baseline` — `Answer concisely.` alone steers the model toward structured output (headings, code blocks), which inflates tokens. The skill's explicit rules reverse that effect.
 
-Regenerate snapshots via live API: `ANTHROPIC_API_KEY=... npx tsx evals/llm_run.ts`. Re-measure offline (tiktoken or byte-count fallback): `npx tsx evals/measure.ts`.
+Regenerate snapshots against live Claude: `npx tsx evals/cli_run.ts` (shells out to `claude -p`, reuses existing CLI auth). Re-measure offline: `npx tsx evals/measure.ts`.
 
 Auto-activates after `rulebook init` or `rulebook update` — SessionStart hook writes to `.rulebook/.terse-mode`, UserPromptSubmit hook emits a ~45-token attention anchor per user message. Opt-out: set `.rulebook/rulebook.json` → `"terse": {"enabled": false}`. Override level: `"terse": {"defaultMode": "brief"}` or export `RULEBOOK_TERSE_MODE=ultra`.
 

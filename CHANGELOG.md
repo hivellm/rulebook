@@ -64,17 +64,19 @@ Full implementation of the design in `docs/analysis/caveman/`. Inspired by the `
 - 8 — `evals-harness` (measure + Markdown render)
 - 12 — `sync-agent-rules` (fan-out to agent-specific rule locations)
 
-**Measured compression (offline via `evals/measure.ts`, UTF-8 byte counts):**
+**Measured compression (live Claude CLI, 10 prompts, tiktoken):**
 
-| Arm | Total bytes (10 prompts) | % vs baseline |
-|---|---:|---:|
-| `baseline` (no system prompt) | 6,837 | 100% |
-| `terse` (control: `Answer concisely.`) | 2,555 | 37% |
-| `rulebook-terse` (skill active) | 1,660 | 24% |
+| Arm | Total tokens | vs baseline | vs terse |
+|---|---:|---:|---:|
+| `baseline` (no system prompt) | 2,696 | — | −42% |
+| `terse` (control: `Answer concisely.`) | 4,611 | +71% | — |
+| `rulebook-terse` (skill active) | 1,940 | **−28%** | **−58%** |
 
-Honest delta = **skill vs terse control = 35% average lift**. Threshold 15% → PASS. Per-prompt lift range: 13% (Dockerfile — mostly code blocks) → 59% (connection pooling — prose-heavy). Every prompt beats the threshold individually.
+Honest delta = **rulebook-terse vs terse = 57.9% average lift**. Per-prompt range 34% → 77%. All 10 prompts clear the 15% threshold individually. Notable finding: the `terse` control inflates 71% above `baseline` because `Answer concisely.` alone steers the model to structured headings + code blocks, which are token-heavy. The skill's explicit drop-rules reverse that effect — the final token count is also below baseline.
 
-See `docs/analysis/caveman/03-evaluation.md` for methodology and `evals/snapshots/results.json` for the raw fixture.
+Snapshots committed under `evals/snapshots/results.json` (regenerate via `npx tsx evals/cli_run.ts` — uses Claude Code CLI, no API-key env var needed).
+
+See `docs/analysis/caveman/03-evaluation.md` for methodology.
 
 ### Fixed
 
