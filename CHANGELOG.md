@@ -17,12 +17,14 @@ Full implementation of the design in `docs/analysis/caveman/`. Inspired by the `
 - `rulebook-terse-commit` — Conventional Commits with ≤50-char subject, body required only for breaking changes / security fixes / migrations / reverts, no AI attribution.
 - `rulebook-terse-review` — one-line PR review comments in `L<line>: <severity> <problem>. <fix>.` format with 🔴/🟡/🔵/❓ severity prefixes; auto-clarity drops to prose for CVE-class findings and architectural disagreements.
 
-**TS hooks — src/hooks/.** Two Claude Code hooks coordinated via a size-capped, symlink-safe flag file:
+**Shell hooks — `templates/hooks/`.** Two Claude Code hooks coordinated via a size-capped, symlink-safe flag file. Pure bash + PowerShell (matches Rulebook's existing hook convention — `on-compact-reinject.sh`, `enforce-*.sh`, etc.). JSON parsing uses inline `node -e` (always available in Claude Code hook env). No jq dependency.
 
-- `terse-activate.sh` / `.ps1` (SessionStart): resolves mode via env → project config → user-global → agent tier → `terse` default, writes to `.rulebook/.terse-mode`, loads SKILL.md, filters the intensity table + examples to the active level, emits the filtered body as hidden `additionalContext`.
-- `terse-mode-tracker.ts` (UserPromptSubmit): parses 7 slash commands + natural-language activation/deactivation, emits ~45-token attention anchor for persistent modes (skipped for commit/review independent modes).
-- `safe-flag-io.ts`: `lstat` target + parent, `O_NOFOLLOW`, atomic temp+rename, `0600`, size cap `MAX_FLAG_BYTES=32`, whitelist validation. Closes symlink-clobber and symlink-exfil local-attack surfaces. Shared module for any future flag-file coordination.
-- Wired into `claude-settings-manager.ts` via new `terseMode` field on `ClaudeSettingsDesire`. `installHookScripts` now copies compiled hooks from `dist/hooks/` alongside the existing shell hooks.
+- `terse-activate.sh` / `.ps1` (SessionStart): resolves mode via env → project config → user-global → agent tier → `terse` default, writes to `.rulebook/.terse-mode`, loads SKILL.md, filters the intensity table + example lines to the active level only (via awk in bash, regex in PS1), emits the filtered body as hidden `additionalContext`.
+- `terse-mode-tracker.sh` / `.ps1` (UserPromptSubmit): parses 7 slash commands + natural-language activation/deactivation, updates flag, emits ~45-token attention anchor as `hookSpecificOutput` JSON for persistent modes only (commit/review sub-skills get no anchor — they own the turn's behavior).
+- Safe-write invariants implemented directly in bash/PowerShell: `mkdir -p`, `[ -L ]` symlink refusal on target + parent, `umask 077` + `mktemp` + atomic `mv -f`. Size-capped reads (32 bytes) with whitelist validation. Closes symlink-clobber + symlink-exfil local-attack surfaces from the Caveman analysis.
+- `src/hooks/safe-flag-io.ts` retained as a TS library (testable, reusable) for potential future consumers — not a hook entry point.
+- Wired into `claude-settings-manager.ts` via new `terseMode` field on `ClaudeSettingsDesire`. `installHookScripts` copies the four `.sh`/`.ps1` variants into `.claude/hooks/` alongside every other shell hook.
+- `init.ts` + `update.ts` pass `terseMode: rulebookCfg?.terse?.enabled ?? true` by default. Opt-out via `.rulebook/rulebook.json` → `"terse": {"enabled": false}`.
 
 **Input-side compression — `rulebook compress` CLI + MCP.** Reduces tokens the agent READS on every session:
 
@@ -49,7 +51,30 @@ Full implementation of the design in `docs/analysis/caveman/`. Inspired by the `
 
 **Fan-out script — `scripts/sync-agent-rules.ts`.** Single source of truth, 5 agent-specific projections per skill, 15 files total. Strips source YAML frontmatter and prepends platform-specific frontmatter (Cursor `alwaysApply`, Windsurf `trigger`). Banner marks synced files as auto-generated.
 
-**Test coverage.** ~245 new tests across the terse suite (skill discovery, sub-skills, templates wiring, hooks, safe-flag-io, terse-config, terse-activate, terse-mode-tracker, claude-settings-manager integration, compress validator, compressor, discover, evals harness, agent-rule sync). Existing suites untouched.
+**Test coverage.** 194 tests across the terse suite, split into:
+
+- 22 — `safe-flag-io` TS library (symlink-safe read/write invariants, 4 Windows-skip)
+- 37 — `rulebook-terse-foundations` (spec + SKILL.md structure)
+- 9 — `rulebook-terse-skill-discovery` (via `SkillsManager`)
+- 18 — `rulebook-terse-sub-skills-discovery` (commit + review independence)
+- 9 — `rulebook-terse-templates-wiring` (`installSkillsFromSource`, filter correctness)
+- 31 — `terse-hooks-shell` (subprocess tests invoking real `.sh` hooks: mode resolution, SKILL.md filter, slash-command parsing, NL activation, attention-anchor emission, symlink-safe clobber refusal)
+- 9 — `claude-settings-manager-terse` (settings.json wiring)
+- 19 — `compress-validator` + 16 — `compress-compressor` + 8 — `compress-discover`
+- 8 — `evals-harness` (measure + Markdown render)
+- 12 — `sync-agent-rules` (fan-out to agent-specific rule locations)
+
+**Measured compression (offline via `evals/measure.ts`, UTF-8 byte counts):**
+
+| Arm | Total bytes (10 prompts) | % vs baseline |
+|---|---:|---:|
+| `baseline` (no system prompt) | 6,837 | 100% |
+| `terse` (control: `Answer concisely.`) | 2,555 | 37% |
+| `rulebook-terse` (skill active) | 1,660 | 24% |
+
+Honest delta = **skill vs terse control = 35% average lift**. Threshold 15% → PASS. Per-prompt lift range: 13% (Dockerfile — mostly code blocks) → 59% (connection pooling — prose-heavy). Every prompt beats the threshold individually.
+
+See `docs/analysis/caveman/03-evaluation.md` for methodology and `evals/snapshots/results.json` for the raw fixture.
 
 ### Fixed
 

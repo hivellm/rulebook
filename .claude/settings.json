@@ -23,7 +23,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash F:/Node/hivellm/rulebook/.claude/hooks/on-compact-reinject.sh"
+            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/on-compact-reinject.sh"
           }
         ]
       },
@@ -31,7 +31,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash F:/Node/hivellm/rulebook/.claude/hooks/resume-from-handoff.sh"
+            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/resume-from-handoff.sh"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/terse-activate.sh"
           }
         ]
       }
@@ -41,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash F:/Node/hivellm/rulebook/.claude/hooks/check-context-and-handoff.sh"
+            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/check-context-and-handoff.sh"
           }
         ]
       }
@@ -51,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash F:/Node/hivellm/rulebook/.claude/hooks/enforce-no-deferred.sh"
+            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/enforce-no-deferred.sh"
           }
         ]
       },
@@ -59,7 +67,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash F:/Node/hivellm/rulebook/.claude/hooks/enforce-no-shortcuts.sh"
+            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/enforce-no-shortcuts.sh"
           }
         ]
       },
@@ -67,7 +75,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash F:/Node/hivellm/rulebook/.claude/hooks/enforce-mcp-for-tasks.sh"
+            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/enforce-mcp-for-tasks.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/terse-mode-tracker.sh"
           }
         ]
       }

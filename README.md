@@ -104,9 +104,23 @@ rulebook compress CLAUDE.md                  # Rewrite + backup
 rulebook compress --restore CLAUDE.md        # Revert from backup
 ```
 
-Preserves code blocks, URLs, file paths, dates, and version numbers byte-for-byte. Measured against a three-arm eval harness (`baseline` / `terse` / `rulebook-terse`) with 35% average lift over the terse control on the committed prompt set.
+Preserves code blocks, URLs, file paths, dates, and version numbers byte-for-byte.
 
-See [docs/analysis/caveman/](docs/analysis/caveman/) for the design rationale and [docs/guides/rulebook-terse.md](docs/guides/rulebook-terse.md) for the user guide.
+**Measured** against a three-arm eval harness (`baseline` / `terse` / `rulebook-terse`) on a 10-prompt fixture (`evals/snapshots/results.json`):
+
+| Arm | Total bytes | % of baseline |
+|---|---:|---:|
+| `baseline` (no system prompt) | 6,837 | 100% |
+| `terse` (control: `Answer concisely.`) | 2,555 | 37% |
+| `rulebook-terse` (skill active) | 1,660 | 24% |
+
+Honest delta is **`rulebook-terse` vs `terse` = 35% average lift** (per-prompt range 13%–59%). Threshold 15% → PASS. Comparing to `baseline` alone would conflate the skill with generic brevity-asking — the `terse` control isolates the skill's specific contribution.
+
+Regenerate snapshots via live API: `ANTHROPIC_API_KEY=... npx tsx evals/llm_run.ts`. Re-measure offline (tiktoken or byte-count fallback): `npx tsx evals/measure.ts`.
+
+Auto-activates after `rulebook init` or `rulebook update` — SessionStart hook writes to `.rulebook/.terse-mode`, UserPromptSubmit hook emits a ~45-token attention anchor per user message. Opt-out: set `.rulebook/rulebook.json` → `"terse": {"enabled": false}`. Override level: `"terse": {"defaultMode": "brief"}` or export `RULEBOOK_TERSE_MODE=ultra`.
+
+See [docs/analysis/caveman/](docs/analysis/caveman/) for the design rationale, [docs/guides/rulebook-terse.md](docs/guides/rulebook-terse.md) for the user guide, and `templates/hooks/terse-*.sh` for the hook source.
 
 ### Task Management
 

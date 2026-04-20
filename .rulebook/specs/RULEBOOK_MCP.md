@@ -171,17 +171,31 @@ List candidate markdown memory files in the project:
 `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `AGENTS.override.md`,
 `.rulebook/PLANS.md`, `.rulebook/STATE.md`, and every `.md` under
 `.rulebook/knowledge/` and `.rulebook/learnings/`. Excludes
-`*.original.md` backups from the candidate listing. For each candidate,
-reports current size, whether a backup exists, and the backup's size +
-ratio when present.
+`*.original.md` backups. Reports current size, whether a backup exists,
+and the backup's size + ratio when present. Results sorted by size
+descending so the biggest-win targets surface first.
+
+## Evaluation tools (v5.4.0)
+
+### rulebook_evals_measure
+
+Offline three-arm measurement (`baseline` / `terse` / `rulebook-terse`)
+against the committed snapshot under `evals/snapshots/`. Uses tiktoken
+when installed, UTF-8 byte counts as fallback. No API key required.
 
 ```
-rulebook_compress_list({})
-// → { success: true, count: N, candidates: [ { relPath, absPath, bytes, hasBackup, backupBytes?, backupRatio? }, ... ] }
+rulebook_evals_measure({})
+// → { report: { tokenMode, prompts: [...], totals: {...}, pass: bool, threshold } }
 ```
 
-Results are sorted by size descending so the biggest-win targets surface
-first.
+Honest delta reported: `rulebook-terse` vs `terse` control.
+
+### rulebook_evals_run
+
+Regenerate snapshots against the live Anthropic API. Requires
+`ANTHROPIC_API_KEY` + the optional `@anthropic-ai/sdk` npm package.
+Spawns `evals/llm_run.ts` as a subprocess. Expensive — run only when
+SKILL.md or prompt set changes.
 
 ## Documentation
 

@@ -19,7 +19,7 @@ ACTIVE EVERY RESPONSE once set. No revert after many turns. No filler drift. Sti
 
 Off only via: `/rulebook-terse off` · "normal mode" · "stop terse" · session end.
 
-Default intensity resolves from: `RULEBOOK_TERSE_MODE` env → `.rulebook/rulebook.json` `terse.defaultMode` → active agent tier → `brief`.
+Default intensity resolves from: `RULEBOOK_TERSE_MODE` env → `.rulebook/rulebook.json` `terse.defaultMode` → active agent tier → `terse`.
 
 ## Rules
 
