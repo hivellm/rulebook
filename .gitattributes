@@ -1,0 +1,38 @@
+# Auto-detect text files and normalize line endings to LF on checkin.
+# All checked-out text files use LF regardless of OS — matches Prettier's default
+# (endOfLine: "lf") and avoids CRLF surprises on Windows clones.
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Shell scripts always LF (refuse to run with CRLF).
+*.sh text eol=lf
+
+# Source code — explicit LF for clarity.
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.jsx  text eol=lf
+*.mjs  text eol=lf
+*.cjs  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+
+# Binaries — never touch.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.pdf  binary
+*.zip  binary
+*.gz   binary
+*.tgz  binary
+*.wasm binary
