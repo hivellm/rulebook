@@ -366,7 +366,8 @@ describe('installAgentsWithPlaceholders (integration)', () => {
       expect(skillDirs).toContain('rulebook-terse');
       expect(skillDirs).toContain('rulebook-terse-commit');
       expect(skillDirs).toContain('rulebook-terse-review');
-      expect(skillDirs.length).toBe(19);
+      expect(skillDirs).toContain('karpathy-guidelines');
+      expect(skillDirs.length).toBe(20);
 
       // Verify SKILL.md exists in each skill dir
       for (const dir of skillDirs) {

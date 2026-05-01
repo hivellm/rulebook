@@ -21,8 +21,9 @@ import {
 const ROOT = resolve(__dirname, '..');
 
 describe('phase1_terse-templates-wiring — INVOCABLE_CORE_SKILLS registration', () => {
-  it('declares exactly the three terse family skill names', () => {
+  it('declares the expected invocable core skill set', () => {
     expect([...INVOCABLE_CORE_SKILLS].sort()).toEqual([
+      'karpathy-guidelines',
       'rulebook-terse',
       'rulebook-terse-commit',
       'rulebook-terse-review',

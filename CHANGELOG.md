@@ -5,15 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.4.1] - 2026-04-20
+## [5.5.0] - 2026-05-01
 
-### Added — Editing Discipline section in generated `AGENTS.md`
+### Added — Karpathy editing-discipline guidelines (inline + skill)
 
-New "Editing Discipline (Karpathy-inspired)" block inlined into
-`templates/core/AGENTS_LEAN.md` (the source for every project's
-`AGENTS.md`, which Cursor / Windsurf / Cline / Copilot / Codex /
-Gemini all reference). Four principles target the gaps not covered
-by existing Tier 1 prohibitions:
+Adopts the four behavioral principles from
+[forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills),
+grounded in Andrej Karpathy's
+[observations on LLM coding pitfalls](https://x.com/karpathy/status/2015883857489522876).
+Two delivery surfaces:
+
+1. **Inlined in generated `CLAUDE.md` and `AGENTS.md`.** New
+   "Editing discipline (Karpathy-inspired)" section in
+   `templates/core/CLAUDE_MD_v2.md` and
+   `templates/core/AGENTS_LEAN.md`. Every project that runs
+   `rulebook init` or `rulebook update` from 5.5.0 onward gets the
+   four principles in both files; the AGENTS.md projection
+   propagates to Cursor / Windsurf / Cline / Copilot / Codex /
+   Gemini through their existing references.
+2. **New skill** `templates/skills/core/karpathy-guidelines/SKILL.md`
+   — a dedicated invocable surface (`/karpathy-guidelines` or
+   "follow karpathy discipline"). Added to `INVOCABLE_CORE_SKILLS`
+   so `installSkillsFromSource` copies it to `.claude/skills/` on
+   init/update. Skill body kept ≤80 lines; total context cost
+   < 1KB per session.
+
+The four principles:
 
 1. **Think before coding** — surface assumptions, present
    interpretations, ask when unclear.
@@ -24,15 +41,11 @@ by existing Tier 1 prohibitions:
 4. **Goal-driven execution** — define verifiable success criteria
    upfront so multi-step tasks loop independently.
 
-Adapted from
-[forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills),
-grounded in Andrej Karpathy's
-[observations on LLM coding pitfalls](https://x.com/karpathy/status/2015883857489522876).
-Inlined rather than added as a separate rule because the upstream
-intent is one CLAUDE.md / AGENTS.md surface, not a per-file rule.
-
-Net cost: ~12 extra lines in `AGENTS.md`. No behavior changes; pure
-prompt addition.
+Targets gaps not covered by existing Tier 1 prohibitions —
+particularly **surgical changes** (no rule today forbids
+opportunistic refactor) and **simplicity first**
+(`no-shortcuts.md` forbids stubs but not bloat). Test counts
+updated: `agent-delegation.test.ts` skill-dir count 19→20.
 
 ## [5.4.0] - 2026-04-20
 

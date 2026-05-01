@@ -964,6 +964,7 @@ export const INVOCABLE_CORE_SKILLS = [
   'rulebook-terse',
   'rulebook-terse-commit',
   'rulebook-terse-review',
+  'karpathy-guidelines',
 ] as const;
 
 /**
