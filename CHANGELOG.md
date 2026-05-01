@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.1] - 2026-04-20
+
+### Added — Editing Discipline section in generated `AGENTS.md`
+
+New "Editing Discipline (Karpathy-inspired)" block inlined into
+`templates/core/AGENTS_LEAN.md` (the source for every project's
+`AGENTS.md`, which Cursor / Windsurf / Cline / Copilot / Codex /
+Gemini all reference). Four principles target the gaps not covered
+by existing Tier 1 prohibitions:
+
+1. **Think before coding** — surface assumptions, present
+   interpretations, ask when unclear.
+2. **Simplicity first** — minimum code, no speculative abstractions
+   or unrequested flexibility.
+3. **Surgical changes** — touch only what the request requires; no
+   opportunistic refactors of adjacent code.
+4. **Goal-driven execution** — define verifiable success criteria
+   upfront so multi-step tasks loop independently.
+
+Adapted from
+[forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills),
+grounded in Andrej Karpathy's
+[observations on LLM coding pitfalls](https://x.com/karpathy/status/2015883857489522876).
+Inlined rather than added as a separate rule because the upstream
+intent is one CLAUDE.md / AGENTS.md surface, not a per-file rule.
+
+Net cost: ~12 extra lines in `AGENTS.md`. No behavior changes; pure
+prompt addition.
+
 ## [5.4.0] - 2026-04-20
 
 ### Added — “Terse mode”: structurally-enforced output compression

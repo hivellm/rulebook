@@ -383,6 +383,7 @@ npm run build
 - **[Ralph](https://github.com/snarktank/ralph)** — Inspired the autonomous loop integration (multi-iteration AI task solving with fresh context per iteration)
 - **[OpenSpec](https://github.com/Fission-AI/openspec)** — Influenced the task management format (delta-based specs, Given/When/Then scenarios, requirement-focused organization)
 - **[Caveman](https://github.com/JuliusBrussee/caveman)** — Grounding for the v5.4.0 terse-mode design (SessionStart + UserPromptSubmit hook pattern, intensity-filtered SKILL.md injection, three-arm eval harness). See [docs/analysis/caveman/](docs/analysis/caveman/) for the full analysis.
+- **[forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills)** — Source of the four "Editing Discipline" principles (think before coding, simplicity first, surgical changes, goal-driven execution) inlined in the generated `AGENTS.md`. Grounded in [Andrej Karpathy's observations](https://x.com/karpathy/status/2015883857489522876) on common LLM coding pitfalls.
 
 ---
 
