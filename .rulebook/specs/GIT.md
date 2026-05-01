@@ -1,14 +1,17 @@
 <!-- GIT:START -->
 
-**AI Assistant Git Push Mode**: AUTO
+**AI Assistant Git Push Mode**: MANUAL
 
-**INFO**: Automatic push enabled.
-AI assistants may execute push commands automatically.
+**CRITICAL**: Never execute `git push` commands automatically.
+Always provide push commands for manual execution by the user.
 
-⚠️ Only use this mode if:
-- SSH key has no password
-- GitHub CLI is authenticated
-- You trust the AI assistant completely
+Example:
+```
+✋ MANUAL ACTION REQUIRED:
+Run these commands manually (SSH password may be required):
+  git push origin main
+  git push origin v1.0.0
+```
 
 # Git Workflow Rules
 

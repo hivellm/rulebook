@@ -165,24 +165,33 @@ fi
 #   - Intensity-table rows `| **<level>** | ...` — keep only the active one.
 #   - Example lines `- **<level>**: "..."` — keep only the active one.
 #   - All other lines pass through unchanged.
+#
+# Uses `node -e` for portability — BSD awk (macOS default) does not
+# support the 3-arg `match(str, re, array)` form that gawk ships with.
 printf 'RULEBOOK-TERSE MODE ACTIVE — level: %s\n\n' "$mode"
 
-printf '%s' "$skill_body" | awk -v active="$mode" '
-  BEGIN { in_fm = 0; past_fm = 0 }
-  NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; next }
-  in_fm && /^---[[:space:]]*$/ { in_fm = 0; past_fm = 1; next }
-  in_fm { next }
-  {
-    # Intensity-table row: | **level** |
-    if (match($0, /^[[:space:]]*\|[[:space:]]*\*\*([^*]+)\*\*[[:space:]]*\|/, m)) {
-      if (m[1] == active) print
-      next
+printf '%s' "$skill_body" | node -e "
+  let body = '';
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', (c) => { body += c; });
+  process.stdin.on('end', () => {
+    const active = process.argv[1];
+    // Strip YAML frontmatter.
+    const stripped = body.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+    const out = [];
+    for (const line of stripped.split('\n')) {
+      const tableRow = line.match(/^\s*\|\s*\*\*([^*]+)\*\*\s*\|/);
+      if (tableRow) {
+        if (tableRow[1] === active) out.push(line);
+        continue;
+      }
+      const exampleLine = line.match(/^\s*-\s*\*\*([^*]+)\*\*\s*:/);
+      if (exampleLine) {
+        if (exampleLine[1] === active) out.push(line);
+        continue;
+      }
+      out.push(line);
     }
-    # Example line: - **level**: ...
-    if (match($0, /^[[:space:]]*-[[:space:]]*\*\*([^*]+)\*\*[[:space:]]*:/, m)) {
-      if (m[1] == active) print
-      next
-    }
-    print
-  }
-'
+    process.stdout.write(out.join('\n'));
+  });
+" "$mode"
