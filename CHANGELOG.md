@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.5.1] - 2026-05-01
+
+### Added — Delegation & parallelism rules in CLAUDE.md / AGENTS.md
+
+Reinforces existing agent/team/skill machinery that was being
+under-used in practice. Two surfaces:
+
+1. **`templates/core/CLAUDE_MD_v2.md`** — new "Delegation &
+   parallelism (highest precedence)" section right after the eight
+   critical rules. Five mandates:
+   - Delegate by default (don't implement inline when an agent fits).
+   - Parallelize independent work (single message, multiple `Agent`
+     tool-use blocks).
+   - Use Teams for multi-specialist work (background `Agent` without
+     `team_name` is blocked by the existing enforcement hook).
+   - Create new skills/agents when the gap is real (same multi-step
+     prompt twice → skill; recurring across projects → agent).
+   - Foreground vs background distinction.
+
+2. **`templates/core/AGENTS_LEAN.md`** — replaces the one-line
+   "delegate, parallelize" footer in the Agent Delegation section
+   with two structured subsections: "Mandatory delegation rules"
+   and "When to create a new skill or agent" (skill vs agent
+   triggers).
+
+Mirrored in this repo's local `CLAUDE.md` + `AGENTS.md`. Net cost:
+~25 extra lines per project. No code changes; pure prompt
+reinforcement.
+
 ## [5.5.0] - 2026-05-01
 
 ### Added — Karpathy editing-discipline guidelines (inline + skill)

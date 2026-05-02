@@ -194,7 +194,23 @@ If this is part of a multi-project workspace, every Rulebook MCP call MUST pass 
 | Build/CI | build-engineer | sonnet |
 | Security | security-reviewer | haiku |
 
-Rules: never write code directly in main conversation — delegate. Use haiku for read-only tasks. Launch independent agents in parallel.
+### Mandatory delegation rules
+
+- **Never implement directly in the main conversation when an agent fits.** The main thread orchestrates; agents do the work.
+- **Read-only work → haiku researcher.** Cheap, isolates context.
+- **Independent work runs in parallel.** Multiple `Agent` tool-use blocks in a single message. Sequential dispatching of independent units is wrong by default.
+- **Multi-specialist work uses Teams.** Background `Agent` calls without `team_name` are blocked by the enforcement hook (see Multi-Agent Teams above).
+- **Foreground agents** when the result blocks your next step. **Background agents** only inside Teams so `SendMessage` works.
+
+### When to create a new skill or agent
+
+Lift to a skill / agent instead of repeating instructions:
+
+- **Same multi-step prompt twice in one session** → make a skill (`templates/skills/<category>/<name>/SKILL.md`).
+- **Recurring class of work across projects** → make an agent definition (`.claude/agents/<role>.md`) and add a row to the delegation table above.
+- **A workflow needs a specific persona / tool set** → agent. **A behavior modifier the user invokes on demand** → skill.
+
+Default to creating, not improvising. The template scaffolding is cheap; ad-hoc context-window churn is expensive.
 
 ## Plans & Session Continuity
 
