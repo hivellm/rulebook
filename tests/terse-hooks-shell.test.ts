@@ -34,6 +34,29 @@ interface RunResult {
   status: number;
 }
 
+/**
+ * Read the .terse-mode flag, polling briefly on Windows for FS to settle.
+ *
+ * The hook writes via `mktemp` + `mv -f`. On Windows GitHub-hosted runners,
+ * antivirus / filter drivers can briefly hold the file invisible to other
+ * processes after `MoveFileExW` returns, even though the rename has
+ * succeeded at the kernel level. macOS + Linux (and faster Windows runners)
+ * never see this race; slow Windows-Node20 runners occasionally do.
+ *
+ * Polls existsSync up to ~1s before reading. No-op cost on POSIX.
+ */
+function readFlag(flagPath: string): string {
+  const deadline = Date.now() + 1000;
+  while (!existsSync(flagPath) && Date.now() < deadline) {
+    // Sync busy-wait; cheap because the file appears within a few ms.
+    const t = Date.now() + 10;
+    while (Date.now() < t) {
+      /* spin */
+    }
+  }
+  return readFileSync(flagPath, 'utf8');
+}
+
 function runHook(
   scriptPath: string,
   opts: { stdin?: string; env?: Record<string, string>; cwd: string }
@@ -87,7 +110,7 @@ describe.skipIf(!BASH_OK)('terse-activate.sh — mode resolution', () => {
       env: { RULEBOOK_TERSE_MODE: '' },
     });
     expect(r.status).toBe(0);
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('terse');
+    expect(readFlag(join(projectRoot, '.rulebook/.terse-mode'))).toBe('terse');
   });
 
   it('env var RULEBOOK_TERSE_MODE overrides everything', () => {
@@ -100,7 +123,7 @@ describe.skipIf(!BASH_OK)('terse-activate.sh — mode resolution', () => {
       env: { RULEBOOK_TERSE_MODE: 'ultra' },
     });
     expect(r.status).toBe(0);
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('ultra');
+    expect(readFlag(join(projectRoot, '.rulebook/.terse-mode'))).toBe('ultra');
   });
 
   it('invalid env var falls through to project config', () => {
@@ -113,7 +136,7 @@ describe.skipIf(!BASH_OK)('terse-activate.sh — mode resolution', () => {
       env: { RULEBOOK_TERSE_MODE: 'not-a-mode' },
     });
     expect(r.status).toBe(0);
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('brief');
+    expect(readFlag(join(projectRoot, '.rulebook/.terse-mode'))).toBe('brief');
   });
 
   it('mode=off removes the flag (no hidden context emitted)', () => {
@@ -136,7 +159,7 @@ describe.skipIf(!BASH_OK)('terse-activate.sh — mode resolution', () => {
       cwd: projectRoot,
       env: { RULEBOOK_TERSE_MODE: '' },
     });
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('ultra');
+    expect(readFlag(join(projectRoot, '.rulebook/.terse-mode'))).toBe('ultra');
   });
 
   it('parses cwd from stdin JSON when piped', () => {
@@ -233,13 +256,13 @@ describe.skipIf(!BASH_OK)('terse-mode-tracker.sh — slash commands', () => {
   it('/rulebook-terse ultra sets flag to ultra', () => {
     const r = run('/rulebook-terse ultra');
     expect(r.status).toBe(0);
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('ultra');
+    expect(readFlag(join(projectRoot, '.rulebook/.terse-mode'))).toBe('ultra');
   });
 
   it('/rulebook-terse brief sets flag to brief', () => {
     const r = run('/rulebook-terse brief');
     expect(r.status).toBe(0);
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('brief');
+    expect(readFlag(join(projectRoot, '.rulebook/.terse-mode'))).toBe('brief');
   });
 
   it('/rulebook-terse (no arg) uses resolved default', () => {
@@ -248,7 +271,7 @@ describe.skipIf(!BASH_OK)('terse-mode-tracker.sh — slash commands', () => {
       JSON.stringify({ terse: { defaultMode: 'terse' } })
     );
     const r = run('/rulebook-terse');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('terse');
+    expect(readFlag(join(projectRoot, '.rulebook/.terse-mode'))).toBe('terse');
   });
 
   it('/rulebook-terse off removes the flag', () => {
@@ -259,18 +282,18 @@ describe.skipIf(!BASH_OK)('terse-mode-tracker.sh — slash commands', () => {
 
   it('/rulebook-terse-commit flips to commit sub-skill', () => {
     run('/rulebook-terse-commit');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('commit');
+    expect(readFlag(join(projectRoot, '.rulebook/.terse-mode'))).toBe('commit');
   });
 
   it('/rulebook-terse-review flips to review sub-skill', () => {
     run('/rulebook-terse-review');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('review');
+    expect(readFlag(join(projectRoot, '.rulebook/.terse-mode'))).toBe('review');
   });
 
   it('unknown slash arg leaves flag unchanged', () => {
     writeFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'brief');
     run('/rulebook-terse xyzzy');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('brief');
+    expect(readFlag(join(projectRoot, '.rulebook/.terse-mode'))).toBe('brief');
   });
 });
 
@@ -284,12 +307,12 @@ describe.skipIf(!BASH_OK)('terse-mode-tracker.sh — natural-language triggers',
 
   it('"be terse" activates the default mode', () => {
     run('be terse please');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('terse');
+    expect(readFlag(join(projectRoot, '.rulebook/.terse-mode'))).toBe('terse');
   });
 
   it('"less tokens please" activates the default mode', () => {
     run('give me less tokens please');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('terse');
+    expect(readFlag(join(projectRoot, '.rulebook/.terse-mode'))).toBe('terse');
   });
 
   it('"stop terse" deactivates', () => {
@@ -307,7 +330,7 @@ describe.skipIf(!BASH_OK)('terse-mode-tracker.sh — natural-language triggers',
   it('unrelated prompts do not change flag state', () => {
     writeFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'brief');
     run('help me fix this bug');
-    expect(readFileSync(join(projectRoot, '.rulebook/.terse-mode'), 'utf8')).toBe('brief');
+    expect(readFlag(join(projectRoot, '.rulebook/.terse-mode'))).toBe('brief');
   });
 });
 
