@@ -7,6 +7,8 @@ import {
   createBackup,
   ensureDir,
   readJsonFile,
+  normalizeLineEndings,
+  writeShellScript,
 } from '../src/utils/file-system';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -132,6 +134,62 @@ describe('file-system', () => {
       await fs.mkdir(dirPath);
 
       await expect(ensureDir(dirPath)).resolves.not.toThrow();
+    });
+  });
+
+  describe('normalizeLineEndings', () => {
+    it('converts CRLF to LF', () => {
+      expect(normalizeLineEndings('a\r\nb\r\nc')).toBe('a\nb\nc');
+    });
+
+    it('converts lone CR to LF', () => {
+      expect(normalizeLineEndings('a\rb\rc')).toBe('a\nb\nc');
+    });
+
+    it('handles mixed CRLF and lone CR', () => {
+      expect(normalizeLineEndings('a\r\nb\rc\r\n')).toBe('a\nb\nc\n');
+    });
+
+    it('leaves LF-only content untouched', () => {
+      const lf = '#!/usr/bin/env bash\nset -u\necho ok\n';
+      expect(normalizeLineEndings(lf)).toBe(lf);
+    });
+  });
+
+  describe('writeShellScript', () => {
+    it('strips CRLF when writing from a string', async () => {
+      const dest = path.join(testDir, 'hook.sh');
+      await writeShellScript(dest, { content: '#!/usr/bin/env bash\r\nset -u\r\necho ok\r\n' });
+      const buf = await fs.readFile(dest);
+      expect(buf.includes(0x0d)).toBe(false);
+      expect(buf.toString('utf-8')).toBe('#!/usr/bin/env bash\nset -u\necho ok\n');
+    });
+
+    it('strips CRLF when copying from a CRLF source file', async () => {
+      const src = path.join(testDir, 'src.sh');
+      const dest = path.join(testDir, 'dest.sh');
+      await fs.writeFile(src, Buffer.from('#!/bin/bash\r\necho hi\r\n', 'utf-8'));
+
+      await writeShellScript(dest, { sourcePath: src });
+
+      const buf = await fs.readFile(dest);
+      expect(buf.includes(0x0d)).toBe(false);
+      expect(buf.toString('utf-8')).toBe('#!/bin/bash\necho hi\n');
+    });
+
+    it('creates the destination directory if missing', async () => {
+      const dest = path.join(testDir, 'nested', 'dir', 'hook.sh');
+      await writeShellScript(dest, { content: '#!/bin/sh\necho ok\n' });
+      expect(await fileExists(dest)).toBe(true);
+    });
+
+    it('sets 0o755 mode on POSIX', async () => {
+      if (process.platform === 'win32') return; // chmod is a no-op on Windows
+      const dest = path.join(testDir, 'hook.sh');
+      await writeShellScript(dest, { content: '#!/bin/sh\necho ok\n' });
+      const stat = await fs.stat(dest);
+      // eslint-disable-next-line no-bitwise
+      expect(stat.mode & 0o777).toBe(0o755);
     });
   });
 

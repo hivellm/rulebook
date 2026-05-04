@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed — `rulebook init` produced CRLF shell scripts that broke Claude Code on macOS/Linux
+
+Twelve `.sh` templates in `templates/` were stored on disk with CRLF
+line terminators despite `.gitattributes` declaring `*.sh text eol=lf`.
+On macOS/Linux, bash interprets a trailing `\r` as part of the command
+(`set -\r u` is invalid, `function() {\r` fails to parse), so every
+hook crashed at session start. Because three of the affected hooks fire
+on `SessionStart`, `UserPromptSubmit`, and `Stop`, Claude Code became
+completely unresponsive — the user reported zero assistant responses
+across a full session.
+
+**Root cause**: templates were authored on Windows and committed without
+honoring the `.gitattributes` rule, so the npm package shipped CRLF
+bytes verbatim.
+
+**Fix**:
+
+1. **Re-normalized** twelve template files to LF
+   (`templates/hooks/{terse-activate,terse-mode-tracker,resume-from-handoff,on-compact-reinject,check-context-and-handoff,enforce-team-for-background-agents}.sh`,
+   `templates/ralph/ralph-{init,run,status,pause,history}.sh`,
+   `templates/skills/workflows/ralph/install.sh`).
+2. **Defense in depth in init**: new `writeShellScript` /
+   `normalizeLineEndings` helpers in `src/utils/file-system.ts`. Wired
+   into `claude-settings-manager.ts` (hook installation),
+   `ralph-scripts.ts` (Ralph script copy), and `git-hooks.ts`
+   (pre-commit/pre-push wrappers). Every `.sh` written by `rulebook
+   init` is now guaranteed LF, regardless of how the template is stored
+   on disk. POSIX writes also set mode `0o755`.
+3. **CI guard**: `scripts/check-sh-eol.mjs` (run via `npm run
+   check:sh-eol`) fails CI if any tracked `*.sh` / `*.bash` file under
+   `templates/` or `scripts/` contains a CR byte. Wired into
+   `.github/workflows/lint.yml` so a regression cannot reach a
+   published version again.
+4. **Regression tests** in `tests/file-system.test.ts`,
+   `tests/claude-settings-manager.test.ts`, and
+   `tests/ralph-scripts.test.ts` assert zero CR bytes in every emitted
+   `.sh` file.
+
+Affected versions: 5.4.x and 5.5.x. Workaround for already-installed
+projects: `tr -d '\r' < hook.sh > hook.sh.tmp && mv hook.sh.tmp hook.sh
+&& chmod +x hook.sh` for each broken script in `.claude/hooks/`.
+
 ## [5.5.1] - 2026-05-01
 
 ### Added — Delegation & parallelism rules in CLAUDE.md / AGENTS.md

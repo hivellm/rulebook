@@ -100,6 +100,24 @@ describe('Ralph Scripts', () => {
     expect(initSh).toContain('#!/bin/sh');
   });
 
+  it('writes .sh scripts with LF endings (no CR bytes)', async () => {
+    await installRalphScripts(tempDir);
+    const shScripts = [
+      'ralph-init.sh',
+      'ralph-run.sh',
+      'ralph-status.sh',
+      'ralph-pause.sh',
+      'ralph-history.sh',
+    ];
+    for (const name of shScripts) {
+      const buf = readFileSync(join(tempDir, '.rulebook', 'scripts', name));
+      expect(
+        buf.includes(0x0d),
+        `${name} contains CR (CRLF) — would crash bash on macOS/Linux`
+      ).toBe(false);
+    }
+  });
+
   it('should create .rulebook/scripts/ directory if it does not exist', async () => {
     const scriptsDir = join(tempDir, '.rulebook', 'scripts');
     expect(existsSync(scriptsDir)).toBe(false);

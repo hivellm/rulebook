@@ -27,6 +27,46 @@ export async function copyFile(source: string, destination: string): Promise<voi
   await fs.copyFile(source, destination);
 }
 
+/**
+ * Normalize CRLF/CR line endings to LF.
+ *
+ * Shell scripts written by `rulebook init` MUST have LF endings. On macOS/Linux,
+ * bash interprets a trailing `\r` as part of the command and breaks every line
+ * (`set -\r u` fails, `function() {\r` fails to parse). A single template file
+ * authored on Windows without honoring `.gitattributes` poisons the entire init
+ * output. Normalize defensively at the write boundary.
+ */
+export function normalizeLineEndings(content: string): string {
+  return content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
+
+/**
+ * Write a shell script to disk with LF line endings and (on POSIX) `0o755` mode.
+ *
+ * Use this for `.sh` / `.bash` files instead of `writeFile` or `copyFile`.
+ * Accepts either a string (already-loaded template content) or a source path
+ * (the file is read, normalized, and re-written).
+ */
+export async function writeShellScript(
+  destination: string,
+  contentOrSourcePath: { content: string } | { sourcePath: string }
+): Promise<void> {
+  const dir = path.dirname(destination);
+  await fs.mkdir(dir, { recursive: true });
+
+  const raw =
+    'content' in contentOrSourcePath
+      ? contentOrSourcePath.content
+      : await fs.readFile(contentOrSourcePath.sourcePath, 'utf-8');
+
+  const normalized = normalizeLineEndings(raw);
+  await fs.writeFile(destination, normalized, 'utf-8');
+
+  if (process.platform !== 'win32') {
+    await fs.chmod(destination, 0o755);
+  }
+}
+
 export async function findFiles(pattern: string, cwd: string = process.cwd()): Promise<string[]> {
   return await glob(pattern, {
     cwd,

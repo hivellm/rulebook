@@ -3,6 +3,7 @@ import { readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { LanguageDetection } from '../types.js';
+import { normalizeLineEndings } from './file-system.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -193,7 +194,7 @@ export async function installGitHooks(options: HookGenerationOptions): Promise<v
   const { shellScript, nodeScript } = await generatePreCommitHook(languages, cwd);
   const preCommitShellPath = path.join(hooksDir, 'pre-commit');
   const preCommitNodePath = path.join(hooksDir, 'pre-commit.js');
-  await writeFile(preCommitShellPath, shellScript, { mode: 0o755 });
+  await writeFile(preCommitShellPath, normalizeLineEndings(shellScript), { mode: 0o755 });
   await writeFile(preCommitNodePath, nodeScript, { mode: 0o644 });
 
   // Generate and install pre-push hook
@@ -203,7 +204,7 @@ export async function installGitHooks(options: HookGenerationOptions): Promise<v
   );
   const prePushShellPath = path.join(hooksDir, 'pre-push');
   const prePushNodePath = path.join(hooksDir, 'pre-push.js');
-  await writeFile(prePushShellPath, prePushShell, { mode: 0o755 });
+  await writeFile(prePushShellPath, normalizeLineEndings(prePushShell), { mode: 0o755 });
   await writeFile(prePushNodePath, prePushNode, { mode: 0o644 });
 }
 

@@ -1,5 +1,11 @@
 import path from 'path';
-import { readFile, writeFile, fileExists, ensureDir } from '../utils/file-system.js';
+import {
+  readFile,
+  writeFile,
+  writeShellScript,
+  fileExists,
+  ensureDir,
+} from '../utils/file-system.js';
 import { getTemplatesDir } from './generator.js';
 
 /**
@@ -305,7 +311,12 @@ async function installHookScripts(
   for (const name of shellScripts) {
     const src = path.join(templatesHookDir, name);
     if (!(await fileExists(src))) continue; // template not present yet
-    const content = await readFile(src);
-    await writeFile(path.join(destDir, name), content);
+    const dest = path.join(destDir, name);
+    if (name.endsWith('.sh')) {
+      await writeShellScript(dest, { sourcePath: src });
+    } else {
+      const content = await readFile(src);
+      await writeFile(dest, content);
+    }
   }
 }

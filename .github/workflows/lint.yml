@@ -24,7 +24,10 @@ jobs:
     
     - name: Run ESLint
       run: npm run lint
-    
+
     - name: Check code formatting
       run: npx prettier --check "src/**/*.ts" "tests/**/*.ts"
+
+    - name: Check shell-script line endings (LF only)
+      run: npm run check:sh-eol
 

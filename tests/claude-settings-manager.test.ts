@@ -46,6 +46,29 @@ describe('claude-settings-manager (v5.3.0 F-NEW-1)', () => {
       expect(ps1).toBe(true);
     });
 
+    it('writes every emitted .sh hook with LF endings (no CR bytes)', async () => {
+      await applyClaudeSettings(projectRoot, {
+        teamEnforcement: true,
+        sessionHandoff: true,
+        compactContextReinject: true,
+        qualityEnforcement: true,
+        terseMode: true,
+      });
+
+      const hooksDir = path.join(projectRoot, '.claude/hooks');
+      const entries = await fs.readdir(hooksDir);
+      const shHooks = entries.filter((f) => f.endsWith('.sh'));
+      expect(shHooks.length).toBeGreaterThan(0);
+
+      for (const name of shHooks) {
+        const buf = await fs.readFile(path.join(hooksDir, name));
+        expect(
+          buf.includes(0x0d),
+          `${name} contains CR (CRLF) — would crash bash on macOS/Linux`
+        ).toBe(false);
+      }
+    });
+
     it('merges into an existing settings.json without touching unrelated keys', async () => {
       const existing = {
         permissions: { defaultMode: 'bypassPermissions', allow: ['Read(*)'] },

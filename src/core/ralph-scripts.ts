@@ -1,7 +1,6 @@
 import path from 'path';
-import { promises as fs } from 'fs';
 import { fileURLToPath } from 'url';
-import { copyFile, ensureDir } from '../utils/file-system.js';
+import { copyFile, ensureDir, writeShellScript } from '../utils/file-system.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,11 +44,11 @@ export async function installRalphScripts(projectRoot: string): Promise<string[]
       const source = path.join(templatesDir, filename);
       const destination = path.join(scriptsDir, filename);
 
-      await copyFile(source, destination);
-
-      // Set executable permissions on .sh files (Unix/macOS only)
-      if (ext === '.sh' && process.platform !== 'win32') {
-        await fs.chmod(destination, 0o755);
+      if (ext === '.sh') {
+        // Normalize line endings to LF and set 0o755 on POSIX.
+        await writeShellScript(destination, { sourcePath: source });
+      } else {
+        await copyFile(source, destination);
       }
 
       installed.push(path.join('.rulebook', 'scripts', filename));
