@@ -5,7 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [5.5.2] - 2026-05-04
+
+### Fixed — `tests/terse-hooks-shell.test.ts` flaked on Windows runners
+
+`"less tokens please" activates the default mode` failed intermittently
+on `windows-latest, Node 20` with `ENOENT` reading
+`.rulebook/.terse-mode`, even though the hook had written it
+successfully (CI run #25346776699). Root cause: the hook writes via
+`mktemp` + `mv -f`; on GitHub-hosted Windows runners, antivirus / filter
+drivers can briefly hold the renamed file invisible to other processes
+after `MoveFileExW` returns success. macOS, Linux, and faster Windows
+runners win the race; the slow Windows-Node20 runner occasionally
+loses it.
+
+**Fix**: replaced every `readFileSync(...)` after a `run()` in
+`tests/terse-hooks-shell.test.ts` with a `readFlag()` helper that polls
+`existsSync` up to ~1s before reading. No-op cost on POSIX.
 
 ### Fixed — `rulebook init` produced CRLF shell scripts that broke Claude Code on macOS/Linux
 
