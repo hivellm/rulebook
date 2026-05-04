@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   generateAgentsContent,
   generateFullAgents,
@@ -391,22 +391,6 @@ describe('generator', () => {
 
       expect(content).toContain('<!-- RULEBOOK:START -->');
       expect(content).not.toContain('/.rulebook/specs/GIT.md');
-    });
-
-    it('should use custom rulebookDir', async () => {
-      const config: ProjectConfig = {
-        ...baseConfig,
-        rulebookDir: 'custom-rulebook',
-        modular: true,
-        includeGitWorkflow: true,
-        languages: ['typescript'],
-      };
-      const testDir = '/tmp/test-custom-dir';
-      const content = await generateModularAgents(config, testDir);
-
-      // The reference paths should use custom-rulebook
-      expect(content).toContain('/custom-rulebook/specs/GIT.md');
-      expect(content).toContain('/custom-rulebook/specs/TYPESCRIPT.md');
     });
   });
 

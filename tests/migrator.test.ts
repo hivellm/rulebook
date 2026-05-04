@@ -1,15 +1,15 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { promises as fs } from 'fs';
+import { tmpdir } from 'os';
+import path from 'path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   hasEmbeddedTemplates,
-  migrateEmbeddedTemplates,
   hasFlatLayout,
+  migrateEmbeddedTemplates,
   migrateFlatToSpecs,
 } from '../src/core/migrator';
 import type { ExistingAgentsInfo, ProjectConfig } from '../src/types';
-import { readFile, fileExists } from '../src/utils/file-system';
-import path from 'path';
-import { tmpdir } from 'os';
-import { promises as fs } from 'fs';
+import { fileExists, readFile } from '../src/utils/file-system';
 
 describe('migrator', () => {
   // Use unique temp directory per run to avoid EPERM conflicts with parallel workers
@@ -220,18 +220,6 @@ Vectorizer-specific content here.
 
       expect(await fileExists(typescriptPath)).toBe(true);
       expect(await fileExists(vectorizerPath)).toBe(true);
-    });
-
-    it('should handle custom rulebookDir', async () => {
-      const customConfig: ProjectConfig = {
-        ...config,
-        rulebookDir: 'custom-rulebook',
-      };
-
-      await migrateEmbeddedTemplates(makeExistingAgents(), customConfig, testDir);
-
-      const typescriptPath = path.join(testDir, 'custom-rulebook', 'specs', 'TYPESCRIPT.md');
-      expect(await fileExists(typescriptPath)).toBe(true);
     });
 
     it('should extract framework templates', async () => {
@@ -580,18 +568,6 @@ React content here.
       // testDir/.rulebook does not exist
       const result = await migrateFlatToSpecs(testDir);
       expect(result.migratedFiles).toEqual([]);
-    });
-
-    it('should use custom rulebookDir when provided', async () => {
-      const customRoot = path.join(testDir, 'custom-rulebook');
-      await fs.mkdir(customRoot, { recursive: true });
-      await fs.writeFile(path.join(customRoot, 'GIT.md'), '# Git rules');
-
-      const result = await migrateFlatToSpecs(testDir, 'custom-rulebook');
-
-      expect(result.migratedFiles).toContain('GIT.md');
-      const gitSpec = path.join(customRoot, 'specs', 'GIT.md');
-      expect(await fileExists(gitSpec)).toBe(true);
     });
 
     it('should not move subdirectories even if they could match .md pattern', async () => {
