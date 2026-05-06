@@ -411,12 +411,12 @@ export async function updateSingleProject(
     const existingRules = await loadCanonicalRules(cwd);
 
     if (existingRules.length === 0) {
-      const { assessComplexity } = await import('../../core/detect/complexity-detector.js');
       const { getTemplatesDir } = await import('../../core/generators/generator.js');
-      const complexity = assessComplexity(cwd);
       const templatesDir = getTemplatesDir();
 
-      const tier1 = [
+      // Install the full canonical rule set (tier1 + tier2). Users can
+      // disable individual rules later via `.rulebook/rules/` config.
+      const toInstall = [
         'no-shortcuts',
         'git-safety',
         'sequential-editing',
@@ -424,13 +424,11 @@ export async function updateSingleProject(
         'follow-task-sequence',
         'incremental-implementation',
         'knowledge-base-usage',
+        'task-decomposition',
+        'incremental-tests',
+        'no-deferred',
+        'session-workflow',
       ];
-      const tier2 = ['task-decomposition', 'incremental-tests', 'no-deferred', 'session-workflow'];
-
-      const toInstall = [...tier1];
-      if (complexity.recommendations.tier2Rules) {
-        toInstall.push(...tier2);
-      }
 
       let installed = 0;
       for (const name of toInstall) {
@@ -439,11 +437,7 @@ export async function updateSingleProject(
       }
 
       if (installed > 0) {
-        console.log(
-          chalk.gray(
-            `  • Installed ${installed} v5 canonical rules (${complexity.tier} project, ${complexity.metrics.estimatedLoc.toLocaleString()} LOC)`
-          )
-        );
+        console.log(chalk.gray(`  • Installed ${installed} v5 canonical rules`));
       }
     }
 

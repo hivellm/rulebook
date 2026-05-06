@@ -1315,25 +1315,6 @@ export async function generateModularAgents(
     // Monorepo detection failed — skip silently
   }
 
-  // Generate .cursor/rules/*.mdc files if Cursor is detected
-  try {
-    const { isCursorInstalled, generateCursorMdcRules } = await import('../ide/cursor-mdc-generator.js');
-    if (isCursorInstalled(projectRoot)) {
-      const { createConfigManager } = await import('../state/config-manager.js');
-      const configManager = createConfigManager(projectRoot);
-      const rulebookConfig = await configManager.loadConfig();
-      const ralphEnabled = rulebookConfig.ralph?.enabled ?? false;
-
-      await generateCursorMdcRules(projectRoot, {
-        languages: mergedConfig.languages,
-        ralphEnabled,
-        rulebookDir: rulebookDir,
-      });
-    }
-  } catch {
-    // Cursor MDC generation failed - skip silently
-  }
-
   // Generate multi-tool IDE config files (GEMINI.md, .windsurfrules, etc.)
   try {
     const { detectGeminiCli, detectContinueDev, detectWindsurf, detectGithubCopilot } =

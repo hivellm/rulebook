@@ -22,6 +22,28 @@ utilities (`logger`, `merger`, `migrator`, `rule-engine`,
 no logic touched. Full suite stayed green (1985/1985) before the
 follow-up scope cuts described below.
 
+### Removed — health-scorer, complexity-detector, cursor-mdc-generator,
+### orphan IDE templates
+
+- **`rulebook health`** + `core/quality/health-scorer.ts` — score-based
+  project health summary. Real CI/quality signal already comes from
+  type-check + lint + tests + coverage.
+- **`rulebook assess`** + `core/detect/complexity-detector.ts` — project
+  complexity tier scoring used to decide which canonical rules to
+  install. Replaced with unconditional install of the full tier1 + tier2
+  rule set (users disable individual rules via `.rulebook/rules/`).
+- **`core/ide/cursor-mdc-generator.ts`** + `templates/ides/cursor-mdc/`
+  — auto-generated `.cursor/rules/*.mdc` files. Cursor reads `AGENTS.md`
+  natively. Existing `.cursor/rules/` files are preserved (non-destructive
+  removal).
+- **8 orphan IDE reference templates** — `JETBRAINS_AI`, `REPLIT`,
+  `TABNINE`, `ZED`, `VSCODE`, `CURSOR`, `COPILOT`, `WINDSURF`. None had
+  call sites. The 4 active templates (`GEMINI_RULES`, `CONTINUE_RULES`,
+  `WINDSURF_RULES`, `COPILOT_INSTRUCTIONS`) and the
+  `multi-tool-generator.ts` that consumes them stay — they propagate
+  `AGENTS.md` rules to Gemini CLI, Continue.dev, Windsurf, and Copilot
+  on detection.
+
 ### Removed — three more CLI commands (agent / changelog / generate-docs)
 
 - **`rulebook agent`** + `core/agents/agent-manager.ts` +

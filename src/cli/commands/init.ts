@@ -108,14 +108,6 @@ export async function initCommand(options: {
     const detection = await detectProject(cwd);
     spinner.succeed('Project detection complete');
 
-    const { assessComplexity } = await import('../../core/detect/complexity-detector.js');
-    const complexity = assessComplexity(cwd);
-    console.log(
-      chalk.gray(
-        `  Complexity: ${complexity.tier.toUpperCase()} (${complexity.metrics.estimatedLoc.toLocaleString()} LOC, ${complexity.metrics.languageCount} languages)`
-      )
-    );
-
     if (detection.languages.length > 0) {
       console.log(chalk.green('\n✓ Detected languages:'));
       for (const lang of detection.languages) {
@@ -364,25 +356,18 @@ export async function initCommand(options: {
       const { getTemplatesDir } = await import('../../core/generators/generator.js');
       const templatesDir = getTemplatesDir();
 
-      const tier1Rules = [
+      const rulesToInstall = [
         'no-shortcuts',
         'git-safety',
         'sequential-editing',
         'research-first',
         'follow-task-sequence',
         'incremental-implementation',
-      ];
-      const tier2Rules = [
         'task-decomposition',
         'incremental-tests',
         'no-deferred',
         'session-workflow',
       ];
-
-      const rulesToInstall = [...tier1Rules];
-      if (complexity.recommendations.tier2Rules) {
-        rulesToInstall.push(...tier2Rules);
-      }
 
       let installedCount = 0;
       for (const name of rulesToInstall) {

@@ -46,7 +46,6 @@ export {
   checkDepsCommand,
   checkCoverageCommand,
   versionCommand,
-  healthCommand,
   configCommand,
 } from './misc.js';
 export {

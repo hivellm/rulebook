@@ -266,59 +266,6 @@ export async function versionCommand(options: {
   }
 }
 
-export async function healthCommand(): Promise<void> {
-  try {
-    const cwd = process.cwd();
-
-    console.log(chalk.bold.blue('\n🏥 Project Health Check\n'));
-
-    const { calculateHealthScore } = await import('../../core/quality/health-scorer.js');
-
-    const spinner = ora('Analyzing project health...').start();
-
-    const health = await calculateHealthScore(cwd);
-
-    spinner.succeed('Health analysis complete');
-
-    console.log('');
-
-    console.log(chalk.bold(`Overall Health Score: ${health.overall}/100 (${health.grade})`));
-    console.log('');
-
-    console.log(chalk.bold('Category Scores:\n'));
-    console.log(`  📝 Documentation: ${health.categories.documentation}/100`);
-    console.log(`  🧪 Testing: ${health.categories.testing}/100`);
-    console.log(`  🎨 Code Quality: ${health.categories.quality}/100`);
-    console.log(`  🔒 Security: ${health.categories.security}/100`);
-    console.log(`  🔄 CI/CD: ${health.categories.cicd}/100`);
-    console.log(`  📦 Dependencies: ${health.categories.dependencies}/100`);
-    console.log(`  🤖 AGENTS.md: ${health.categories.agentsMd}/100`);
-    console.log(`  🔁 Ralph: ${health.categories.ralph}/100`);
-    console.log(`  🧠 Memory: ${health.categories.memory}/100`);
-    console.log('');
-
-    if (health.recommendations.length > 0) {
-      console.log(chalk.bold.yellow('Recommendations:\n'));
-      health.recommendations.forEach((rec) => {
-        console.log(chalk.yellow(`  ${rec}`));
-      });
-      console.log('');
-    }
-
-    if (health.overall >= 90) {
-      console.log(chalk.green('🌟 Excellent! Your project is in great shape!'));
-    } else if (health.overall >= 70) {
-      console.log(chalk.blue('👍 Good project health. A few improvements suggested.'));
-    } else {
-      console.log(chalk.yellow('⚠️  Project health needs improvement.'));
-      console.log(chalk.gray('  Run: rulebook fix'));
-      console.log(chalk.gray('  To auto-fix common issues.'));
-    }
-  } catch (error) {
-    console.error(chalk.red('\n❌ Error:'), (error as Error).message);
-    process.exit(1);
-  }
-}
 
 export async function configCommand(options: {
   show?: boolean;
