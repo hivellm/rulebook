@@ -25,18 +25,11 @@ export default defineConfig({
         '**/*.config.ts',
         'src/index.ts', // CLI entry point - tested manually
         'src/cli/**', // CLI commands - tested manually
-        'src/core/coverage-checker.ts', // External command execution - tested manually
-        'src/core/dependency-checker.ts', // External command execution - tested manually
-        'src/core/docs-generator.ts', // Documentation generation - tested manually
-        'src/core/changelog-generator.ts', // Git command execution - tested manually
-        'src/core/custom-templates.ts', // File system operations - tested manually
-        'src/core/auto-fixer.ts', // Auto-fix operations - tested manually
-        'src/core/health-scorer.ts', // External command execution - core logic tested
-        'src/core/version-bumper.ts', // Multi-file operations - core logic tested
-        'src/core/cli-bridge.ts', // CLI bridge - requires real CLI tools
-        'src/core/agent-manager.ts', // Agent manager - requires real CLI tools
-        'src/core/watcher.ts', // Watcher - tests skipped due to mock issues
+        'src/core/docs/**', // Documentation generators - tested manually
+        'src/core/console/cli-bridge.ts', // CLI bridge - requires real CLI tools
         'src/core/indexer/background-indexer.ts', // Background indexer - uses fs.watch daemon, tested manually
+        'src/mcp/rulebook-server.ts', // MCP server - integration-tested via mcp-server.test.ts
+        'src/memory/legacy-migrator.ts', // Optional one-shot migration - exercised only with sql.js/better-sqlite3 installed
         'src/agents/**', // Agent parsers - requires real CLI tools
       ],
       thresholds: {
