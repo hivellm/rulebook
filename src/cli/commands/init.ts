@@ -12,11 +12,7 @@ import { writeFile, ensureDir } from '../../utils/file-system.js';
 import { existsSync } from 'fs';
 import { parseRulesIgnore } from '../../utils/rulesignore.js';
 import { installGitHooks } from '../../utils/git-hooks.js';
-import type {
-  LanguageDetection,
-  ProjectConfig,
-  ModuleDetection,
-} from '../../types.js';
+import type { LanguageDetection, ProjectConfig, ModuleDetection } from '../../types.js';
 import { scaffoldMinimalProject } from '../../core/generators/minimal-scaffolder.js';
 import path from 'path';
 import { SkillsManager, getDefaultTemplatesPath } from '../../core/skills/skills-manager.js';
@@ -398,7 +394,9 @@ export async function initCommand(options: {
         }
         if (oc.commands.length > 0) {
           console.log(
-            chalk.gray(`  • OpenCode commands: ${oc.commands.length} written to .opencode/commands/`)
+            chalk.gray(
+              `  • OpenCode commands: ${oc.commands.length} written to .opencode/commands/`
+            )
           );
         }
         if (oc.agents.length > 0) {
@@ -538,7 +536,9 @@ export async function initCommand(options: {
       }
 
       try {
-        const { applyClaudeSettings } = await import('../../core/claude/claude-settings-manager.js');
+        const { applyClaudeSettings } = await import(
+          '../../core/claude/claude-settings-manager.js'
+        );
         const rulebookCfg = await configManager.loadConfig();
         const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
         const handoffEnabled = rulebookCfg?.handoff?.enabled ?? true;

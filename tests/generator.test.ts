@@ -248,7 +248,6 @@ describe('generator', () => {
     it('should handle empty frameworks array', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
-
       };
       const content = await generateFullAgents(config);
 
@@ -259,7 +258,6 @@ describe('generator', () => {
     it('should handle undefined frameworks', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
-
       };
       const content = await generateFullAgents(config);
 

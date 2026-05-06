@@ -2297,11 +2297,6 @@ export async function startRulebookMcpServer(): Promise<void> {
     }
   );
 
-
-
-
-
-
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

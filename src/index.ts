@@ -154,7 +154,6 @@ program
   .description('Run rulebook health checks (file sizes, broken imports, stale state)')
   .action(doctorCommand);
 
-
 program
   .command('config')
   .description('Manage rulebook configuration')

@@ -75,11 +75,7 @@ const SIGNATURES = {
 // Hook signatures retired in past releases. Always removed during sync so
 // stale settings.json entries from older rulebook versions get cleaned up
 // even when the user upgrades without changing their `desire` flags.
-const LEGACY_SIGNATURES = [
-  'enforce-no-deferred',
-  'enforce-no-shortcuts',
-  'enforce-mcp-for-tasks',
-];
+const LEGACY_SIGNATURES = ['enforce-no-deferred', 'enforce-no-shortcuts', 'enforce-mcp-for-tasks'];
 
 export function getClaudeSettingsPath(projectRoot: string): string {
   return path.join(projectRoot, '.claude', 'settings.json');

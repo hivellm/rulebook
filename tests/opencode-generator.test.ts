@@ -135,7 +135,10 @@ describe('opencode-generator', () => {
       const result1 = await generateOpencodeCommands(dir);
       const target = result1.written[0];
       const before = await fs.readFile(target, 'utf-8');
-      await fs.writeFile(target, before.replace('<!-- RULEBOOK:START -->', '<!-- RULEBOOK:START -->\nstale'));
+      await fs.writeFile(
+        target,
+        before.replace('<!-- RULEBOOK:START -->', '<!-- RULEBOOK:START -->\nstale')
+      );
       const result2 = await generateOpencodeCommands(dir);
       expect(result2.written).toContain(target);
       const after = await fs.readFile(target, 'utf-8');

@@ -120,7 +120,6 @@ describe('phase1_terse-templates-wiring — autoDetectSkills includes terse fami
       languages: ['typescript'],
 
       modules: [],
-
     });
 
     // Core skills are always included per skills-manager contract.

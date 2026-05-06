@@ -233,7 +233,6 @@ describe('Init Command Options', () => {
         languages: ['typescript' as const],
 
         modules: [],
-
       };
 
       const detectedSkills = await skillsManager.autoDetectSkills(partialConfig);

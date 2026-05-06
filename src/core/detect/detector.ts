@@ -50,8 +50,7 @@ export async function detectOpencode(
   cwd: string
 ): Promise<NonNullable<DetectionResult['opencode']>> {
   const hasConfigJson =
-    existsSync(path.join(cwd, 'opencode.json')) ||
-    existsSync(path.join(cwd, 'opencode.jsonc'));
+    existsSync(path.join(cwd, 'opencode.json')) || existsSync(path.join(cwd, 'opencode.jsonc'));
   const hasOpencodeDir = existsSync(path.join(cwd, '.opencode'));
   return {
     detected: hasConfigJson || hasOpencodeDir,
@@ -442,7 +441,6 @@ async function detectLanguages(cwd: string): Promise<LanguageDetection[]> {
   return detections.sort((a, b) => b.confidence - a.confidence);
 }
 
-
 interface MCPConfig {
   mcpServers?: Record<string, unknown>;
   servers?: Record<string, unknown>;
@@ -640,4 +638,3 @@ async function detectGitHooks(
     prePushExists: await fileExists(prePushPath),
   };
 }
-

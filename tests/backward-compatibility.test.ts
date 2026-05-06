@@ -367,7 +367,6 @@ describe('Backward Compatibility v1.x to v2.0', () => {
         languages: ['typescript' as const],
 
         modules: [],
-
       };
 
       const detectedSkills = await skillsManager.autoDetectSkills(partialConfig);
@@ -460,7 +459,6 @@ describe('Backward Compatibility v1.x to v2.0', () => {
         languages: ['typescript', 'python'],
 
         modules: ['supabase'],
-
       };
 
       await fs.writeFile(path.join(testDir, '.rulebook'), JSON.stringify(v1Config, null, 2));

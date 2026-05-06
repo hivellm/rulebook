@@ -6,11 +6,7 @@ import { writeFile } from '../../utils/file-system.js';
 import { existsSync } from 'fs';
 import { RulebookConfig } from '../../types.js';
 import { installGitHooks } from '../../utils/git-hooks.js';
-import type {
-  LanguageDetection,
-  ProjectConfig,
-  ModuleDetection,
-} from '../../types.js';
+import type { LanguageDetection, ProjectConfig, ModuleDetection } from '../../types.js';
 import { scaffoldMinimalProject } from '../../core/generators/minimal-scaffolder.js';
 import path from 'path';
 import { readFileSync } from 'fs';
@@ -195,7 +191,9 @@ export async function updateSingleProject(
       const hasRulebookCommands = existingFiles.some((file) => file.startsWith('rulebook-task-'));
 
       if (!hasRulebookCommands) {
-        const { generateCursorCommands } = await import('../../core/generators/workflow-generator.js');
+        const { generateCursorCommands } = await import(
+          '../../core/generators/workflow-generator.js'
+        );
         const generatedCommands = await generateCursorCommands(cwd);
         if (generatedCommands.length > 0) {
           console.log(
@@ -206,7 +204,9 @@ export async function updateSingleProject(
         }
       }
     } else {
-      const { generateCursorCommands } = await import('../../core/generators/workflow-generator.js');
+      const { generateCursorCommands } = await import(
+        '../../core/generators/workflow-generator.js'
+      );
       const generatedCommands = await generateCursorCommands(cwd);
       if (generatedCommands.length > 0) {
         console.log(
@@ -551,9 +551,7 @@ export async function updateSingleProject(
 
   if (detection.opencode?.detected) {
     try {
-      const { generateOpencodeIntegration } = await import(
-        '../../core/ide/opencode-generator.js'
-      );
+      const { generateOpencodeIntegration } = await import('../../core/ide/opencode-generator.js');
       const oc = await generateOpencodeIntegration(cwd, detection);
       if (oc.configPath) {
         console.log(
@@ -561,19 +559,13 @@ export async function updateSingleProject(
         );
       }
       if (oc.commands.length > 0) {
-        console.log(
-          chalk.gray(`  • OpenCode commands refreshed (${oc.commands.length} files)`)
-        );
+        console.log(chalk.gray(`  • OpenCode commands refreshed (${oc.commands.length} files)`));
       }
       if (oc.agents.length > 0) {
-        console.log(
-          chalk.gray(`  • OpenCode agents refreshed (${oc.agents.length} files)`)
-        );
+        console.log(chalk.gray(`  • OpenCode agents refreshed (${oc.agents.length} files)`));
       }
       if (oc.skills.length > 0) {
-        console.log(
-          chalk.gray(`  • OpenCode skills refreshed (${oc.skills.length} files)`)
-        );
+        console.log(chalk.gray(`  • OpenCode skills refreshed (${oc.skills.length} files)`));
       }
     } catch (err) {
       console.log(
@@ -740,7 +732,9 @@ export async function updateSingleProject(
 
   // F-NEW-3: scan active tasks for missing mandatory tail and offer to append
   try {
-    const { checkMandatoryTail, renderMandatoryTail } = await import('../../core/tasks/task-manager.js');
+    const { checkMandatoryTail, renderMandatoryTail } = await import(
+      '../../core/tasks/task-manager.js'
+    );
     const { promises: fsP } = await import('fs');
     const tasksDir = path.join(cwd, '.rulebook', 'tasks');
     if (existsSync(tasksDir)) {

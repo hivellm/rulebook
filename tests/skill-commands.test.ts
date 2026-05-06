@@ -348,7 +348,6 @@ describe('Skill Commands', () => {
         languages: ['typescript' as const],
 
         modules: [],
-
       };
 
       const detectedSkills = await manager.autoDetectSkills(partialConfig);

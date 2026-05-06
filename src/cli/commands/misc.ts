@@ -289,7 +289,6 @@ export async function versionCommand(options: {
   }
 }
 
-
 export async function configCommand(options: {
   show?: boolean;
   set?: string;

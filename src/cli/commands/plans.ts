@@ -232,4 +232,3 @@ export async function continueCommand(): Promise<void> {
     }
   }
 }
-

@@ -187,7 +187,6 @@ export async function promptProjectConfig(
         },
       ],
     });
-
   }
 
   // IDE selection

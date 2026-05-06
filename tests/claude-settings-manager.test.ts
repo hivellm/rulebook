@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
-import { applyClaudeSettings, getClaudeSettingsPath } from '../src/core/claude/claude-settings-manager';
+import {
+  applyClaudeSettings,
+  getClaudeSettingsPath,
+} from '../src/core/claude/claude-settings-manager';
 
 describe('claude-settings-manager (v5.3.0 F-NEW-1)', () => {
   let projectRoot: string;

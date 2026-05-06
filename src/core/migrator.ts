@@ -23,8 +23,7 @@ export function hasEmbeddedTemplates(existing: ExistingAgentsInfo): boolean {
     /<!--\s*(VECTORIZER|SYNAP|CONTEXT7|GITHUB|PLAYWRIGHT|SUPABASE|NOTION|ATLASSIAN|SERENA|FIGMA|GRAFANA|AGENT_AUTOMATION):START\s*-->/i;
 
   return (
-    embeddedLanguagePattern.test(existing.content) ||
-    embeddedModulePattern.test(existing.content)
+    embeddedLanguagePattern.test(existing.content) || embeddedModulePattern.test(existing.content)
   );
 }
 

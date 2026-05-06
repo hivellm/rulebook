@@ -15,14 +15,7 @@
 
 import path, { dirname } from 'path';
 import { existsSync } from 'fs';
-import {
-  readdir,
-  readFile,
-  writeFile,
-  mkdir,
-  rm,
-  stat,
-} from 'fs/promises';
+import { readdir, readFile, writeFile, mkdir, rm, stat } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import type { DetectionResult } from '../../types.js';
 
@@ -147,7 +140,10 @@ async function discoverInstructionPaths(projectRoot: string): Promise<string[]> 
 async function buildMcpRulebookEntry(projectRoot: string): Promise<OpencodeMcpServer> {
   const mcpJsonPath = path.join(projectRoot, '.mcp.json');
   const existing = await readJson<{
-    mcpServers?: Record<string, { command?: string; args?: string[]; env?: Record<string, string> }>;
+    mcpServers?: Record<
+      string,
+      { command?: string; args?: string[]; env?: Record<string, string> }
+    >;
   }>(mcpJsonPath);
 
   const declared = existing?.mcpServers?.rulebook;

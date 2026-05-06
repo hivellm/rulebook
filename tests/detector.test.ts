@@ -124,7 +124,6 @@ describe('detector', () => {
       expect(result.languages[0].indicators).toContain('go.mod');
     });
 
-
     it('should detect Java project with pom.xml', async () => {
       await fs.writeFile(path.join(testDir, 'pom.xml'), '<project></project>');
       await fs.mkdir(path.join(testDir, 'src', 'main', 'java'), { recursive: true });
@@ -647,5 +646,4 @@ describe('detector', () => {
       });
     });
   });
-
 });

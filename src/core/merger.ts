@@ -1,5 +1,9 @@
 import type { ExistingAgentsInfo, ProjectConfig, AgentBlock } from '../types.js';
-import { generateAgentsContent, generateLanguageRules, generateModuleRules } from './generators/generator.js';
+import {
+  generateAgentsContent,
+  generateLanguageRules,
+  generateModuleRules,
+} from './generators/generator.js';
 import {
   hasEmbeddedTemplates,
   migrateEmbeddedTemplates,

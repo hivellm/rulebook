@@ -196,4 +196,3 @@ async function checkMissingFiles(root: string, checks: DoctorCheck[]): Promise<v
     });
   }
 }
-

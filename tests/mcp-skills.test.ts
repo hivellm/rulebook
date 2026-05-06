@@ -303,7 +303,6 @@ describe('MCP Skills Functions', () => {
         languages: ['typescript' as const],
 
         modules: [],
-
       };
 
       const detectedSkills = await skillsManager.autoDetectSkills(partialConfig);

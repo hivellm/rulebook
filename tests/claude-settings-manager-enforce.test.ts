@@ -48,9 +48,8 @@ describe('claude-settings-manager — qualityEnforcement enabled', () => {
   it('uses matcher "Edit|Write|Bash" so Read/Glob/Grep never spawn the hook', async () => {
     await applyClaudeSettings(projectRoot, { qualityEnforcement: true });
     const settings = readSettings(projectRoot);
-    const entry = (settings.hooks?.PreToolUse ?? []).find(
-      (e: { hooks: { command: string }[] }) =>
-        e.hooks.some((h) => h.command.includes('enforce-pre-tool.sh'))
+    const entry = (settings.hooks?.PreToolUse ?? []).find((e: { hooks: { command: string }[] }) =>
+      e.hooks.some((h) => h.command.includes('enforce-pre-tool.sh'))
     );
     expect(entry).toBeDefined();
     expect(entry.matcher).toBe('Edit|Write|Bash');
@@ -62,11 +61,7 @@ describe('claude-settings-manager — qualityEnforcement enabled', () => {
     const commands = (settings.hooks?.PreToolUse ?? [])
       .flatMap((e: { hooks: { command: string }[] }) => e.hooks)
       .map((h: { command: string }) => h.command);
-    for (const legacy of [
-      'enforce-no-deferred',
-      'enforce-no-shortcuts',
-      'enforce-mcp-for-tasks',
-    ]) {
+    for (const legacy of ['enforce-no-deferred', 'enforce-no-shortcuts', 'enforce-mcp-for-tasks']) {
       expect(commands.some((c: string) => c.includes(legacy))).toBe(false);
     }
   });
@@ -84,15 +79,9 @@ describe('claude-settings-manager — qualityEnforcement enabled', () => {
 
   it('is idempotent — re-applying produces the same settings', async () => {
     await applyClaudeSettings(projectRoot, { qualityEnforcement: true });
-    const first = readFileSync(
-      join(projectRoot, '.claude', 'settings.json'),
-      'utf8'
-    );
+    const first = readFileSync(join(projectRoot, '.claude', 'settings.json'), 'utf8');
     await applyClaudeSettings(projectRoot, { qualityEnforcement: true });
-    const second = readFileSync(
-      join(projectRoot, '.claude', 'settings.json'),
-      'utf8'
-    );
+    const second = readFileSync(join(projectRoot, '.claude', 'settings.json'), 'utf8');
     expect(second).toBe(first);
   });
 });
@@ -149,9 +138,7 @@ describe('claude-settings-manager — legacy migration', () => {
     ]) {
       expect(commands.some((c: string) => c.includes(legacyName))).toBe(false);
     }
-    expect(commands.some((c: string) => c.includes('enforce-pre-tool.sh'))).toBe(
-      true
-    );
+    expect(commands.some((c: string) => c.includes('enforce-pre-tool.sh'))).toBe(true);
   });
 
   it('strips legacy entries even when qualityEnforcement is disabled', async () => {
@@ -180,9 +167,7 @@ describe('claude-settings-manager — legacy migration', () => {
     const commands = (settings.hooks?.PreToolUse ?? [])
       .flatMap((e: { hooks: { command: string }[] }) => e.hooks)
       .map((h: { command: string }) => h.command);
-    expect(commands.some((c: string) => c.includes('enforce-no-deferred'))).toBe(
-      false
-    );
+    expect(commands.some((c: string) => c.includes('enforce-no-deferred'))).toBe(false);
   });
 });
 
@@ -195,8 +180,6 @@ describe('claude-settings-manager — qualityEnforcement disabled', () => {
     const commands = (settings.hooks?.PreToolUse ?? [])
       .flatMap((e: { hooks: { command: string }[] }) => e.hooks)
       .map((h: { command: string }) => h.command);
-    expect(commands.some((c: string) => c.includes('enforce-pre-tool.sh'))).toBe(
-      false
-    );
+    expect(commands.some((c: string) => c.includes('enforce-pre-tool.sh'))).toBe(false);
   });
 });

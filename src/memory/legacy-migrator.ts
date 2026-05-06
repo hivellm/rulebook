@@ -31,7 +31,13 @@ interface MinimalDb {
 
 async function openDb(dbPath: string): Promise<MinimalDb | null> {
   try {
-    const Database = (await import('better-sqlite3')).default;
+    // better-sqlite3 is an optional native dep — keep the import indirect so
+    // tsc does not require its type declarations when the package is absent
+    // (matches the sql.js pattern below).
+    const moduleName = 'better-sqlite3';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod: any = await import(moduleName);
+    const Database = mod.default ?? mod;
     const db = new Database(dbPath, { readonly: true });
     return db as unknown as MinimalDb;
   } catch {

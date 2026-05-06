@@ -14,23 +14,10 @@
  */
 
 import { existsSync, statSync } from 'fs';
-import {
-  mkdir,
-  readFile,
-  readdir,
-  rename,
-  rm,
-  writeFile,
-  appendFile,
-  stat,
-} from 'fs/promises';
+import { mkdir, readFile, readdir, rename, rm, writeFile, appendFile, stat } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import type {
-  Memory,
-  MemorySession,
-  MemoryType,
-} from './memory-types.js';
+import type { Memory, MemorySession, MemoryType } from './memory-types.js';
 import type { CodeNode, CodeEdge } from '../core/indexer/indexer-types.js';
 
 /** Body sentinel separating frontmatter from content. */
@@ -167,12 +154,13 @@ export function parseFile(text: string): { meta: Record<string, unknown>; body: 
 
 function metaToMemory(meta: Record<string, unknown>, body: string): Memory | null {
   const id = typeof meta.id === 'string' ? meta.id : null;
-  const type = typeof meta.type === 'string' && MEMORY_TYPES.has(meta.type)
-    ? (meta.type as MemoryType)
-    : null;
+  const type =
+    typeof meta.type === 'string' && MEMORY_TYPES.has(meta.type) ? (meta.type as MemoryType) : null;
   const title = typeof meta.title === 'string' ? meta.title : null;
   if (!id || !type || title === null) return null;
-  const tags = Array.isArray(meta.tags) ? (meta.tags as string[]).filter((t) => typeof t === 'string') : [];
+  const tags = Array.isArray(meta.tags)
+    ? (meta.tags as string[]).filter((t) => typeof t === 'string')
+    : [];
   const project = typeof meta.project === 'string' ? meta.project : '';
   const summary = typeof meta.summary === 'string' ? meta.summary : undefined;
   const sessionId = typeof meta.sessionId === 'string' ? meta.sessionId : undefined;
@@ -278,7 +266,18 @@ export class FileStore {
     const st = await stat(target);
     this.memoryCache.set(memory.id, {
       filePath: target,
-      meta: { id: memory.id, type: memory.type, title: memory.title, project: memory.project, tags: memory.tags, sessionId: memory.sessionId, createdAt: memory.createdAt, updatedAt: memory.updatedAt, accessedAt: memory.accessedAt, summary: memory.summary },
+      meta: {
+        id: memory.id,
+        type: memory.type,
+        title: memory.title,
+        project: memory.project,
+        tags: memory.tags,
+        sessionId: memory.sessionId,
+        createdAt: memory.createdAt,
+        updatedAt: memory.updatedAt,
+        accessedAt: memory.accessedAt,
+        summary: memory.summary,
+      },
       body: memory.content,
       mtimeMs: st.mtimeMs,
     });
@@ -336,13 +335,16 @@ export class FileStore {
     const all = await this.listAllMemories();
     let filtered = all;
     if (filter?.type) filtered = filtered.filter((m) => m.type === filter.type);
-    if (filter?.project !== undefined) filtered = filtered.filter((m) => m.project === filter.project);
+    if (filter?.project !== undefined)
+      filtered = filtered.filter((m) => m.project === filter.project);
     if (filter?.tags && filter.tags.length > 0) {
       const want = new Set(filter.tags);
       filtered = filtered.filter((m) => m.tags.some((t) => want.has(t)));
     }
-    if (filter?.since !== undefined) filtered = filtered.filter((m) => m.createdAt >= filter.since!);
-    if (filter?.until !== undefined) filtered = filtered.filter((m) => m.createdAt <= filter.until!);
+    if (filter?.since !== undefined)
+      filtered = filtered.filter((m) => m.createdAt >= filter.since!);
+    if (filter?.until !== undefined)
+      filtered = filtered.filter((m) => m.createdAt <= filter.until!);
     filtered.sort((a, b) => b.createdAt - a.createdAt);
     const offset = filter?.offset ?? 0;
     const limit = filter?.limit ?? Number.MAX_SAFE_INTEGER;
@@ -368,7 +370,14 @@ export class FileStore {
     const st = await stat(target);
     this.sessionCache.set(session.id, {
       filePath: target,
-      meta: { id: session.id, project: session.project, status: session.status, startedAt: session.startedAt, endedAt: session.endedAt, toolCalls: session.toolCalls },
+      meta: {
+        id: session.id,
+        project: session.project,
+        status: session.status,
+        startedAt: session.startedAt,
+        endedAt: session.endedAt,
+        toolCalls: session.toolCalls,
+      },
       body: session.summary ?? '',
       mtimeMs: st.mtimeMs,
     });
@@ -531,7 +540,9 @@ export class FileStore {
         // ignore malformed
       }
     }
-    const out = Array.from(latest.values()).map((n) => JSON.stringify(n)).join('\n');
+    const out = Array.from(latest.values())
+      .map((n) => JSON.stringify(n))
+      .join('\n');
     await atomicWrite(this.codegraphNodesFile, out + (out ? '\n' : ''));
   }
 
@@ -575,7 +586,12 @@ export class FileStore {
           const id = typeof parsed.meta.id === 'string' ? parsed.meta.id : null;
           if (!id) continue;
           const st = await stat(full);
-          cache.set(id, { filePath: full, meta: parsed.meta, body: parsed.body, mtimeMs: st.mtimeMs });
+          cache.set(id, {
+            filePath: full,
+            meta: parsed.meta,
+            body: parsed.body,
+            mtimeMs: st.mtimeMs,
+          });
         } catch {
           // ignore unreadable files
         }

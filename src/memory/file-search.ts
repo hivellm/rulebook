@@ -104,11 +104,7 @@ function buildIndex(memories: Memory[]): CorpusIndex {
   return { docs, docFreq, avgLength };
 }
 
-function bm25Score(
-  doc: IndexedDoc,
-  queryTerms: string[],
-  index: CorpusIndex
-): number {
+function bm25Score(doc: IndexedDoc, queryTerms: string[], index: CorpusIndex): number {
   const N = index.docs.length || 1;
   let score = 0;
   for (const term of queryTerms) {

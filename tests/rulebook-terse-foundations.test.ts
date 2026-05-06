@@ -294,4 +294,3 @@ describe('phase0_terse-foundations — review sub-skill', () => {
     expect(body.toLowerCase()).toMatch(/security finding/);
   });
 });
-

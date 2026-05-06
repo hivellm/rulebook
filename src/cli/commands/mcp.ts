@@ -5,9 +5,7 @@ import { WorkspaceManager } from '../../core/workspace/workspace-manager.js';
  * Initialize MCP configuration in .rulebook file
  * Adds mcp block to .rulebook and creates/updates .cursor/mcp.json
  */
-export async function mcpInitCommand(options?: {
-  workspace?: boolean;
-}): Promise<void> {
+export async function mcpInitCommand(options?: { workspace?: boolean }): Promise<void> {
   const { findRulebookConfig } = await import('../../mcp/rulebook-server.js');
   const { existsSync, readFileSync, writeFileSync, statSync } = await import('fs');
   const { join, dirname } = await import('path');
