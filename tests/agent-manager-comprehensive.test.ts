@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createAgentManager, AgentManager } from '../src/core/agent-manager.js';
-import { createCLIBridge } from '../src/core/cli-bridge.js';
+import { createAgentManager, AgentManager } from '../src/core/agents/agent-manager.js';
+import { createCLIBridge } from '../src/core/console/cli-bridge.js';
 import { createLogger, initializeLogger } from '../src/core/logger.js';
-import { createConfigManager } from '../src/core/config-manager.js';
+import { createConfigManager } from '../src/core/state/config-manager.js';
 
 // Mock dependencies
 vi.mock('../src/core/logger.js');
-vi.mock('../src/core/config-manager.js');
-vi.mock('../src/core/cli-bridge.js');
+vi.mock('../src/core/state/config-manager.js');
+vi.mock('../src/core/console/cli-bridge.js');
 
 describe.skip('Agent Manager Comprehensive Tests', () => {
   let agentManager: AgentManager;

@@ -5,7 +5,7 @@ import {
   mergeStoriesIntoExistingPrd,
   checkGhCliAvailable,
   type GitHubIssue,
-} from '../src/core/github-issues-importer.js';
+} from '../src/core/github/github-issues-importer.js';
 import type { RalphPRD } from '../src/types.js';
 
 // ─── Helper: build a minimal GitHubIssue ───

@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { applyClaudeSettings } from '../src/core/claude-settings-manager.js';
+import { applyClaudeSettings } from '../src/core/claude/claude-settings-manager.js';
 
 let projectRoot: string;
 

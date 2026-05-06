@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import { detectProject } from '../../core/detector.js';
-import { generateWorkflows } from '../../core/workflow-generator.js';
+import { detectProject } from '../../core/detect/detector.js';
+import { generateWorkflows } from '../../core/generators/workflow-generator.js';
 import { existsSync } from 'fs';
 import { RulebookConfig } from '../../types.js';
 import path from 'path';
@@ -15,7 +15,7 @@ export async function validateCommand(): Promise<void> {
 
     const spinner = ora('Validating project structure...').start();
 
-    const { validateProject } = await import('../../core/validator.js');
+    const { validateProject } = await import('../../core/quality/validator.js');
 
     const result = await validateProject(cwd);
     spinner.stop();
@@ -116,7 +116,7 @@ export async function checkDepsCommand(): Promise<void> {
 
     const spinner = ora('Analyzing dependencies...').start();
 
-    const { checkDependencies } = await import('../../core/dependency-checker.js');
+    const { checkDependencies } = await import('../../core/quality/dependency-checker.js');
     const result = await checkDependencies(cwd);
 
     spinner.succeed('Analysis complete');
@@ -178,7 +178,7 @@ export async function checkCoverageCommand(options: { threshold?: number }): Pro
 
     const spinner = ora('Running coverage analysis...').start();
 
-    const { checkCoverage } = await import('../../core/coverage-checker.js');
+    const { checkCoverage } = await import('../../core/quality/coverage-checker.js');
     const result = await checkCoverage(cwd, threshold);
 
     spinner.succeed('Coverage analysis complete');
@@ -250,7 +250,7 @@ export async function generateDocsCommand(options: { yes?: boolean }): Promise<v
 
     const spinner = ora('Generating documentation structure...').start();
 
-    const { generateDocsStructure } = await import('../../core/docs-generator.js');
+    const { generateDocsStructure } = await import('../../core/docs/docs-generator.js');
     const generatedFiles = await generateDocsStructure(config, cwd);
 
     spinner.succeed(`Generated ${generatedFiles.length} files`);
@@ -282,7 +282,7 @@ export async function versionCommand(options: {
 
     console.log(chalk.bold.blue('\n📦 Version Bump\n'));
 
-    const { bumpProjectVersion } = await import('../../core/version-bumper.js');
+    const { bumpProjectVersion } = await import('../../core/state/version-bumper.js');
 
     const spinner = ora('Bumping version...').start();
 
@@ -321,7 +321,7 @@ export async function changelogCommand(options: { version?: string }): Promise<v
     console.log(chalk.bold.blue('\n📝 Changelog Generation\n'));
 
     const { generateChangelog, getCurrentVersion } = await import(
-      '../../core/changelog-generator.js'
+      '../../core/docs/changelog-generator.js'
     );
 
     const version = options.version || (await getCurrentVersion(cwd));
@@ -369,7 +369,7 @@ export async function healthCommand(): Promise<void> {
 
     console.log(chalk.bold.blue('\n🏥 Project Health Check\n'));
 
-    const { calculateHealthScore } = await import('../../core/health-scorer.js');
+    const { calculateHealthScore } = await import('../../core/quality/health-scorer.js');
 
     const spinner = ora('Analyzing project health...').start();
 
@@ -423,7 +423,7 @@ export async function fixCommand(): Promise<void> {
 
     console.log(chalk.bold.blue('\n🔧 Auto-Fix Common Issues\n'));
 
-    const { autoFixProject, autoFixLint } = await import('../../core/auto-fixer.js');
+    const { autoFixProject, autoFixLint } = await import('../../core/quality/auto-fixer.js');
 
     const spinner = ora('Analyzing and fixing issues...').start();
 
@@ -479,7 +479,7 @@ export async function fixCommand(): Promise<void> {
 export async function watcherCommand(): Promise<void> {
   try {
     const cwd = process.cwd();
-    const { startWatcher } = await import('../../core/watcher.js');
+    const { startWatcher } = await import('../../core/console/watcher.js');
 
     console.log(chalk.bold.blue('\n🚀 Starting Modern Console Watcher\n'));
     console.log(chalk.gray('Full-screen interface with system monitoring'));
@@ -500,7 +500,7 @@ export async function agentCommand(options: {
 }): Promise<void> {
   try {
     const cwd = process.cwd();
-    const { startAgent } = await import('../../core/agent-manager.js');
+    const { startAgent } = await import('../../core/agents/agent-manager.js');
 
     console.log(chalk.bold.blue('\n🤖 Starting Rulebook Agent\n'));
 
@@ -530,7 +530,7 @@ export async function configCommand(options: {
 }): Promise<void> {
   try {
     const cwd = process.cwd();
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
 
     const configManager = createConfigManager(cwd);
 
@@ -659,7 +659,7 @@ export async function migrateMemoryDirectory(): Promise<void> {
   const spinner = oraFn('Migrating memory directory structure...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const fs = await import('fs');
     const fsPromises = fs.promises;
     const cwd = process.cwd();

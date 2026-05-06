@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { installRalphScripts } from '../src/core/ralph-scripts.js';
+import { installRalphScripts } from '../src/core/ralph/ralph-scripts.js';
 import { existsSync, rmSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { mkdir } from 'fs/promises';

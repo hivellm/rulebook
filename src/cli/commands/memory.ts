@@ -10,7 +10,7 @@ export async function memorySearchCommand(
   const spinner = ora('Searching memories...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const cwd = process.cwd();
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
@@ -63,7 +63,7 @@ export async function memorySaveCommand(
   const spinner = ora('Saving memory...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const cwd = process.cwd();
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
@@ -100,7 +100,7 @@ export async function memoryListCommand(options: { limit?: string; type?: string
   const spinner = ora('Loading memories...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const cwd = process.cwd();
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
@@ -148,7 +148,7 @@ export async function memoryStatsCommand(): Promise<void> {
   const spinner = ora('Loading stats...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const cwd = process.cwd();
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
@@ -196,7 +196,7 @@ export async function memoryVerifyCommand(): Promise<void> {
   const spinner = ora('Verifying memory system...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const cwd = process.cwd();
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
@@ -252,7 +252,7 @@ export async function memoryCleanupCommand(options: { force?: boolean }): Promis
   const spinner = ora('Running cleanup...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const cwd = process.cwd();
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
@@ -291,7 +291,7 @@ export async function memoryExportCommand(options: {
   const spinner = ora('Exporting memories...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const cwd = process.cwd();
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();

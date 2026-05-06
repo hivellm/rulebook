@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { detectProject } from '../src/core/detector';
+import { detectProject } from '../src/core/detect/detector';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';

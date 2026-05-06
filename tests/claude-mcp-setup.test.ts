@@ -10,7 +10,7 @@ import {
   configureClaudeSettings,
   installAgentDefinitions,
   setupClaudeCodeIntegration,
-} from '../src/core/claude-mcp';
+} from '../src/core/claude/claude-mcp';
 
 describe('claude-mcp', () => {
   let testDir: string;

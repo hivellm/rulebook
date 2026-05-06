@@ -6,7 +6,7 @@ import {
   generateModuleRules,
   generateFrameworkRules,
   generateModularAgents,
-} from './generator.js';
+} from './generators/generator.js';
 import fs from 'fs/promises';
 
 /**

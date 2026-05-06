@@ -6,7 +6,7 @@ import {
   seedCompactContext,
   getCompactContextPath,
   pickSeedTemplate,
-} from '../src/core/compact-context-manager';
+} from '../src/core/claude/compact-context-manager';
 
 describe('compact-context-manager (v5.3.0 F-NEW-2)', () => {
   let projectRoot: string;

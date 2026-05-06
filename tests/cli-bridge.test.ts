@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createCLIBridge, resetCLIBridge } from '../src/core/cli-bridge.js';
+import { createCLIBridge, resetCLIBridge } from '../src/core/console/cli-bridge.js';
 import { createLogger } from '../src/core/logger.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';

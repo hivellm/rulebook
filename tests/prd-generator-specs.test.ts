@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { PRDGenerator } from '../src/core/prd-generator.js';
+import { PRDGenerator } from '../src/core/ralph/prd-generator.js';
 import { Logger } from '../src/core/logger.js';
 import { existsSync, rmSync } from 'fs';
 import { mkdir, writeFile } from 'fs/promises';

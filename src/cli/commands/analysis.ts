@@ -9,7 +9,7 @@ export async function analysisCreateCommand(
   const cwd = process.cwd();
   const spinner = ora(`Creating analysis for "${topic}"...`).start();
   try {
-    const { createAnalysis } = await import('../../core/analysis-manager.js');
+    const { createAnalysis } = await import('../../core/tasks/analysis-manager.js');
     const result = await createAnalysis(cwd, {
       topic,
       agents: options.agents?.split(',').map((a) => a.trim()) ?? null,
@@ -32,7 +32,7 @@ export async function analysisCreateCommand(
 export async function analysisListCommand(): Promise<void> {
   const cwd = process.cwd();
   try {
-    const { listAnalyses } = await import('../../core/analysis-manager.js');
+    const { listAnalyses } = await import('../../core/tasks/analysis-manager.js');
     const analyses = await listAnalyses(cwd);
     if (analyses.length === 0) {
       console.log(chalk.gray('No analyses found in docs/analysis/.'));
@@ -51,7 +51,7 @@ export async function analysisListCommand(): Promise<void> {
 export async function analysisShowCommand(slug: string): Promise<void> {
   const cwd = process.cwd();
   try {
-    const { showAnalysis } = await import('../../core/analysis-manager.js');
+    const { showAnalysis } = await import('../../core/tasks/analysis-manager.js');
     const analysis = await showAnalysis(cwd, slug);
     if (!analysis) {
       console.log(chalk.red(`Analysis "${slug}" not found.`));
@@ -67,7 +67,7 @@ export async function doctorCommand(): Promise<void> {
   const cwd = process.cwd();
   const spinner = ora('Running rulebook doctor...').start();
   try {
-    const { runDoctor } = await import('../../core/doctor.js');
+    const { runDoctor } = await import('../../core/quality/doctor.js');
     const report = await runDoctor(cwd);
     spinner.succeed(
       `Doctor: ${report.passCount} pass, ${report.warnCount} warn, ${report.failCount} fail`

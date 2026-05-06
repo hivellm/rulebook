@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createConfigManager, getDefaultConfig } from '../src/core/config-manager.js';
+import { createConfigManager, getDefaultConfig } from '../src/core/state/config-manager.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';

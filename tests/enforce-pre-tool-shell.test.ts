@@ -171,12 +171,12 @@ describe.skipIf(!BASH_OK)('enforce-pre-tool.sh — mcp-for-tasks rule', () => {
   });
 
   it('allows Edit of EXISTING proposal.md (real task dir)', () => {
-    // The script tests with -f against the literal path; an existing task
-    // proposal under this repo qualifies.
+    // The script tests with -f against the literal path; pick any active
+    // task whose proposal.md exists under .rulebook/tasks/ in this repo.
     const r = runHook({
       tool_name: 'Edit',
       tool_input: {
-        file_path: `${REPO_ROOT}/.rulebook/tasks/phase1_perf-hook-stop-transcript-path/proposal.md`,
+        file_path: `${REPO_ROOT}/.rulebook/tasks/phase2_remove-dead-modules/proposal.md`,
         new_string: 'edit',
       },
     });

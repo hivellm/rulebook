@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
-import { generateAICLIFiles } from '../src/core/workflow-generator.js';
+import { generateAICLIFiles } from '../src/core/generators/workflow-generator.js';
 import type { ProjectConfig } from '../src/types.js';
 
 /**

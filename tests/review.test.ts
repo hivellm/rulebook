@@ -5,8 +5,8 @@ import {
   formatReviewTerminal,
   hasFailingIssues,
   formatReviewMarkdown,
-} from '../src/core/review-manager.js';
-import type { ReviewIssue, ReviewResult } from '../src/core/review-manager.js';
+} from '../src/core/tasks/review-manager.js';
+import type { ReviewIssue, ReviewResult } from '../src/core/tasks/review-manager.js';
 
 // ─── parseReviewOutput ──────────────────────────────────────────────────────
 

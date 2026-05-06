@@ -7,7 +7,7 @@ import {
   generateDelegationSection,
   resolveAgentPlaceholders,
   substituteAgentPlaceholders,
-} from '../src/core/generator.js';
+} from '../src/core/generators/generator.js';
 import type { ProjectConfig } from '../src/types.js';
 
 const AGENTS_DIR = join(__dirname, '..', 'templates', 'agents');
@@ -319,7 +319,7 @@ describe('installAgentsWithPlaceholders (integration)', () => {
     try {
       await mkdir(join(tmpDir, '.rulebook'), { recursive: true });
 
-      const { generateModularAgents } = await import('../src/core/generator.js');
+      const { generateModularAgents } = await import('../src/core/generators/generator.js');
       await generateModularAgents(baseConfig, tmpDir);
 
       const agentsDir = join(tmpDir, '.claude', 'agents');
@@ -349,7 +349,7 @@ describe('installAgentsWithPlaceholders (integration)', () => {
     try {
       await mkdir(join(tmpDir, '.rulebook'), { recursive: true });
 
-      const { generateModularAgents } = await import('../src/core/generator.js');
+      const { generateModularAgents } = await import('../src/core/generators/generator.js');
       await generateModularAgents(baseConfig, tmpDir);
 
       const skillsDir = join(tmpDir, '.claude', 'skills');

@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { RalphManager } from '../src/core/ralph-manager.js';
+import { RalphManager } from '../src/core/ralph/ralph-manager.js';
 import { RalphParser } from '../src/agents/ralph-parser.js';
-import { PRDGenerator } from '../src/core/prd-generator.js';
-import { IterationTracker } from '../src/core/iteration-tracker.js';
+import { PRDGenerator } from '../src/core/ralph/prd-generator.js';
+import { IterationTracker } from '../src/core/ralph/iteration-tracker.js';
 import { Logger } from '../src/core/logger.js';
 import { existsSync, rmSync } from 'fs';
 import { join } from 'path';
 import { mkdir } from 'fs/promises';
 
 // Module-level mock for ralph-plan-checkpoint — allows per-test control via vi.mocked()
-vi.mock('../src/core/ralph-plan-checkpoint.js', () => ({
+vi.mock('../src/core/ralph/ralph-plan-checkpoint.js', () => ({
   shouldRunCheckpoint: vi.fn().mockReturnValue(false),
   generateIterationPlan: vi.fn().mockResolvedValue(''),
   requestPlanApproval: vi.fn().mockResolvedValue({ approved: true }),
@@ -838,7 +838,7 @@ describe('Ralph Autonomous Loop', () => {
     });
 
     it('should skip checkpoint when shouldRunCheckpoint returns false', async () => {
-      const checkpoint = await import('../src/core/ralph-plan-checkpoint.js');
+      const checkpoint = await import('../src/core/ralph/ralph-plan-checkpoint.js');
       vi.mocked(checkpoint.shouldRunCheckpoint).mockReturnValue(false);
 
       const story = {
@@ -862,7 +862,7 @@ describe('Ralph Autonomous Loop', () => {
     });
 
     it('should proceed when plan generation returns empty output', async () => {
-      const checkpoint = await import('../src/core/ralph-plan-checkpoint.js');
+      const checkpoint = await import('../src/core/ralph/ralph-plan-checkpoint.js');
       vi.mocked(checkpoint.shouldRunCheckpoint).mockReturnValue(true);
       vi.mocked(checkpoint.generateIterationPlan).mockResolvedValue('');
 
@@ -887,7 +887,7 @@ describe('Ralph Autonomous Loop', () => {
     });
 
     it('should proceed when plan is approved', async () => {
-      const checkpoint = await import('../src/core/ralph-plan-checkpoint.js');
+      const checkpoint = await import('../src/core/ralph/ralph-plan-checkpoint.js');
       vi.mocked(checkpoint.shouldRunCheckpoint).mockReturnValue(true);
       vi.mocked(checkpoint.generateIterationPlan).mockResolvedValue('Step 1: do X\nStep 2: do Y');
       vi.mocked(checkpoint.requestPlanApproval).mockResolvedValue({ approved: true });
@@ -913,7 +913,7 @@ describe('Ralph Autonomous Loop', () => {
     });
 
     it('should return proceed false with feedback when plan is rejected', async () => {
-      const checkpoint = await import('../src/core/ralph-plan-checkpoint.js');
+      const checkpoint = await import('../src/core/ralph/ralph-plan-checkpoint.js');
       vi.mocked(checkpoint.shouldRunCheckpoint).mockReturnValue(true);
       vi.mocked(checkpoint.generateIterationPlan).mockResolvedValue('Some plan content');
       vi.mocked(checkpoint.requestPlanApproval).mockResolvedValue({

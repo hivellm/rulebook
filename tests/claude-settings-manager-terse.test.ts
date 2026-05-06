@@ -15,7 +15,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { applyClaudeSettings } from '../src/core/claude-settings-manager.js';
+import { applyClaudeSettings } from '../src/core/claude/claude-settings-manager.js';
 
 const ROOT = resolve(__dirname, '..');
 

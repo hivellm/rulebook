@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { bumpVersion, getCurrentVersion, bumpProjectVersion } from '../src/core/version-bumper';
+import { bumpVersion, getCurrentVersion, bumpProjectVersion } from '../src/core/state/version-bumper';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';

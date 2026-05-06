@@ -12,7 +12,7 @@ export async function mcpInitCommand(options?: {
   const { findRulebookConfig } = await import('../../mcp/rulebook-server.js');
   const { existsSync, readFileSync, writeFileSync, statSync } = await import('fs');
   const { join, dirname } = await import('path');
-  const { createConfigManager } = await import('../../core/config-manager.js');
+  const { createConfigManager } = await import('../../core/state/config-manager.js');
 
   try {
     const cwd = process.cwd();

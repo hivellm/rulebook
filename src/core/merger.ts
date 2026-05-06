@@ -1,5 +1,5 @@
 import type { ExistingAgentsInfo, ProjectConfig, AgentBlock } from '../types.js';
-import { generateAgentsContent, generateLanguageRules, generateModuleRules } from './generator.js';
+import { generateAgentsContent, generateLanguageRules, generateModuleRules } from './generators/generator.js';
 import {
   hasEmbeddedTemplates,
   migrateEmbeddedTemplates,
@@ -11,9 +11,9 @@ import {
   hasV2Sentinels,
   writeClaudeMd,
   CLAUDE_MD_SENTINEL_END,
-} from './claude-md-generator.js';
+} from './claude/claude-md-generator.js';
 import { fileExists, readFile, writeFile } from '../utils/file-system.js';
-import { getOverridePath, initOverride } from './override-manager.js';
+import { getOverridePath, initOverride } from './state/override-manager.js';
 
 export async function mergeAgents(
   existing: ExistingAgentsInfo,
@@ -85,7 +85,7 @@ export async function mergeFullAgents(
 ): Promise<string> {
   // Always use lean template — the procedural 6k-line output is deprecated.
   if (projectRoot) {
-    const { generateLeanAgents } = await import('./generator.js');
+    const { generateLeanAgents } = await import('./generators/generator.js');
     return await generateLeanAgents(config, projectRoot);
   }
 
@@ -117,7 +117,7 @@ export async function mergeFullAgents(
 
   // If modular mode, use generateModularAgents instead of merging blocks
   if (config.modular !== false && projectRoot) {
-    const { generateModularAgents } = await import('./generator.js');
+    const { generateModularAgents } = await import('./generators/generator.js');
     return await generateModularAgents(config, projectRoot);
   }
 

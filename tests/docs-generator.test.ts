@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { generateDocsStructure } from '../src/core/docs-generator';
-import type { DocsConfig } from '../src/core/docs-generator';
+import { generateDocsStructure } from '../src/core/docs/docs-generator';
+import type { DocsConfig } from '../src/core/docs/docs-generator';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';

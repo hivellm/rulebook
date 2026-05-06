@@ -275,8 +275,8 @@ taskCommand
   .option('--project <name>', 'Target a specific workspace project')
   .action(async (_options: { project?: string }) => {
     const chalk = (await import('chalk')).default;
-    const { TaskManager } = await import('./core/task-manager.js');
-    const { ConfigManager } = await import('./core/config-manager.js');
+    const { TaskManager } = await import('./core/tasks/task-manager.js');
+    const { ConfigManager } = await import('./core/state/config-manager.js');
     const cwd = process.cwd();
     const cm = new ConfigManager(cwd);
     const config = await cm.loadConfig();
@@ -326,8 +326,8 @@ taskCommand
   .description('Show what blocks a specific task')
   .action(async (taskId: string) => {
     const chalk = (await import('chalk')).default;
-    const { TaskManager } = await import('./core/task-manager.js');
-    const { ConfigManager } = await import('./core/config-manager.js');
+    const { TaskManager } = await import('./core/tasks/task-manager.js');
+    const { ConfigManager } = await import('./core/state/config-manager.js');
     const cwd = process.cwd();
     const cm = new ConfigManager(cwd);
     const config = await cm.loadConfig();
@@ -802,7 +802,7 @@ program
   .action(async () => {
     const chalk = (await import('chalk')).default;
     const ora = (await import('ora')).default;
-    const { assessComplexity } = await import('./core/complexity-detector.js');
+    const { assessComplexity } = await import('./core/detect/complexity-detector.js');
     const cwd = process.cwd();
 
     const spinner = ora('Analyzing project complexity...').start();
@@ -888,7 +888,7 @@ rulesCommand
   .description('Install a rule from the template library')
   .action(async (name: string) => {
     const { installRule } = await import('./core/rule-engine.js');
-    const { getTemplatesDir } = await import('./core/generator.js');
+    const { getTemplatesDir } = await import('./core/generators/generator.js');
     const chalk = (await import('chalk')).default;
     const templatesDir = getTemplatesDir();
     const result = await installRule(process.cwd(), name, templatesDir);
@@ -910,7 +910,7 @@ rulesCommand
   .description('Project canonical rules to all detected tool formats')
   .action(async () => {
     const { projectRules } = await import('./core/rule-engine.js');
-    const { detectProject } = await import('./core/detector.js');
+    const { detectProject } = await import('./core/detect/detector.js');
     const { existsSync } = await import('fs');
     const { join } = await import('path');
     const chalk = (await import('chalk')).default;

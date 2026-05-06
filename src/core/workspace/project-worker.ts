@@ -6,12 +6,12 @@
  */
 
 import { join } from 'node:path';
-import { TaskManager } from '../task-manager.js';
-import { ConfigManager } from '../config-manager.js';
-import { SkillsManager, getDefaultTemplatesPath } from '../skills-manager.js';
-import { DecisionManager } from '../decision-manager.js';
-import { KnowledgeManager } from '../knowledge-manager.js';
-import { LearnManager } from '../learn-manager.js';
+import { TaskManager } from '../tasks/task-manager.js';
+import { ConfigManager } from '../state/config-manager.js';
+import { SkillsManager, getDefaultTemplatesPath } from '../skills/skills-manager.js';
+import { DecisionManager } from '../tasks/decision-manager.js';
+import { KnowledgeManager } from '../tasks/knowledge-manager.js';
+import { LearnManager } from '../tasks/learn-manager.js';
 import type { RulebookConfig } from '../../types.js';
 
 export class ProjectWorker {

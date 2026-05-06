@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
-import { runDoctor } from '../src/core/doctor';
+import { runDoctor } from '../src/core/quality/doctor';
 
 describe('doctor (v5.3.0 F7)', () => {
   let projectRoot: string;

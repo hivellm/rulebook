@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { validateProject, formatValidationReport } from '../src/core/validator';
+import { validateProject, formatValidationReport } from '../src/core/quality/validator';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';

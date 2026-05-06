@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { RalphManager, RalphMemoryAdapter } from '../src/core/ralph-manager.js';
+import { RalphManager, RalphMemoryAdapter } from '../src/core/ralph/ralph-manager.js';
 import { Logger } from '../src/core/logger.js';
 import { existsSync, rmSync } from 'fs';
 import { mkdir } from 'fs/promises';

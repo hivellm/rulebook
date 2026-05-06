@@ -9,7 +9,7 @@ import {
   writeClaudeMd,
   CLAUDE_MD_SENTINEL_START,
   CLAUDE_MD_SENTINEL_END,
-} from '../src/core/claude-md-generator';
+} from '../src/core/claude/claude-md-generator';
 import { mergeClaudeMd } from '../src/core/merger';
 
 describe('claude-md-generator (v5.3.0)', () => {

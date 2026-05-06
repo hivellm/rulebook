@@ -136,7 +136,7 @@ export async function ralphRunQualityGates(
     });
   };
 
-  const { detectMonorepo } = await import('../../core/detector.js');
+  const { detectMonorepo } = await import('../../core/detect/detector.js');
   const monorepo = await detectMonorepo(cwd).catch(() => ({
     detected: false,
     tool: null,
@@ -259,9 +259,9 @@ export async function ralphInitCommand(): Promise<void> {
   try {
     const cwd = process.cwd();
     const { Logger } = await import('../../core/logger.js');
-    const { RalphManager } = await import('../../core/ralph-manager.js');
-    const { PRDGenerator } = await import('../../core/prd-generator.js');
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { RalphManager } = await import('../../core/ralph/ralph-manager.js');
+    const { PRDGenerator } = await import('../../core/ralph/prd-generator.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
 
     const logger = new Logger(cwd);
     const configManager = createConfigManager(cwd);
@@ -305,10 +305,10 @@ export async function ralphRunCommand(options: {
   try {
     const cwd = process.cwd();
     const { Logger } = await import('../../core/logger.js');
-    const { RalphManager } = await import('../../core/ralph-manager.js');
+    const { RalphManager } = await import('../../core/ralph/ralph-manager.js');
     const { RalphParser } = await import('../../agents/ralph-parser.js');
-    const { createConfigManager } = await import('../../core/config-manager.js');
-    const { IterationTracker } = await import('../../core/iteration-tracker.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
+    const { IterationTracker } = await import('../../core/ralph/iteration-tracker.js');
     const childProcess = await import('child_process');
 
     const logger = new Logger(cwd);
@@ -391,7 +391,7 @@ export async function ralphRunCommand(options: {
 
             let plansContext = '';
             try {
-              const { readPlans, plansExists } = await import('../../core/plans-manager.js');
+              const { readPlans, plansExists } = await import('../../core/tasks/plans-manager.js');
               if (plansExists(cwd)) {
                 const plans = await readPlans(cwd);
                 if (plans?.context && plans.context.trim()) {
@@ -531,7 +531,7 @@ export async function ralphRunCommand(options: {
 
       let plansContext = '';
       try {
-        const { readPlans, plansExists } = await import('../../core/plans-manager.js');
+        const { readPlans, plansExists } = await import('../../core/tasks/plans-manager.js');
         if (plansExists(cwd)) {
           const plans = await readPlans(cwd);
           if (plans?.context && plans.context.trim()) {
@@ -643,7 +643,7 @@ export async function ralphStatusCommand(): Promise<void> {
   try {
     const cwd = process.cwd();
     const { Logger } = await import('../../core/logger.js');
-    const { RalphManager } = await import('../../core/ralph-manager.js');
+    const { RalphManager } = await import('../../core/ralph/ralph-manager.js');
 
     const logger = new Logger(cwd);
     const ralphManager = new RalphManager(cwd, logger);
@@ -657,7 +657,7 @@ export async function ralphStatusCommand(): Promise<void> {
 
     spinner.stop();
 
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const configManager = createConfigManager(cwd);
     const cfg = await configManager.loadConfig();
     const agentsMode = cfg.agentsMode ?? 'full';
@@ -689,7 +689,7 @@ export async function ralphHistoryCommand(options: { limit?: number }): Promise<
   try {
     const cwd = process.cwd();
     const { Logger } = await import('../../core/logger.js');
-    const { IterationTracker } = await import('../../core/iteration-tracker.js');
+    const { IterationTracker } = await import('../../core/ralph/iteration-tracker.js');
 
     const logger = new Logger(cwd);
     const tracker = new IterationTracker(cwd, logger);
@@ -744,7 +744,7 @@ export async function ralphPauseCommand(): Promise<void> {
   try {
     const cwd = process.cwd();
     const { Logger } = await import('../../core/logger.js');
-    const { RalphManager } = await import('../../core/ralph-manager.js');
+    const { RalphManager } = await import('../../core/ralph/ralph-manager.js');
 
     const logger = new Logger(cwd);
     const ralphManager = new RalphManager(cwd, logger);
@@ -775,7 +775,7 @@ export async function ralphResumeCommand(): Promise<void> {
   try {
     const cwd = process.cwd();
     const { Logger } = await import('../../core/logger.js');
-    const { RalphManager } = await import('../../core/ralph-manager.js');
+    const { RalphManager } = await import('../../core/ralph/ralph-manager.js');
 
     const logger = new Logger(cwd);
     const ralphManager = new RalphManager(cwd, logger);
@@ -813,7 +813,7 @@ export async function ralphImportIssuesCommand(options: {
       fetchGithubIssues,
       convertIssueToStory,
       mergeStoriesIntoExistingPrd,
-    } = await import('../../core/github-issues-importer.js');
+    } = await import('../../core/github/github-issues-importer.js');
 
     const ghAvailable = await checkGhCliAvailable();
     if (!ghAvailable) {
@@ -841,7 +841,7 @@ export async function ralphImportIssuesCommand(options: {
     const cwd = process.cwd();
     let existingPrd = null;
     try {
-      const { RalphManager } = await import('../../core/ralph-manager.js');
+      const { RalphManager } = await import('../../core/ralph/ralph-manager.js');
       const { Logger } = await import('../../core/logger.js');
       const logger = new Logger(cwd);
       const manager = new RalphManager(cwd, logger);

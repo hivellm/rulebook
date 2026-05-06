@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import path from 'path';
-import type { DocsConfig } from '../core/docs-generator.js';
+import type { DocsConfig } from '../core/docs/docs-generator.js';
 
 export async function promptDocsConfig(): Promise<DocsConfig> {
   const answers = await inquirer.prompt([

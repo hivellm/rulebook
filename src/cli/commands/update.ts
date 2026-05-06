@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import { detectProject } from '../../core/detector.js';
+import { detectProject } from '../../core/detect/detector.js';
 import { mergeFullAgents, mergeClaudeMd } from '../../core/merger.js';
 import { writeFile } from '../../utils/file-system.js';
 import { existsSync } from 'fs';
@@ -13,11 +13,11 @@ import type {
   ModuleDetection,
   ServiceId,
 } from '../../types.js';
-import { scaffoldMinimalProject } from '../../core/minimal-scaffolder.js';
+import { scaffoldMinimalProject } from '../../core/generators/minimal-scaffolder.js';
 import path from 'path';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { SkillsManager, getDefaultTemplatesPath } from '../../core/skills-manager.js';
+import { SkillsManager, getDefaultTemplatesPath } from '../../core/skills/skills-manager.js';
 import { WorkspaceManager } from '../../core/workspace/workspace-manager.js';
 import { setupClaudeCodePlugin } from './misc.js';
 import { migrateMemoryDirectory } from './misc.js';
@@ -127,7 +127,7 @@ export async function updateSingleProject(
 
   const agentsPath = path.join(cwd, 'AGENTS.md');
 
-  const { createConfigManager } = await import('../../core/config-manager.js');
+  const { createConfigManager } = await import('../../core/state/config-manager.js');
   const configManager = createConfigManager(cwd);
   const existingConfig = await configManager.loadConfig();
 
@@ -198,7 +198,7 @@ export async function updateSingleProject(
       const hasRulebookCommands = existingFiles.some((file) => file.startsWith('rulebook-task-'));
 
       if (!hasRulebookCommands) {
-        const { generateCursorCommands } = await import('../../core/workflow-generator.js');
+        const { generateCursorCommands } = await import('../../core/generators/workflow-generator.js');
         const generatedCommands = await generateCursorCommands(cwd);
         if (generatedCommands.length > 0) {
           console.log(
@@ -209,7 +209,7 @@ export async function updateSingleProject(
         }
       }
     } else {
-      const { generateCursorCommands } = await import('../../core/workflow-generator.js');
+      const { generateCursorCommands } = await import('../../core/generators/workflow-generator.js');
       const generatedCommands = await generateCursorCommands(cwd);
       if (generatedCommands.length > 0) {
         console.log(
@@ -285,7 +285,7 @@ export async function updateSingleProject(
   }
 
   {
-    const { createTaskManager } = await import('../../core/task-manager.js');
+    const { createTaskManager } = await import('../../core/tasks/task-manager.js');
     const rulebookDirForArchive = config.rulebookDir || '.rulebook';
     const tm = createTaskManager(cwd, rulebookDirForArchive);
     const migrated = await tm.migrateArchive();
@@ -335,7 +335,7 @@ export async function updateSingleProject(
   }
 
   try {
-    const { seedCompactContext } = await import('../../core/compact-context-manager.js');
+    const { seedCompactContext } = await import('../../core/claude/compact-context-manager.js');
     await seedCompactContext(cwd, { languages: detection.languages });
   } catch {
     // non-fatal
@@ -355,7 +355,7 @@ export async function updateSingleProject(
   }
 
   try {
-    const { generateMcpReference } = await import('../../core/mcp-reference-generator.js');
+    const { generateMcpReference } = await import('../../core/docs/mcp-reference-generator.js');
     const mcpRef = await generateMcpReference(cwd);
     if (mcpRef.written) {
       console.log(chalk.gray('  • .claude/rules/mcp-tool-reference.md refreshed'));
@@ -365,7 +365,7 @@ export async function updateSingleProject(
   }
 
   try {
-    const { applyClaudeSettings } = await import('../../core/claude-settings-manager.js');
+    const { applyClaudeSettings } = await import('../../core/claude/claude-settings-manager.js');
     const rulebookCfg = await configManager.loadConfig();
     const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
     const handoffEnabled = rulebookCfg?.handoff?.enabled ?? true;
@@ -392,7 +392,7 @@ export async function updateSingleProject(
     'Refreshing path-scoped .claude/rules/ for detected languages...'
   ).start();
   try {
-    const { generateRules } = await import('../../core/rules-generator.js');
+    const { generateRules } = await import('../../core/generators/rules-generator.js');
     const rulesResult = await generateRules(cwd, { languages: detection.languages });
     if (rulesResult.written.length > 0) {
       rulesUpdateSpinner.succeed(
@@ -419,8 +419,8 @@ export async function updateSingleProject(
     const existingRules = await loadCanonicalRules(cwd);
 
     if (existingRules.length === 0) {
-      const { assessComplexity } = await import('../../core/complexity-detector.js');
-      const { getTemplatesDir } = await import('../../core/generator.js');
+      const { assessComplexity } = await import('../../core/detect/complexity-detector.js');
+      const { getTemplatesDir } = await import('../../core/generators/generator.js');
       const complexity = assessComplexity(cwd);
       const templatesDir = getTemplatesDir();
 
@@ -570,7 +570,7 @@ export async function updateSingleProject(
 
   const claudeSpinner = ora('Checking Claude Code integration...').start();
   try {
-    const { setupClaudeCodeIntegration } = await import('../../core/claude-mcp.js');
+    const { setupClaudeCodeIntegration } = await import('../../core/claude/claude-mcp.js');
     const result = await setupClaudeCodeIntegration(cwd);
     if (result.detected) {
       claudeSpinner.succeed('Claude Code integration updated');
@@ -600,7 +600,7 @@ export async function updateSingleProject(
   }
 
   try {
-    const { installRalphScripts } = await import('../../core/ralph-scripts.js');
+    const { installRalphScripts } = await import('../../core/ralph/ralph-scripts.js');
     const scripts = await installRalphScripts(cwd);
     if (scripts.length > 0) {
       console.log(chalk.gray(`  • ${scripts.length} Ralph scripts updated in .rulebook/scripts/`));
@@ -610,7 +610,7 @@ export async function updateSingleProject(
   }
 
   try {
-    const { initPlans } = await import('../../core/plans-manager.js');
+    const { initPlans } = await import('../../core/tasks/plans-manager.js');
     await initPlans(cwd);
   } catch {
     // Non-blocking
@@ -639,7 +639,7 @@ export async function updateSingleProject(
   }
 
   try {
-    const { runDoctor } = await import('../../core/doctor.js');
+    const { runDoctor } = await import('../../core/quality/doctor.js');
     const doctorReport = await runDoctor(cwd);
     if (doctorReport.warnCount > 0 || doctorReport.failCount > 0) {
       console.log(
@@ -658,7 +658,7 @@ export async function updateSingleProject(
 
   // F-NEW-3: scan active tasks for missing mandatory tail and offer to append
   try {
-    const { checkMandatoryTail, renderMandatoryTail } = await import('../../core/task-manager.js');
+    const { checkMandatoryTail, renderMandatoryTail } = await import('../../core/tasks/task-manager.js');
     const { promises: fsP } = await import('fs');
     const tasksDir = path.join(cwd, '.rulebook', 'tasks');
     if (existsSync(tasksDir)) {
@@ -752,7 +752,7 @@ export async function updateCommand(options: {
         .join('\n');
 
       const { getDefaultTemplatesPath: getTemplatesPath } = await import(
-        '../../core/skills-manager.js'
+        '../../core/skills/skills-manager.js'
       );
       let workspaceTplContent = '';
       try {

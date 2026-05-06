@@ -7,8 +7,8 @@ import {
   detectContinueDev,
   detectWindsurf,
   detectGithubCopilot,
-} from '../src/core/detector.js';
-import { generateMultiToolConfigs } from '../src/core/multi-tool-generator.js';
+} from '../src/core/detect/detector.js';
+import { generateMultiToolConfigs } from '../src/core/ide/multi-tool-generator.js';
 import type { DetectionResult } from '../src/types.js';
 
 /**

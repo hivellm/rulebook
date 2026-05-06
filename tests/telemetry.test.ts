@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
-import { createTelemetryMiddleware, withTelemetry } from '../src/core/telemetry';
+import { createTelemetryMiddleware, withTelemetry } from '../src/core/state/telemetry';
 
 describe('telemetry (v5.3.0 F10)', () => {
   let tmpDir: string;

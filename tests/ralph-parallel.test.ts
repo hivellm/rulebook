@@ -4,7 +4,7 @@ import {
   partitionForParallel,
   detectFileConflicts,
   buildParallelBatches,
-} from '../src/core/ralph-parallel.js';
+} from '../src/core/ralph/ralph-parallel.js';
 import type { PRDUserStory } from '../src/types.js';
 
 /**

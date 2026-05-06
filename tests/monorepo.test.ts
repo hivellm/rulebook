@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, rm, mkdir, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { detectMonorepo } from '../src/core/detector.js';
+import { detectMonorepo } from '../src/core/detect/detector.js';
 
 let tmpDir: string;
 

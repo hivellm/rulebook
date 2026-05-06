@@ -5,8 +5,8 @@ import {
   buildPlanPrompt,
   generateIterationPlan,
   requestPlanApproval,
-} from '../src/core/ralph-plan-checkpoint.js';
-import type { ExecAsyncFn } from '../src/core/ralph-plan-checkpoint.js';
+} from '../src/core/ralph/ralph-plan-checkpoint.js';
+import type { ExecAsyncFn } from '../src/core/ralph/ralph-plan-checkpoint.js';
 import type { PRDUserStory, PlanCheckpointConfig } from '../src/types.js';
 
 // Mock inquirer for the requestPlanApproval interactive tests

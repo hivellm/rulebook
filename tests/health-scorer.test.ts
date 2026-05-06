@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { calculateHealthScore, getHealthGrade } from '../src/core/health-scorer';
+import { calculateHealthScore, getHealthGrade } from '../src/core/quality/health-scorer';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';

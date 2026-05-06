@@ -4,7 +4,7 @@ import {
   generateFullAgents,
   generateGitRules,
   generateModularAgents,
-} from '../src/core/generator';
+} from '../src/core/generators/generator';
 import type { ProjectConfig } from '../src/types';
 
 describe('generator', () => {

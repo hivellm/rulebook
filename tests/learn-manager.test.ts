@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { LearnManager } from '../src/core/learn-manager.js';
+import { LearnManager } from '../src/core/tasks/learn-manager.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -179,7 +179,7 @@ describe('LearnManager', () => {
       expect(result).not.toBeNull();
 
       // Verify knowledge entry has custom title
-      const { KnowledgeManager } = await import('../src/core/knowledge-manager.js');
+      const { KnowledgeManager } = await import('../src/core/tasks/knowledge-manager.js');
       const km = new KnowledgeManager(testDir);
       const entry = await km.show(result!.id);
       expect(entry!.entry.title).toBe('Polished Pattern');

@@ -7,13 +7,13 @@ vi.mock('../src/utils/file-system.js', () => ({
   writeFile: vi.fn(),
 }));
 
-vi.mock('../src/core/docs-generator.js', () => ({
+vi.mock('../src/core/docs/docs-generator.js', () => ({
   generateDocsStructure: vi.fn(),
 }));
 
 import { ensureDir, fileExists, writeFile } from '../src/utils/file-system';
-import { generateDocsStructure } from '../src/core/docs-generator';
-import { scaffoldMinimalProject } from '../src/core/minimal-scaffolder';
+import { generateDocsStructure } from '../src/core/docs/docs-generator';
+import { scaffoldMinimalProject } from '../src/core/generators/minimal-scaffolder';
 
 const mockEnsureDir = vi.mocked(ensureDir);
 const mockFileExists = vi.mocked(fileExists);

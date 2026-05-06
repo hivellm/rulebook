@@ -13,7 +13,7 @@ import {
   SUPPORTED_RULE_LANGUAGES,
   ALWAYS_ON_RULES,
   GENERATED_SENTINEL,
-} from '../src/core/rules-generator';
+} from '../src/core/generators/rules-generator';
 
 /** Number of always-on (non-language) rules emitted by generateRules. */
 const ALWAYS_ON_COUNT = ALWAYS_ON_RULES.length;

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { detectProject } from '../src/core/detector';
-import { generateServiceRules } from '../src/core/generator';
+import { detectProject } from '../src/core/detect/detector';
+import { generateServiceRules } from '../src/core/generators/generator';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';

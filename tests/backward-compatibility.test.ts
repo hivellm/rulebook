@@ -3,8 +3,8 @@ import { promises as fs, readFileSync } from 'fs';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
-import { createConfigManager } from '../src/core/config-manager.js';
-import { SkillsManager, getDefaultTemplatesPath } from '../src/core/skills-manager.js';
+import { createConfigManager } from '../src/core/state/config-manager.js';
+import { SkillsManager, getDefaultTemplatesPath } from '../src/core/skills/skills-manager.js';
 
 const __testDirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG_VERSION = JSON.parse(

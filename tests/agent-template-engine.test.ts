@@ -6,7 +6,7 @@ import {
   loadAgentTemplates,
   generateAgents,
   listProjectTypes,
-} from '../src/core/agent-template-engine.js';
+} from '../src/core/agents/agent-template-engine.js';
 
 describe('Agent Template Engine', () => {
   let testDir: string;

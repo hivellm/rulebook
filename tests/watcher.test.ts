@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { startWatcher, startModernWatcher } from '../src/core/watcher.js';
+import { startWatcher, startModernWatcher } from '../src/core/console/watcher.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
 // Mock the modern console to avoid actual UI rendering
-vi.mock('../src/core/modern-console.js', () => ({
+vi.mock('../src/core/console/modern-console.js', () => ({
   createModernConsole: vi.fn(() => ({
     start: vi.fn().mockResolvedValue(undefined),
     stop: vi.fn().mockResolvedValue(undefined),
@@ -13,7 +13,7 @@ vi.mock('../src/core/modern-console.js', () => ({
 }));
 
 // Mock the agent manager to avoid initialization issues
-vi.mock('../src/core/agent-manager.js', () => ({
+vi.mock('../src/core/agents/agent-manager.js', () => ({
   AgentManager: vi.fn().mockImplementation(() => ({
     initialize: vi.fn().mockResolvedValue(undefined),
   })),
@@ -50,8 +50,8 @@ describe('Watcher', () => {
 
   describe.skip('startWatcher', () => {
     it('should create agent manager and modern console', async () => {
-      const { AgentManager } = await import('../src/core/agent-manager.js');
-      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const { AgentManager } = await import('../src/core/agents/agent-manager.js');
+      const { createModernConsole } = await import('../src/core/console/modern-console.js');
 
       await startWatcher(tempDir);
 
@@ -64,7 +64,7 @@ describe('Watcher', () => {
     });
 
     it('should start the modern console', async () => {
-      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const { createModernConsole } = await import('../src/core/console/modern-console.js');
       const mockConsole = {
         start: vi.fn().mockResolvedValue(undefined),
         stop: vi.fn().mockResolvedValue(undefined),
@@ -77,7 +77,7 @@ describe('Watcher', () => {
     });
 
     it('should handle errors during startup', async () => {
-      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const { createModernConsole } = await import('../src/core/console/modern-console.js');
       const mockConsole = {
         start: vi.fn().mockRejectedValue(new Error('Startup failed')),
         stop: vi.fn().mockResolvedValue(undefined),
@@ -88,7 +88,7 @@ describe('Watcher', () => {
     });
 
     it('should use correct configuration', async () => {
-      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const { createModernConsole } = await import('../src/core/console/modern-console.js');
 
       await startWatcher(tempDir);
 
@@ -102,8 +102,8 @@ describe('Watcher', () => {
 
   describe.skip('startModernWatcher', () => {
     it('should be an alias for startWatcher', async () => {
-      const { AgentManager } = await import('../src/core/agent-manager.js');
-      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const { AgentManager } = await import('../src/core/agents/agent-manager.js');
+      const { createModernConsole } = await import('../src/core/console/modern-console.js');
 
       await startModernWatcher(tempDir);
 
@@ -116,7 +116,7 @@ describe('Watcher', () => {
     });
 
     it('should have identical behavior to startWatcher', async () => {
-      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const { createModernConsole } = await import('../src/core/console/modern-console.js');
       const mockConsole = {
         start: vi.fn().mockResolvedValue(undefined),
         stop: vi.fn().mockResolvedValue(undefined),
@@ -129,7 +129,7 @@ describe('Watcher', () => {
     });
 
     it('should handle errors identically to startWatcher', async () => {
-      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const { createModernConsole } = await import('../src/core/console/modern-console.js');
       const mockConsole = {
         start: vi.fn().mockRejectedValue(new Error('Startup failed')),
         stop: vi.fn().mockResolvedValue(undefined),
@@ -142,7 +142,7 @@ describe('Watcher', () => {
 
   describe.skip('integration', () => {
     it('should create agent manager with correct project root', async () => {
-      const { AgentManager } = await import('../src/core/agent-manager.js');
+      const { AgentManager } = await import('../src/core/agents/agent-manager.js');
 
       await startWatcher(tempDir);
 
@@ -150,8 +150,8 @@ describe('Watcher', () => {
     });
 
     it('should pass agent manager to modern console', async () => {
-      const { AgentManager } = await import('../src/core/agent-manager.js');
-      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const { AgentManager } = await import('../src/core/agents/agent-manager.js');
+      const { createModernConsole } = await import('../src/core/console/modern-console.js');
 
       await startWatcher(tempDir);
 
@@ -164,7 +164,7 @@ describe('Watcher', () => {
     });
 
     it('should use default refresh interval', async () => {
-      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const { createModernConsole } = await import('../src/core/console/modern-console.js');
 
       await startWatcher(tempDir);
 
@@ -178,7 +178,7 @@ describe('Watcher', () => {
 
   describe.skip('error handling', () => {
     it('should propagate agent manager creation errors', async () => {
-      const { AgentManager } = await import('../src/core/agent-manager.js');
+      const { AgentManager } = await import('../src/core/agents/agent-manager.js');
       AgentManager.mockImplementation(() => {
         throw new Error('Agent manager creation failed');
       });
@@ -187,7 +187,7 @@ describe('Watcher', () => {
     });
 
     it('should propagate modern console creation errors', async () => {
-      const { createModernConsole } = await import('../src/core/modern-console.js');
+      const { createModernConsole } = await import('../src/core/console/modern-console.js');
       createModernConsole.mockImplementation(() => {
         throw new Error('Modern console creation failed');
       });
@@ -196,7 +196,7 @@ describe('Watcher', () => {
     });
 
     it('should handle both functions with same error handling', async () => {
-      const { AgentManager } = await import('../src/core/agent-manager.js');
+      const { AgentManager } = await import('../src/core/agents/agent-manager.js');
       AgentManager.mockImplementation(() => {
         throw new Error('Agent manager creation failed');
       });

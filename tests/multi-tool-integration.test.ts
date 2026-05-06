@@ -3,8 +3,8 @@ import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { projectRules, installRule, loadCanonicalRules } from '../src/core/rule-engine.js';
-import { generateAgents, loadAgentTemplates } from '../src/core/agent-template-engine.js';
-import { assessComplexity } from '../src/core/complexity-detector.js';
+import { generateAgents, loadAgentTemplates } from '../src/core/agents/agent-template-engine.js';
+import { assessComplexity } from '../src/core/detect/complexity-detector.js';
 
 /**
  * Integration tests for the multi-tool v5 flow:

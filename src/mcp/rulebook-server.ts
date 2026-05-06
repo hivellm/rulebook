@@ -13,10 +13,10 @@ import {
 } from 'fs';
 import { basename, dirname, join, resolve } from 'path';
 import { z } from 'zod';
-import { ConfigManager } from '../core/config-manager.js';
+import { ConfigManager } from '../core/state/config-manager.js';
 import { BackgroundIndexer } from '../core/indexer/background-indexer.js';
-import { SkillsManager, getDefaultTemplatesPath } from '../core/skills-manager.js';
-import { TaskManager } from '../core/task-manager.js';
+import { SkillsManager, getDefaultTemplatesPath } from '../core/skills/skills-manager.js';
+import { TaskManager } from '../core/tasks/task-manager.js';
 import type { SkillCategory } from '../types.js';
 import { WorkspaceManager } from '../core/workspace/workspace-manager.js';
 import type { ProjectWorker } from '../core/workspace/project-worker.js';
@@ -325,7 +325,7 @@ export async function startRulebookMcpServer(): Promise<void> {
   });
 
   // --- v5.3.0 F10: opt-in telemetry middleware ---
-  const { createTelemetryMiddleware } = await import('../core/telemetry.js');
+  const { createTelemetryMiddleware } = await import('../core/state/telemetry.js');
   const telemetryEnabled = configManager
     ? (await configManager.loadConfig())?.features?.telemetry === true
     : false;
@@ -1331,8 +1331,8 @@ export async function startRulebookMcpServer(): Promise<void> {
       async () => {
         try {
           const { Logger } = await import('../core/logger.js');
-          const { RalphManager } = await import('../core/ralph-manager.js');
-          const { PRDGenerator } = await import('../core/prd-generator.js');
+          const { RalphManager } = await import('../core/ralph/ralph-manager.js');
+          const { PRDGenerator } = await import('../core/ralph/prd-generator.js');
 
           const logger = new Logger(projectRoot);
           const ralphManager = new RalphManager(projectRoot, logger);
@@ -1393,7 +1393,7 @@ export async function startRulebookMcpServer(): Promise<void> {
       async (args) => {
         try {
           const { Logger } = await import('../core/logger.js');
-          const { RalphManager } = await import('../core/ralph-manager.js');
+          const { RalphManager } = await import('../core/ralph/ralph-manager.js');
           const { RalphParser } = await import('../agents/ralph-parser.js');
           const { spawn } = await import('child_process');
           const { execSync } = await import('child_process');
@@ -1780,7 +1780,7 @@ export async function startRulebookMcpServer(): Promise<void> {
       async () => {
         try {
           const { Logger } = await import('../core/logger.js');
-          const { RalphManager } = await import('../core/ralph-manager.js');
+          const { RalphManager } = await import('../core/ralph/ralph-manager.js');
 
           const logger = new Logger(projectRoot);
           const ralphManager = new RalphManager(projectRoot, logger);
@@ -1856,7 +1856,7 @@ export async function startRulebookMcpServer(): Promise<void> {
       async (args) => {
         try {
           const { Logger } = await import('../core/logger.js');
-          const { IterationTracker } = await import('../core/iteration-tracker.js');
+          const { IterationTracker } = await import('../core/ralph/iteration-tracker.js');
 
           const logger = new Logger(projectRoot);
           const tracker = new IterationTracker(projectRoot, logger);
@@ -2195,7 +2195,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { DecisionManager } = await import('../core/decision-manager.js');
+        const { DecisionManager } = await import('../core/tasks/decision-manager.js');
         const dm = new DecisionManager(root);
         const decision = await dm.create(args.title, {
           context: args.context,
@@ -2248,7 +2248,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { DecisionManager } = await import('../core/decision-manager.js');
+        const { DecisionManager } = await import('../core/tasks/decision-manager.js');
         const dm = new DecisionManager(root);
         const decisions = await dm.list(args.status as any);
         return {
@@ -2292,7 +2292,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { DecisionManager } = await import('../core/decision-manager.js');
+        const { DecisionManager } = await import('../core/tasks/decision-manager.js');
         const dm = new DecisionManager(root);
         const result = await dm.show(args.id);
         if (!result) {
@@ -2356,7 +2356,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { DecisionManager } = await import('../core/decision-manager.js');
+        const { DecisionManager } = await import('../core/tasks/decision-manager.js');
         const dm = new DecisionManager(root);
         const updated = await dm.update(args.id, {
           status: args.status as any,
@@ -2421,7 +2421,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { KnowledgeManager } = await import('../core/knowledge-manager.js');
+        const { KnowledgeManager } = await import('../core/tasks/knowledge-manager.js');
         const km = new KnowledgeManager(root);
         const entry = await km.add(args.type as any, args.title, {
           category: args.category as any,
@@ -2473,7 +2473,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { KnowledgeManager } = await import('../core/knowledge-manager.js');
+        const { KnowledgeManager } = await import('../core/tasks/knowledge-manager.js');
         const km = new KnowledgeManager(root);
         const entries = await km.list(args.type as any, args.category as any);
         return {
@@ -2517,7 +2517,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { KnowledgeManager } = await import('../core/knowledge-manager.js');
+        const { KnowledgeManager } = await import('../core/tasks/knowledge-manager.js');
         const km = new KnowledgeManager(root);
         const result = await km.show(args.id);
         if (!result) {
@@ -2577,7 +2577,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { LearnManager } = await import('../core/learn-manager.js');
+        const { LearnManager } = await import('../core/tasks/learn-manager.js');
         const lm = new LearnManager(root);
         const learning = await lm.capture(args.title, args.content, {
           tags: args.tags,
@@ -2624,7 +2624,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { LearnManager } = await import('../core/learn-manager.js');
+        const { LearnManager } = await import('../core/tasks/learn-manager.js');
         const lm = new LearnManager(root);
         const learnings = await lm.list(args.limit);
         return {
@@ -2672,7 +2672,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { LearnManager } = await import('../core/learn-manager.js');
+        const { LearnManager } = await import('../core/tasks/learn-manager.js');
         const lm = new LearnManager(root);
         const result = await lm.promote(args.id, args.target, { title: args.title });
         if (!result) {
@@ -2877,7 +2877,7 @@ export async function startRulebookMcpServer(): Promise<void> {
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
         const { listRules } = await import('../core/rule-engine.js');
-        const { listRulesWithSource } = await import('../core/rules-generator.js');
+        const { listRulesWithSource } = await import('../core/generators/rules-generator.js');
         const canonical = await listRules(root);
         const languageRules = await listRulesWithSource(root);
         return {
@@ -2924,7 +2924,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { runDoctor } = await import('../core/doctor.js');
+        const { runDoctor } = await import('../core/quality/doctor.js');
         const report = await runDoctor(root);
         return {
           content: [{ type: 'text', text: JSON.stringify({ success: true, ...report }) }],
@@ -2963,7 +2963,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { createAnalysis } = await import('../core/analysis-manager.js');
+        const { createAnalysis } = await import('../core/tasks/analysis-manager.js');
         const result = await createAnalysis(root, {
           topic: args.topic as string,
           noTasks: (args.noTasks as boolean) ?? false,
@@ -3001,7 +3001,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { listAnalyses } = await import('../core/analysis-manager.js');
+        const { listAnalyses } = await import('../core/tasks/analysis-manager.js');
         const analyses = await listAnalyses(root);
         return {
           content: [
@@ -3044,7 +3044,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { showAnalysis } = await import('../core/analysis-manager.js');
+        const { showAnalysis } = await import('../core/tasks/analysis-manager.js');
         const analysis = await showAnalysis(root, args.slug as string);
         if (!analysis) {
           return {

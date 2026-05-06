@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
-import { writeState, getStatePath, isManuallyMaintained } from '../src/core/state-writer';
+import { writeState, getStatePath, isManuallyMaintained } from '../src/core/state/state-writer';
 
 describe('state-writer (v5.3.0 F3)', () => {
   let projectRoot: string;

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, rm, mkdir, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { IterationTracker } from '../src/core/iteration-tracker.js';
+import { IterationTracker } from '../src/core/ralph/iteration-tracker.js';
 import type { IterationResult } from '../src/types.js';
 import { createLogger } from '../src/core/logger.js';
 

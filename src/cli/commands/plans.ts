@@ -5,7 +5,7 @@ import path from 'path';
 export async function overrideShowCommand(): Promise<void> {
   const cwd = process.cwd();
   const { overrideExists, getOverridePath, readOverrideContent } = await import(
-    '../../core/override-manager.js'
+    '../../core/state/override-manager.js'
   );
   if (!overrideExists(cwd)) {
     console.log(
@@ -28,7 +28,7 @@ export async function overrideShowCommand(): Promise<void> {
 
 export async function overrideEditCommand(): Promise<void> {
   const cwd = process.cwd();
-  const { initOverride, getOverridePath } = await import('../../core/override-manager.js');
+  const { initOverride, getOverridePath } = await import('../../core/state/override-manager.js');
   await initOverride(cwd);
   const overridePath = getOverridePath(cwd);
   const editor = process.env.EDITOR || process.env.VISUAL;
@@ -44,14 +44,14 @@ export async function overrideEditCommand(): Promise<void> {
 
 export async function overrideClearCommand(): Promise<void> {
   const cwd = process.cwd();
-  const { clearOverride } = await import('../../core/override-manager.js');
+  const { clearOverride } = await import('../../core/state/override-manager.js');
   await clearOverride(cwd);
   console.log(chalk.green('✓ AGENTS.override.md reset to empty template'));
 }
 
 export async function modeSetCommand(mode: 'lean' | 'full'): Promise<void> {
   const cwd = process.cwd();
-  const { createConfigManager } = await import('../../core/config-manager.js');
+  const { createConfigManager } = await import('../../core/state/config-manager.js');
   const configManager = createConfigManager(cwd);
   const config = await configManager.loadConfig();
   config.agentsMode = mode;
@@ -75,7 +75,7 @@ export async function modeSetCommand(mode: 'lean' | 'full'): Promise<void> {
 }
 
 export async function plansShowCommand(): Promise<void> {
-  const { readPlans, getPlansPath } = await import('../../core/plans-manager.js');
+  const { readPlans, getPlansPath } = await import('../../core/tasks/plans-manager.js');
   const cwd = process.cwd();
 
   const plans = await readPlans(cwd);
@@ -109,7 +109,7 @@ export async function plansShowCommand(): Promise<void> {
 }
 
 export async function plansInitCommand(): Promise<void> {
-  const { initPlans, getPlansPath } = await import('../../core/plans-manager.js');
+  const { initPlans, getPlansPath } = await import('../../core/tasks/plans-manager.js');
   const cwd = process.cwd();
 
   const created = await initPlans(cwd);
@@ -122,7 +122,7 @@ export async function plansInitCommand(): Promise<void> {
 }
 
 export async function plansClearCommand(): Promise<void> {
-  const { clearPlans, getPlansPath } = await import('../../core/plans-manager.js');
+  const { clearPlans, getPlansPath } = await import('../../core/tasks/plans-manager.js');
   const cwd = process.cwd();
   await clearPlans(cwd);
   console.log(chalk.green(`✓ Cleared ${getPlansPath(cwd)}`));
@@ -131,7 +131,7 @@ export async function plansClearCommand(): Promise<void> {
 
 export async function continueCommand(): Promise<void> {
   const cwd = process.cwd();
-  const { readPlans } = await import('../../core/plans-manager.js');
+  const { readPlans } = await import('../../core/tasks/plans-manager.js');
   const { exec } = await import('child_process');
   const { promisify } = await import('util');
   const execAsync = promisify(exec);
@@ -244,7 +244,7 @@ export async function continueCommand(): Promise<void> {
   console.log(output);
 
   if (plans !== null) {
-    const { appendPlansHistory } = await import('../../core/plans-manager.js');
+    const { appendPlansHistory } = await import('../../core/tasks/plans-manager.js');
     try {
       await appendPlansHistory(
         cwd,
@@ -267,7 +267,7 @@ export async function reviewCommand(options: {
   const cwd = process.cwd();
   const baseBranch = options.baseBranch ?? 'main';
   const outputFormat = options.output ?? 'terminal';
-  const tool = (options.tool ?? 'claude') as import('../../core/review-manager.js').ReviewTool;
+  const tool = (options.tool ?? 'claude') as import('../../core/tasks/review-manager.js').ReviewTool;
 
   const {
     getDiffContext,
@@ -278,7 +278,7 @@ export async function reviewCommand(options: {
     postGitHubComment,
     readAgentsMd,
     hasFailingIssues,
-  } = await import('../../core/review-manager.js');
+  } = await import('../../core/tasks/review-manager.js');
 
   const diff = await getDiffContext(cwd, baseBranch);
   if (!diff) {
