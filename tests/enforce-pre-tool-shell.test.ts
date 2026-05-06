@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import { execSync, spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 
 const REPO_ROOT = resolve(__dirname, '..');
 const HOOK = `${REPO_ROOT}/templates/hooks/enforce-pre-tool.sh`;
@@ -171,16 +172,26 @@ describe.skipIf(!BASH_OK)('enforce-pre-tool.sh — mcp-for-tasks rule', () => {
   });
 
   it('allows Edit of EXISTING proposal.md (real task dir)', () => {
-    // The script tests with -f against the literal path; pick any active
-    // task whose proposal.md exists under .rulebook/tasks/ in this repo.
-    const r = runHook({
-      tool_name: 'Edit',
-      tool_input: {
-        file_path: `${REPO_ROOT}/.rulebook/tasks/phase2_audit-mcp-tool-surface/proposal.md`,
-        new_string: 'edit',
-      },
-    });
-    expect(r.decision).toBe('allow');
+    // The script tests with -f against the literal path. Stage a
+    // temporary task dir + proposal.md inside .rulebook/tasks/ so the
+    // hook's existence check passes regardless of which tasks the repo
+    // currently has active.
+    const taskDir = `${REPO_ROOT}/.rulebook/tasks/__hook_test_fixture__`;
+    const proposal = `${taskDir}/proposal.md`;
+    try {
+      mkdirSync(taskDir, { recursive: true });
+      writeFileSync(proposal, '# Why\nfixture\n');
+      const r = runHook({
+        tool_name: 'Edit',
+        tool_input: {
+          file_path: proposal,
+          new_string: 'edit',
+        },
+      });
+      expect(r.decision).toBe('allow');
+    } finally {
+      if (existsSync(taskDir)) rmSync(taskDir, { recursive: true, force: true });
+    }
   });
 });
 
