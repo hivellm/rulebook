@@ -190,29 +190,6 @@ export async function continueCommand(): Promise<void> {
     // not a git repo or git not available
   }
 
-  const ralphStatePath = path.join(cwd, '.rulebook', 'ralph', 'state.json');
-  if (existsSync(ralphStatePath)) {
-    try {
-      const state = JSON.parse(await fs.readFile(ralphStatePath, 'utf-8'));
-      if (state.enabled) {
-        const prdPath = path.join(cwd, '.rulebook', 'ralph', 'prd.json');
-        let prdInfo = '';
-        if (existsSync(prdPath)) {
-          const prd = JSON.parse(await fs.readFile(prdPath, 'utf-8'));
-          const pending = (prd.userStories ?? []).filter((s: any) => !s.passes).length;
-          const total = (prd.userStories ?? []).length;
-          prdInfo = ` | ${total - pending}/${total} stories complete`;
-        }
-        sections.push(
-          `## Ralph Status\n` +
-            `Iteration ${state.current_iteration}/${state.max_iterations}${prdInfo} | Tool: ${state.tool} | Paused: ${state.paused}`
-        );
-      }
-    } catch {
-      // ignore
-    }
-  }
-
   try {
     const { stdout } = await execAsync('git rev-parse --abbrev-ref HEAD', { cwd });
     const branch = stdout.trim();

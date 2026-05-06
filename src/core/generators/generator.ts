@@ -338,52 +338,6 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
   sections.push('');
   sections.push('When in doubt, ask to review @AGENTS.md first.');
   sections.push('');
-  sections.push('## Ralph Autonomous Loop');
-  sections.push('');
-  sections.push(
-    'This project is **enabled for Ralph autonomous loop** for iterative feature implementation.'
-  );
-  sections.push(
-    'Ralph automates multi-iteration development with fresh AI context per iteration, persisting learnings via git and progress logs.'
-  );
-  sections.push('');
-  sections.push('**Status**: ✅ Enabled by default in `.rulebook` configuration');
-  sections.push('');
-  sections.push('### Quick Start');
-  sections.push('');
-  sections.push('```bash');
-  sections.push('# 1. Create tasks');
-  sections.push('rulebook task create <task-id>');
-  sections.push('');
-  sections.push('# 2. Initialize Ralph');
-  sections.push('rulebook ralph init');
-  sections.push('');
-  sections.push('# 3. Run autonomous loop');
-  sections.push('rulebook ralph run --max-iterations 10');
-  sections.push('');
-  sections.push('# 4. Monitor progress');
-  sections.push('rulebook ralph status');
-  sections.push('rulebook ralph history');
-  sections.push('```');
-  sections.push('');
-  sections.push('### Key Commands');
-  sections.push('');
-  sections.push(
-    '- `rulebook ralph init` — Initialize Ralph configuration and create PRD from tasks'
-  );
-  sections.push(
-    '- `rulebook ralph run [--max-iterations N] [--tool claude|amp]` — Execute autonomous loop'
-  );
-  sections.push('- `rulebook ralph status` — Show loop progress and current iteration');
-  sections.push('- `rulebook ralph history` — Display iteration history and learnings');
-  sections.push('- `rulebook ralph pause` — Gracefully pause autonomous loop');
-  sections.push('- `rulebook ralph resume` — Resume from paused state');
-  sections.push('');
-  sections.push(
-    'For detailed Ralph documentation, see `templates/skills/workflows/ralph/SKILL.md`'
-  );
-  sections.push('');
-
   // Decision Records section — inject active ADRs if any exist
   try {
     const projectRoot = config.rulebookDir ? process.cwd() : process.cwd();

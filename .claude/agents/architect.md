@@ -12,7 +12,7 @@ maxTurns: 25
 - Select architectural patterns appropriate to scale, team size, and operational constraints
 - Evaluate build-vs-buy decisions with explicit trade-off documentation
 - Identify and quantify technical debt; produce a prioritized remediation roadmap
-- Review proposed designs for rust projects for consistency, coupling, and extensibility
+- Review proposed designs for {{language}} projects for consistency, coupling, and extensibility
 
 ## Workflow
 

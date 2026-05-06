@@ -1,14 +1,13 @@
 {
-  "version": "5.5.0",
-  "installedAt": "2026-05-01T03:05:25.702Z",
-  "updatedAt": "2026-05-01T03:05:25.705Z",
+  "version": "5.7.0",
+  "installedAt": "2026-05-06T10:32:18.404Z",
+  "updatedAt": "2026-05-06T10:32:18.404Z",
   "projectId": "Rulebook",
   "mode": "full",
   "features": {
     "watcher": false,
     "agent": false,
     "logging": true,
-    "telemetry": false,
     "notifications": false,
     "dryRun": false,
     "gitHooks": true,
@@ -36,21 +35,6 @@
     "maxSizeBytes": 524288000,
     "autoCapture": true,
     "vectorDimensions": 256
-  },
-  "ralph": {
-    "enabled": true,
-    "maxIterations": 10,
-    "tool": "claude",
-    "maxContextLoss": 3,
-    "parallel": {
-      "enabled": false,
-      "maxWorkers": 3
-    },
-    "planCheckpoint": {
-      "enabled": false,
-      "autoApproveAfterSeconds": 0,
-      "requireApprovalForStories": "all"
-    }
   },
   "skills": {
     "enabled": [

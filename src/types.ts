@@ -383,14 +383,14 @@ export interface KnowledgeEntry {
   whenNotToUse?: string;
   createdAt: string;
   tags: string[];
-  source: 'manual' | 'ralph' | 'learn';
+  source: 'manual' | 'learn';
 }
 
 export interface Learning {
   id: string;
   title: string;
   content: string;
-  source: 'manual' | 'ralph' | 'task-archive';
+  source: 'manual' | 'task-archive';
   relatedTask?: string;
   relatedDecision?: number;
   tags: string[];

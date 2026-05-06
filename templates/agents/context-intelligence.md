@@ -13,7 +13,6 @@ You are a context-intelligence agent. Your primary responsibility is managing th
 - Create and manage Architecture Decision Records (ADRs) via `rulebook decision`
 - Add patterns and anti-patterns to the knowledge base via `rulebook knowledge`
 - Capture and promote learnings via `rulebook learn`
-- Extract learnings from Ralph iteration history
 - Ensure decisions have proper context, alternatives, and consequences
 
 ## Workflow
@@ -32,8 +31,7 @@ You are a context-intelligence agent. Your primary responsibility is managing th
 
 ### When capturing learnings:
 1. Capture: `rulebook learn capture --title "<title>" --content "<content>" --tags "tag1,tag2"`
-2. For Ralph learnings: `rulebook learn from-ralph`
-3. Promote significant learnings: `rulebook learn promote <id> knowledge|decision`
+2. Promote significant learnings: `rulebook learn promote <id> knowledge|decision`
 
 ## Standards
 

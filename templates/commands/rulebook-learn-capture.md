@@ -15,7 +15,7 @@ description: Capture a learning from implementation work for future reference.
    - **Content**: Full explanation — what happened, what was discovered, why it matters
    - **Tags**: Keywords for searchability
    - **Related Task**: Task ID if this learning came from a specific task
-   - **Source**: `manual` (default), `ralph`, or `task-archive`
+   - **Source**: `manual` (default) or `task-archive`
 
 2. **Capture**:
    ```bash
@@ -33,13 +33,6 @@ If a learning is significant enough to become a team pattern or decision:
 rulebook learn promote <id> knowledge    # → creates a pattern
 rulebook learn promote <id> decision     # → creates an ADR
 ```
-
-**Ralph Integration**
-Extract learnings from Ralph autonomous loop history:
-```bash
-rulebook learn from-ralph
-```
-This reads `.rulebook/ralph/history/iteration-*.json` and captures entries with non-empty learnings.
 
 **Reference**
 - Learnings are searchable via `rulebook memory search`

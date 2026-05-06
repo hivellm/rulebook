@@ -38,17 +38,16 @@ describe('state-writer (v5.3.0 F3)', () => {
     expect(content).toContain('No active task');
   });
 
-  it('includes Ralph and health sections when provided', async () => {
+  it('includes quality-gate and health sections when provided', async () => {
     const result = await writeState(projectRoot, {
       activeTask: null,
-      lastRalphIteration: 5,
       lastQualityGate: 'type-check ✓, lint ✓, tests ✓',
       healthScore: 87,
       updatedAt: '2026-04-07T18:00:00Z',
     });
 
     const content = await fs.readFile(result.path, 'utf-8');
-    expect(content).toContain('Last iteration**: 5');
+    expect(content).toContain('Quality gate');
     expect(content).toContain('type-check ✓');
     expect(content).toContain('87/100');
   });
@@ -91,7 +90,6 @@ describe('state-writer (v5.3.0 F3)', () => {
   it('output is under 40 lines', async () => {
     await writeState(projectRoot, {
       activeTask: { id: 'phase1_x', phase: '1', progress: '5/10' },
-      lastRalphIteration: 12,
       lastQualityGate: 'all pass',
       healthScore: 92,
       updatedAt: '2026-04-07T18:00:00Z',

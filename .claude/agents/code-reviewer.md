@@ -35,7 +35,7 @@ For each finding, include:
 ## Standards
 
 1. **Correctness first** -- bugs and logic errors are blockers
-2. **Patterns** -- follow existing rust patterns in the codebase
+2. **Patterns** -- follow existing {{language}} patterns in the codebase
 3. **YAGNI** -- flag over-engineering and unnecessary abstractions
 4. **Readability** -- code should be understandable without comments
 

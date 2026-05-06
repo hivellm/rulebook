@@ -6,15 +6,14 @@ import { writeFile, fileExists, readFile, ensureDir } from '../../utils/file-sys
  *
  * Renders a short (<40 line) machine-written status file imported by
  * CLAUDE.md via `@.rulebook/STATE.md`. Updated on every task state
- * change or Ralph iteration. Users can opt out by adding a
- * `manual: true` YAML frontmatter flag.
+ * change. Users can opt out by adding a `manual: true` YAML
+ * frontmatter flag.
  */
 
 export const STATE_FILE = '.rulebook/STATE.md';
 
 export interface StateSnapshot {
   activeTask?: { id: string; phase: string; progress: string } | null;
-  lastRalphIteration?: number | null;
   lastQualityGate?: string | null;
   healthScore?: number | null;
   updatedAt: string;
@@ -79,13 +78,10 @@ function renderState(s: StateSnapshot): string {
     lines.push('');
   }
 
-  if (s.lastRalphIteration != null) {
-    lines.push(`## Ralph`);
+  if (s.lastQualityGate) {
+    lines.push(`## Quality gate`);
     lines.push('');
-    lines.push(`- **Last iteration**: ${s.lastRalphIteration}`);
-    if (s.lastQualityGate) {
-      lines.push(`- **Quality gate**: ${s.lastQualityGate}`);
-    }
+    lines.push(`- **Last status**: ${s.lastQualityGate}`);
     lines.push('');
   }
 

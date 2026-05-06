@@ -157,20 +157,6 @@ LANGUAGE_REFS
 
 MODULE_REFS
 
-## Ralph Autonomous Loop
-
-5-gate quality enforcement (type-check, lint, tests, coverage, security) per iteration, fresh context per iteration, parallel story execution, plan checkpoints, learning extraction.
-
-```bash
-rulebook ralph init                    # Generate PRD from tasks
-rulebook ralph run --max-iterations 10
-rulebook ralph status / history / pause / resume
-```
-
-PRD format: `userStories` array with `id`, `title`, `description`, `acceptanceCriteria`, `priority`, `passes: boolean`, `notes`. Status tracked via `passes`, NOT enum.
-
-Iteration records in `.rulebook/ralph/history/iteration-N.json`. Status: `success` (5/5 gates), `partial` (2-4), `failed` (0-1).
-
 ## Multi-Agent Teams
 
 Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. Background `Agent` calls **must** use a Team (`team_name` parameter) — standalone background agents can't communicate via `SendMessage`. Foreground calls and `team-lead` agents are exempt.

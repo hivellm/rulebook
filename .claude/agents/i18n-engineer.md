@@ -8,7 +8,7 @@ maxTurns: 15
 
 ## Responsibilities
 
-- Audit rust codebase for hardcoded strings and replace with translation keys
+- Audit {{language}} codebase for hardcoded strings and replace with translation keys
 - Design translation file structure and key naming conventions
 - Configure locale detection, fallback chains, and pluralization rules
 - Implement RTL layout support for Arabic, Hebrew, and Persian locales

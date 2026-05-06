@@ -156,11 +156,7 @@ export async function learnListCommand(options: { limit?: string }): Promise<voi
   }
   for (const l of learnings) {
     const badge =
-      l.source === 'ralph'
-        ? chalk.blue('ralph')
-        : l.source === 'task-archive'
-          ? chalk.yellow('archive')
-          : chalk.dim('manual');
+      l.source === 'task-archive' ? chalk.yellow('archive') : chalk.dim('manual');
     const promoted = l.promotedTo ? chalk.green(` → ${l.promotedTo.type}`) : '';
     console.log(`  ${badge}  ${l.title}${promoted}`);
   }
