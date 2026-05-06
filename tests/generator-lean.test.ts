@@ -21,7 +21,7 @@ async function teardown() {
 const baseConfig: ProjectConfig = {
   languages: ['typescript'],
   modules: [],
-  frameworks: [],
+
   ides: [],
   projectType: 'application',
   coverageThreshold: 75,

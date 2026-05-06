@@ -4,7 +4,6 @@ import type { ExistingAgentsInfo, ProjectConfig } from '../types.js';
 import {
   generateLanguageRules,
   generateModuleRules,
-  generateFrameworkRules,
   generateModularAgents,
 } from './generators/generator.js';
 import fs from 'fs/promises';
@@ -23,14 +22,9 @@ export function hasEmbeddedTemplates(existing: ExistingAgentsInfo): boolean {
   const embeddedModulePattern =
     /<!--\s*(VECTORIZER|SYNAP|CONTEXT7|GITHUB|PLAYWRIGHT|SUPABASE|NOTION|ATLASSIAN|SERENA|FIGMA|GRAFANA|AGENT_AUTOMATION):START\s*-->/i;
 
-  // Check for embedded framework blocks (e.g., <!-- REACT:START -->)
-  const embeddedFrameworkPattern =
-    /<!--\s*(NESTJS|SPRING|LARAVEL|ANGULAR|REACT|VUE|NUXT|NEXTJS|DJANGO|RAILS|FLASK|SYMFONY|ZEND|JQUERY|REACTNATIVE|FLUTTER|ELECTRON):START\s*-->/i;
-
   return (
     embeddedLanguagePattern.test(existing.content) ||
-    embeddedModulePattern.test(existing.content) ||
-    embeddedFrameworkPattern.test(existing.content)
+    embeddedModulePattern.test(existing.content)
   );
 }
 
@@ -44,7 +38,6 @@ export async function migrateEmbeddedTemplates(
 ): Promise<{
   extractedLanguages: string[];
   extractedModules: string[];
-  extractedFrameworks: string[];
 }> {
   const rulebookDir = config.rulebookDir || '.rulebook';
   const specsPath = path.join(projectRoot, rulebookDir, 'specs');
@@ -55,10 +48,9 @@ export async function migrateEmbeddedTemplates(
 
   const extractedLanguages: string[] = [];
   const extractedModules: string[] = [];
-  const extractedFrameworks: string[] = [];
 
   if (!existing.content) {
-    return { extractedLanguages, extractedModules, extractedFrameworks };
+    return { extractedLanguages, extractedModules };
   }
 
   // Extract language blocks
@@ -99,28 +91,7 @@ export async function migrateEmbeddedTemplates(
     }
   }
 
-  // Extract framework blocks
-  if (config.frameworks) {
-    for (const framework of config.frameworks) {
-      const blockName = framework.toUpperCase();
-      const frameworkBlock = existing.blocks.find((b) => b.name === blockName);
-
-      if (frameworkBlock && frameworkBlock.content) {
-        // Write extracted content to /rulebook/[FRAMEWORK].md
-        const filePath = path.join(specsPath, `${blockName}.md`);
-        await writeFile(filePath, frameworkBlock.content);
-        extractedFrameworks.push(framework);
-      } else {
-        // Generate new template if not found
-        const frameworkRules = await generateFrameworkRules(framework);
-        const filePath = path.join(specsPath, `${blockName}.md`);
-        await writeFile(filePath, frameworkRules);
-        extractedFrameworks.push(framework);
-      }
-    }
-  }
-
-  return { extractedLanguages, extractedModules, extractedFrameworks };
+  return { extractedLanguages, extractedModules };
 }
 
 /**

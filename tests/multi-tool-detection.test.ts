@@ -18,8 +18,7 @@ function buildDetection(overrides: Partial<DetectionResult> = {}): DetectionResu
   return {
     languages: [],
     modules: [],
-    frameworks: [],
-    services: [],
+
     existingAgents: null,
     geminiCli: { detected: false },
     continueDev: { detected: false, rulesDir: '' },

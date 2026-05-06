@@ -9,9 +9,7 @@ import { installGitHooks } from '../../utils/git-hooks.js';
 import type {
   LanguageDetection,
   ProjectConfig,
-  FrameworkId,
   ModuleDetection,
-  ServiceId,
 } from '../../types.js';
 import { scaffoldMinimalProject } from '../../core/generators/minimal-scaffolder.js';
 import path from 'path';
@@ -150,7 +148,6 @@ export async function updateSingleProject(
   const config: ProjectConfig = {
     languages: detection.languages.map((l) => l.language),
     modules: minimalMode ? [] : detection.modules.filter((m) => m.detected).map((m) => m.module),
-    frameworks: detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
     ides: [],
     projectType: 'application' as const,
     coverageThreshold: 95,
@@ -229,9 +226,7 @@ export async function updateSingleProject(
 
     const rulebookConfigForSkills = {
       languages: config.languages as LanguageDetection['language'][],
-      frameworks: config.frameworks as FrameworkId[],
       modules: config.modules as ModuleDetection['module'][],
-      services: config.services as ServiceId[],
     };
 
     detectedSkills = await skillsManager.autoDetectSkills(rulebookConfigForSkills);
@@ -255,9 +250,7 @@ export async function updateSingleProject(
 
   await configManager.updateConfig({
     languages: config.languages as LanguageDetection['language'][],
-    frameworks: config.frameworks as FrameworkId[],
     modules: config.modules as ModuleDetection['module'][],
-    services: config.services as ServiceId[],
     modular: config.modular ?? true,
     rulebookDir: config.rulebookDir || '.rulebook',
     skills: detectedSkills.length > 0 ? { enabled: detectedSkills } : undefined,

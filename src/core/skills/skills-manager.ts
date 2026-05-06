@@ -32,9 +32,7 @@ const LEGACY_TEMPLATE_EXTENSIONS = ['.md'];
 // Category mappings from legacy template structure
 const CATEGORY_MAPPINGS: Record<string, SkillCategory> = {
   languages: 'languages',
-  frameworks: 'frameworks',
   modules: 'modules',
-  services: 'services',
   workflows: 'workflows',
   ides: 'ides',
   core: 'core',
@@ -207,9 +205,7 @@ export class SkillsManager {
     const skills: Skill[] = [];
     const categories: Record<SkillCategory, Skill[]> = {
       languages: [],
-      frameworks: [],
       modules: [],
-      services: [],
       workflows: [],
       ides: [],
       core: [],
@@ -668,32 +664,10 @@ export class SkillsManager {
       }
     }
 
-    // Detect framework skills
-    if (config.frameworks) {
-      for (const framework of config.frameworks) {
-        const skillId = `frameworks/${framework.toLowerCase()}`;
-        const skill = await this.getSkillById(skillId);
-        if (skill) {
-          detectedSkills.push(skillId);
-        }
-      }
-    }
-
     // Detect module skills
     if (config.modules) {
       for (const module of config.modules) {
         const skillId = `modules/${module.toLowerCase()}`;
-        const skill = await this.getSkillById(skillId);
-        if (skill) {
-          detectedSkills.push(skillId);
-        }
-      }
-    }
-
-    // Detect service skills
-    if (config.services) {
-      for (const service of config.services) {
-        const skillId = `services/${service.toLowerCase()}`;
         const skill = await this.getSkillById(skillId);
         if (skill) {
           detectedSkills.push(skillId);

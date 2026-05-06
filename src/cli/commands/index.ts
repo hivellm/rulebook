@@ -51,7 +51,6 @@ export {
   overrideClearCommand,
 } from './plans.js';
 export { setupClaudeCodePlugin, migrateMemoryDirectory } from './misc.js';
-export { compressCommand } from './compress.js';
 export {
   workspaceInitCommand,
   workspaceAddCommand,

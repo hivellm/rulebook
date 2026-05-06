@@ -365,9 +365,9 @@ describe('Backward Compatibility v1.x to v2.0', () => {
       // Partial config like v1.x would have (no skills section)
       const partialConfig = {
         languages: ['typescript' as const],
-        frameworks: [],
+
         modules: [],
-        services: [],
+
       };
 
       const detectedSkills = await skillsManager.autoDetectSkills(partialConfig);
@@ -458,9 +458,9 @@ describe('Backward Compatibility v1.x to v2.0', () => {
         maxParallelTasks: 8,
         timeouts: { taskExecution: 120000, cliResponse: 60000, testRun: 300000 },
         languages: ['typescript', 'python'],
-        frameworks: ['nestjs'],
+
         modules: ['supabase'],
-        services: ['postgresql'],
+
       };
 
       await fs.writeFile(path.join(testDir, '.rulebook'), JSON.stringify(v1Config, null, 2));

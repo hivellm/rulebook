@@ -105,17 +105,6 @@ Vectorizer-specific content here.
       expect(hasEmbeddedTemplates(moduleAgents)).toBe(true);
     });
 
-    it('should detect embedded framework templates', () => {
-      const frameworkAgents: ExistingAgentsInfo = {
-        exists: true,
-        path: '',
-        content:
-          '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->\n<!-- REACT:START -->\n<!-- REACT:END -->',
-        blocks: [],
-      };
-      expect(hasEmbeddedTemplates(frameworkAgents)).toBe(true);
-    });
-
     it('should return false when content is null', () => {
       const noContent: ExistingAgentsInfo = {
         exists: true,
@@ -191,7 +180,6 @@ Vectorizer-specific content here.
 
       expect(result.extractedLanguages).toEqual([]);
       expect(result.extractedModules).toEqual([]);
-      expect(result.extractedFrameworks).toEqual([]);
     });
 
     it('should generate new templates when blocks not found', async () => {
@@ -222,47 +210,6 @@ Vectorizer-specific content here.
       expect(await fileExists(vectorizerPath)).toBe(true);
     });
 
-    it('should extract framework templates', async () => {
-      const frameworkAgents: ExistingAgentsInfo = {
-        exists: true,
-        path: '',
-        content: `<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->
-<!-- REACT:START -->
-# React Rules
-React content here.
-<!-- REACT:END -->`,
-        blocks: [
-          {
-            name: 'RULEBOOK',
-            startLine: 0,
-            endLine: 1,
-            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
-          },
-          {
-            name: 'REACT',
-            startLine: 2,
-            endLine: 5,
-            content: '<!-- REACT:START -->\n# React Rules\nReact content here.\n<!-- REACT:END -->',
-          },
-        ],
-      };
-
-      const frameworkConfig: ProjectConfig = {
-        ...config,
-        frameworks: ['react'],
-      };
-
-      const result = await migrateEmbeddedTemplates(frameworkAgents, frameworkConfig, testDir);
-
-      expect(result.extractedFrameworks).toContain('react');
-
-      const reactPath = path.join(testDir, '.rulebook', 'specs', 'REACT.md');
-      expect(await fileExists(reactPath)).toBe(true);
-
-      const reactContent = await readFile(reactPath);
-      expect(reactContent).toContain('React Rules');
-    });
-
     it('should handle language blocks without content', async () => {
       const agentsWithEmptyBlock: ExistingAgentsInfo = {
         exists: true,
@@ -290,21 +237,6 @@ React content here.
       expect(result.extractedLanguages).toContain('typescript');
       const typescriptPath = path.join(testDir, '.rulebook', 'specs', 'TYPESCRIPT.md');
       expect(await fileExists(typescriptPath)).toBe(true);
-    });
-
-    it('should handle frameworks undefined', async () => {
-      const configWithoutFrameworks: ProjectConfig = {
-        ...config,
-        frameworks: undefined,
-      };
-
-      const result = await migrateEmbeddedTemplates(
-        makeExistingAgents(),
-        configWithoutFrameworks,
-        testDir
-      );
-
-      expect(result.extractedFrameworks).toEqual([]);
     });
 
     it('should handle multiple languages and modules', async () => {
@@ -380,115 +312,6 @@ React content here.
       expect(result).toContain('<!-- RULEBOOK:START -->');
       expect(result).toContain('/.rulebook/specs/TYPESCRIPT.md');
       expect(result).toContain('/.rulebook/specs/VECTORIZER.md');
-    });
-  });
-
-  describe('migrateEmbeddedTemplates — framework block not found (lines 115-118)', () => {
-    it('should generate new framework template when block is not found in existing blocks', async () => {
-      const agentsWithoutFrameworkBlock: ExistingAgentsInfo = {
-        exists: true,
-        path: '',
-        content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
-        blocks: [
-          {
-            name: 'RULEBOOK',
-            startLine: 0,
-            endLine: 1,
-            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
-          },
-          // No REACT block present
-        ],
-      };
-
-      const frameworkConfig: ProjectConfig = {
-        ...config,
-        frameworks: ['react'],
-      };
-
-      const result = await migrateEmbeddedTemplates(
-        agentsWithoutFrameworkBlock,
-        frameworkConfig,
-        testDir
-      );
-
-      expect(result.extractedFrameworks).toContain('react');
-      const reactPath = path.join(testDir, '.rulebook', 'specs', 'REACT.md');
-      expect(await fileExists(reactPath)).toBe(true);
-    });
-
-    it('should generate new framework template when framework block has empty content', async () => {
-      const agentsWithEmptyFrameworkBlock: ExistingAgentsInfo = {
-        exists: true,
-        path: '',
-        content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
-        blocks: [
-          {
-            name: 'RULEBOOK',
-            startLine: 0,
-            endLine: 1,
-            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
-          },
-          {
-            name: 'NESTJS',
-            startLine: 2,
-            endLine: 2,
-            content: '', // empty content triggers fallback to generateFrameworkRules
-          },
-        ],
-      };
-
-      const frameworkConfig: ProjectConfig = {
-        ...config,
-        frameworks: ['nestjs'],
-      };
-
-      const result = await migrateEmbeddedTemplates(
-        agentsWithEmptyFrameworkBlock,
-        frameworkConfig,
-        testDir
-      );
-
-      expect(result.extractedFrameworks).toContain('nestjs');
-      const nestjsPath = path.join(testDir, '.rulebook', 'specs', 'NESTJS.md');
-      expect(await fileExists(nestjsPath)).toBe(true);
-    });
-
-    it('should handle multiple frameworks where some blocks are found and some are not', async () => {
-      const agentsMixed: ExistingAgentsInfo = {
-        exists: true,
-        path: '',
-        content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
-        blocks: [
-          {
-            name: 'RULEBOOK',
-            startLine: 0,
-            endLine: 1,
-            content: '<!-- RULEBOOK:START -->\n<!-- RULEBOOK:END -->',
-          },
-          {
-            name: 'REACT',
-            startLine: 2,
-            endLine: 4,
-            content: '<!-- REACT:START -->\n# React Rules\nReact content here.\n<!-- REACT:END -->',
-          },
-          // No VUE block — will trigger generateFrameworkRules
-        ],
-      };
-
-      const frameworkConfig: ProjectConfig = {
-        ...config,
-        frameworks: ['react', 'vue'],
-      };
-
-      const result = await migrateEmbeddedTemplates(agentsMixed, frameworkConfig, testDir);
-
-      expect(result.extractedFrameworks).toContain('react');
-      expect(result.extractedFrameworks).toContain('vue');
-
-      const reactPath = path.join(testDir, '.rulebook', 'specs', 'REACT.md');
-      const vuePath = path.join(testDir, '.rulebook', 'specs', 'VUE.md');
-      expect(await fileExists(reactPath)).toBe(true);
-      expect(await fileExists(vuePath)).toBe(true);
     });
   });
 

@@ -93,7 +93,7 @@ describe('Init Command Options', () => {
       const config = {
         languages: ['typescript'],
         modules: [],
-        frameworks: [],
+
         ides: ['cursor'],
         projectType: 'application' as const,
         coverageThreshold: 95,
@@ -121,7 +121,7 @@ describe('Init Command Options', () => {
       const config = {
         languages: ['typescript'],
         modules: [],
-        frameworks: [],
+
         ides: [],
         projectType: 'application' as const,
         coverageThreshold: 95,
@@ -144,7 +144,7 @@ describe('Init Command Options', () => {
       const config = {
         languages: ['typescript'],
         modules: [],
-        frameworks: [],
+
         ides: ['cursor'],
         projectType: 'application' as const,
         coverageThreshold: 95,
@@ -169,9 +169,9 @@ describe('Init Command Options', () => {
 
       await configManager.updateConfig({
         languages: ['typescript'],
-        frameworks: [],
+
         modules: [],
-        services: [],
+
         modular: true,
         rulebookDir: 'rulebook',
         skills: { enabled: ['languages/typescript', 'core/rulebook'] },
@@ -231,9 +231,9 @@ describe('Init Command Options', () => {
 
       const partialConfig = {
         languages: ['typescript' as const],
-        frameworks: [],
+
         modules: [],
-        services: [],
+
       };
 
       const detectedSkills = await skillsManager.autoDetectSkills(partialConfig);

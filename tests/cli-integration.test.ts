@@ -19,8 +19,7 @@ describe('AI CLI Integration Files', () => {
     config = {
       languages: ['typescript'],
       modules: [],
-      services: [],
-      frameworks: ['nestjs'],
+
       ides: ['cursor'],
       projectType: 'application',
       coverageThreshold: 95,

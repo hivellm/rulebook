@@ -424,23 +424,6 @@ export async function generateLanguageRules(language: string): Promise<string> {
   return `<!-- ${language.toUpperCase()}:START -->\n# ${language.charAt(0).toUpperCase() + language.slice(1)} Rules\n\nLanguage-specific rules for ${language}.\n<!-- ${language.toUpperCase()}:END -->\n`;
 }
 
-export async function generateFrameworkRules(framework: string): Promise<string> {
-  const templatesDir = path.join(getTemplatesDir(), 'frameworks');
-  const templatePath = path.join(templatesDir, `${framework.toUpperCase()}.md`);
-
-  if (await fileExists(templatePath)) {
-    return await readFile(templatePath);
-  }
-
-  const title = framework.charAt(0).toUpperCase() + framework.slice(1);
-  return `<!-- ${framework.toUpperCase()}:START -->
-# ${title} Framework Rules
-
-Framework-specific rules for ${title}.
-<!-- ${framework.toUpperCase()}:END -->
-`;
-}
-
 export async function generateModuleRules(module: string): Promise<string> {
   const templatesDir = path.join(getTemplatesDir(), 'modules');
   // Try UPPERCASE.md first, then kebab-case.md (e.g. sequential_thinking → sequential-thinking.md)
@@ -456,24 +439,6 @@ export async function generateModuleRules(module: string): Promise<string> {
   }
 
   return `<!-- ${module.toUpperCase()}:START -->\n# ${module.charAt(0).toUpperCase() + module.slice(1)} Instructions\n\nModule-specific instructions for ${module}.\n<!-- ${module.toUpperCase()}:END -->\n`;
-}
-
-export async function generateServiceRules(service: string): Promise<string> {
-  const templatesDir = path.join(getTemplatesDir(), 'services');
-  // Convert service name to template filename (e.g., 'azure_blob' -> 'AZURE_BLOB.md')
-  const serviceName = service.toUpperCase().replace(/-/g, '_');
-  const templatePath = path.join(templatesDir, `${serviceName}.md`);
-
-  if (await fileExists(templatePath)) {
-    return await readFile(templatePath);
-  }
-
-  const serviceTitle = service
-    .split(/[-_]/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-
-  return `<!-- ${serviceName}:START -->\n# ${serviceTitle} Instructions\n\nService-specific instructions for ${serviceTitle}.\n<!-- ${serviceName}:END -->\n`;
 }
 
 export async function generateGitRules(pushMode: string): Promise<string> {
@@ -609,26 +574,6 @@ function generateLanguageReference(language: string, rulebookDir: string = '.rul
 }
 
 /**
- * Generate framework reference for AGENTS.md
- */
-function generateFrameworkReference(framework: string, rulebookDir: string = '.rulebook'): string {
-  const frameworkName = framework.charAt(0).toUpperCase() + framework.slice(1);
-  const quickRef = [
-    'Framework-specific patterns',
-    'Component structure',
-    'Best practices',
-    'Testing conventions',
-  ];
-  return generateReferenceSection(
-    `${frameworkName} Framework Rules`,
-    framework.toUpperCase(),
-    `${frameworkName}-specific guidelines`,
-    quickRef,
-    rulebookDir
-  );
-}
-
-/**
  * Generate module reference for AGENTS.md
  */
 function generateModuleReference(module: string, rulebookDir: string = '.rulebook'): string {
@@ -638,25 +583,6 @@ function generateModuleReference(module: string, rulebookDir: string = '.ruleboo
     `${moduleName} Instructions`,
     module.toUpperCase(),
     `${moduleName}-specific instructions`,
-    quickRef,
-    rulebookDir
-  );
-}
-
-/**
- * Generate service reference for AGENTS.md
- */
-function generateServiceReference(service: string, rulebookDir: string = '.rulebook'): string {
-  const serviceName = service
-    .split(/[-_]/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-  const serviceId = service.toUpperCase().replace(/-/g, '_');
-  const quickRef = ['Connection setup', 'Basic operations', 'Best practices', 'Configuration'];
-  return generateReferenceSection(
-    `${serviceName} Instructions`,
-    serviceId,
-    `${serviceName}-specific instructions`,
     quickRef,
     rulebookDir
   );
@@ -677,9 +603,7 @@ async function loadProjectConfigFromRulebook(
     // Map RulebookConfig to ProjectConfig
     const projectConfig: Partial<ProjectConfig> = {
       languages: rulebookConfig.languages || [],
-      frameworks: rulebookConfig.frameworks || [],
       modules: rulebookConfig.modules || [],
-      services: rulebookConfig.services || [],
       modular: rulebookConfig.modular !== false, // Default to true
       rulebookDir: rulebookConfig.rulebookDir || '.rulebook',
     };
@@ -815,12 +739,11 @@ const AGENT_REGISTRY: AgentEntry[] = [
 
 /**
  * Generate the agent delegation section for AGENTS.md.
- * Adapts table based on detected languages and frameworks.
+ * Adapts table based on detected languages.
  */
 export function generateDelegationSection(config: ProjectConfig): string {
   const lines: string[] = [];
   const primaryLang = config.languages?.[0] || 'the project language';
-  const primaryFramework = config.frameworks?.[0] || '';
 
   lines.push('## Agent Delegation');
   lines.push('');
@@ -853,7 +776,7 @@ export function generateDelegationSection(config: ProjectConfig): string {
   lines.push('5. **Launch independent agents in parallel** when possible to maximize throughput');
   lines.push('');
   lines.push(
-    `> **Project context**: Primary language is **${primaryLang}**${primaryFramework ? ` with **${primaryFramework}**` : ''}. Agents are pre-configured with this context.`
+    `> **Project context**: Primary language is **${primaryLang}**. Agents are pre-configured with this context.`
   );
   lines.push('');
 
@@ -865,7 +788,6 @@ export function generateDelegationSection(config: ProjectConfig): string {
  */
 export function resolveAgentPlaceholders(config: ProjectConfig): Record<string, string> {
   const primaryLang = config.languages?.[0] || 'TypeScript';
-  const primaryFramework = config.frameworks?.[0] || '';
 
   // Map language to common test framework
   const testFrameworkMap: Record<string, string> = {
@@ -907,7 +829,7 @@ export function resolveAgentPlaceholders(config: ProjectConfig): Record<string, 
 
   return {
     '{{language}}': primaryLang,
-    '{{framework}}': primaryFramework || 'none',
+    '{{framework}}': 'none',
     '{{test_framework}}': testFrameworkMap[langKey] || 'the project test framework',
     '{{file_naming}}': fileNamingMap[langKey] || 'kebab-case',
   };
@@ -1029,14 +951,12 @@ export async function generateModularAgents(
   // Load saved configuration from .rulebook and merge with provided config
   const savedConfig = await loadProjectConfigFromRulebook(projectRoot);
 
-  // Merge: saved config takes precedence for languages/frameworks/modules/services
+  // Merge: saved config takes precedence for languages/modules
   // provided config takes precedence for other settings (like rulebookDir when explicitly set)
   const mergedConfig: ProjectConfig = {
     ...config,
     languages: savedConfig.languages?.length ? savedConfig.languages : config.languages,
-    frameworks: savedConfig.frameworks?.length ? savedConfig.frameworks : config.frameworks || [],
     modules: savedConfig.modules?.length ? savedConfig.modules : config.modules,
-    services: savedConfig.services?.length ? savedConfig.services : config.services || [],
     modular: savedConfig.modular !== undefined ? savedConfig.modular : config.modular !== false,
     // rulebookDir: provided config takes precedence if explicitly set, otherwise use saved or default
     rulebookDir: config.rulebookDir || savedConfig.rulebookDir || '.rulebook',
@@ -1133,33 +1053,6 @@ export async function generateModularAgents(
     sections.push('');
   }
 
-  // Write framework files and add references
-  if (mergedConfig.frameworks && mergedConfig.frameworks.length > 0) {
-    sections.push('## Framework-Specific Rules');
-    sections.push('');
-    sections.push(
-      `The following frameworks are configured for this project. For detailed rules, see the corresponding files in \`/${rulebookDir}/specs/\`:`
-    );
-    sections.push('');
-
-    // Write all framework files first
-    for (const framework of mergedConfig.frameworks) {
-      const frameworkRules = await generateFrameworkRules(framework);
-      await writeModularFile(projectRoot, framework.toUpperCase(), frameworkRules, rulebookDir);
-    }
-
-    // Then add all references together
-    for (const framework of mergedConfig.frameworks) {
-      sections.push(generateFrameworkReference(framework, rulebookDir));
-    }
-
-    sections.push('');
-    sections.push(
-      `**Usage**: When working with framework-specific code, reference the corresponding \`/${rulebookDir}/specs/[FRAMEWORK].md\` file for detailed guidelines.`
-    );
-    sections.push('');
-  }
-
   // Write module files and add references
   // First, write AGENT_AUTOMATION if not minimal (core file, not module)
   if (!mergedConfig.minimal) {
@@ -1206,33 +1099,6 @@ export async function generateModularAgents(
 
     sections.push(
       `**Usage**: When working with module-specific features, reference the corresponding \`/${rulebookDir}/specs/[MODULE].md\` file for detailed instructions.`
-    );
-    sections.push('');
-  }
-
-  // Write service files and add references
-  if (mergedConfig.services && mergedConfig.services.length > 0) {
-    sections.push('## Service-Specific Instructions');
-    sections.push('');
-    sections.push(
-      `The following services are configured for this project. For detailed instructions, see the corresponding files in \`/${rulebookDir}/specs/\`:`
-    );
-    sections.push('');
-
-    // Write all service files first
-    for (const service of mergedConfig.services) {
-      const serviceRules = await generateServiceRules(service);
-      const serviceId = service.toUpperCase().replace(/-/g, '_');
-      await writeModularFile(projectRoot, serviceId, serviceRules, rulebookDir);
-    }
-
-    // Then add all references together
-    for (const service of mergedConfig.services) {
-      sections.push(generateServiceReference(service, rulebookDir));
-    }
-
-    sections.push(
-      `**Usage**: When working with service-specific features, reference the corresponding \`/${rulebookDir}/specs/[SERVICE].md\` file for detailed instructions.`
     );
     sections.push('');
   }
@@ -1331,8 +1197,6 @@ export async function generateModularAgents(
     await generateMultiToolConfigs(projectRoot, {
       languages: [],
       modules: [],
-      frameworks: [],
-      services: [],
       existingAgents: null,
       geminiCli,
       continueDev,

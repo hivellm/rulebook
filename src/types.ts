@@ -1,22 +1,3 @@
-export type FrameworkId =
-  | 'nestjs'
-  | 'spring'
-  | 'laravel'
-  | 'angular'
-  | 'react'
-  | 'vue'
-  | 'nuxt'
-  | 'nextjs'
-  | 'django'
-  | 'rails'
-  | 'flask'
-  | 'symfony'
-  | 'zend'
-  | 'jquery'
-  | 'reactnative'
-  | 'flutter'
-  | 'electron';
-
 export interface MonorepoDetection {
   detected: boolean;
   tool: 'turborepo' | 'nx' | 'pnpm' | 'lerna' | 'manual' | null;
@@ -26,8 +7,6 @@ export interface MonorepoDetection {
 export interface DetectionResult {
   languages: LanguageDetection[];
   modules: ModuleDetection[];
-  frameworks: FrameworkDetection[];
-  services: ServiceDetection[];
   existingAgents: ExistingAgentsInfo | null;
   projectType?: 'monorepo' | 'library' | 'application' | 'cli';
   monorepo?: MonorepoDetection;
@@ -113,54 +92,6 @@ export interface ModuleDetection {
   source?: string;
 }
 
-export interface FrameworkDetection {
-  framework: FrameworkId;
-  detected: boolean;
-  languages: LanguageDetection['language'][];
-  confidence: number;
-  indicators: string[];
-}
-
-export type ServiceId =
-  | 'postgresql'
-  | 'mysql'
-  | 'mariadb'
-  | 'sqlserver'
-  | 'oracle'
-  | 'sqlite'
-  | 'mongodb'
-  | 'cassandra'
-  | 'dynamodb'
-  | 'redis'
-  | 'memcached'
-  | 'elasticsearch'
-  | 'neo4j'
-  | 'influxdb'
-  | 'rabbitmq'
-  | 'kafka'
-  | 's3'
-  | 'azure_blob'
-  | 'gcs'
-  | 'minio'
-  | 'docker'
-  | 'docker-compose'
-  | 'kubernetes'
-  | 'helm'
-  | 'sentry'
-  | 'opentelemetry'
-  | 'datadog'
-  | 'pino'
-  | 'winston'
-  | 'prometheus';
-
-export interface ServiceDetection {
-  service: ServiceId;
-  detected: boolean;
-  confidence: number;
-  indicators: string[];
-  source?: string;
-}
-
 export interface ExistingAgentsInfo {
   exists: boolean;
   path: string;
@@ -178,8 +109,6 @@ export interface AgentBlock {
 export interface ProjectConfig {
   languages: string[];
   modules: string[];
-  frameworks?: FrameworkId[];
-  services?: ServiceId[];
   ides: string[];
   projectType: 'monorepo' | 'library' | 'application' | 'cli';
   coverageThreshold: number;
@@ -244,9 +173,7 @@ export interface RulebookConfig {
   };
   // Project configuration detected/set during init/update
   languages?: LanguageDetection['language'][];
-  frameworks?: FrameworkId[];
   modules?: ModuleDetection['module'][];
-  services?: ServiceId[];
   modular?: boolean; // Enable modular /.rulebook directory structure
   rulebookDir?: string; // Custom rulebook directory (default: '.rulebook')
   agentsMode?: 'full' | 'lean'; // AGENTS.md generation mode: full (default) or lean (index-only)
@@ -362,9 +289,7 @@ export interface TelemetryData {
 
 export type SkillCategory =
   | 'languages'
-  | 'frameworks'
   | 'modules'
-  | 'services'
   | 'workflows'
   | 'ides'
   | 'core'

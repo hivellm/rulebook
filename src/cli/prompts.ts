@@ -1,28 +1,8 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import type { DetectionResult, ProjectConfig, FrameworkId, LanguageDetection } from '../types.js';
+import type { DetectionResult, ProjectConfig, LanguageDetection } from '../types.js';
 
 type LanguageId = LanguageDetection['language'];
-
-const FRAMEWORK_LABELS: Record<FrameworkId, string> = {
-  nestjs: 'NestJS',
-  spring: 'Spring Boot',
-  laravel: 'Laravel',
-  angular: 'Angular',
-  react: 'React',
-  vue: 'Vue.js',
-  nuxt: 'Nuxt',
-  nextjs: 'Next.js',
-  django: 'Django',
-  rails: 'Ruby on Rails',
-  flask: 'Flask',
-  symfony: 'Symfony',
-  zend: 'Zend Framework',
-  jquery: 'jQuery',
-  reactnative: 'React Native',
-  flutter: 'Flutter',
-  electron: 'Electron',
-};
 
 const LANGUAGE_CHOICES: Array<{ name: string; value: string }> = [
   { name: 'Ada', value: 'ada' },
@@ -208,61 +188,6 @@ export async function promptProjectConfig(
       ],
     });
 
-    // Service selection
-    const detectedServices = detection.services.filter((s) => s.detected).map((s) => s.service);
-    const serviceLabels: Record<string, string> = {
-      postgresql: 'PostgreSQL (relational database)',
-      mysql: 'MySQL (relational database)',
-      mariadb: 'MariaDB (relational database)',
-      sqlserver: 'SQL Server (relational database)',
-      oracle: 'Oracle (relational database)',
-      sqlite: 'SQLite (embedded database)',
-      mongodb: 'MongoDB (NoSQL document database)',
-      cassandra: 'Cassandra (NoSQL wide-column database)',
-      dynamodb: 'DynamoDB (NoSQL key-value database)',
-      redis: 'Redis (in-memory data store)',
-      memcached: 'Memcached (distributed memory cache)',
-      elasticsearch: 'Elasticsearch (search & analytics engine)',
-      neo4j: 'Neo4j (graph database)',
-      influxdb: 'InfluxDB (time-series database)',
-      rabbitmq: 'RabbitMQ (message broker)',
-      kafka: 'Kafka (distributed event streaming)',
-      s3: 'AWS S3 (object storage)',
-      azure_blob: 'Azure Blob Storage (object storage)',
-      gcs: 'Google Cloud Storage (object storage)',
-      minio: 'MinIO (S3-compatible object storage)',
-    };
-
-    questions.push({
-      type: 'checkbox',
-      name: 'services',
-      message: 'Select services to include integration instructions for:',
-      choices: detection.services.map((service) => ({
-        name: `${serviceLabels[service.service] || service.service}${service.detected ? ' – detected' : ''}`,
-        value: service.service,
-        checked: detectedServices.includes(service.service),
-      })),
-      pageSize: Math.min(detection.services.length, 15),
-    });
-  }
-
-  // Framework selection
-  const frameworkChoices = detection.frameworks.map((framework) => ({
-    name: `${FRAMEWORK_LABELS[framework.framework]} (${framework.languages
-      .map((lang) => lang.toUpperCase())
-      .join(', ')})${framework.detected ? ' – detected' : ''}`,
-    value: framework.framework,
-    checked: framework.detected,
-  }));
-
-  if (frameworkChoices.length > 0) {
-    questions.push({
-      type: 'checkbox',
-      name: 'frameworks',
-      message: 'Select frameworks to include instructions for:',
-      choices: frameworkChoices,
-      pageSize: Math.min(frameworkChoices.length, 10),
-    });
   }
 
   // IDE selection
@@ -370,9 +295,6 @@ export async function promptProjectConfig(
   return {
     languages: answers.languages || detection.languages.map((l) => l.language),
     modules: isMinimal ? [] : answers.modules || [],
-    services: isMinimal ? [] : answers.services || [],
-    frameworks:
-      answers.frameworks || detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
     ides: answers.ides || ['cursor'],
     projectType: answers.projectType,
     coverageThreshold: answers.coverageThreshold,
@@ -468,15 +390,9 @@ export async function promptSimplifiedConfig(detection: DetectionResult): Promis
     installGitHooks = installHooks;
   }
 
-  // Use smart defaults for everything else
-  const detectedFrameworks = detection.frameworks.filter((f) => f.detected).map((f) => f.framework);
-  const detectedServices = detection.services.filter((s) => s.detected).map((s) => s.service);
-
   return {
     languages,
     modules,
-    services: detectedServices,
-    frameworks: detectedFrameworks,
     ides: ['cursor'], // Default to Cursor
     projectType: 'application',
     coverageThreshold: 95,

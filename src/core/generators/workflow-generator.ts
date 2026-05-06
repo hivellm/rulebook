@@ -450,7 +450,6 @@ function generateGeminiExtensionContent(
     settings: {
       coverageThreshold: config.coverageThreshold,
       languages: config.languages,
-      frameworks: config.frameworks || [],
       strictMode: true,
     },
   };

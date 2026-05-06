@@ -118,9 +118,9 @@ describe('phase1_terse-templates-wiring — autoDetectSkills includes terse fami
     const mgr = new SkillsManager(resolve(ROOT, 'templates'));
     const detected = await mgr.autoDetectSkills({
       languages: ['typescript'],
-      frameworks: [],
+
       modules: [],
-      services: [],
+
     });
 
     // Core skills are always included per skills-manager contract.

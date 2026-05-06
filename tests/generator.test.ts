@@ -226,7 +226,7 @@ describe('generator', () => {
     it('should generate lean output even with frameworks specified', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
-        frameworks: ['nestjs', 'react'],
+
         modular: true,
       };
       const content = await generateFullAgents(config, '/tmp/test');
@@ -248,7 +248,7 @@ describe('generator', () => {
     it('should handle empty frameworks array', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
-        frameworks: [],
+
       };
       const content = await generateFullAgents(config);
 
@@ -259,7 +259,7 @@ describe('generator', () => {
     it('should handle undefined frameworks', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
-        frameworks: undefined,
+
       };
       const content = await generateFullAgents(config);
 
@@ -323,7 +323,7 @@ describe('generator', () => {
     it('should handle empty frameworks array', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
-        frameworks: [],
+
         modular: true,
       };
       const content = await generateModularAgents(config, '/tmp/test');
@@ -335,7 +335,7 @@ describe('generator', () => {
     it('should handle undefined frameworks', async () => {
       const config: ProjectConfig = {
         ...baseConfig,
-        frameworks: undefined,
+
         modular: true,
       };
       const content = await generateModularAgents(config, '/tmp/test');

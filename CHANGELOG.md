@@ -5,7 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.6.0] - 2026-05-06
+## [5.7.0] - 2026-05-06
+
+### Removed — framework templates, service templates, compress CLI, eval harness
+
+Aggressive scope cut for low-traffic surface area:
+
+  - `templates/frameworks/` (17 files): NestJS, Spring, Laravel, Angular,
+    React, Vue, Nuxt, Next.js, Django, Flask, Rails, Symfony, Zend,
+    jQuery, RN, Flutter, Electron — plus the matching skill bundles
+    under `templates/skills/frameworks/`.
+  - `templates/services/` (30 files): all DBs, caches, queues,
+    object stores, observability stacks — plus
+    `templates/skills/services/`.
+  - Detector: `detectFrameworks`, `detectServices`, `findFirstExisting`
+    helper. Types: `FrameworkId`, `FrameworkDetection`, `ServiceId`,
+    `ServiceDetection`. Removed from `DetectionResult`,
+    `ProjectConfig`, `RulebookConfig`, `SkillCategory`.
+  - Generators: `generateFrameworkRules`, `generateServiceRules`,
+    `generateFrameworkReference`, `generateServiceReference` and the
+    framework/service sections in `generateModularAgents`. CLI
+    prompts no longer ask for framework/service selection.
+  - `rulebook compress` CLI command, `src/core/compress/` (compressor,
+    discover, validator), MCP tools `rulebook_compress` and
+    `rulebook_compress_list`, `checkCompressionBackups` doctor check.
+  - Eval harness: `evals/` directory (cli_run, llm_run, measure,
+    report, prompts, snapshots, arms.json), `checkEvalsFreshness`
+    doctor check, `tests/evals-harness.test.ts`, related smoke tests
+    in `tests/rulebook-terse-foundations.test.ts`.
+  - Test files removed: `compress-*`, `evals-harness`,
+    `observability-detection`, `docker-k8s`. Stale framework/service
+    cases stripped from `migrator`, `detector`, `generator`,
+    `init-command`, `cli-integration`, `backward-compatibility`,
+    `multi-tool-detection`, `mcp-skills`, `skill-commands`,
+    `rulebook-terse-templates-wiring`, `generator-lean`.
+
+Why: these surfaces had near-zero observed usage and added
+maintenance burden out of proportion to their value. Languages,
+modules, IDEs, agents, and skills/dev are unaffected.
+
+
 
 ### Changed — Memory store: SQLite + HNSW → markdown files
 

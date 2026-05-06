@@ -15,34 +15,12 @@ import { installGitHooks } from '../../utils/git-hooks.js';
 import type {
   LanguageDetection,
   ProjectConfig,
-  FrameworkId,
   ModuleDetection,
-  ServiceId,
 } from '../../types.js';
 import { scaffoldMinimalProject } from '../../core/generators/minimal-scaffolder.js';
 import path from 'path';
 import { SkillsManager, getDefaultTemplatesPath } from '../../core/skills/skills-manager.js';
 import { WorkspaceManager } from '../../core/workspace/workspace-manager.js';
-
-const FRAMEWORK_LABELS: Record<FrameworkId, string> = {
-  nestjs: 'NestJS',
-  spring: 'Spring Boot',
-  laravel: 'Laravel',
-  angular: 'Angular',
-  react: 'React',
-  vue: 'Vue.js',
-  nuxt: 'Nuxt',
-  nextjs: 'Next.js',
-  django: 'Django',
-  rails: 'Ruby on Rails',
-  flask: 'Flask',
-  symfony: 'Symfony',
-  zend: 'Zend Framework',
-  jquery: 'jQuery',
-  reactnative: 'React Native',
-  flutter: 'Flutter',
-  electron: 'Electron',
-};
 
 /**
  * Add sequential-thinking MCP server entry to mcp.json (or .cursor/mcp.json).
@@ -147,17 +125,6 @@ export async function initCommand(options: {
       );
     }
 
-    const detectedFrameworks = detection.frameworks.filter((f) => f.detected);
-    if (detectedFrameworks.length > 0) {
-      console.log(chalk.green('\n✓ Detected frameworks:'));
-      for (const framework of detectedFrameworks) {
-        const languagesLabel = framework.languages.map((lang) => lang.toUpperCase()).join(', ');
-        const indicators = framework.indicators.join(', ');
-        const label = FRAMEWORK_LABELS[framework.framework] || framework.framework;
-        console.log(`  - ${label} (${languagesLabel})${indicators ? ` [${indicators}]` : ''}`);
-      }
-    }
-
     if (detection.existingAgents) {
       console.log(
         chalk.yellow(
@@ -176,7 +143,6 @@ export async function initCommand(options: {
     const config: ProjectConfig = {
       languages: detection.languages.map((l) => l.language),
       modules: cliMinimal ? [] : detection.modules.filter((m) => m.detected).map((m) => m.module),
-      frameworks: detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
       ides: cliMinimal ? [] : ['cursor'],
       projectType: 'application' as const,
       coverageThreshold: 95,
@@ -194,7 +160,6 @@ export async function initCommand(options: {
     const minimalMode = config.minimal ?? cliMinimal;
     config.minimal = minimalMode;
     config.modules = minimalMode ? [] : config.modules || [];
-    config.frameworks = config.frameworks || [];
     config.ides = minimalMode ? [] : config.ides || ['cursor'];
     config.includeGitWorkflow = config.includeGitWorkflow ?? true;
     config.generateWorkflows = config.generateWorkflows ?? true;
@@ -278,9 +243,7 @@ export async function initCommand(options: {
 
       const rulebookConfigForSkills = {
         languages: config.languages as LanguageDetection['language'][],
-        frameworks: config.frameworks as FrameworkId[],
         modules: config.modules as ModuleDetection['module'][],
-        services: config.services as ServiceId[],
       };
 
       enabledSkills = await skillsManager.autoDetectSkills(rulebookConfigForSkills);
@@ -299,9 +262,7 @@ export async function initCommand(options: {
 
     await configManager.updateConfig({
       languages: config.languages as LanguageDetection['language'][],
-      frameworks: config.frameworks as FrameworkId[],
       modules: config.modules as ModuleDetection['module'][],
-      services: config.services as ServiceId[],
       modular: config.modular ?? true,
       rulebookDir: config.rulebookDir || '.rulebook',
       ...(config.agentsMode ? { agentsMode: config.agentsMode } : {}),

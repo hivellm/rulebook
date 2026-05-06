@@ -10,7 +10,7 @@
 [![Build](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/build.yml?label=build&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/build.yml)
 [![Lint](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/lint.yml?label=lint&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/lint.yml)
 
-> Tool-agnostic AI development framework. Standardize projects across Claude Code, Cursor, Gemini, Codex, Windsurf, and Copilot with automated templates, quality gates, persistent memory, and framework detection for 28 languages, 17 frameworks, 13 MCP modules, and 20 services.
+> Tool-agnostic AI development framework. Standardize projects across Claude Code, Cursor, Gemini, Codex, Windsurf, Copilot, and OpenCode with automated templates, quality gates, persistent memory, and language detection for 28 languages and 13 MCP modules.
 
 ---
 
@@ -46,7 +46,7 @@ AI coding assistants produce inconsistent, error-prone code without clear guidel
 | **MCP tools** | Task management, persistent memory, skills, decisions, knowledge, learnings, workspace, terse compression — all via Model Context Protocol |
 | **Structural enforcement** | `PreToolUse` hooks block forbidden patterns (deferred tasks, stubs/TODOs, manual task files) before edits reach disk |
 | **Session continuity** | Persistent memory across sessions, automatic handoff at context limits, STATE.md live status |
-| **28 languages, 17 frameworks** | Auto-detected with confidence scores, language-specific templates and CI/CD workflows |
+| **28 languages** | Auto-detected with confidence scores, language-specific templates and CI/CD workflows |
 
 ---
 
@@ -93,29 +93,6 @@ Structurally-enforced output compression via a SessionStart hook that injects a 
 /rulebook-terse ultra        # Maximum compression
 /rulebook-terse off          # Disable
 ```
-
-Paired with `rulebook compress` — input-side compression for memory files (`CLAUDE.md`, `AGENTS.override.md`, `.rulebook/PLANS.md`):
-
-```bash
-rulebook compress --check CLAUDE.md          # Report ratio + validator
-rulebook compress --dry-run CLAUDE.md        # Preview
-rulebook compress CLAUDE.md                  # Rewrite + backup
-rulebook compress --restore CLAUDE.md        # Revert from backup
-```
-
-Preserves code blocks, URLs, file paths, dates, and version numbers byte-for-byte.
-
-**Measured** against a three-arm eval harness (`baseline` / `terse` / `rulebook-terse`) on 10 real prompts executed through the Claude Code CLI, tokens counted with `tiktoken`:
-
-| Arm | Total tokens | vs baseline | vs terse |
-|---|---:|---:|---:|
-| `baseline` (no system prompt) | 2,696 | — | −42% |
-| `terse` (control: `Answer concisely.`) | 4,611 | +71% | — |
-| `rulebook-terse` (skill active) | **1,940** | **−28%** | **−58%** |
-
-Honest delta is **`rulebook-terse` vs `terse` = 57.9% average lift**, per-prompt range **34% → 77%**. All ten prompts clear the 15% threshold individually. Interestingly, the `terse` control is 71% *larger* than `baseline` — `Answer concisely.` alone steers the model toward structured output (headings, code blocks), which inflates tokens. The skill's explicit rules reverse that effect.
-
-Regenerate snapshots against live Claude: `npx tsx evals/cli_run.ts` (shells out to `claude -p`, reuses existing CLI auth). Re-measure offline: `npx tsx evals/measure.ts`.
 
 Auto-activates after `rulebook init` or `rulebook update` — SessionStart hook writes to `.rulebook/.terse-mode`, UserPromptSubmit hook emits a ~45-token attention anchor per user message. Opt-out: set `.rulebook/rulebook.json` → `"terse": {"enabled": false}`. Override level: `"terse": {"defaultMode": "brief"}` or export `RULEBOOK_TERSE_MODE=ultra`.
 
@@ -177,7 +154,6 @@ rulebook mcp init    # One-time setup — configures .mcp.json automatically
 | Knowledge | Add, list, show | `rulebook_knowledge_add`, `rulebook_knowledge_list` |
 | Decisions | Create, list, show, update | `rulebook_decision_create`, `rulebook_decision_list` |
 | Learnings | Capture, list, promote | `rulebook_learn_capture`, `rulebook_learn_list` |
-| Compress | Compress memory files, list candidates | `rulebook_compress`, `rulebook_compress_list` |
 | Other | Rules list, session, codebase | `rulebook_rules_list`, `rulebook_session_start` |
 
 All tools accept optional `projectId` for workspace routing.
@@ -256,10 +232,6 @@ rulebook version <major|minor|patch>  # Bump version
 ## Supported Stack
 
 **28 Languages**: TypeScript, JavaScript, Python, Rust, Go, Java, Kotlin, C, C++, C#, PHP, Ruby, Swift, Elixir, Dart, Scala, Haskell, Julia, R, Lua, Solidity, Zig, Erlang, Ada, SAS, Lisp, Objective-C, SQL
-
-**17 Frameworks**: NestJS, Spring Boot, Laravel, Django, Flask, Rails, Symfony, Zend, Angular, React, Vue, Nuxt, Next.js, jQuery, React Native, Flutter, Electron
-
-**20 Services**: PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, SQLite, MongoDB, Cassandra, DynamoDB, Redis, Memcached, Elasticsearch, Neo4j, InfluxDB, RabbitMQ, Kafka, S3, Azure Blob, GCS, MinIO
 
 **13 MCP Modules**: Vectorizer, Synap, Context7, GitHub MCP, Playwright, Memory, Supabase, Notion, Atlassian, Serena, Figma, Grafana, Sequential Thinking
 
@@ -348,7 +320,7 @@ npm run build
 ## Acknowledgments
 
 - **[OpenSpec](https://github.com/Fission-AI/openspec)** — Influenced the task management format (delta-based specs, Given/When/Then scenarios, requirement-focused organization)
-- **[Caveman](https://github.com/JuliusBrussee/caveman)** — Grounding for the v5.4.0 terse-mode design (SessionStart + UserPromptSubmit hook pattern, intensity-filtered SKILL.md injection, three-arm eval harness). See [docs/analysis/caveman/](docs/analysis/caveman/) for the full analysis.
+- **[Caveman](https://github.com/JuliusBrussee/caveman)** — Grounding for the v5.4.0 terse-mode design (SessionStart + UserPromptSubmit hook pattern, intensity-filtered SKILL.md injection). See [docs/analysis/caveman/](docs/analysis/caveman/) for the full analysis.
 - **[forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills)** — Source of the four "Editing Discipline" principles (think before coding, simplicity first, surgical changes, goal-driven execution) inlined in the generated `AGENTS.md`. Grounded in [Andrej Karpathy's observations](https://x.com/karpathy/status/2015883857489522876) on common LLM coding pitfalls.
 
 ---
