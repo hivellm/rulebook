@@ -27,9 +27,9 @@ export {
   memorySaveCommand,
   memoryListCommand,
   memoryStatsCommand,
-  memoryVerifyCommand,
   memoryCleanupCommand,
   memoryExportCommand,
+  memoryMigrateFromDbCommand,
 } from './memory.js';
 export {
   validateCommand,

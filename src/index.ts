@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+// Library re-exports for programmatic consumers (kept above CLI bootstrap).
+export {
+  generateOpencodeIntegration,
+  generateOpencodeConfig,
+  generateOpencodeCommands,
+  generateOpencodeAgents,
+  generateOpencodeSkills,
+  normalizeOpencodeSkillName,
+} from './core/ide/opencode-generator.js';
+
 import { Command } from 'commander';
 import {
   initCommand,
@@ -29,9 +39,9 @@ import {
   memorySaveCommand,
   memoryListCommand,
   memoryStatsCommand,
-  memoryVerifyCommand,
   memoryCleanupCommand,
   memoryExportCommand,
+  memoryMigrateFromDbCommand,
   // Plans commands (v4.0)
   plansShowCommand,
   plansInitCommand,
@@ -406,10 +416,9 @@ memoryCommand
   .description('Show memory database statistics')
   .action(() => memoryStatsCommand());
 
-memoryCommand
-  .command('verify')
-  .description('Verify memory system configuration and persistence')
-  .action(() => memoryVerifyCommand());
+// `memory verify` was removed in v5.6 — there is no separate index to
+// verify against the file-based store. Use `memory stats` for a quick
+// summary or `memory migrate-from-db` if a legacy DB needs migrating.
 
 memoryCommand
   .command('cleanup')
@@ -423,6 +432,11 @@ memoryCommand
   .option('--format <format>', 'Output format: json or csv', 'json')
   .option('--output <path>', 'Output file path (default: stdout)')
   .action((options: { format?: string; output?: string }) => memoryExportCommand(options));
+
+memoryCommand
+  .command('migrate-from-db')
+  .description('Migrate legacy SQLite memory.db into the file-based markdown store (v5.6+)')
+  .action(() => memoryMigrateFromDbCommand());
 
 // Plans commands (v4.0) — PLANS.md session scratchpad
 const plansCommand = program.command('plans').description('Manage PLANS.md session scratchpad');

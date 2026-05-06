@@ -28,6 +28,7 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
   const continueDev = await detectContinueDev(cwd);
   const windsurf = await detectWindsurf(cwd);
   const githubCopilot = await detectGithubCopilot(cwd);
+  const opencode = await detectOpencode(cwd);
 
   return {
     languages,
@@ -42,6 +43,28 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
     continueDev,
     windsurf,
     githubCopilot,
+    opencode,
+  };
+}
+
+/**
+ * Detect OpenCode CLI presence by checking the project for `opencode.json`,
+ * `opencode.jsonc`, or a `.opencode/` directory. The PATH-level binary probe
+ * is handled by `ConfigManager.detectCLITools()` (which adds `'opencode'`
+ * to the cliTools list) so that this detector stays pure and deterministic
+ * for tests.
+ */
+export async function detectOpencode(
+  cwd: string
+): Promise<NonNullable<DetectionResult['opencode']>> {
+  const hasConfigJson =
+    existsSync(path.join(cwd, 'opencode.json')) ||
+    existsSync(path.join(cwd, 'opencode.jsonc'));
+  const hasOpencodeDir = existsSync(path.join(cwd, '.opencode'));
+  return {
+    detected: hasConfigJson || hasOpencodeDir,
+    hasConfigJson,
+    hasOpencodeDir,
   };
 }
 

@@ -424,6 +424,46 @@ export async function initCommand(options: {
       console.log(chalk.gray('  • GitHub Copilot instructions generated in .github/'));
     }
 
+    if (detection.opencode?.detected) {
+      try {
+        const { generateOpencodeIntegration } = await import(
+          '../../core/ide/opencode-generator.js'
+        );
+        const oc = await generateOpencodeIntegration(cwd, detection);
+        if (oc.configPath) {
+          console.log(
+            chalk.gray(`  • OpenCode config refreshed: ${path.relative(cwd, oc.configPath)}`)
+          );
+        }
+        if (oc.commands.length > 0) {
+          console.log(
+            chalk.gray(`  • OpenCode commands: ${oc.commands.length} written to .opencode/commands/`)
+          );
+        }
+        if (oc.agents.length > 0) {
+          console.log(
+            chalk.gray(`  • OpenCode agents: ${oc.agents.length} written to .opencode/agents/`)
+          );
+        }
+        if (oc.skills.length > 0) {
+          console.log(
+            chalk.gray(`  • OpenCode skills: ${oc.skills.length} written to .opencode/skills/`)
+          );
+        }
+        if (oc.preserved.length > 0) {
+          console.log(
+            chalk.gray(`  · ${oc.preserved.length} user-owned OpenCode file(s) preserved`)
+          );
+        }
+      } catch (err) {
+        console.log(
+          chalk.yellow(
+            `  ⚠ OpenCode integration skipped: ${err instanceof Error ? err.message : String(err)}`
+          )
+        );
+      }
+    }
+
     if (config.generateWorkflows) {
       const workflowSpinner = ora('Generating GitHub Actions workflows...').start();
       const workflows = await generateWorkflows(config, cwd, {

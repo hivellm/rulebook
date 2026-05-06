@@ -5,7 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.6.0] - Unreleased
+## [5.6.0] - 2026-05-06
+
+### Changed — Memory store: SQLite + HNSW → markdown files
+
+The persistent memory subsystem no longer uses SQLite or a vector index.
+Memories and sessions persist as plain markdown files with YAML
+frontmatter under `.rulebook/memory/{memories,sessions,codegraph}/<YYYY>/<MM>/`.
+Search is BM25 over the body with a tag-frontmatter boost. The
+`MemoryManager` public API is preserved for callers; only the
+implementation changed.
+
+Removed: `src/memory/memory-store.ts`, `memory-search.ts`, `memory-cache.ts`,
+`memory-vectorizer.ts`, `hnsw-index.ts`, `sql-js.d.ts`, plus their tests
+(`tests/memory-store*.test.ts`, `tests/memory-search.test.ts`,
+`tests/memory-cache.test.ts`, `tests/memory-hnsw-index.test.ts`,
+`tests/memory-vectorizer.test.ts`). Removed from `package.json`:
+`sql.js` (dependency), `better-sqlite3` (optionalDependency),
+`@types/better-sqlite3` (devDependency).
+
+Added: `src/memory/file-store.ts`, `src/memory/file-search.ts`,
+`src/memory/legacy-migrator.ts`, plus `rulebook memory migrate-from-db`
+CLI command. On the first `MemoryManager.initialize()` after upgrade,
+an existing `memory.db` is auto-detected, migrated to markdown one
+time, then renamed to `memory.db.legacy`.
+
+`MemoryStats` shape: `indexHealth` removed, `fileCount` added.
+`cleanup()` now takes `{ maxAgeDays }` (age-based retention) instead
+of LRU byte-budget eviction. Background indexer code-graph rows now
+append to `codegraph/{nodes,edges}.jsonl` (compaction on file-deletion).
+
+User benefit: memories are diffable, greppable, hand-editable, and
+git-trackable. Removes a flaky native dep (`better-sqlite3`) plus a
+heavy WASM dep (`sql.js`) — smaller install, simpler mental model.
+
+### Added — First-class OpenCode integration
+
+OpenCode (open-source terminal coding agent by SST) is now a first-class
+target. Rulebook detects an OpenCode project (`opencode.json`/`.jsonc`,
+`.opencode/`, or the `opencode` binary on PATH) and emits the same
+surface area Claude Code already had:
+
+  - `opencode.json` with `$schema`, `mcp.rulebook`, and `instructions`
+    (lazy-loads `AGENTS.md`, `AGENTS.override.md`, `.rulebook/specs/*.md`).
+    Idempotent: existing user keys preserved.
+  - `.opencode/commands/<name>.md` for every user-invocable Rulebook
+    slash command, frontmatter translated to OpenCode's schema.
+  - `.opencode/agents/<role>.md` for every Rulebook role agent
+    (researcher, implementer, tester, code-reviewer, architect, etc.)
+    with model tier mapped (`haiku → claude-haiku-4-5`,
+    `sonnet → claude-sonnet-4-6`, `opus → claude-opus-4-7`) and a
+    synthesized `permission` block (read-only roles get `edit: deny`,
+    `bash: ask`).
+  - `.opencode/skills/<name>/SKILL.md` for every Rulebook dev skill,
+    name normalized to OpenCode's `[a-z0-9](-[a-z0-9])*` regex (≤64
+    chars), description bounded to ≤1024 chars.
+  - `.opencode/.rulebook-managed.json` sidecar lists managed keys so
+    `rulebook update` knows what to refresh vs. preserve.
+
+New: `src/core/ide/opencode-generator.ts`,
+`tests/detect-opencode.test.ts`, `tests/opencode-generator.test.ts`,
+`templates/ides/OPENCODE.md`. Expanded: `templates/cli/OPENCODE.md`,
+`templates/skills/cli/opencode/SKILL.md`. Wired into
+`src/cli/commands/init.ts`, `src/cli/commands/update.ts`,
+`src/cli/prompts.ts`. `DetectionResult.opencode` added to
+`src/types.ts`. `'opencode'` added to the CLI-tools probe in
+`src/core/state/config-manager.ts`.
 
 ### Refactor — `src/core/` reorganized into 13 thematic subdirectories
 

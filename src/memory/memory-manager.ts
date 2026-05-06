@@ -1,18 +1,23 @@
 /**
- * Memory Manager - Main Orchestrator
+ * Memory Manager - File-backed orchestrator (v5.6).
  *
- * Public API that ties all sub-components together:
- * MemoryStore, MemoryVectorizer, HNSWIndex, MemorySearch, MemoryCache.
- * Uses lazy initialization to avoid loading WASM until first use.
+ * Public API kept stable for callers (saveMemory, searchMemories,
+ * getTimeline, getFullDetails, startSession, endSession, getStats,
+ * cleanup, exportMemories, plus the indexer code-graph methods).
+ *
+ * Internally uses the FileStore + FileSearch implementations under
+ * `.rulebook/memory/{memories,sessions,codegraph}/...` instead of
+ * SQLite + HNSW. On startup, an existing legacy `memory.db` is
+ * auto-detected and migrated to markdown one time, then renamed to
+ * `memory.db.legacy`.
  */
 
 import { randomUUID } from 'crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
-import { HNSWIndex } from './hnsw-index.js';
-import { MemoryCache } from './memory-cache.js';
-import { MemorySearch } from './memory-search.js';
-import { MemoryStore } from './memory-store.js';
+import { existsSync } from 'fs';
+import { rename } from 'fs/promises';
+import { join, dirname } from 'path';
+import { FileStore } from './file-store.js';
+import { FileSearch } from './file-search.js';
 import type {
   Memory,
   MemoryConfig,
@@ -23,49 +28,39 @@ import type {
   MemoryType,
   TimelineEntry,
 } from './memory-types.js';
-import { vectorize } from './memory-vectorizer.js';
+import type { CodeNode, CodeEdge } from '../core/indexer/indexer-types.js';
 
 const DEFAULT_DB_PATH = '.rulebook/memory/memory.db';
-const DEFAULT_HNSW_PATH = '.rulebook/memory/vectors.hnsw';
-const DEFAULT_MAX_SIZE = 524288000; // 500MB
-const DEFAULT_DIMENSIONS = 256;
-const HNSW_SAVE_THRESHOLD = 100;
+const DEFAULT_MAX_SIZE = 524288000; // 500MB — kept for getStats compatibility
 
 const PRIVATE_TAG_REGEX = /<private>[\s\S]*?<\/private>/g;
 
 export class MemoryManager {
-  private store: MemoryStore | null = null;
-  private index: HNSWIndex | null = null;
-  private search: MemorySearch | null = null;
-  private cache: MemoryCache | null = null;
+  private store: FileStore | null = null;
+  private search: FileSearch | null = null;
   private initialized = false;
-  private hnswInsertCount = 0;
+  private migrated = false;
 
-  private readonly dbPath: string;
-  private readonly hnswPath: string;
+  /** Resolved root for the file-based store (sibling of legacy `memory.db`). */
+  private readonly memoryRoot: string;
+  /** Path to the legacy DB file, used for one-shot migration on first init. */
+  private readonly legacyDbPath: string;
   private readonly maxSizeBytes: number;
-  private readonly dimensions: number;
-  private saveCount = 0;
-  private static readonly EVICTION_CHECK_INTERVAL = 50;
 
   constructor(projectRoot: string, config: MemoryConfig) {
-    this.dbPath = join(projectRoot, config.dbPath ?? DEFAULT_DB_PATH);
-    this.hnswPath = join(
-      projectRoot,
-      config.dbPath ? config.dbPath.replace(/\.db$/, '.hnsw') : DEFAULT_HNSW_PATH
-    );
+    const dbRel = config.dbPath ?? DEFAULT_DB_PATH;
+    const dbAbs = join(projectRoot, dbRel);
+    this.legacyDbPath = dbAbs;
+    this.memoryRoot = dirname(dbAbs);
     this.maxSizeBytes = config.maxSizeBytes ?? DEFAULT_MAX_SIZE;
-    this.dimensions = config.vectorDimensions ?? DEFAULT_DIMENSIONS;
   }
 
   private initPromise: Promise<void> | null = null;
 
   private async ensureInitialized(): Promise<void> {
     if (this.initialized) return;
-    // Deduplicate concurrent init calls (e.g. multiple tool calls hitting memory at once)
     if (!this.initPromise) {
       this.initPromise = this.doInit().catch((err) => {
-        // Reset so next call retries instead of getting stuck on a rejected promise
         this.initPromise = null;
         throw err;
       });
@@ -74,72 +69,35 @@ export class MemoryManager {
   }
 
   private async doInit(): Promise<void> {
-    const INIT_TIMEOUT_MS = parseInt(process.env.RULEBOOK_MEMORY_INIT_TIMEOUT_MS ?? '8000', 10);
-
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error(`Memory initialization timed out after ${INIT_TIMEOUT_MS}ms`)),
-        INIT_TIMEOUT_MS
-      )
-    );
-
-    await Promise.race([this.doInitInner(), timeout]);
-  }
-
-  private async doInitInner(): Promise<void> {
-    // Initialize store (loads WASM sql.js — can be slow on first load)
-    this.store = new MemoryStore(this.dbPath);
+    this.store = new FileStore(this.memoryRoot);
     await this.store.initialize();
+    this.search = new FileSearch(this.store);
 
-    // Initialize HNSW index
-    if (existsSync(this.hnswPath)) {
+    // One-shot legacy DB migration. The runtime never reads SQLite again.
+    if (!this.migrated && existsSync(this.legacyDbPath)) {
       try {
-        const data = readFileSync(this.hnswPath);
-        this.index = HNSWIndex.deserialize(
-          data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+        const { migrateLegacyDb } = await import('./legacy-migrator.js');
+        await migrateLegacyDb(this.legacyDbPath, this.store);
+        await rename(this.legacyDbPath, this.legacyDbPath + '.legacy');
+        this.store.invalidateCaches();
+      } catch (err) {
+        // Non-fatal: surface but keep the manager functional.
+        console.error(
+          '[MemoryManager] legacy DB migration failed; continuing with file-only store:',
+          err instanceof Error ? err.message : String(err)
         );
-      } catch {
-        this.index = new HNSWIndex({ dimensions: this.dimensions });
       }
-    } else {
-      this.index = new HNSWIndex({ dimensions: this.dimensions });
+      this.migrated = true;
     }
-
-    // Initialize search and cache
-    this.search = new MemorySearch(this.store, this.index, this.dimensions);
-    this.cache = new MemoryCache(this.store, this.index, this.maxSizeBytes);
 
     this.initialized = true;
   }
 
-  /**
-   * Strip <private>...</private> tags from content before storing
-   */
   private filterPrivate(content: string): string {
     return content.replace(PRIVATE_TAG_REGEX, '[REDACTED]');
   }
 
-  private saveHnswIfNeeded(): void {
-    this.hnswInsertCount++;
-    if (this.hnswInsertCount >= HNSW_SAVE_THRESHOLD) {
-      this.saveHnswToDisk();
-      this.hnswInsertCount = 0;
-    }
-  }
-
-  private saveHnswToDisk(): void {
-    if (!this.index || this.index.size === 0) return;
-
-    const dir = join(this.hnswPath, '..');
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
-
-    const buffer = this.index.serialize();
-    writeFileSync(this.hnswPath, Buffer.from(buffer));
-  }
-
-  // --- Public API ---
+  // ── public API ─────────────────────────────────────────────────────
 
   async saveMemory(input: {
     type: MemoryType;
@@ -151,7 +109,6 @@ export class MemoryManager {
     sessionId?: string;
   }): Promise<Memory> {
     await this.ensureInitialized();
-
     const now = Date.now();
     const memory: Memory = {
       id: randomUUID(),
@@ -166,41 +123,26 @@ export class MemoryManager {
       updatedAt: now,
       accessedAt: now,
     };
-
-    this.store!.saveMemory(memory);
-
-    // Vectorize using title + summary (if available) + content for better semantic relevance
-    const textToVectorize = [memory.title, memory.summary || memory.content.substring(0, 300)]
-      .filter(Boolean)
-      .join(' ');
-    const vec = vectorize(textToVectorize, this.dimensions);
-    this.index!.add(memory.id, vec);
-    this.saveHnswIfNeeded();
-
-    // Check cache limits periodically (not on every save — getDbSizeBytes is cheap now
-    // but eviction itself is expensive and rarely needed)
-    this.saveCount++;
-    if (this.saveCount >= MemoryManager.EVICTION_CHECK_INTERVAL) {
-      this.saveCount = 0;
-      this.cache!.checkAndEvict();
+    await this.store!.saveMemory(memory);
+    // Refresh the inverted-index sidecar lazily for large corpora.
+    try {
+      await this.search!.maybeRebuildIndex();
+    } catch {
+      // non-fatal — search falls back to in-memory build per call
     }
-
     return memory;
   }
 
   async getMemory(id: string): Promise<Memory | null> {
     await this.ensureInitialized();
-    const memory = this.store!.getMemory(id);
-    if (memory) {
-      this.store!.updateAccessedAt(id);
-    }
+    const memory = await this.store!.getMemory(id);
+    if (memory) await this.store!.updateAccessedAt(id);
     return memory;
   }
 
   async deleteMemory(id: string): Promise<void> {
     await this.ensureInitialized();
-    this.store!.deleteMemory(id);
-    this.index!.remove(id);
+    await this.store!.deleteMemory(id);
   }
 
   async searchMemories(options: MemorySearchOptions): Promise<MemorySearchResult[]> {
@@ -220,7 +162,6 @@ export class MemoryManager {
 
   async startSession(project: string): Promise<MemorySession> {
     await this.ensureInitialized();
-
     const session: MemorySession = {
       id: randomUUID(),
       project,
@@ -228,54 +169,66 @@ export class MemoryManager {
       startedAt: Date.now(),
       toolCalls: 0,
     };
-
-    this.store!.createSession(session);
+    await this.store!.saveSession(session);
     return session;
   }
 
   async endSession(sessionId: string, summary?: string): Promise<void> {
     await this.ensureInitialized();
-    this.store!.endSession(sessionId, summary);
+    const existing = await this.store!.getSession(sessionId);
+    if (!existing) return;
+    existing.status = 'completed';
+    existing.endedAt = Date.now();
+    if (summary !== undefined) existing.summary = summary;
+    await this.store!.saveSession(existing);
   }
 
   async getStats(): Promise<MemoryStats> {
     await this.ensureInitialized();
-
-    const dbSize = this.store!.getDbSizeBytes();
-    const memoryCount = this.store!.getMemoryCount();
-    const sessionCount = this.store!.getSessionCount();
-
+    const stats = await this.store!.getStats();
     return {
-      dbSizeBytes: dbSize,
-      memoryCount,
-      sessionCount,
-      oldestMemory: this.store!.getOldestMemoryTimestamp(),
-      newestMemory: this.store!.getNewestMemoryTimestamp(),
+      dbSizeBytes: stats.totalBytes,
+      memoryCount: stats.memoryCount,
+      sessionCount: stats.sessionCount,
+      fileCount: stats.fileCount,
+      oldestMemory: stats.oldestMemory,
+      newestMemory: stats.newestMemory,
       maxSizeBytes: this.maxSizeBytes,
-      usagePercent: (dbSize / this.maxSizeBytes) * 100,
-      indexHealth:
-        this.index!.size === memoryCount
-          ? 'good'
-          : Math.abs(this.index!.size - memoryCount) < memoryCount * 0.1
-            ? 'degraded'
-            : 'needs-rebuild',
+      usagePercent: this.maxSizeBytes > 0 ? (stats.totalBytes / this.maxSizeBytes) * 100 : 0,
     };
   }
 
-  async cleanup(force: boolean = false): Promise<{ evictedCount: number; freedBytes: number }> {
+  /**
+   * Age-based retention. With no `maxAgeDays` arg, this is a no-op (the
+   * legacy LRU byte-budget eviction was removed in v5.6).
+   */
+  async cleanup(
+    arg?: boolean | { maxAgeDays?: number }
+  ): Promise<{ evictedCount: number; freedBytes: number }> {
     await this.ensureInitialized();
-
-    if (force) {
-      return this.cache!.forceEvict();
+    const maxAgeDays = typeof arg === 'object' && arg !== null ? arg.maxAgeDays : undefined;
+    if (maxAgeDays === undefined || maxAgeDays <= 0) {
+      return { evictedCount: 0, freedBytes: 0 };
     }
-    return this.cache!.checkAndEvict();
+    const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
+    const all = await this.store!.listAllMemories();
+    let evicted = 0;
+    let freed = 0;
+    const before = (await this.store!.getStats()).totalBytes;
+    for (const m of all) {
+      if (m.createdAt < cutoff) {
+        await this.store!.deleteMemory(m.id);
+        evicted++;
+      }
+    }
+    const after = (await this.store!.getStats()).totalBytes;
+    freed = Math.max(0, before - after);
+    return { evictedCount: evicted, freedBytes: freed };
   }
 
   async exportMemories(format: 'json' | 'csv' = 'json'): Promise<string> {
     await this.ensureInitialized();
-
-    const memories = this.store!.listMemories({ limit: 1000 });
-
+    const memories = await this.store!.listMemories({ limit: 10000 });
     if (format === 'csv') {
       const header = 'id,type,title,content,project,tags,createdAt,updatedAt';
       const rows = memories.map(
@@ -284,64 +237,36 @@ export class MemoryManager {
       );
       return [header, ...rows].join('\n');
     }
-
     return JSON.stringify(memories, null, 2);
   }
 
-  // --- Background Indexer Graph Persistence ---
+  // ── background indexer code-graph (JSONL log) ─────────────────────
 
-  async saveCodeNode(node: import('../core/indexer/indexer-types.js').CodeNode): Promise<void> {
+  async saveCodeNode(node: CodeNode): Promise<void> {
     await this.ensureInitialized();
-
-    // Check if hash is exactly the same to avoid re-vectorizing unchanged chunks
-    const existingHash = this.store!.getCodeNodeByHash(node.id);
-    if (existingHash === node.hash) {
-      return; // Unchanged
-    }
-
-    this.store!.saveCodeNode(node);
-
-    // Vectorize code chunks for FTS/HNSW semantic search
-    const textToVectorize = [node.name, node.summary || '', node.content].filter(Boolean).join(' ');
-    // Important: We prepend an identifier so search knows it's a code node
-    const vecId = `__code__${node.id}`;
-    const vec = vectorize(textToVectorize, this.dimensions);
-    this.index!.add(vecId, vec);
-    this.saveHnswIfNeeded();
+    const existing = await this.store!.getCodeNodeHash(node.id);
+    if (existing === node.hash) return;
+    await this.store!.appendCodeNode(node);
   }
 
-  async saveCodeEdge(edge: import('../core/indexer/indexer-types.js').CodeEdge): Promise<void> {
+  async saveCodeEdge(edge: CodeEdge): Promise<void> {
     await this.ensureInitialized();
-    this.store!.saveCodeEdge(edge);
+    await this.store!.appendCodeEdge(edge);
   }
 
   async deleteCodeNodesByFile(filePath: string): Promise<void> {
     await this.ensureInitialized();
-    // Query node IDs before deleting from SQLite so we can also clean HNSW
-    const nodeIds = this.store!.getCodeNodeIdsByFile(filePath);
-    this.store!.deleteCodeNodesByFile(filePath);
-    // Remove corresponding vectors from HNSW to prevent orphan accumulation
-    for (const id of nodeIds) {
-      this.index!.remove(`__code__${id}`);
-    }
+    await this.store!.deleteCodeNodesByFile(filePath);
   }
 
   async close(): Promise<void> {
-    if (this.store) {
-      this.store.close();
-    }
-    this.saveHnswToDisk();
     this.initialized = false;
     this.store = null;
-    this.index = null;
     this.search = null;
-    this.cache = null;
+    this.initPromise = null;
   }
 }
 
-/**
- * Factory function
- */
 export function createMemoryManager(projectRoot: string, config: MemoryConfig): MemoryManager {
   return new MemoryManager(projectRoot, config);
 }

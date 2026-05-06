@@ -73,15 +73,16 @@ Context that survives across AI sessions. Decisions, bugs, patterns, and prefere
 
 | Component | Technology |
 |-----------|-----------|
-| Storage | better-sqlite3 (native) with sql.js WASM fallback |
-| Search | Hybrid BM25 keyword + HNSW vector (256-dim TF-IDF, no API calls) |
-| Ranking | Reciprocal Rank Fusion |
+| Storage | Plain markdown files with YAML frontmatter (one file per memory) |
+| Layout | `.rulebook/memory/{memories,sessions,codegraph}/<YYYY>/<MM>/...` |
+| Search | BM25 over file content + frontmatter tag boost (lazy inverted-index sidecar above 1K entries) |
 | Privacy | Auto-redact `<private>` tags, local-only storage |
+| Migration | One-shot legacy SQLite → markdown via `rulebook memory migrate-from-db` |
 
 ```bash
-rulebook memory search "authentication approach"   # Hybrid search
+rulebook memory search "authentication approach"   # BM25 search
 rulebook memory save "Chose JWT over sessions"     # Save context
-rulebook memory stats                               # DB health
+rulebook memory stats                               # File count + size
 ```
 
 ### Terse Mode — Output & Input Compression (v5.4.0)
@@ -230,7 +231,7 @@ rulebook task delete <task-id>   # Delete permanently
 ### Memory & Knowledge
 
 ```bash
-rulebook memory search <query>   # Hybrid BM25+vector search
+rulebook memory search <query>   # BM25 search over markdown corpus
 rulebook memory save <text>      # Save context
 rulebook memory stats            # Database health
 rulebook memory cleanup          # Evict old memories

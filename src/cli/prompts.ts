@@ -279,6 +279,7 @@ export async function promptProjectConfig(
       { name: 'Replit', value: 'replit' },
       { name: 'JetBrains AI', value: 'jetbrains' },
       { name: 'Zed', value: 'zed' },
+      { name: 'OpenCode', value: 'opencode' },
     ],
     default: ['cursor'],
   });

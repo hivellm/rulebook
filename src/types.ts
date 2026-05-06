@@ -53,6 +53,11 @@ export interface DetectionResult {
   githubCopilot?: {
     detected: boolean; // .github/copilot-instructions.md exists
   };
+  opencode?: {
+    detected: boolean; // opencode.json/.jsonc, .opencode/, or opencode binary on PATH
+    hasConfigJson: boolean; // opencode.json or opencode.jsonc exists
+    hasOpencodeDir: boolean; // .opencode/ directory exists
+  };
 }
 
 export interface LanguageDetection {
