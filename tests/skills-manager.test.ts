@@ -3,7 +3,7 @@ import {
   parseSkillFrontmatter,
   generateSkillFrontmatter,
   convertLegacyTemplateToSkill,
-} from '../src/core/skills-manager.js';
+} from '../src/core/skills/skills-manager.js';
 import type { SkillMetadata, SkillCategory } from '../src/types.js';
 
 describe('Skills Manager', () => {

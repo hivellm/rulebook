@@ -5,9 +5,9 @@ import {
   releasePidLock,
   cleanStalePidFiles,
 } from '../src/mcp/rulebook-server.js';
-import { TaskManager } from '../src/core/task-manager.js';
-import { SkillsManager } from '../src/core/skills-manager.js';
-import { ConfigManager } from '../src/core/config-manager.js';
+import { TaskManager } from '../src/core/tasks/task-manager.js';
+import { SkillsManager } from '../src/core/skills/skills-manager.js';
+import { ConfigManager } from '../src/core/state/config-manager.js';
 import { promises as fs } from 'fs';
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';

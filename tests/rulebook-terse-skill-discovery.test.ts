@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { resolve } from 'node:path';
-import { SkillsManager, parseSkillFrontmatter } from '../src/core/skills-manager.js';
+import { SkillsManager, parseSkillFrontmatter } from '../src/core/skills/skills-manager.js';
 import { readFileSync } from 'node:fs';
 import type { Skill } from '../src/types.js';
 

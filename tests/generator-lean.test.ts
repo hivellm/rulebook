@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtemp, rm } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { generateLeanAgents } from '../src/core/generator.js';
+import { generateLeanAgents } from '../src/core/generators/generator.js';
 import type { ProjectConfig } from '../src/types.js';
 
 let tmpDir: string;
@@ -21,7 +21,7 @@ async function teardown() {
 const baseConfig: ProjectConfig = {
   languages: ['typescript'],
   modules: [],
-  frameworks: [],
+
   ides: [],
   projectType: 'application',
   coverageThreshold: 75,

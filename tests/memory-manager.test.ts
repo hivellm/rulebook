@@ -31,28 +31,24 @@ describe('MemoryManager', () => {
       expect(exists).toBe(false);
     });
 
-    it('should initialize on first save and persist on close', async () => {
-      await manager.saveMemory({
+    it('should initialize on first save and write a markdown file under memories/', async () => {
+      const saved = await manager.saveMemory({
         type: 'observation',
         title: 'Test',
         content: 'First memory',
       });
 
-      // DB is in-memory via sql.js; it persists to disk on close
-      await manager.close();
-
-      const dbPath = path.join(testDir, '.rulebook-memory', 'memory.db');
+      const memoriesDir = path.join(testDir, '.rulebook-memory', 'memories');
       const exists = await fs
-        .access(dbPath)
+        .access(memoriesDir)
         .then(() => true)
         .catch(() => false);
       expect(exists).toBe(true);
 
-      // Re-create manager for afterEach cleanup
-      manager = new MemoryManager(testDir, {
-        enabled: true,
-        dbPath: '.rulebook-memory/memory.db',
-      });
+      // The saved file should be readable back via the manager
+      const loaded = await manager.getMemory(saved.id);
+      expect(loaded).not.toBeNull();
+      expect(loaded!.title).toBe('Test');
     });
   });
 
@@ -178,17 +174,40 @@ describe('MemoryManager', () => {
       expect(result.evictedCount).toBe(0);
     });
 
-    it('should force evict', async () => {
+    it('age-based cleanup evicts memories older than maxAgeDays', async () => {
+      // Save five memories then back-date them to 60 days ago by writing a
+      // copy with a stale createdAt via the file store directly.
+      const ids: string[] = [];
       for (let i = 0; i < 5; i++) {
-        await manager.saveMemory({
+        const m = await manager.saveMemory({
           type: 'observation',
           title: `Memory ${i}`,
           content: `Content for memory ${i}`,
         });
+        ids.push(m.id);
       }
 
-      const result = await manager.cleanup(true);
-      expect(result.evictedCount).toBeGreaterThan(0);
+      // Back-date all memories on disk via the FileStore, then close the
+      // manager so its internal cache is refreshed on the next use.
+      const { FileStore } = await import('../src/memory/file-store.js');
+      const store = new FileStore(path.join(testDir, '.rulebook-memory'));
+      await store.initialize();
+      const sixtyDaysAgo = Date.now() - 60 * 24 * 60 * 60 * 1000;
+      for (const id of ids) {
+        const mem = await store.getMemory(id);
+        if (!mem) continue;
+        mem.createdAt = sixtyDaysAgo;
+        await store.saveMemory(mem);
+      }
+
+      await manager.close();
+      manager = new MemoryManager(testDir, {
+        enabled: true,
+        dbPath: '.rulebook-memory/memory.db',
+      });
+
+      const result = await manager.cleanup({ maxAgeDays: 30 });
+      expect(result.evictedCount).toBe(5);
     });
   });
 

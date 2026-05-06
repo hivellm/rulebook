@@ -18,8 +18,8 @@ async function resolveTaskManager(
   cwd: string,
   options?: WorkspaceTaskOptions
 ): Promise<{ taskManager: any; projectLabel?: string }> {
-  const { createTaskManager } = await import('../../core/task-manager.js');
-  const { createConfigManager } = await import('../../core/config-manager.js');
+  const { createTaskManager } = await import('../../core/tasks/task-manager.js');
+  const { createConfigManager } = await import('../../core/state/config-manager.js');
   const { isAbsolute, resolve } = await import('path');
 
   const buildFromProjectRoot = async (projectRoot: string, label: string) => {
@@ -101,8 +101,8 @@ export async function taskListCommand(
 
       console.log(chalk.bold.blue(`\n📋 Workspace Tasks (${ws.config.name})\n`));
 
-      const { createTaskManager } = await import('../../core/task-manager.js');
-      const { createConfigManager } = await import('../../core/config-manager.js');
+      const { createTaskManager } = await import('../../core/tasks/task-manager.js');
+      const { createConfigManager } = await import('../../core/state/config-manager.js');
       const { isAbsolute, resolve } = await import('path');
 
       let totalTasks = 0;

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { KnowledgeManager } from '../src/core/knowledge-manager.js';
+import { KnowledgeManager } from '../src/core/tasks/knowledge-manager.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';

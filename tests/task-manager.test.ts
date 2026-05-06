@@ -5,7 +5,7 @@ import {
   checkMandatoryTail as checkMandatoryTailHelper,
   renderMandatoryTail,
   MANDATORY_TAIL_ITEMS,
-} from '../src/core/task-manager.js';
+} from '../src/core/tasks/task-manager.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';

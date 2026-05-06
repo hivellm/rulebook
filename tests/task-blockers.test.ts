@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { TaskManager } from '../src/core/task-manager.js';
+import { TaskManager } from '../src/core/tasks/task-manager.js';
 
 describe('Task Blocker Chain', () => {
   let testDir: string;

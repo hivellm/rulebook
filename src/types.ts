@@ -1,22 +1,3 @@
-export type FrameworkId =
-  | 'nestjs'
-  | 'spring'
-  | 'laravel'
-  | 'angular'
-  | 'react'
-  | 'vue'
-  | 'nuxt'
-  | 'nextjs'
-  | 'django'
-  | 'rails'
-  | 'flask'
-  | 'symfony'
-  | 'zend'
-  | 'jquery'
-  | 'reactnative'
-  | 'flutter'
-  | 'electron';
-
 export interface MonorepoDetection {
   detected: boolean;
   tool: 'turborepo' | 'nx' | 'pnpm' | 'lerna' | 'manual' | null;
@@ -26,8 +7,6 @@ export interface MonorepoDetection {
 export interface DetectionResult {
   languages: LanguageDetection[];
   modules: ModuleDetection[];
-  frameworks: FrameworkDetection[];
-  services: ServiceDetection[];
   existingAgents: ExistingAgentsInfo | null;
   projectType?: 'monorepo' | 'library' | 'application' | 'cli';
   monorepo?: MonorepoDetection;
@@ -52,6 +31,11 @@ export interface DetectionResult {
   };
   githubCopilot?: {
     detected: boolean; // .github/copilot-instructions.md exists
+  };
+  opencode?: {
+    detected: boolean; // opencode.json/.jsonc, .opencode/, or opencode binary on PATH
+    hasConfigJson: boolean; // opencode.json or opencode.jsonc exists
+    hasOpencodeDir: boolean; // .opencode/ directory exists
   };
 }
 
@@ -108,54 +92,6 @@ export interface ModuleDetection {
   source?: string;
 }
 
-export interface FrameworkDetection {
-  framework: FrameworkId;
-  detected: boolean;
-  languages: LanguageDetection['language'][];
-  confidence: number;
-  indicators: string[];
-}
-
-export type ServiceId =
-  | 'postgresql'
-  | 'mysql'
-  | 'mariadb'
-  | 'sqlserver'
-  | 'oracle'
-  | 'sqlite'
-  | 'mongodb'
-  | 'cassandra'
-  | 'dynamodb'
-  | 'redis'
-  | 'memcached'
-  | 'elasticsearch'
-  | 'neo4j'
-  | 'influxdb'
-  | 'rabbitmq'
-  | 'kafka'
-  | 's3'
-  | 'azure_blob'
-  | 'gcs'
-  | 'minio'
-  | 'docker'
-  | 'docker-compose'
-  | 'kubernetes'
-  | 'helm'
-  | 'sentry'
-  | 'opentelemetry'
-  | 'datadog'
-  | 'pino'
-  | 'winston'
-  | 'prometheus';
-
-export interface ServiceDetection {
-  service: ServiceId;
-  detected: boolean;
-  confidence: number;
-  indicators: string[];
-  source?: string;
-}
-
 export interface ExistingAgentsInfo {
   exists: boolean;
   path: string;
@@ -173,8 +109,6 @@ export interface AgentBlock {
 export interface ProjectConfig {
   languages: string[];
   modules: string[];
-  frameworks?: FrameworkId[];
-  services?: ServiceId[];
   ides: string[];
   projectType: 'monorepo' | 'library' | 'application' | 'cli';
   coverageThreshold: number;
@@ -216,7 +150,6 @@ export interface RulebookConfig {
     watcher: boolean;
     agent: boolean;
     logging: boolean;
-    telemetry: boolean;
     notifications: boolean;
     dryRun: boolean;
     gitHooks: boolean;
@@ -240,9 +173,7 @@ export interface RulebookConfig {
   };
   // Project configuration detected/set during init/update
   languages?: LanguageDetection['language'][];
-  frameworks?: FrameworkId[];
   modules?: ModuleDetection['module'][];
-  services?: ServiceId[];
   modular?: boolean; // Enable modular /.rulebook directory structure
   rulebookDir?: string; // Custom rulebook directory (default: '.rulebook')
   agentsMode?: 'full' | 'lean'; // AGENTS.md generation mode: full (default) or lean (index-only)
@@ -273,25 +204,6 @@ export interface RulebookConfig {
     depth?: number; // default: 4 — max directory depth for file watching
     usePolling?: boolean; // default: false — use polling instead of native watchers (lower FD usage)
     debounceMs?: number; // default: 3000 — debounce interval for file change events
-  };
-  // Ralph autonomous loop configuration (v3.0)
-  ralph?: {
-    enabled?: boolean; // default: true
-    maxIterations?: number; // default: 10
-    tool?: 'claude' | 'amp' | 'gemini'; // default: 'claude'
-    maxContextLoss?: number; // default: 3
-    securityGate?: {
-      enabled?: boolean; // default: true
-      failOn?: 'critical' | 'high' | 'moderate' | 'low'; // default: 'high'
-      tool?: 'auto' | 'npm-audit' | 'trivy' | 'semgrep'; // default: 'auto'
-    };
-    contextCompression?: {
-      enabled?: boolean; // default: true
-      recentCount?: number; // default: 3 — how many recent iterations show full detail
-      threshold?: number; // default: 5 — minimum iterations before compression kicks in
-    };
-    parallel?: ParallelRalphConfig;
-    planCheckpoint?: PlanCheckpointConfig;
   };
   // Multi-agent / Teams enforcement (v5.3.0)
   multiAgent?: {
@@ -377,9 +289,7 @@ export interface TelemetryData {
 
 export type SkillCategory =
   | 'languages'
-  | 'frameworks'
   | 'modules'
-  | 'services'
   | 'workflows'
   | 'ides'
   | 'core'
@@ -435,94 +345,6 @@ export interface SkillValidationResult {
   conflicts: SkillConflict[];
 }
 
-// Ralph Plan Checkpoint Types (v4.0)
-
-export interface PlanCheckpointConfig {
-  enabled: boolean;
-  autoApproveAfterSeconds: number; // 0 = never auto-approve
-  requireApprovalForStories: 'all' | 'failed' | 'none';
-}
-
-// Ralph Parallel Execution Types (v4.0)
-
-export interface ParallelRalphConfig {
-  enabled: boolean;
-  maxWorkers: number;
-}
-
-// Ralph Autonomous Loop Types (v3.0)
-
-export interface PRDUserStory {
-  id: string;
-  title: string;
-  description: string;
-  acceptanceCriteria: string[];
-  priority: number;
-  passes: boolean;
-  notes: string;
-  sourceTaskId?: string;
-}
-
-export interface RalphPRD {
-  project: string;
-  branchName: string;
-  description: string;
-  userStories: PRDUserStory[];
-}
-
-export interface IterationResult {
-  iteration: number;
-  timestamp: string;
-  task_id: string;
-  task_title: string;
-  status: 'success' | 'partial' | 'failed';
-  ai_tool: 'claude' | 'amp' | 'gemini';
-  execution_time_ms: number;
-  quality_checks: {
-    type_check: boolean;
-    lint: boolean;
-    tests: boolean;
-    coverage_met: boolean;
-    security?: boolean; // optional — only present when gate ran
-  };
-  output_summary: string;
-  git_commit?: string;
-  errors?: string[];
-  learnings?: string[];
-  metadata: {
-    context_loss_count: number;
-    token_count?: number;
-    parsed_completion?: boolean;
-  };
-}
-
-export interface RalphLoopState {
-  enabled: boolean;
-  current_iteration: number;
-  max_iterations: number;
-  total_iterations: number;
-  completed_tasks: number;
-  total_tasks: number;
-  paused: boolean;
-  paused_at?: string;
-  started_at: string;
-  last_updated: string;
-  current_task_id?: string;
-  tool: 'claude' | 'amp' | 'gemini';
-}
-
-export interface RalphIterationMetadata {
-  iteration: number;
-  started_at: string;
-  completed_at?: string;
-  task_id: string;
-  task_title: string;
-  duration_ms?: number;
-  status: IterationResult['status'];
-  git_commit?: string;
-  quality_checks: IterationResult['quality_checks'];
-}
-
 // Context Intelligence Layer Types (v4.4)
 
 export type DecisionStatus = 'proposed' | 'accepted' | 'superseded' | 'deprecated';
@@ -561,14 +383,14 @@ export interface KnowledgeEntry {
   whenNotToUse?: string;
   createdAt: string;
   tags: string[];
-  source: 'manual' | 'ralph' | 'learn';
+  source: 'manual' | 'learn';
 }
 
 export interface Learning {
   id: string;
   title: string;
   content: string;
-  source: 'manual' | 'ralph' | 'task-archive';
+  source: 'manual' | 'task-archive';
   relatedTask?: string;
   relatedDecision?: number;
   tags: string[];

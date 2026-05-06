@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { generateWorkflows, generateIDEFiles } from '../src/core/workflow-generator';
+import { generateWorkflows, generateIDEFiles } from '../src/core/generators/workflow-generator';
 import type { ProjectConfig } from '../src/types';
 import { promises as fs } from 'fs';
 import path from 'path';

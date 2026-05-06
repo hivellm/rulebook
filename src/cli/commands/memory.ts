@@ -10,7 +10,7 @@ export async function memorySearchCommand(
   const spinner = ora('Searching memories...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const cwd = process.cwd();
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
@@ -63,7 +63,7 @@ export async function memorySaveCommand(
   const spinner = ora('Saving memory...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const cwd = process.cwd();
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
@@ -100,7 +100,7 @@ export async function memoryListCommand(options: { limit?: string; type?: string
   const spinner = ora('Loading memories...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const cwd = process.cwd();
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
@@ -148,7 +148,7 @@ export async function memoryStatsCommand(): Promise<void> {
   const spinner = ora('Loading stats...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const cwd = process.cwd();
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
@@ -173,12 +173,10 @@ export async function memoryStatsCommand(): Promise<void> {
 
     console.log(`\n  Memories:  ${chalk.cyan(stats.memoryCount)}`);
     console.log(`  Sessions:  ${chalk.cyan(stats.sessionCount)}`);
-    console.log(`  DB Size:   ${chalk.cyan(sizeMB + ' MB')} / ${maxMB} MB`);
+    console.log(`  Files:     ${chalk.cyan(stats.fileCount)}`);
+    console.log(`  Size:      ${chalk.cyan(sizeMB + ' MB')} / ${maxMB} MB`);
     console.log(
       `  Usage:     [${stats.usagePercent > 80 ? chalk.red(bar) : chalk.green(bar)}] ${usage}%`
-    );
-    console.log(
-      `  Health:    ${stats.indexHealth === 'good' ? chalk.green(stats.indexHealth) : chalk.yellow(stats.indexHealth)}`
     );
 
     await manager.close();
@@ -190,69 +188,16 @@ export async function memoryStatsCommand(): Promise<void> {
   }
 }
 
-export async function memoryVerifyCommand(): Promise<void> {
-  const ora = (await import('ora')).default;
-  const chalk = (await import('chalk')).default;
-  const spinner = ora('Verifying memory system...').start();
-
-  try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
-    const cwd = process.cwd();
-    const configManager = createConfigManager(cwd);
-    const config = await configManager.loadConfig();
-
-    const memoryEnabled = config.memory?.enabled ?? false;
-    const dbPathRelative = config.memory?.dbPath ?? '.rulebook/memory/memory.db';
-    const dbPathAbsolute = path.join(cwd, dbPathRelative);
-
-    spinner.succeed('Memory verification');
-
-    console.log(
-      `\n  ${memoryEnabled ? chalk.green('✓') : chalk.red('✗')} Memory enabled: ${memoryEnabled}`
-    );
-
-    console.log(`  ${chalk.green('✓')} DB path: ${dbPathRelative}`);
-
-    const fileExists = existsSync(dbPathAbsolute);
-    if (fileExists) {
-      const { statSync } = await import('fs');
-      const fileStat = statSync(dbPathAbsolute);
-      const sizeKB = (fileStat.size / 1024).toFixed(1);
-      console.log(`  ${chalk.green('✓')} File exists: YES (${sizeKB} KB)`);
-    } else {
-      console.log(`  ${chalk.red('✗')} File exists: NO`);
-    }
-
-    if (memoryEnabled && fileExists) {
-      try {
-        const { createMemoryManager } = await import('../../memory/memory-manager.js');
-        const manager = createMemoryManager(cwd, config.memory!);
-        const stats = await manager.getStats();
-        console.log(`  ${chalk.green('✓')} Record count: ${stats.memoryCount} memories`);
-        await manager.close();
-      } catch (error) {
-        console.log(`  ${chalk.yellow('!')} Record count: unable to read (${String(error)})`);
-      }
-    } else if (!memoryEnabled) {
-      console.log(
-        `  ${chalk.yellow('!')} Enable memory with: ${chalk.bold('rulebook config --feature memory --enable')}`
-      );
-    }
-
-    console.log('');
-  } catch (error) {
-    spinner.fail('Memory verification failed');
-    console.error(chalk.red(String(error)));
-    process.exit(1);
-  }
-}
+// memoryVerifyCommand removed in v5.6 — there is no separate index to
+// verify against the file-based store. Use `memory stats` for a summary
+// or `memory migrate-from-db` to migrate an existing legacy DB.
 
 export async function memoryCleanupCommand(options: { force?: boolean }): Promise<void> {
   const ora = (await import('ora')).default;
   const spinner = ora('Running cleanup...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const cwd = process.cwd();
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
@@ -264,7 +209,9 @@ export async function memoryCleanupCommand(options: { force?: boolean }): Promis
 
     const { createMemoryManager } = await import('../../memory/memory-manager.js');
     const manager = createMemoryManager(cwd, config.memory);
-    const result = await manager.cleanup(options.force || false);
+    // Age-based cleanup: --force triggers a 1-day cutoff; otherwise no-op.
+    // The legacy LRU byte-budget eviction was removed in v5.6 (file store).
+    const result = await manager.cleanup(options.force ? { maxAgeDays: 1 } : undefined);
 
     if (result.evictedCount > 0) {
       const freedMB = (result.freedBytes / 1024 / 1024).toFixed(2);
@@ -291,7 +238,7 @@ export async function memoryExportCommand(options: {
   const spinner = ora('Exporting memories...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const cwd = process.cwd();
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
@@ -321,6 +268,52 @@ export async function memoryExportCommand(options: {
   } catch (error) {
     spinner.fail('Export failed');
     const chalk = (await import('chalk')).default;
+    console.error(chalk.red(String(error)));
+    process.exit(1);
+  }
+}
+
+/**
+ * One-shot migration from a legacy `.rulebook/memory/memory.db` SQLite store
+ * into the v5.6 file-based store. Idempotent — re-running rewrites the same
+ * markdown files without duplicates. Renames the source DB to
+ * `memory.db.legacy` on success so the runtime never reads SQLite again.
+ */
+export async function memoryMigrateFromDbCommand(): Promise<void> {
+  const ora = (await import('ora')).default;
+  const chalk = (await import('chalk')).default;
+  const spinner = ora('Migrating legacy memory.db to markdown...').start();
+
+  try {
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
+    const cwd = process.cwd();
+    const configManager = createConfigManager(cwd);
+    const config = await configManager.loadConfig();
+
+    const dbRel = config.memory?.dbPath ?? '.rulebook/memory/memory.db';
+    const dbAbs = path.join(cwd, dbRel);
+
+    if (!existsSync(dbAbs)) {
+      spinner.info(`No legacy DB at ${dbRel} — nothing to migrate`);
+      return;
+    }
+
+    const memoryRoot = path.dirname(dbAbs);
+    const { FileStore } = await import('../../memory/file-store.js');
+    const { migrateLegacyDb } = await import('../../memory/legacy-migrator.js');
+
+    const store = new FileStore(memoryRoot);
+    await store.initialize();
+    const stats = await migrateLegacyDb(dbAbs, store);
+
+    const { rename } = await import('fs/promises');
+    await rename(dbAbs, dbAbs + '.legacy');
+
+    spinner.succeed(
+      `Migrated ${stats.memories} memories and ${stats.sessions} sessions; renamed source to ${path.basename(dbAbs)}.legacy`
+    );
+  } catch (error) {
+    spinner.fail('Migration failed');
     console.error(chalk.red(String(error)));
     process.exit(1);
   }

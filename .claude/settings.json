@@ -56,26 +56,11 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "Edit|Write|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/enforce-no-deferred.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/enforce-no-shortcuts.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/enforce-mcp-for-tasks.sh"
+            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/enforce-pre-tool.sh"
           }
         ]
       }

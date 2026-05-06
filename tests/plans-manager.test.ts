@@ -11,7 +11,7 @@ import {
   appendPlansHistory,
   plansExists,
   getPlansPath,
-} from '../src/core/plans-manager.js';
+} from '../src/core/tasks/plans-manager.js';
 
 describe('PlansManager — PLANS.md session scratchpad', () => {
   let tempDir: string;

@@ -43,7 +43,7 @@ describe('Init Command Options', () => {
 
   describe('Project Detection', () => {
     it('should detect TypeScript project from package.json and tsconfig', async () => {
-      const { detectProject } = await import('../src/core/detector.js');
+      const { detectProject } = await import('../src/core/detect/detector.js');
       const detection = await detectProject(testDir);
 
       expect(detection.languages.length).toBeGreaterThan(0);
@@ -56,7 +56,7 @@ describe('Init Command Options', () => {
   describe('promptSimplifiedConfig', () => {
     it('should return correct config structure', async () => {
       const { promptSimplifiedConfig } = await import('../src/cli/prompts.js');
-      const { detectProject } = await import('../src/core/detector.js');
+      const { detectProject } = await import('../src/core/detect/detector.js');
 
       // Mock inquirer to auto-confirm
       vi.mock('inquirer', () => ({
@@ -93,7 +93,7 @@ describe('Init Command Options', () => {
       const config = {
         languages: ['typescript'],
         modules: [],
-        frameworks: [],
+
         ides: ['cursor'],
         projectType: 'application' as const,
         coverageThreshold: 95,
@@ -121,7 +121,7 @@ describe('Init Command Options', () => {
       const config = {
         languages: ['typescript'],
         modules: [],
-        frameworks: [],
+
         ides: [],
         projectType: 'application' as const,
         coverageThreshold: 95,
@@ -144,7 +144,7 @@ describe('Init Command Options', () => {
       const config = {
         languages: ['typescript'],
         modules: [],
-        frameworks: [],
+
         ides: ['cursor'],
         projectType: 'application' as const,
         coverageThreshold: 95,
@@ -164,14 +164,14 @@ describe('Init Command Options', () => {
 
   describe('Config Persistence', () => {
     it('should create .rulebook config file with correct structure', async () => {
-      const { createConfigManager } = await import('../src/core/config-manager.js');
+      const { createConfigManager } = await import('../src/core/state/config-manager.js');
       const configManager = createConfigManager(testDir);
 
       await configManager.updateConfig({
         languages: ['typescript'],
-        frameworks: [],
+
         modules: [],
-        services: [],
+
         modular: true,
         rulebookDir: 'rulebook',
         skills: { enabled: ['languages/typescript', 'core/rulebook'] },
@@ -193,7 +193,7 @@ describe('Init Command Options', () => {
 
   describe('AGENTS.md Generation', () => {
     it('should generate AGENTS.md with modular structure', async () => {
-      const { generateModularAgents } = await import('../src/core/generator.js');
+      const { generateModularAgents } = await import('../src/core/generators/generator.js');
 
       const config = {
         languages: ['typescript'] as const,
@@ -225,15 +225,15 @@ describe('Init Command Options', () => {
   describe('Skills Auto-Detection', () => {
     it('should auto-detect skills based on project config', async () => {
       const { SkillsManager, getDefaultTemplatesPath } = await import(
-        '../src/core/skills-manager.js'
+        '../src/core/skills/skills-manager.js'
       );
       const skillsManager = new SkillsManager(getDefaultTemplatesPath(), testDir);
 
       const partialConfig = {
         languages: ['typescript' as const],
-        frameworks: [],
+
         modules: [],
-        services: [],
+
       };
 
       const detectedSkills = await skillsManager.autoDetectSkills(partialConfig);

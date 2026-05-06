@@ -11,12 +11,12 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'fs';
-import { basename, dirname, join, resolve } from 'path';
+import { dirname, join, resolve } from 'path';
 import { z } from 'zod';
-import { ConfigManager } from '../core/config-manager.js';
+import { ConfigManager } from '../core/state/config-manager.js';
 import { BackgroundIndexer } from '../core/indexer/background-indexer.js';
-import { SkillsManager, getDefaultTemplatesPath } from '../core/skills-manager.js';
-import { TaskManager } from '../core/task-manager.js';
+import { SkillsManager, getDefaultTemplatesPath } from '../core/skills/skills-manager.js';
+import { TaskManager } from '../core/tasks/task-manager.js';
 import type { SkillCategory } from '../types.js';
 import { WorkspaceManager } from '../core/workspace/workspace-manager.js';
 import type { ProjectWorker } from '../core/workspace/project-worker.js';
@@ -324,19 +324,7 @@ export async function startRulebookMcpServer(): Promise<void> {
     version: '5.2.0',
   });
 
-  // --- v5.3.0 F10: opt-in telemetry middleware ---
-  const { createTelemetryMiddleware } = await import('../core/telemetry.js');
-  const telemetryEnabled = configManager
-    ? (await configManager.loadConfig())?.features?.telemetry === true
-    : false;
-  const telemetry = createTelemetryMiddleware({
-    enabled: telemetryEnabled,
-    dir: join(projectRoot, '.rulebook', 'telemetry'),
-  });
-
-  // --- Wrap all tool handlers with timeout guard + telemetry ---
-  // Intercept registerTool to automatically add timeout protection and
-  // optional telemetry recording to every handler.
+  // --- Wrap all tool handlers with a timeout guard ---
   const originalRegisterTool = server.registerTool.bind(server);
   server.registerTool = ((
     name: string,
@@ -344,12 +332,9 @@ export async function startRulebookMcpServer(): Promise<void> {
     handler: (...handlerArgs: any[]) => Promise<any>
   ) => {
     const wrappedHandler = async (...handlerArgs: any[]) => {
-      const start = Date.now();
-      let success = true;
       try {
         return await withTimeout(handler(...handlerArgs), MCP_TOOL_TIMEOUT_MS, name);
       } catch (error) {
-        success = false;
         const msg = error instanceof Error ? error.message : String(error);
         console.error(`[rulebook-mcp] ${name} error: ${msg}`);
         return {
@@ -357,13 +342,6 @@ export async function startRulebookMcpServer(): Promise<void> {
             { type: 'text' as const, text: JSON.stringify({ success: false, error: msg }) },
           ],
         };
-      } finally {
-        telemetry.record({
-          tool: name,
-          latency_ms: Date.now() - start,
-          success,
-          timestamp: new Date().toISOString(),
-        });
       }
     };
     return originalRegisterTool(name, config, wrappedHandler);
@@ -1315,596 +1293,6 @@ export async function startRulebookMcpServer(): Promise<void> {
     }
   );
 
-  // Ralph Autonomous Loop Tools (v3.0)
-  const ralphConfig = await configManager.loadConfig();
-  const ralphEnabled = ralphConfig.ralph?.enabled ?? true;
-
-  if (ralphEnabled) {
-    // Register tool: rulebook_ralph_init
-    server.registerTool(
-      'rulebook_ralph_init',
-      {
-        title: 'Initialize Ralph',
-        description: 'Initialize Ralph autonomous loop and create PRD from rulebook tasks',
-        inputSchema: {},
-      },
-      async () => {
-        try {
-          const { Logger } = await import('../core/logger.js');
-          const { RalphManager } = await import('../core/ralph-manager.js');
-          const { PRDGenerator } = await import('../core/prd-generator.js');
-
-          const logger = new Logger(projectRoot);
-          const ralphManager = new RalphManager(projectRoot, logger);
-          const prdGenerator = new PRDGenerator(projectRoot, logger);
-
-          const configData = await configManager.loadConfig();
-          const maxIterations = configData.ralph?.maxIterations || 10;
-          const tool = (configData.ralph?.tool || 'claude') as 'claude' | 'amp' | 'gemini';
-
-          // Generate PRD first, then initialize with correct task count
-          const prd = await prdGenerator.generatePRD(basename(projectRoot) || 'project');
-
-          const { writeFile } = await import('../utils/file-system.js');
-          const prdPath = join(projectRoot, '.rulebook', 'ralph', 'prd.json');
-          await writeFile(prdPath, JSON.stringify(prd, null, 2));
-
-          // Initialize after PRD is written so task count is correct
-          await ralphManager.initialize(maxIterations, tool);
-
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  success: true,
-                  message: `Ralph initialized with ${prd.userStories.length} user stories`,
-                  tasks: prd.userStories.length,
-                  maxIterations,
-                  tool,
-                }),
-              },
-            ],
-          };
-        } catch (error) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({ success: false, error: String(error) }),
-              },
-            ],
-          };
-        }
-      }
-    );
-
-    // Register tool: rulebook_ralph_run
-    server.registerTool(
-      'rulebook_ralph_run',
-      {
-        title: 'Run Ralph Loop',
-        description: 'Execute Ralph autonomous iteration loop',
-        inputSchema: {
-          maxIterations: z.number().optional().describe('Maximum iterations'),
-          tool: z.enum(['claude', 'amp', 'gemini']).optional().describe('AI tool to use'),
-        },
-      },
-      async (args) => {
-        try {
-          const { Logger } = await import('../core/logger.js');
-          const { RalphManager } = await import('../core/ralph-manager.js');
-          const { RalphParser } = await import('../agents/ralph-parser.js');
-          const { spawn } = await import('child_process');
-          const { execSync } = await import('child_process');
-
-          const logger = new Logger(projectRoot);
-          const ralphManager = new RalphManager(projectRoot, logger);
-
-          const configData = await configManager.loadConfig();
-          const maxIterations = args.maxIterations || configData.ralph?.maxIterations || 10;
-          const tool = (args.tool || configData.ralph?.tool || 'claude') as
-            | 'claude'
-            | 'amp'
-            | 'gemini';
-
-          // ── Concurrency guard: prevent multiple simultaneous Ralph runs ──
-          const lockAcquired = await ralphManager.acquireLock(tool);
-          if (!lockAcquired) {
-            const lockInfo = await ralphManager.getLockInfo();
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify({
-                    success: false,
-                    error: `Ralph is already running (PID ${lockInfo?.pid}, started ${lockInfo?.startedAt}, task: ${lockInfo?.currentTask || 'starting'}, iteration: ${lockInfo?.iteration || 0}). Wait for it to finish or check ralph_status. Do NOT start another run.`,
-                  }),
-                },
-              ],
-            };
-          }
-
-          // Lock cleanup is handled by the top-level SIGINT handler (line ~858)
-          // which shuts down all managers. Adding per-call SIGINT/SIGTERM listeners
-          // causes accumulation and race conditions with the server shutdown handler.
-
-          try {
-            // Validate tool is available before starting
-            const toolCmdNames: Record<string, string> = {
-              claude: 'claude',
-              amp: 'amp',
-              gemini: 'gemini',
-            };
-            const toolCmd = toolCmdNames[tool] || 'claude';
-            try {
-              execSync(`${toolCmd} --version`, { stdio: 'pipe', timeout: 10000 });
-            } catch {
-              return {
-                content: [
-                  {
-                    type: 'text',
-                    text: JSON.stringify({
-                      success: false,
-                      error: `CLI tool "${toolCmd}" not found or not responding. Install it first: https://docs.anthropic.com/claude-code`,
-                    }),
-                  },
-                ],
-              };
-            }
-
-            // Resume existing state if available, otherwise initialize fresh
-            const existingState = await ralphManager.getStatus();
-            if (!existingState) {
-              await ralphManager.initialize(maxIterations, tool);
-            }
-
-            // Helper: run a shell command and return stdout
-            const runCmd = (
-              cmd: string,
-              cmdArgs: string[]
-            ): Promise<{ code: number; stdout: string; stderr: string }> =>
-              new Promise((resolve) => {
-                let stdout = '';
-                let stderr = '';
-                const proc = spawn(cmd, cmdArgs, {
-                  cwd: projectRoot,
-                  shell: true,
-                  stdio: ['pipe', 'pipe', 'pipe'],
-                });
-                proc.stdout?.on('data', (d: Buffer) => {
-                  stdout += d.toString();
-                });
-                proc.stderr?.on('data', (d: Buffer) => {
-                  stderr += d.toString();
-                });
-                proc.on('close', (code: number | null) =>
-                  resolve({ code: code ?? 1, stdout, stderr })
-                );
-                proc.on('error', (err: Error) => resolve({ code: 1, stdout, stderr: err.message }));
-              });
-
-            // Helper: build prompt for AI agent
-            const buildPrompt = (task: any, projectName: string): string => {
-              const criteria = (task.acceptanceCriteria || [])
-                .map((c: string) => `- ${c}`)
-                .join('\n');
-              return [
-                `You are working on project: ${projectName}`,
-                ``,
-                `## Current Task: ${task.title}`,
-                `ID: ${task.id}`,
-                ``,
-                `## Description`,
-                task.description,
-                ``,
-                `## Acceptance Criteria`,
-                criteria,
-                ``,
-                task.notes ? `## Notes\n${task.notes}\n` : '',
-                `## Instructions`,
-                `1. Implement the changes described above`,
-                `2. Ensure all acceptance criteria are met`,
-                `3. Run quality checks: type-check, lint, tests`,
-                `4. Fix any issues found by quality checks`,
-                `5. When done, summarize what was changed`,
-              ]
-                .filter(Boolean)
-                .join('\n');
-            };
-
-            // Helper: execute AI agent with proper error handling
-            const executeAgent = (agentTool: string, prompt: string): Promise<string> =>
-              new Promise((resolve, reject) => {
-                let output = '';
-                let stderrOutput = '';
-                const toolCmds: Record<
-                  string,
-                  { cmd: string; args: string[]; stdinPrompt: boolean }
-                > = {
-                  claude: {
-                    cmd: 'claude',
-                    args: ['-p', '--dangerously-skip-permissions', '--verbose'],
-                    stdinPrompt: true,
-                  },
-                  amp: { cmd: 'amp', args: ['-p', prompt], stdinPrompt: false },
-                  gemini: { cmd: 'gemini', args: ['-p', prompt], stdinPrompt: false },
-                };
-                const cfg = toolCmds[agentTool] || toolCmds.claude;
-
-                let settled = false;
-                const settle = (fn: () => void) => {
-                  if (!settled) {
-                    settled = true;
-                    fn();
-                  }
-                };
-
-                const proc = spawn(cfg.cmd, cfg.args, {
-                  cwd: projectRoot,
-                  shell: true,
-                  stdio: ['pipe', 'pipe', 'pipe'],
-                });
-
-                if (cfg.stdinPrompt && proc.stdin) {
-                  proc.stdin.write(prompt);
-                  proc.stdin.end();
-                }
-
-                proc.stdout?.on('data', (d: Buffer) => {
-                  output += d.toString();
-                });
-                proc.stderr?.on('data', (d: Buffer) => {
-                  stderrOutput += d.toString();
-                });
-
-                proc.on('close', (code: number | null) => {
-                  settle(() => {
-                    if (code === 0 || output.length > 0) {
-                      resolve(output);
-                    } else {
-                      reject(
-                        new Error(
-                          `Agent ${agentTool} exited with code ${code}${stderrOutput ? ': ' + stderrOutput.slice(0, 500) : ''}`
-                        )
-                      );
-                    }
-                  });
-                });
-
-                proc.on('error', (err: Error) => {
-                  settle(() => reject(new Error(`Failed to spawn ${agentTool}: ${err.message}`)));
-                });
-
-                const timeout = setTimeout(() => {
-                  proc.kill('SIGTERM');
-                  settle(() => resolve(output || `Agent ${agentTool} timed out after 10 minutes`));
-                }, 600000);
-
-                proc.on('close', () => clearTimeout(timeout));
-              });
-
-            // Sync task count from PRD
-            await ralphManager.refreshTaskCount();
-
-            // Load PRD for project name (used in prompts)
-            const prd = await ralphManager.loadPRD();
-            if (!prd || !prd.userStories || prd.userStories.length === 0) {
-              return {
-                content: [
-                  {
-                    type: 'text',
-                    text: JSON.stringify({
-                      success: false,
-                      error: 'No PRD found or no user stories. Run rulebook_ralph_init first.',
-                    }),
-                  },
-                ],
-              };
-            }
-
-            const projectName = prd.project || 'unknown';
-            const totalTasks = prd.userStories.filter((s: any) => !s.passes).length;
-            let iterationCount = 0;
-            const iterationResults: Array<{
-              iteration: number;
-              taskId: string;
-              taskTitle: string;
-              status: string;
-              durationMs: number;
-            }> = [];
-
-            // Log to stderr so MCP callers can see progress
-            const logProgress = (msg: string) => {
-              process.stderr.write(`[Ralph] ${msg}\n`);
-            };
-
-            logProgress(
-              `Starting Ralph loop: ${totalTasks} pending tasks, max ${maxIterations} iterations, tool=${tool}`
-            );
-
-            while (ralphManager.canContinue() && iterationCount < maxIterations) {
-              iterationCount++;
-              const task = await ralphManager.getNextTask();
-              if (!task) break;
-
-              // Update lock with current progress
-              await ralphManager.updateLockProgress(iterationCount, `${task.id}: ${task.title}`);
-
-              logProgress(
-                `Iteration ${iterationCount}/${maxIterations} — Task: ${task.id} "${task.title}"`
-              );
-
-              const startTime = Date.now();
-
-              // 1. Execute AI agent
-              let agentOutput = '';
-              try {
-                logProgress(`  Executing ${tool} agent...`);
-                const prompt = buildPrompt(task, projectName);
-                agentOutput = await executeAgent(tool, prompt);
-                logProgress(`  Agent finished (${((Date.now() - startTime) / 1000).toFixed(0)}s)`);
-              } catch (agentErr: any) {
-                agentOutput = `Error: ${agentErr.message || agentErr}`;
-                logProgress(`  Agent error: ${agentErr.message || agentErr}`);
-              }
-
-              // 2. Run quality gates
-              logProgress(`  Running quality gates...`);
-              const [typeCheck, lint, tests] = await Promise.all([
-                runCmd('npm', ['run', 'type-check']).then((r) => r.code === 0),
-                runCmd('npm', ['run', 'lint']).then((r) => r.code === 0),
-                runCmd('npm', ['test']).then((r) => r.code === 0),
-              ]);
-              const qualityChecks = { type_check: typeCheck, lint, tests, coverage_met: tests };
-
-              const allPass = typeCheck && lint && tests;
-              const passCount = Object.values(qualityChecks).filter(Boolean).length;
-              const status: 'success' | 'partial' | 'failed' = allPass
-                ? 'success'
-                : passCount >= 2
-                  ? 'partial'
-                  : 'failed';
-
-              logProgress(
-                `  Quality: type-check=${typeCheck ? 'PASS' : 'FAIL'} lint=${lint ? 'PASS' : 'FAIL'} tests=${tests ? 'PASS' : 'FAIL'} → ${status.toUpperCase()}`
-              );
-
-              // 3. Git commit if all gates pass
-              let gitCommit: string | undefined;
-              if (allPass) {
-                await runCmd('git', ['add', '-A']);
-                const commitResult = await runCmd('git', [
-                  'commit',
-                  '-m',
-                  `ralph(${task.id}): ${task.title}\n\nIteration ${iterationCount} - Ralph autonomous loop`,
-                ]);
-                const hashMatch = commitResult.stdout.match(/\[[\w/.-]+ ([a-f0-9]+)\]/);
-                gitCommit = hashMatch ? hashMatch[1] : undefined;
-                await ralphManager.markStoryComplete(task.id);
-                logProgress(`  Committed: ${gitCommit || 'no hash'} — Story ${task.id} COMPLETE`);
-              }
-
-              const iterDuration = Date.now() - startTime;
-
-              // 4. Parse output for learnings/errors
-              const parsed = RalphParser.parseAgentOutput(
-                agentOutput,
-                iterationCount,
-                task.id,
-                task.title,
-                tool
-              );
-
-              // 5. Record iteration and refresh task count for canContinue()
-              await ralphManager.recordIteration({
-                iteration: iterationCount,
-                timestamp: new Date().toISOString(),
-                task_id: task.id,
-                task_title: task.title,
-                status,
-                ai_tool: tool,
-                execution_time_ms: iterDuration,
-                quality_checks: qualityChecks,
-                output_summary:
-                  parsed.output_summary || `Iteration ${iterationCount}: ${task.title}`,
-                git_commit: gitCommit,
-                learnings: parsed.learnings,
-                errors: parsed.errors,
-                metadata: {
-                  context_loss_count: parsed.metadata.context_loss_count,
-                  parsed_completion: parsed.metadata.parsed_completion,
-                },
-              });
-
-              iterationResults.push({
-                iteration: iterationCount,
-                taskId: task.id,
-                taskTitle: task.title,
-                status,
-                durationMs: iterDuration,
-              });
-
-              // Refresh task count so canContinue() reflects updated PRD
-              await ralphManager.refreshTaskCount();
-
-              logProgress(
-                `  Iteration ${iterationCount} complete (${(iterDuration / 1000).toFixed(0)}s)\n`
-              );
-            }
-
-            const stats = await ralphManager.getTaskStats();
-            logProgress(
-              `Ralph loop finished: ${iterationCount} iterations, ${stats.completed}/${stats.total} tasks completed`
-            );
-
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify({
-                    success: true,
-                    iterations: iterationCount,
-                    completed: stats.completed,
-                    total: stats.total,
-                    results: iterationResults,
-                  }),
-                },
-              ],
-            };
-          } finally {
-            // Always release lock, even on error
-            await ralphManager.releaseLock();
-          }
-        } catch (error) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({ success: false, error: String(error) }),
-              },
-            ],
-          };
-        }
-      }
-    );
-
-    // Register tool: rulebook_ralph_status
-    server.registerTool(
-      'rulebook_ralph_status',
-      {
-        title: 'Ralph Status',
-        description: 'Get current Ralph loop status',
-        inputSchema: {},
-      },
-      async () => {
-        try {
-          const { Logger } = await import('../core/logger.js');
-          const { RalphManager } = await import('../core/ralph-manager.js');
-
-          const logger = new Logger(projectRoot);
-          const ralphManager = new RalphManager(projectRoot, logger);
-          const status = await ralphManager.getStatus();
-
-          if (!status) {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify({ success: false, error: 'Ralph not initialized' }),
-                },
-              ],
-            };
-          }
-
-          const stats = await ralphManager.getTaskStats();
-
-          // Check if Ralph is currently running (lock held by alive process)
-          const running = await ralphManager.isRunning();
-          const lockInfo = running ? await ralphManager.getLockInfo() : null;
-
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  success: true,
-                  running,
-                  ...(running && lockInfo
-                    ? {
-                        runningPid: lockInfo.pid,
-                        runningTask: lockInfo.currentTask || null,
-                        runningIteration: lockInfo.iteration || 0,
-                        runningSince: lockInfo.startedAt,
-                      }
-                    : {}),
-                  iteration: status.current_iteration,
-                  maxIterations: status.max_iterations,
-                  completedTasks: stats.completed,
-                  totalTasks: stats.total,
-                  paused: status.paused,
-                  tool: status.tool,
-                  startedAt: status.started_at,
-                }),
-              },
-            ],
-          };
-        } catch (error) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({ success: false, error: String(error) }),
-              },
-            ],
-          };
-        }
-      }
-    );
-
-    // Register tool: rulebook_ralph_get_iteration_history
-    server.registerTool(
-      'rulebook_ralph_get_iteration_history',
-      {
-        title: 'Ralph Iteration History',
-        description: 'Get Ralph iteration history and statistics',
-        inputSchema: {
-          limit: z.number().optional().describe('Maximum iterations to return'),
-          taskId: z.string().optional().describe('Filter by task ID'),
-        },
-      },
-      async (args) => {
-        try {
-          const { Logger } = await import('../core/logger.js');
-          const { IterationTracker } = await import('../core/iteration-tracker.js');
-
-          const logger = new Logger(projectRoot);
-          const tracker = new IterationTracker(projectRoot, logger);
-
-          const history = await tracker.getHistory(args.limit || 10, args.taskId);
-          const stats = await tracker.getStatistics();
-
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  success: true,
-                  iterations: history.length,
-                  history: history.map((iter) => ({
-                    iteration: iter.iteration,
-                    taskId: iter.task_id,
-                    taskTitle: iter.task_title,
-                    status: iter.status,
-                    duration: iter.duration_ms,
-                    qualityChecks: iter.quality_checks,
-                    commit: iter.git_commit,
-                  })),
-                  statistics: {
-                    total: stats.total_iterations,
-                    successful: stats.successful_iterations,
-                    failed: stats.failed_iterations,
-                    successRate: (stats.success_rate * 100).toFixed(1) + '%',
-                    avgDuration: stats.average_duration_ms,
-                  },
-                }),
-              },
-            ],
-          };
-        } catch (error) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({ success: false, error: String(error) }),
-              },
-            ],
-          };
-        }
-      }
-    );
-  }
-
   // --- Background Indexer Tools ---
 
   // Register tool: rulebook_codebase_search
@@ -2195,7 +1583,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { DecisionManager } = await import('../core/decision-manager.js');
+        const { DecisionManager } = await import('../core/tasks/decision-manager.js');
         const dm = new DecisionManager(root);
         const decision = await dm.create(args.title, {
           context: args.context,
@@ -2248,7 +1636,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { DecisionManager } = await import('../core/decision-manager.js');
+        const { DecisionManager } = await import('../core/tasks/decision-manager.js');
         const dm = new DecisionManager(root);
         const decisions = await dm.list(args.status as any);
         return {
@@ -2292,7 +1680,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { DecisionManager } = await import('../core/decision-manager.js');
+        const { DecisionManager } = await import('../core/tasks/decision-manager.js');
         const dm = new DecisionManager(root);
         const result = await dm.show(args.id);
         if (!result) {
@@ -2356,7 +1744,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { DecisionManager } = await import('../core/decision-manager.js');
+        const { DecisionManager } = await import('../core/tasks/decision-manager.js');
         const dm = new DecisionManager(root);
         const updated = await dm.update(args.id, {
           status: args.status as any,
@@ -2421,7 +1809,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { KnowledgeManager } = await import('../core/knowledge-manager.js');
+        const { KnowledgeManager } = await import('../core/tasks/knowledge-manager.js');
         const km = new KnowledgeManager(root);
         const entry = await km.add(args.type as any, args.title, {
           category: args.category as any,
@@ -2473,7 +1861,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { KnowledgeManager } = await import('../core/knowledge-manager.js');
+        const { KnowledgeManager } = await import('../core/tasks/knowledge-manager.js');
         const km = new KnowledgeManager(root);
         const entries = await km.list(args.type as any, args.category as any);
         return {
@@ -2517,7 +1905,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { KnowledgeManager } = await import('../core/knowledge-manager.js');
+        const { KnowledgeManager } = await import('../core/tasks/knowledge-manager.js');
         const km = new KnowledgeManager(root);
         const result = await km.show(args.id);
         if (!result) {
@@ -2577,7 +1965,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { LearnManager } = await import('../core/learn-manager.js');
+        const { LearnManager } = await import('../core/tasks/learn-manager.js');
         const lm = new LearnManager(root);
         const learning = await lm.capture(args.title, args.content, {
           tags: args.tags,
@@ -2624,7 +2012,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { LearnManager } = await import('../core/learn-manager.js');
+        const { LearnManager } = await import('../core/tasks/learn-manager.js');
         const lm = new LearnManager(root);
         const learnings = await lm.list(args.limit);
         return {
@@ -2672,7 +2060,7 @@ export async function startRulebookMcpServer(): Promise<void> {
           args.projectId && workspaceManager
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
-        const { LearnManager } = await import('../core/learn-manager.js');
+        const { LearnManager } = await import('../core/tasks/learn-manager.js');
         const lm = new LearnManager(root);
         const result = await lm.promote(args.id, args.target, { title: args.title });
         if (!result) {
@@ -2877,7 +2265,7 @@ export async function startRulebookMcpServer(): Promise<void> {
             ? (await workspaceManager.getWorker(args.projectId)).projectRoot
             : projectRoot;
         const { listRules } = await import('../core/rule-engine.js');
-        const { listRulesWithSource } = await import('../core/rules-generator.js');
+        const { listRulesWithSource } = await import('../core/generators/rules-generator.js');
         const canonical = await listRules(root);
         const languageRules = await listRulesWithSource(root);
         return {
@@ -2909,510 +2297,10 @@ export async function startRulebookMcpServer(): Promise<void> {
     }
   );
 
-  // Register tool: rulebook_doctor_run
-  server.registerTool(
-    'rulebook_doctor_run',
-    {
-      title: 'Run Doctor',
-      description:
-        'Run rulebook health checks: file sizes, broken @imports, stale STATE.md, missing files',
-      inputSchema: { projectId: projectIdSchema },
-    },
-    async (args) => {
-      try {
-        const root =
-          args.projectId && workspaceManager
-            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-            : projectRoot;
-        const { runDoctor } = await import('../core/doctor.js');
-        const report = await runDoctor(root);
-        return {
-          content: [{ type: 'text', text: JSON.stringify({ success: true, ...report }) }],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-              }),
-            },
-          ],
-        };
-      }
-    }
-  );
 
-  // Register tool: rulebook_analysis_create
-  server.registerTool(
-    'rulebook_analysis_create',
-    {
-      title: 'Create Analysis',
-      description: 'Scaffold a new structured analysis in docs/analysis/<slug>/',
-      inputSchema: {
-        topic: z.string().describe('Analysis topic'),
-        noTasks: z.boolean().optional().describe('Skip task materialization'),
-        projectId: projectIdSchema,
-      },
-    },
-    async (args) => {
-      try {
-        const root =
-          args.projectId && workspaceManager
-            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-            : projectRoot;
-        const { createAnalysis } = await import('../core/analysis-manager.js');
-        const result = await createAnalysis(root, {
-          topic: args.topic as string,
-          noTasks: (args.noTasks as boolean) ?? false,
-        });
-        return {
-          content: [{ type: 'text', text: JSON.stringify({ success: true, ...result }) }],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-              }),
-            },
-          ],
-        };
-      }
-    }
-  );
 
-  // Register tool: rulebook_analysis_list
-  server.registerTool(
-    'rulebook_analysis_list',
-    {
-      title: 'List Analyses',
-      description: 'List all structured analyses in docs/analysis/',
-      inputSchema: { projectId: projectIdSchema },
-    },
-    async (args) => {
-      try {
-        const root =
-          args.projectId && workspaceManager
-            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-            : projectRoot;
-        const { listAnalyses } = await import('../core/analysis-manager.js');
-        const analyses = await listAnalyses(root);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({ success: true, analyses, count: analyses.length }),
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-              }),
-            },
-          ],
-        };
-      }
-    }
-  );
 
-  // Register tool: rulebook_analysis_show
-  server.registerTool(
-    'rulebook_analysis_show',
-    {
-      title: 'Show Analysis',
-      description: 'Show the contents of a structured analysis by slug',
-      inputSchema: {
-        slug: z.string().describe('Analysis slug (directory name)'),
-        projectId: projectIdSchema,
-      },
-    },
-    async (args) => {
-      try {
-        const root =
-          args.projectId && workspaceManager
-            ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-            : projectRoot;
-        const { showAnalysis } = await import('../core/analysis-manager.js');
-        const analysis = await showAnalysis(root, args.slug as string);
-        if (!analysis) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  success: false,
-                  error: `Analysis "${args.slug}" not found`,
-                }),
-              },
-            ],
-          };
-        }
-        return {
-          content: [{ type: 'text', text: JSON.stringify({ success: true, ...analysis }) }],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-              }),
-            },
-          ],
-        };
-      }
-    }
-  );
 
-  // Register tool: rulebook_blockers
-  server.registerTool(
-    'rulebook_blockers',
-    {
-      title: 'Show Blockers',
-      description: 'Show task blocker chain with cascade impact analysis',
-      inputSchema: {
-        projectId: projectIdSchema,
-      },
-    },
-    async (args) => {
-      try {
-        const tm = await getTaskMgr(args.projectId);
-        const tasks = await tm.listTasks();
-
-        // Build blocker chain from task metadata
-        const blockers: Array<{
-          taskId: string;
-          blocks: string[];
-          blockedBy: string[];
-          cascadeImpact: number;
-        }> = [];
-
-        for (const task of tasks) {
-          const metadata = await tm.getTaskMetadata(task.id);
-          const blocks = Array.isArray(metadata?.blocks) ? (metadata.blocks as string[]) : [];
-          const blockedBy = Array.isArray(metadata?.blockedBy)
-            ? (metadata.blockedBy as string[])
-            : [];
-          if (blocks.length > 0 || blockedBy.length > 0) {
-            blockers.push({
-              taskId: task.id,
-              blocks,
-              blockedBy,
-              cascadeImpact: (metadata?.cascadeImpact as number) || blocks.length,
-            });
-          }
-        }
-
-        // Sort by cascade impact (highest first)
-        blockers.sort((a, b) => b.cascadeImpact - a.cascadeImpact);
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({ success: true, blockers, count: blockers.length }),
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-              }),
-            },
-          ],
-        };
-      }
-    }
-  );
-
-  // ── v5.4.0 compress tools ──────────────────────────────────────────
-
-  server.registerTool(
-    'rulebook_compress',
-    {
-      title: 'Compress Memory File',
-      description:
-        'Compress a markdown memory file (prose-only rewriter; preserves code, URLs, paths, dates, versions byte-for-byte). Writes a backup to <file>.original.md and replaces the file in place. Returns before/after byte counts and validator result.',
-      inputSchema: {
-        filePath: z
-          .string()
-          .describe('Absolute or project-relative path to the .md file to compress'),
-        dryRun: z
-          .boolean()
-          .optional()
-          .describe('Return the would-be result without writing anything'),
-        projectId: projectIdSchema,
-      },
-    },
-    async (args) => {
-      try {
-        const { readFile, writeFile, fileExists } = await import('../utils/file-system.js');
-        const { compress } = await import('../core/compress/compressor.js');
-        const path = await import('path');
-        const projectRoot = process.cwd();
-        const abs = path.default.isAbsolute(args.filePath)
-          ? args.filePath
-          : path.default.join(projectRoot, args.filePath);
-
-        if (!(await fileExists(abs))) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({ success: false, error: `File not found: ${abs}` }),
-              },
-            ],
-          };
-        }
-
-        const original = await readFile(abs);
-        const result = compress(original);
-
-        if (!result.validation.ok) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  success: false,
-                  error: 'Validator rejected the compressed output',
-                  violations: result.validation.violations.slice(0, 10),
-                }),
-              },
-            ],
-          };
-        }
-
-        const backupPath = abs.replace(/\.md$/i, '.original.md');
-        if (!args.dryRun) {
-          if (!(await fileExists(backupPath))) {
-            await writeFile(backupPath, original);
-          }
-          await writeFile(abs, result.output);
-        }
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: true,
-                filePath: abs,
-                dryRun: !!args.dryRun,
-                originalBytes: result.validation.stats.originalBytes,
-                compressedBytes: result.validation.stats.compressedBytes,
-                savedPct: Math.round((1 - result.validation.stats.ratio) * 100),
-                retries: result.retries,
-                backup: args.dryRun ? null : backupPath,
-              }),
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-              }),
-            },
-          ],
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    'rulebook_evals_measure',
-    {
-      title: 'Measure Terse Evals',
-      description:
-        'Run the offline three-arm evaluation measurement (baseline/terse/rulebook-terse). Reads snapshots committed under evals/snapshots/, uses tiktoken when installed (falls back to UTF-8 byte counts otherwise). Returns per-prompt lift, total lift, and pass/fail against arms.json liftThreshold. Does NOT call the Anthropic API — safe for CI without credentials.',
-      inputSchema: {
-        projectId: projectIdSchema,
-      },
-    },
-    async () => {
-      try {
-        const path = await import('path');
-        const root = process.cwd();
-        const measurePath = path.default.resolve(root, 'evals/measure.js');
-        const { existsSync } = await import('fs');
-        // Resolve the project-local evals path so rulebook run from a
-        // user project (no evals/ directory) fails cleanly.
-        const measureModulePath = existsSync(measurePath)
-          ? measurePath
-          : path.default.resolve(root, 'evals/measure.ts');
-        if (!existsSync(measureModulePath)) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  success: false,
-                  error:
-                    'evals/ directory not found in project — this tool targets the Rulebook repo itself, not downstream projects.',
-                }),
-              },
-            ],
-          };
-        }
-        // Use a bare URL import so Node resolves the project-local file
-        // regardless of where the MCP server was installed from.
-        const mod = (await import(/* @vite-ignore */ measureModulePath)) as {
-          measure: (s: string, a: string) => Promise<unknown>;
-        };
-        const report = await mod.measure(
-          path.default.resolve(root, 'evals/snapshots/results.json'),
-          path.default.resolve(root, 'evals/arms.json')
-        );
-        return {
-          content: [{ type: 'text', text: JSON.stringify({ success: true, report }) }],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-              }),
-            },
-          ],
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    'rulebook_evals_run',
-    {
-      title: 'Run Terse Evals Against Live API',
-      description:
-        'Regenerate evals/snapshots/results.json by calling the Anthropic API for every (prompt, arm) pair. Requires ANTHROPIC_API_KEY in the environment and @anthropic-ai/sdk in the project. Expensive — run only when SKILL.md or prompts change. Use rulebook_evals_measure for the cheap offline comparison.',
-      inputSchema: {
-        projectId: projectIdSchema,
-      },
-    },
-    async () => {
-      try {
-        if (!process.env.ANTHROPIC_API_KEY) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  success: false,
-                  error: 'ANTHROPIC_API_KEY is not set.',
-                }),
-              },
-            ],
-          };
-        }
-        // Delegate to the CLI script — spawning keeps this non-blocking
-        // and isolates the API dependency from the MCP server process.
-        const { spawn } = await import('child_process');
-        const result: { stdout: string; stderr: string; code: number } = await new Promise(
-          (resolvePromise) => {
-            const child = spawn('npx', ['tsx', 'evals/llm_run.ts'], {
-              cwd: process.cwd(),
-              shell: true,
-            });
-            let stdout = '';
-            let stderr = '';
-            child.stdout.on('data', (d) => (stdout += String(d)));
-            child.stderr.on('data', (d) => (stderr += String(d)));
-            child.on('close', (code) => resolvePromise({ stdout, stderr, code: code ?? 1 }));
-          }
-        );
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: result.code === 0,
-                exitCode: result.code,
-                stdout: result.stdout.slice(-4000),
-                stderr: result.stderr.slice(-2000),
-              }),
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-              }),
-            },
-          ],
-        };
-      }
-    }
-  );
-
-  server.registerTool(
-    'rulebook_compress_list',
-    {
-      title: 'List Compression Candidates',
-      description:
-        'List markdown memory files in the project that are compression candidates (CLAUDE.md, AGENTS.md, AGENTS.override.md, .rulebook/PLANS.md, .rulebook/STATE.md, and all .md under .rulebook/knowledge/ + .rulebook/learnings/). Reports current size + backup state.',
-      inputSchema: {
-        projectId: projectIdSchema,
-      },
-    },
-    async () => {
-      try {
-        const { listCompressCandidates } = await import('../core/compress/discover.js');
-        const candidates = await listCompressCandidates(process.cwd());
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({ success: true, candidates, count: candidates.length }),
-            },
-          ],
-        };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-              }),
-            },
-          ],
-        };
-      }
-    }
-  );
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

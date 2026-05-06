@@ -33,19 +33,19 @@ const DEFAULT_CONFIG = {
 };
 
 // Mock all dependencies using regular functions (not arrows) so they work with `new`
-vi.mock('../src/core/task-manager.js', () => ({
+vi.mock('../src/core/tasks/task-manager.js', () => ({
   TaskManager: vi.fn().mockImplementation(function (this: any) {
     this.list = vi.fn();
   }),
 }));
 
-vi.mock('../src/core/config-manager.js', () => ({
+vi.mock('../src/core/state/config-manager.js', () => ({
   ConfigManager: vi.fn().mockImplementation(function (this: any) {
     this.loadConfig = vi.fn().mockResolvedValue({ ...DEFAULT_CONFIG });
   }),
 }));
 
-vi.mock('../src/core/skills-manager.js', () => ({
+vi.mock('../src/core/skills/skills-manager.js', () => ({
   SkillsManager: vi.fn().mockImplementation(function (this: any) {
     this.loadSkills = vi.fn();
   }),
@@ -85,9 +85,9 @@ describe('ProjectWorker', () => {
 
   describe('initialize()', () => {
     it('should create all managers', async () => {
-      const { TaskManager } = await import('../src/core/task-manager.js');
-      const { ConfigManager } = await import('../src/core/config-manager.js');
-      const { SkillsManager } = await import('../src/core/skills-manager.js');
+      const { TaskManager } = await import('../src/core/tasks/task-manager.js');
+      const { ConfigManager } = await import('../src/core/state/config-manager.js');
+      const { SkillsManager } = await import('../src/core/skills/skills-manager.js');
 
       await worker.initialize();
 
@@ -98,7 +98,7 @@ describe('ProjectWorker', () => {
     });
 
     it('should be idempotent on double-initialize', async () => {
-      const { ConfigManager } = await import('../src/core/config-manager.js');
+      const { ConfigManager } = await import('../src/core/state/config-manager.js');
 
       await worker.initialize();
       await worker.initialize();
@@ -127,7 +127,7 @@ describe('ProjectWorker', () => {
     });
 
     it('should initialize memory when enabled', async () => {
-      const { ConfigManager } = await import('../src/core/config-manager.js');
+      const { ConfigManager } = await import('../src/core/state/config-manager.js');
       const { createMemoryManager } = await import('../src/memory/memory-manager.js');
 
       vi.mocked(ConfigManager).mockImplementationOnce(function (this: any) {
@@ -145,7 +145,7 @@ describe('ProjectWorker', () => {
     });
 
     it('should handle memory initialization failure gracefully', async () => {
-      const { ConfigManager } = await import('../src/core/config-manager.js');
+      const { ConfigManager } = await import('../src/core/state/config-manager.js');
       const { createMemoryManager } = await import('../src/memory/memory-manager.js');
 
       vi.mocked(ConfigManager).mockImplementationOnce(function (this: any) {
@@ -264,7 +264,7 @@ describe('ProjectWorker', () => {
     });
 
     it('should close memory manager if present', async () => {
-      const { ConfigManager } = await import('../src/core/config-manager.js');
+      const { ConfigManager } = await import('../src/core/state/config-manager.js');
       const { createMemoryManager } = await import('../src/memory/memory-manager.js');
 
       const mockClose = vi.fn().mockResolvedValue(undefined);

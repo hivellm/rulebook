@@ -5,6 +5,346 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.7.0] - 2026-05-06
+
+### Removed — framework templates, service templates, compress CLI, eval harness
+
+Aggressive scope cut for low-traffic surface area:
+
+  - `templates/frameworks/` (17 files): NestJS, Spring, Laravel, Angular,
+    React, Vue, Nuxt, Next.js, Django, Flask, Rails, Symfony, Zend,
+    jQuery, RN, Flutter, Electron — plus the matching skill bundles
+    under `templates/skills/frameworks/`.
+  - `templates/services/` (30 files): all DBs, caches, queues,
+    object stores, observability stacks — plus
+    `templates/skills/services/`.
+  - Detector: `detectFrameworks`, `detectServices`, `findFirstExisting`
+    helper. Types: `FrameworkId`, `FrameworkDetection`, `ServiceId`,
+    `ServiceDetection`. Removed from `DetectionResult`,
+    `ProjectConfig`, `RulebookConfig`, `SkillCategory`.
+  - Generators: `generateFrameworkRules`, `generateServiceRules`,
+    `generateFrameworkReference`, `generateServiceReference` and the
+    framework/service sections in `generateModularAgents`. CLI
+    prompts no longer ask for framework/service selection.
+  - `rulebook compress` CLI command, `src/core/compress/` (compressor,
+    discover, validator), MCP tools `rulebook_compress` and
+    `rulebook_compress_list`, `checkCompressionBackups` doctor check.
+  - Eval harness: `evals/` directory (cli_run, llm_run, measure,
+    report, prompts, snapshots, arms.json), `checkEvalsFreshness`
+    doctor check, `tests/evals-harness.test.ts`, related smoke tests
+    in `tests/rulebook-terse-foundations.test.ts`.
+  - Test files removed: `compress-*`, `evals-harness`,
+    `observability-detection`, `docker-k8s`. Stale framework/service
+    cases stripped from `migrator`, `detector`, `generator`,
+    `init-command`, `cli-integration`, `backward-compatibility`,
+    `multi-tool-detection`, `mcp-skills`, `skill-commands`,
+    `rulebook-terse-templates-wiring`, `generator-lean`.
+
+Why: these surfaces had near-zero observed usage and added
+maintenance burden out of proportion to their value. Languages,
+modules, IDEs, agents, and skills/dev are unaffected.
+
+
+
+### Changed — Memory store: SQLite + HNSW → markdown files
+
+The persistent memory subsystem no longer uses SQLite or a vector index.
+Memories and sessions persist as plain markdown files with YAML
+frontmatter under `.rulebook/memory/{memories,sessions,codegraph}/<YYYY>/<MM>/`.
+Search is BM25 over the body with a tag-frontmatter boost. The
+`MemoryManager` public API is preserved for callers; only the
+implementation changed.
+
+Removed: `src/memory/memory-store.ts`, `memory-search.ts`, `memory-cache.ts`,
+`memory-vectorizer.ts`, `hnsw-index.ts`, `sql-js.d.ts`, plus their tests
+(`tests/memory-store*.test.ts`, `tests/memory-search.test.ts`,
+`tests/memory-cache.test.ts`, `tests/memory-hnsw-index.test.ts`,
+`tests/memory-vectorizer.test.ts`). Removed from `package.json`:
+`sql.js` (dependency), `better-sqlite3` (optionalDependency),
+`@types/better-sqlite3` (devDependency).
+
+Added: `src/memory/file-store.ts`, `src/memory/file-search.ts`,
+`src/memory/legacy-migrator.ts`, plus `rulebook memory migrate-from-db`
+CLI command. On the first `MemoryManager.initialize()` after upgrade,
+an existing `memory.db` is auto-detected, migrated to markdown one
+time, then renamed to `memory.db.legacy`.
+
+`MemoryStats` shape: `indexHealth` removed, `fileCount` added.
+`cleanup()` now takes `{ maxAgeDays }` (age-based retention) instead
+of LRU byte-budget eviction. Background indexer code-graph rows now
+append to `codegraph/{nodes,edges}.jsonl` (compaction on file-deletion).
+
+User benefit: memories are diffable, greppable, hand-editable, and
+git-trackable. Removes a flaky native dep (`better-sqlite3`) plus a
+heavy WASM dep (`sql.js`) — smaller install, simpler mental model.
+
+### Added — First-class OpenCode integration
+
+OpenCode (open-source terminal coding agent by SST) is now a first-class
+target. Rulebook detects an OpenCode project (`opencode.json`/`.jsonc`,
+`.opencode/`, or the `opencode` binary on PATH) and emits the same
+surface area Claude Code already had:
+
+  - `opencode.json` with `$schema`, `mcp.rulebook`, and `instructions`
+    (lazy-loads `AGENTS.md`, `AGENTS.override.md`, `.rulebook/specs/*.md`).
+    Idempotent: existing user keys preserved.
+  - `.opencode/commands/<name>.md` for every user-invocable Rulebook
+    slash command, frontmatter translated to OpenCode's schema.
+  - `.opencode/agents/<role>.md` for every Rulebook role agent
+    (researcher, implementer, tester, code-reviewer, architect, etc.)
+    with model tier mapped (`haiku → claude-haiku-4-5`,
+    `sonnet → claude-sonnet-4-6`, `opus → claude-opus-4-7`) and a
+    synthesized `permission` block (read-only roles get `edit: deny`,
+    `bash: ask`).
+  - `.opencode/skills/<name>/SKILL.md` for every Rulebook dev skill,
+    name normalized to OpenCode's `[a-z0-9](-[a-z0-9])*` regex (≤64
+    chars), description bounded to ≤1024 chars.
+  - `.opencode/.rulebook-managed.json` sidecar lists managed keys so
+    `rulebook update` knows what to refresh vs. preserve.
+
+New: `src/core/ide/opencode-generator.ts`,
+`tests/detect-opencode.test.ts`, `tests/opencode-generator.test.ts`,
+`templates/ides/OPENCODE.md`. Expanded: `templates/cli/OPENCODE.md`,
+`templates/skills/cli/opencode/SKILL.md`. Wired into
+`src/cli/commands/init.ts`, `src/cli/commands/update.ts`,
+`src/cli/prompts.ts`. `DetectionResult.opencode` added to
+`src/types.ts`. `'opencode'` added to the CLI-tools probe in
+`src/core/state/config-manager.ts`.
+
+### Refactor — `src/core/` reorganized into 13 thematic subdirectories
+
+The 50-file flat layout under `src/core/` had grown unmanageable. Files
+are now grouped by responsibility into `agents/`, `claude/`, `console/`,
+`detect/`, `docs/`, `generators/`, `github/`, `ide/`, `quality/`,
+`ralph/`, `skills/`, `state/`, and `tasks/`. Pre-existing subdirs
+`compress/`, `indexer/`, `workspace/` were preserved. Five shared
+utilities (`logger`, `merger`, `migrator`, `rule-engine`,
+`custom-templates`) remain at `src/core/` root.
+
+47 `git mv` operations preserve file history. 211 import sites and 9
+`__dirname`-based template-path computations were updated mechanically;
+no logic touched. Full suite stayed green (1985/1985) before the
+follow-up scope cuts described below.
+
+### Removed — 7 unnecessary MCP tools + `rulebook analysis` CLI
+
+Trimmed the MCP server's tool catalog. Each removed tool either
+duplicated CLI functionality, had no documented consumer, or modeled
+the same data as another existing tool group:
+
+  rulebook_analysis_create   -> use rulebook_decision_create
+  rulebook_analysis_list     -> use rulebook_knowledge_list / decision_list
+  rulebook_analysis_show     -> use rulebook_decision_show
+  rulebook_evals_measure     -> experimental, no documented consumer
+  rulebook_evals_run         -> experimental, requires API key, no consumer
+  rulebook_blockers          -> orphan, never integrated with task system
+  rulebook_doctor_run        -> use the CLI `rulebook doctor` directly
+
+CLI surface dropped: `rulebook analysis create/list/show`. Files
+removed:
+  src/cli/commands/analysis.ts (its `doctorCommand` moved to misc.ts)
+  src/core/tasks/analysis-manager.ts
+  tests/analysis-manager.test.ts
+
+### Added — `rulebook update` cleans up legacy 5.5.x artifacts
+
+Upgrading to 5.6.0 via `rulebook update` now removes leftover Ralph
+files and memory entries from user projects:
+
+  .rulebook/ralph/                         (entire dir)
+  .rulebook/scripts/ralph-*.{sh,bat}
+  .claude/commands/ralph-*.md
+  .cursor/rules/ralph.mdc
+  Memory entries tagged `ralph`            (via MemoryManager)
+
+All cleanup is non-destructive of unrelated data and silently
+non-fatal — if any of the targets do not exist, the step is a no-op.
+
+### Removed — Ralph autonomous loop subsystem
+
+The entire Ralph autonomous-loop feature is gone. Claude Code's
+built-in `/loop` skill plus the standard rulebook task workflow
+(`rulebook_task_create` / `_update` / `_archive`) cover the same
+ground without the parallel infrastructure.
+
+CLI surface dropped:
+  rulebook ralph init / run / status / history / pause / resume
+  rulebook ralph import-issues
+  rulebook learn from-ralph
+  rulebook assess (already gone with complexity-detector)
+
+MCP tools dropped: `rulebook_ralph_init`, `rulebook_ralph_run`,
+`rulebook_ralph_status`, `rulebook_ralph_get_iteration_history`
+(~590 lines from `mcp/rulebook-server.ts`).
+
+Source removed:
+  src/agents/ralph-parser.ts
+  src/cli/commands/ralph.ts
+  src/core/ralph/  (6 files: manager, parallel, plan-checkpoint,
+                   scripts, prd-generator, iteration-tracker)
+  src/core/github/github-issues-importer.ts (Ralph PRD dep)
+  templates/ralph/  (entire dir)
+  .rulebook/scripts/ralph-*.{sh,bat}
+  .claude/commands/ralph-*.md  (6 slash commands)
+  + 13 ralph-related test files
+
+Types dropped from `src/types.ts`: RalphPRD, PRDUserStory,
+RalphLoopState, RalphIterationMetadata, IterationResult,
+ParallelRalphConfig, PlanCheckpointConfig. The `ralph` block in
+`RulebookConfig` is gone — existing entries are silently ignored.
+
+LearnManager.fromRalph + the corresponding test block also removed
+(it scraped Ralph's iteration history for learnings; without that
+history, the method is meaningless).
+
+### Removed — health-scorer, complexity-detector, cursor-mdc-generator,
+### orphan IDE templates
+
+- **`rulebook health`** + `core/quality/health-scorer.ts` — score-based
+  project health summary. Real CI/quality signal already comes from
+  type-check + lint + tests + coverage.
+- **`rulebook assess`** + `core/detect/complexity-detector.ts` — project
+  complexity tier scoring used to decide which canonical rules to
+  install. Replaced with unconditional install of the full tier1 + tier2
+  rule set (users disable individual rules via `.rulebook/rules/`).
+- **`core/ide/cursor-mdc-generator.ts`** + `templates/ides/cursor-mdc/`
+  — auto-generated `.cursor/rules/*.mdc` files. Cursor reads `AGENTS.md`
+  natively. Existing `.cursor/rules/` files are preserved (non-destructive
+  removal).
+- **8 orphan IDE reference templates** — `JETBRAINS_AI`, `REPLIT`,
+  `TABNINE`, `ZED`, `VSCODE`, `CURSOR`, `COPILOT`, `WINDSURF`. None had
+  call sites. The 4 active templates (`GEMINI_RULES`, `CONTINUE_RULES`,
+  `WINDSURF_RULES`, `COPILOT_INSTRUCTIONS`) and the
+  `multi-tool-generator.ts` that consumes them stay — they propagate
+  `AGENTS.md` rules to Gemini CLI, Continue.dev, Windsurf, and Copilot
+  on detection.
+
+### Removed — three more CLI commands (agent / changelog / generate-docs)
+
+- **`rulebook agent`** + `core/agents/agent-manager.ts` +
+  `core/agents/agent-template-engine.ts` — autonomous agent loop for
+  AI CLI workflows (BETA). Users invoke Claude Code / Cursor / Gemini
+  directly.
+- **`rulebook changelog`** + `core/docs/changelog-generator.ts` —
+  Conventional-Commits → CHANGELOG section generator. Users hand-write
+  CHANGELOG entries (or use any standalone tool like
+  `conventional-changelog`).
+- **`rulebook generate-docs`** + `cli/docs-prompts.ts` — interactive
+  scaffolder for README/CONTRIBUTING/etc. The `core/docs/docs-generator.ts`
+  module survives because `minimal-scaffolder.ts` (used by `rulebook init`
+  in minimal mode) still calls into `generateDocsStructure`.
+
+The `src/core/agents/` subdirectory was deleted (now empty).
+
+### Removed — five experimental / redundant features
+
+Five modules were removed to shrink the surface area:
+
+- **Telemetry** (`state/telemetry.ts`, MCP middleware, `--telemetry`
+  CLI flag) — local opt-in NDJSON tool-latency log, no documented
+  consumer. The MCP server still wraps every tool with a timeout
+  guard; only the latency-recording side effect went away.
+- **Auto-fixer** (`quality/auto-fixer.ts`, `rulebook fix` command) —
+  bundled lint + format + heuristic fix loop. Users run `npm run lint`
+  / `cargo fix` / etc. directly.
+- **Review manager** (`tasks/review-manager.ts`, `rulebook review`
+  command) — AI-driven PR review via `claude` / `gemini` / `amp` CLIs.
+  Users invoke those tools directly.
+- **Watcher + modern-console** (`console/watcher.ts`,
+  `console/modern-console.ts`, `rulebook watcher` BETA command) —
+  full-screen TUI with system monitoring. Cost: a `blessed` UI tree
+  that nobody used.
+- **Compact-context seed** (`claude/compact-context-manager.ts`) —
+  seeded `.rulebook/COMPACT_CONTEXT.md` at init. Anthropic's
+  `/compact` re-reads `CLAUDE.md` imports natively, making this
+  redundant. The separate `on-compact-reinject.sh` hook is still
+  installed when `compactContextReinject` is enabled.
+
+CLI surface drops three commands: `rulebook fix`, `rulebook watcher`,
+`rulebook review`. The `--telemetry` flag on `rulebook mcp init` is
+also gone.
+
+The `RulebookConfig['features']` type drops the `telemetry` boolean.
+Existing `.rulebook/rulebook.json` files with that field continue to
+load — extra unknown fields are tolerated.
+
+### Performance — `~2 s` saved per turn from hook overhead (#15)
+
+Three rulebook-installed Claude Code hooks were profiled and rewritten.
+Numbers are warm-run wall-clock on Windows 10 (Git Bash), measured with
+`time bash <hook>` and a representative stdin payload.
+
+#### `Stop` hook — `templates/hooks/check-context-and-handoff.sh`
+
+`853 ms → ~80 ms` (~10×). Replaced the `find $HOME/.claude/projects -name '*.jsonl' -printf … | sort -rn | head -1`
+traversal with a direct `transcript_path` read from the Stop hook's
+stdin payload (Anthropic ships this field by spec). The traversal cost
+grew linearly with session count and also returned the wrong file in
+concurrent sessions sharing the same home directory. The new path is
+O(1) and pins to the current session's transcript.
+
+#### `UserPromptSubmit` hook — `templates/hooks/terse-mode-tracker.sh`
+
+Common path `633 ms → ~97 ms` (~6.5×). Bash now scans the raw stdin
+payload for terse-mode trigger substrings (`/rulebook-terse`,
+`terse mode`, `be terse`, …) before spawning anything. When no trigger
+matches — the case for the vast majority of prompts — the script reads
+the active flag via pure bash and exits without ever invoking Node.
+When a trigger is present, a single Node call now does the entire
+parse-and-decide pipeline (stdin + project config + user config + slash
+commands + natural-language patterns) and returns a pre-resolved
+`set:<mode>` / `unset` / `noop` decision; bash only handles filesystem
+side effects. Slow-path latency drops from `633 ms → ~382 ms` (~1.7×).
+
+#### `PreToolUse` hooks — merged into one + matcher filter
+
+Three legacy scripts (`enforce-no-deferred.sh`, `enforce-no-shortcuts.sh`,
+`enforce-mcp-for-tasks.sh`) were merged into a single
+`templates/hooks/enforce-pre-tool.sh` that parses the tool input once
+and applies all three deny rules inline. Per-spawn latency
+`3 × 143 ms = 429 ms → 117 ms` (~3.7×). Each rule's
+`permissionDecisionReason` is preserved verbatim, so existing model
+guidance is unchanged.
+
+The bigger win is declarative, not algorithmic: the hook entry now
+ships with `matcher: "Edit|Write|Bash"`, so the harness skips the
+spawn entirely for `Read`, `Glob`, `Grep`, `Agent`, `Task`, `WebFetch`,
+`MCP*`, and any other tool that cannot trigger a deny rule. On a
+typical session that's roughly half of all tool calls. The matcher
+strategy follows Claude Code's documented guidance for hook
+performance.
+
+`src/core/claude-settings-manager.ts` grows a `LEGACY_SIGNATURES`
+cleanup pass that strips `enforce-no-deferred` /
+`enforce-no-shortcuts` / `enforce-mcp-for-tasks` entries from
+`.claude/settings.json` on every sync. Existing users who run
+`rulebook update` after upgrading get their settings rewritten
+automatically, with no extra step.
+
+#### Net effect
+
+For a turn that issues a user prompt + 5 tool calls (3 read-type, 2
+edits, 1 stop), hook overhead drops from `~3.6 s` to `~0.5 s`. In a
+261-turn session this is ~13 minutes of perceived "Claude is slow"
+that no longer happens.
+
+#### Removed
+
+- Three legacy enforcement scripts deleted from `templates/hooks/`
+  (no deprecation shims). Users on stale `settings.json` references
+  see those entries silently stripped on next `rulebook update`.
+
+#### Tests
+
+- New `tests/check-context-and-handoff-shell.test.ts` (6 tests) —
+  verifies `transcript_path` resolution, missing-file fallback, and
+  warn / force threshold detection from the payload.
+- New `tests/enforce-pre-tool-shell.test.ts` (13 tests) — covers all
+  three merged deny rules + ALLOW path + malformed-input fail-open.
+- New `tests/claude-settings-manager-enforce.test.ts` (8 tests) —
+  asserts the matcher value, single-registration, legacy migration,
+  and idempotency.
+
 ## [5.5.2] - 2026-05-04
 
 ### Fixed — `tests/terse-hooks-shell.test.ts` flaked on Windows runners

@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 
+// Library re-exports for programmatic consumers (kept above CLI bootstrap).
+export {
+  generateOpencodeIntegration,
+  generateOpencodeConfig,
+  generateOpencodeCommands,
+  generateOpencodeAgents,
+  generateOpencodeSkills,
+  normalizeOpencodeSkillName,
+} from './core/ide/opencode-generator.js';
+
 import { Command } from 'commander';
 import {
   initCommand,
@@ -7,13 +17,7 @@ import {
   workflowsCommand,
   checkDepsCommand,
   checkCoverageCommand,
-  generateDocsCommand,
   versionCommand,
-  changelogCommand,
-  healthCommand,
-  fixCommand,
-  watcherCommand,
-  agentCommand,
   configCommand,
   tasksCommand,
   taskCreateCommand,
@@ -35,17 +39,9 @@ import {
   memorySaveCommand,
   memoryListCommand,
   memoryStatsCommand,
-  memoryVerifyCommand,
   memoryCleanupCommand,
   memoryExportCommand,
-  // Ralph commands (v3.0)
-  ralphInitCommand,
-  ralphRunCommand,
-  ralphStatusCommand,
-  ralphHistoryCommand,
-  ralphPauseCommand,
-  ralphResumeCommand,
-  ralphImportIssuesCommand,
+  memoryMigrateFromDbCommand,
   // Plans commands (v4.0)
   plansShowCommand,
   plansInitCommand,
@@ -56,8 +52,6 @@ import {
   overrideShowCommand,
   overrideEditCommand,
   overrideClearCommand,
-  // Review command (v4.0)
-  reviewCommand,
   // Setup commands
   setupClaudeCodePlugin,
   migrateMemoryDirectory,
@@ -77,17 +71,11 @@ import {
   knowledgeShowCommand,
   knowledgeRemoveCommand,
   learnCaptureCommand,
-  learnFromRalphCommand,
   learnListCommand,
   learnPromoteCommand,
   // Analysis commands (v5.3.0)
-  analysisCreateCommand,
-  analysisListCommand,
-  analysisShowCommand,
   // Doctor command (v5.3.0)
   doctorCommand,
-  // Compress command (v5.4.0)
-  compressCommand,
 } from './cli/commands/index.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -150,12 +138,6 @@ program
   .action((options) => checkCoverageCommand({ threshold: parseInt(options.threshold) }));
 
 program
-  .command('generate-docs')
-  .description('Generate documentation structure and standard files')
-  .option('-y, --yes', 'Skip prompts and use defaults')
-  .action(generateDocsCommand);
-
-program
   .command('version')
   .description('Bump project version (semantic versioning)')
   .argument('<type>', 'Version bump type: major, minor, or patch')
@@ -168,40 +150,10 @@ program
   });
 
 program
-  .command('changelog')
-  .description('Generate changelog from git commits')
-  .option('-v, --version <version>', 'Specify version (default: auto-detect)')
-  .action(changelogCommand);
-
-program.command('health').description('Check project health score').action(healthCommand);
-program
   .command('doctor')
   .description('Run rulebook health checks (file sizes, broken imports, stale state)')
   .action(doctorCommand);
 
-program.command('fix').description('Auto-fix common project issues').action(fixCommand);
-
-// New advanced commands (BETA)
-program
-  .command('watcher')
-  .description('Start modern full-screen console watcher for tasks and agent progress [BETA]')
-  .action(watcherCommand);
-
-program
-  .command('agent')
-  .description('Start autonomous agent for managing AI CLI workflows [BETA]')
-  .option('--dry-run', 'Simulate execution without making changes')
-  .option('--tool <name>', 'Specify CLI tool to use (cursor-agent, claude-code, gemini-cli)')
-  .option('--iterations <number>', 'Maximum number of iterations', '10')
-  .option('--watch', 'Enable watcher mode for real-time monitoring')
-  .action((options) =>
-    agentCommand({
-      dryRun: options.dryRun,
-      tool: options.tool,
-      iterations: parseInt(options.iterations),
-      watch: options.watch,
-    })
-  );
 
 program
   .command('config')
@@ -275,8 +227,8 @@ taskCommand
   .option('--project <name>', 'Target a specific workspace project')
   .action(async (_options: { project?: string }) => {
     const chalk = (await import('chalk')).default;
-    const { TaskManager } = await import('./core/task-manager.js');
-    const { ConfigManager } = await import('./core/config-manager.js');
+    const { TaskManager } = await import('./core/tasks/task-manager.js');
+    const { ConfigManager } = await import('./core/state/config-manager.js');
     const cwd = process.cwd();
     const cm = new ConfigManager(cwd);
     const config = await cm.loadConfig();
@@ -326,8 +278,8 @@ taskCommand
   .description('Show what blocks a specific task')
   .action(async (taskId: string) => {
     const chalk = (await import('chalk')).default;
-    const { TaskManager } = await import('./core/task-manager.js');
-    const { ConfigManager } = await import('./core/config-manager.js');
+    const { TaskManager } = await import('./core/tasks/task-manager.js');
+    const { ConfigManager } = await import('./core/state/config-manager.js');
     const cwd = process.cwd();
     const cm = new ConfigManager(cwd);
     const config = await cm.loadConfig();
@@ -385,8 +337,7 @@ mcpCommand
   .command('init')
   .description('Initialize MCP configuration in .rulebook and .cursor/mcp.json')
   .option('--workspace', 'Configure MCP for workspace mode (multi-project)')
-  .option('--telemetry', 'Enable local opt-in MCP telemetry (.rulebook/telemetry/)')
-  .action((options: { workspace?: boolean; telemetry?: boolean }) => mcpInitCommand(options));
+  .action((options: { workspace?: boolean }) => mcpInitCommand(options));
 
 program
   .command('mcp-server')
@@ -463,10 +414,9 @@ memoryCommand
   .description('Show memory database statistics')
   .action(() => memoryStatsCommand());
 
-memoryCommand
-  .command('verify')
-  .description('Verify memory system configuration and persistence')
-  .action(() => memoryVerifyCommand());
+// `memory verify` was removed in v5.6 — there is no separate index to
+// verify against the file-based store. Use `memory stats` for a quick
+// summary or `memory migrate-from-db` if a legacy DB needs migrating.
 
 memoryCommand
   .command('cleanup')
@@ -481,69 +431,10 @@ memoryCommand
   .option('--output <path>', 'Output file path (default: stdout)')
   .action((options: { format?: string; output?: string }) => memoryExportCommand(options));
 
-// Ralph Autonomous Loop Commands (v3.0)
-const ralphCommand = program.command('ralph').description('Ralph autonomous AI agent loop');
-
-ralphCommand
-  .command('init')
-  .description('Initialize Ralph and create PRD from rulebook tasks')
-  .action(() => ralphInitCommand());
-
-ralphCommand
-  .command('run')
-  .description('Execute autonomous iteration loop')
-  .option('--max-iterations <n>', 'Maximum iterations', '10')
-  .option('--tool <tool>', 'AI CLI tool: claude, amp, gemini', 'claude')
-  .option('--parallel <n>', 'Run N stories concurrently (default: sequential)')
-  .option('--plan-first', 'Require plan approval before each story implementation')
-  .action(
-    (options: { maxIterations?: string; tool?: string; parallel?: string; planFirst?: boolean }) =>
-      ralphRunCommand({
-        maxIterations: options.maxIterations ? parseInt(options.maxIterations) : undefined,
-        tool: (options.tool as 'claude' | 'amp' | 'gemini') || 'claude',
-        parallel: options.parallel ? parseInt(options.parallel) : undefined,
-        planFirst: options.planFirst,
-      })
-  );
-
-ralphCommand
-  .command('status')
-  .description('Show loop progress and current iteration')
-  .action(() => ralphStatusCommand());
-
-ralphCommand
-  .command('history')
-  .description('Display iteration history and learnings')
-  .option('--limit <n>', 'Max iterations to show', '10')
-  .action((options: { limit?: string }) =>
-    ralphHistoryCommand({ limit: options.limit ? parseInt(options.limit) : undefined })
-  );
-
-ralphCommand
-  .command('pause')
-  .description('Gracefully pause autonomous loop')
-  .action(() => ralphPauseCommand());
-
-ralphCommand
-  .command('resume')
-  .description('Resume from paused state')
-  .action(() => ralphResumeCommand());
-
-ralphCommand
-  .command('import-issues')
-  .description('Import GitHub issues as Ralph user stories')
-  .option('--label <label>', 'Filter by label')
-  .option('--milestone <milestone>', 'Filter by milestone')
-  .option('--limit <n>', 'Maximum issues to import', '20')
-  .option('--dry-run', 'Preview without writing to PRD')
-  .action((options) =>
-    ralphImportIssuesCommand({
-      label: options.label,
-      milestone: options.milestone,
-      limit: options.limit ? parseInt(options.limit) : 20,
-      dryRun: options.dryRun,
-    })
-  );
+memoryCommand
+  .command('migrate-from-db')
+  .description('Migrate legacy SQLite memory.db into the file-based markdown store (v5.6+)')
+  .action(() => memoryMigrateFromDbCommand());
 
 // Plans commands (v4.0) — PLANS.md session scratchpad
 const plansCommand = program.command('plans').description('Manage PLANS.md session scratchpad');
@@ -601,26 +492,6 @@ overrideCommand
   .command('clear')
   .description('Reset AGENTS.override.md to empty template')
   .action(() => overrideClearCommand());
-
-// Review command — AI-powered code review
-program
-  .command('review')
-  .description('Run AI code review on current changes vs base branch')
-  .option('--output <format>', 'Output format: terminal, github-comment, json', 'terminal')
-  .option(
-    '--fail-on <severity>',
-    'Fail with exit 1 if issues of this severity or higher: critical, major, minor'
-  )
-  .option('--base-branch <branch>', 'Base branch to diff against', 'main')
-  .option('--tool <tool>', 'AI tool to use: claude, gemini, amp', 'claude')
-  .action((options) =>
-    reviewCommand({
-      output: options.output as 'terminal' | 'github-comment' | 'json',
-      failOn: options.failOn as 'critical' | 'major' | 'minor' | undefined,
-      baseBranch: options.baseBranch,
-      tool: options.tool,
-    })
-  );
 
 // Setup commands
 program
@@ -737,11 +608,6 @@ learnCommand
   );
 
 learnCommand
-  .command('from-ralph')
-  .description('Extract learnings from Ralph iteration history')
-  .action(() => learnFromRalphCommand());
-
-learnCommand
   .command('list')
   .description('List learnings')
   .option('--limit <n>', 'Max results', '20')
@@ -755,98 +621,7 @@ learnCommand
     learnPromoteCommand(id, target, options)
   );
 
-// ── Analysis commands (v5.3.0) ──────────────────────────────────────────
-
-const analysisCommand = program
-  .command('analysis')
-  .description('Create and manage structured analyses in docs/analysis/');
-
-analysisCommand
-  .command('create <topic>')
-  .description('Scaffold a new analysis directory')
-  .option('--agents <list>', 'Comma-separated agent list override')
-  .option('--no-tasks', 'Skip task materialization')
-  .action((topic: string, options: { agents?: string; noTasks?: boolean }) =>
-    analysisCreateCommand(topic, options)
-  );
-
-analysisCommand
-  .command('list')
-  .description('List existing analyses')
-  .action(() => analysisListCommand());
-
-analysisCommand
-  .command('show <slug>')
-  .description('Show analysis README')
-  .action((slug: string) => analysisShowCommand(slug));
-
-// ── Compress command (v5.4.0) ───────────────────────────────────────────
-
-program
-  .command('compress <file>')
-  .description(
-    'Compress a markdown memory file (preserves code, URLs, paths, versions byte-for-byte)'
-  )
-  .option('--dry-run', 'Print compression stats without writing')
-  .option('--restore', 'Restore <file> from <file>.original.md backup')
-  .option('--check', 'Report compression ratio + validator result only')
-  .action((file: string, options: { dryRun?: boolean; restore?: boolean; check?: boolean }) =>
-    compressCommand(file, options)
-  );
-
 // ── Project Assessment (v5.0) ───────────────────────────────────────────
-
-program
-  .command('assess')
-  .description('Analyze project complexity and recommend v5 configuration')
-  .action(async () => {
-    const chalk = (await import('chalk')).default;
-    const ora = (await import('ora')).default;
-    const { assessComplexity } = await import('./core/complexity-detector.js');
-    const cwd = process.cwd();
-
-    const spinner = ora('Analyzing project complexity...').start();
-    const result = assessComplexity(cwd);
-    spinner.succeed(
-      `Project complexity: ${result.tier.toUpperCase()} (score: ${result.score}/100)`
-    );
-
-    console.log(chalk.bold('\nMetrics'));
-    console.log(`  Estimated LOC:      ${result.metrics.estimatedLoc.toLocaleString()}`);
-    console.log(`  Languages:          ${result.metrics.languageCount}`);
-    console.log(`  Source directories:  ${result.metrics.sourceDirectories}`);
-    console.log(`  Multiple builds:    ${result.metrics.hasMultipleBuildTargets ? 'yes' : 'no'}`);
-    console.log(`  Custom MCP server:  ${result.metrics.hasCustomMcpServer ? 'yes' : 'no'}`);
-
-    if (result.detectedTools.length > 0) {
-      console.log(`  Detected tools:     ${result.detectedTools.join(', ')}`);
-    }
-
-    console.log(chalk.bold('\nRecommended Configuration'));
-    const rec = result.recommendations;
-    console.log(
-      `  ${rec.tier1Rules ? chalk.green('✓') : chalk.gray('·')} Tier 1 prohibitions (no-shortcuts, git-safety, etc.)`
-    );
-    console.log(
-      `  ${rec.tier2Rules ? chalk.green('✓') : chalk.gray('·')} Tier 2 workflow rules (decomposition, incremental tests)`
-    );
-    console.log(
-      `  ${rec.specializedAgents ? chalk.green('✓') : chalk.gray('·')} Specialized agents by project type`
-    );
-    console.log(
-      `  ${rec.teamCoordination ? chalk.green('✓') : chalk.gray('·')} Multi-agent team coordination`
-    );
-    console.log(
-      `  ${rec.blockerTracking ? chalk.green('✓') : chalk.gray('·')} Task blocker chain tracking`
-    );
-    console.log(
-      `  ${rec.dataFlowPlanning ? chalk.green('✓') : chalk.gray('·')} Data flow planning for cross-subsystem changes`
-    );
-    console.log(
-      `  ${rec.referenceWorkflow ? chalk.green('✓') : chalk.gray('·')} Reference implementation workflow`
-    );
-    console.log('');
-  });
 
 // ── Rules Management (v5.0) ─────────────────────────────────────────────
 
@@ -888,7 +663,7 @@ rulesCommand
   .description('Install a rule from the template library')
   .action(async (name: string) => {
     const { installRule } = await import('./core/rule-engine.js');
-    const { getTemplatesDir } = await import('./core/generator.js');
+    const { getTemplatesDir } = await import('./core/generators/generator.js');
     const chalk = (await import('chalk')).default;
     const templatesDir = getTemplatesDir();
     const result = await installRule(process.cwd(), name, templatesDir);
@@ -910,7 +685,7 @@ rulesCommand
   .description('Project canonical rules to all detected tool formats')
   .action(async () => {
     const { projectRules } = await import('./core/rule-engine.js');
-    const { detectProject } = await import('./core/detector.js');
+    const { detectProject } = await import('./core/detect/detector.js');
     const { existsSync } = await import('fs');
     const { join } = await import('path');
     const chalk = (await import('chalk')).default;

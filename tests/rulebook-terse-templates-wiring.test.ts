@@ -16,7 +16,7 @@ import {
   installSkillsFromSource,
   INVOCABLE_CORE_SKILLS,
   getTemplatesDir,
-} from '../src/core/generator.js';
+} from '../src/core/generators/generator.js';
 
 const ROOT = resolve(__dirname, '..');
 
@@ -114,13 +114,13 @@ describe('phase1_terse-templates-wiring — installSkillsFromSource pipeline', (
 
 describe('phase1_terse-templates-wiring — autoDetectSkills includes terse family', () => {
   it('terse family skills are in the auto-detected list for fresh projects', async () => {
-    const { SkillsManager } = await import('../src/core/skills-manager.js');
+    const { SkillsManager } = await import('../src/core/skills/skills-manager.js');
     const mgr = new SkillsManager(resolve(ROOT, 'templates'));
     const detected = await mgr.autoDetectSkills({
       languages: ['typescript'],
-      frameworks: [],
+
       modules: [],
-      services: [],
+
     });
 
     // Core skills are always included per skills-manager contract.

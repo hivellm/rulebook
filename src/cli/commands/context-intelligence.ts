@@ -7,7 +7,7 @@ export async function decisionCreateCommand(
   title: string,
   options: { context?: string; relatedTask?: string }
 ): Promise<void> {
-  const { DecisionManager } = await import('../../core/decision-manager.js');
+  const { DecisionManager } = await import('../../core/tasks/decision-manager.js');
   const mgr = new DecisionManager(process.cwd());
   const spinner = ora('Creating decision...').start();
   try {
@@ -22,7 +22,7 @@ export async function decisionCreateCommand(
 }
 
 export async function decisionListCommand(options: { status?: string }): Promise<void> {
-  const { DecisionManager } = await import('../../core/decision-manager.js');
+  const { DecisionManager } = await import('../../core/tasks/decision-manager.js');
   const mgr = new DecisionManager(process.cwd());
   const decisions = await mgr.list(options.status as any);
   if (decisions.length === 0) {
@@ -41,7 +41,7 @@ export async function decisionListCommand(options: { status?: string }): Promise
 }
 
 export async function decisionShowCommand(id: string): Promise<void> {
-  const { DecisionManager } = await import('../../core/decision-manager.js');
+  const { DecisionManager } = await import('../../core/tasks/decision-manager.js');
   const mgr = new DecisionManager(process.cwd());
   const result = await mgr.show(parseInt(id));
   if (!result) {
@@ -52,7 +52,7 @@ export async function decisionShowCommand(id: string): Promise<void> {
 }
 
 export async function decisionSupersedeCommand(oldId: string, newId: string): Promise<void> {
-  const { DecisionManager } = await import('../../core/decision-manager.js');
+  const { DecisionManager } = await import('../../core/tasks/decision-manager.js');
   const mgr = new DecisionManager(process.cwd());
   const ok = await mgr.supersede(parseInt(oldId), parseInt(newId));
   if (ok) {
@@ -67,7 +67,7 @@ export async function knowledgeAddCommand(
   title: string,
   options: { category?: string; description?: string }
 ): Promise<void> {
-  const { KnowledgeManager } = await import('../../core/knowledge-manager.js');
+  const { KnowledgeManager } = await import('../../core/tasks/knowledge-manager.js');
   const mgr = new KnowledgeManager(process.cwd());
   const spinner = ora('Adding knowledge entry...').start();
   try {
@@ -85,7 +85,7 @@ export async function knowledgeListCommand(options: {
   type?: string;
   category?: string;
 }): Promise<void> {
-  const { KnowledgeManager } = await import('../../core/knowledge-manager.js');
+  const { KnowledgeManager } = await import('../../core/tasks/knowledge-manager.js');
   const mgr = new KnowledgeManager(process.cwd());
   const entries = await mgr.list(options.type as any, options.category as any);
   if (entries.length === 0) {
@@ -99,7 +99,7 @@ export async function knowledgeListCommand(options: {
 }
 
 export async function knowledgeShowCommand(id: string): Promise<void> {
-  const { KnowledgeManager } = await import('../../core/knowledge-manager.js');
+  const { KnowledgeManager } = await import('../../core/tasks/knowledge-manager.js');
   const mgr = new KnowledgeManager(process.cwd());
   const result = await mgr.show(id);
   if (!result) {
@@ -110,7 +110,7 @@ export async function knowledgeShowCommand(id: string): Promise<void> {
 }
 
 export async function knowledgeRemoveCommand(id: string): Promise<void> {
-  const { KnowledgeManager } = await import('../../core/knowledge-manager.js');
+  const { KnowledgeManager } = await import('../../core/tasks/knowledge-manager.js');
   const mgr = new KnowledgeManager(process.cwd());
   const ok = await mgr.remove(id);
   if (ok) {
@@ -126,7 +126,7 @@ export async function learnCaptureCommand(options: {
   relatedTask?: string;
   tags?: string;
 }): Promise<void> {
-  const { LearnManager } = await import('../../core/learn-manager.js');
+  const { LearnManager } = await import('../../core/tasks/learn-manager.js');
   const mgr = new LearnManager(process.cwd());
   const title = options.title ?? 'Untitled learning';
   const content = options.content ?? '';
@@ -145,24 +145,8 @@ export async function learnCaptureCommand(options: {
   }
 }
 
-export async function learnFromRalphCommand(): Promise<void> {
-  const { LearnManager } = await import('../../core/learn-manager.js');
-  const mgr = new LearnManager(process.cwd());
-  const spinner = ora('Extracting learnings from Ralph history...').start();
-  try {
-    const learnings = await mgr.fromRalph();
-    if (learnings.length === 0) {
-      spinner.info('No new learnings found in Ralph history.');
-    } else {
-      spinner.succeed(`Extracted ${learnings.length} learning(s) from Ralph history.`);
-    }
-  } catch (error) {
-    spinner.fail(`Failed: ${String(error)}`);
-  }
-}
-
 export async function learnListCommand(options: { limit?: string }): Promise<void> {
-  const { LearnManager } = await import('../../core/learn-manager.js');
+  const { LearnManager } = await import('../../core/tasks/learn-manager.js');
   const mgr = new LearnManager(process.cwd());
   const limit = options.limit ? parseInt(options.limit) : undefined;
   const learnings = await mgr.list(limit);
@@ -172,11 +156,7 @@ export async function learnListCommand(options: { limit?: string }): Promise<voi
   }
   for (const l of learnings) {
     const badge =
-      l.source === 'ralph'
-        ? chalk.blue('ralph')
-        : l.source === 'task-archive'
-          ? chalk.yellow('archive')
-          : chalk.dim('manual');
+      l.source === 'task-archive' ? chalk.yellow('archive') : chalk.dim('manual');
     const promoted = l.promotedTo ? chalk.green(` → ${l.promotedTo.type}`) : '';
     console.log(`  ${badge}  ${l.title}${promoted}`);
   }
@@ -187,7 +167,7 @@ export async function learnPromoteCommand(
   target: string,
   options: { title?: string }
 ): Promise<void> {
-  const { LearnManager } = await import('../../core/learn-manager.js');
+  const { LearnManager } = await import('../../core/tasks/learn-manager.js');
   const mgr = new LearnManager(process.cwd());
 
   if (target !== 'knowledge' && target !== 'decision') {

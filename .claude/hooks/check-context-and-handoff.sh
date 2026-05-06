@@ -36,18 +36,16 @@ if [[ -f "$CONFIG_FILE" ]] && command -v jq &>/dev/null; then
   FORCE_PCT=$(jq -r '.handoff.forceThresholdPct // 90' "$CONFIG_FILE" 2>/dev/null || echo 90)
 fi
 
-# Try to find the transcript path from the session
-# Claude Code stores transcripts as JSONL in ~/.claude/projects/<hash>/
-# The hook input may or may not contain session info; we fall back to
-# estimating from the input itself.
+# Resolve transcript size from the payload's transcript_path. Claude Code
+# always passes this in Stop hook stdin (Anthropic hook spec), so we avoid
+# scanning $HOME/.claude/projects — which grows linearly with session count
+# and also returns the wrong file in concurrent sessions.
 transcript_size=0
 
-# Strategy 1: check the most recent JSONL in the project-specific Claude dir
-CLAUDE_PROJECTS_DIR="${HOME}/.claude/projects"
-if [[ -d "$CLAUDE_PROJECTS_DIR" ]]; then
-  latest_jsonl=$(find "$CLAUDE_PROJECTS_DIR" -name "*.jsonl" -type f -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | awk '{print $2}' || true)
-  if [[ -n "$latest_jsonl" && -f "$latest_jsonl" ]]; then
-    transcript_size=$(stat -c%s "$latest_jsonl" 2>/dev/null || stat -f%z "$latest_jsonl" 2>/dev/null || echo 0)
+if [[ -n "$input" ]] && command -v jq &>/dev/null; then
+  transcript_path="$(printf '%s' "$input" | jq -r '.transcript_path // empty' 2>/dev/null || true)"
+  if [[ -n "$transcript_path" && -f "$transcript_path" ]]; then
+    transcript_size=$(stat -c%s "$transcript_path" 2>/dev/null || stat -f%z "$transcript_path" 2>/dev/null || echo 0)
   fi
 fi
 

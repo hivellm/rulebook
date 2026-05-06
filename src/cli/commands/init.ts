@@ -1,13 +1,13 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import { detectProject } from '../../core/detector.js';
-import { generateFullAgents } from '../../core/generator.js';
+import { detectProject } from '../../core/detect/detector.js';
+import { generateFullAgents } from '../../core/generators/generator.js';
 import { mergeFullAgents, mergeClaudeMd } from '../../core/merger.js';
 import {
   generateWorkflows,
   generateIDEFiles,
   generateAICLIFiles,
-} from '../../core/workflow-generator.js';
+} from '../../core/generators/workflow-generator.js';
 import { writeFile, ensureDir } from '../../utils/file-system.js';
 import { existsSync } from 'fs';
 import { parseRulesIgnore } from '../../utils/rulesignore.js';
@@ -15,34 +15,12 @@ import { installGitHooks } from '../../utils/git-hooks.js';
 import type {
   LanguageDetection,
   ProjectConfig,
-  FrameworkId,
   ModuleDetection,
-  ServiceId,
 } from '../../types.js';
-import { scaffoldMinimalProject } from '../../core/minimal-scaffolder.js';
+import { scaffoldMinimalProject } from '../../core/generators/minimal-scaffolder.js';
 import path from 'path';
-import { SkillsManager, getDefaultTemplatesPath } from '../../core/skills-manager.js';
+import { SkillsManager, getDefaultTemplatesPath } from '../../core/skills/skills-manager.js';
 import { WorkspaceManager } from '../../core/workspace/workspace-manager.js';
-
-const FRAMEWORK_LABELS: Record<FrameworkId, string> = {
-  nestjs: 'NestJS',
-  spring: 'Spring Boot',
-  laravel: 'Laravel',
-  angular: 'Angular',
-  react: 'React',
-  vue: 'Vue.js',
-  nuxt: 'Nuxt',
-  nextjs: 'Next.js',
-  django: 'Django',
-  rails: 'Ruby on Rails',
-  flask: 'Flask',
-  symfony: 'Symfony',
-  zend: 'Zend Framework',
-  jquery: 'jQuery',
-  reactnative: 'React Native',
-  flutter: 'Flutter',
-  electron: 'Electron',
-};
 
 /**
  * Add sequential-thinking MCP server entry to mcp.json (or .cursor/mcp.json).
@@ -108,14 +86,6 @@ export async function initCommand(options: {
     const detection = await detectProject(cwd);
     spinner.succeed('Project detection complete');
 
-    const { assessComplexity } = await import('../../core/complexity-detector.js');
-    const complexity = assessComplexity(cwd);
-    console.log(
-      chalk.gray(
-        `  Complexity: ${complexity.tier.toUpperCase()} (${complexity.metrics.estimatedLoc.toLocaleString()} LOC, ${complexity.metrics.languageCount} languages)`
-      )
-    );
-
     if (detection.languages.length > 0) {
       console.log(chalk.green('\n✓ Detected languages:'));
       for (const lang of detection.languages) {
@@ -155,17 +125,6 @@ export async function initCommand(options: {
       );
     }
 
-    const detectedFrameworks = detection.frameworks.filter((f) => f.detected);
-    if (detectedFrameworks.length > 0) {
-      console.log(chalk.green('\n✓ Detected frameworks:'));
-      for (const framework of detectedFrameworks) {
-        const languagesLabel = framework.languages.map((lang) => lang.toUpperCase()).join(', ');
-        const indicators = framework.indicators.join(', ');
-        const label = FRAMEWORK_LABELS[framework.framework] || framework.framework;
-        console.log(`  - ${label} (${languagesLabel})${indicators ? ` [${indicators}]` : ''}`);
-      }
-    }
-
     if (detection.existingAgents) {
       console.log(
         chalk.yellow(
@@ -184,7 +143,6 @@ export async function initCommand(options: {
     const config: ProjectConfig = {
       languages: detection.languages.map((l) => l.language),
       modules: cliMinimal ? [] : detection.modules.filter((m) => m.detected).map((m) => m.module),
-      frameworks: detection.frameworks.filter((f) => f.detected).map((f) => f.framework),
       ides: cliMinimal ? [] : ['cursor'],
       projectType: 'application' as const,
       coverageThreshold: 95,
@@ -202,7 +160,6 @@ export async function initCommand(options: {
     const minimalMode = config.minimal ?? cliMinimal;
     config.minimal = minimalMode;
     config.modules = minimalMode ? [] : config.modules || [];
-    config.frameworks = config.frameworks || [];
     config.ides = minimalMode ? [] : config.ides || ['cursor'];
     config.includeGitWorkflow = config.includeGitWorkflow ?? true;
     config.generateWorkflows = config.generateWorkflows ?? true;
@@ -270,7 +227,7 @@ export async function initCommand(options: {
       }
     }
 
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const configManager = createConfigManager(cwd);
 
     const dirMigrationSpinner = ora('Migrating directory structure...').start();
@@ -286,9 +243,7 @@ export async function initCommand(options: {
 
       const rulebookConfigForSkills = {
         languages: config.languages as LanguageDetection['language'][],
-        frameworks: config.frameworks as FrameworkId[],
         modules: config.modules as ModuleDetection['module'][],
-        services: config.services as ServiceId[],
       };
 
       enabledSkills = await skillsManager.autoDetectSkills(rulebookConfigForSkills);
@@ -307,20 +262,17 @@ export async function initCommand(options: {
 
     await configManager.updateConfig({
       languages: config.languages as LanguageDetection['language'][],
-      frameworks: config.frameworks as FrameworkId[],
       modules: config.modules as ModuleDetection['module'][],
-      services: config.services as ServiceId[],
       modular: config.modular ?? true,
       rulebookDir: config.rulebookDir || '.rulebook',
       ...(config.agentsMode ? { agentsMode: config.agentsMode } : {}),
       skills: enabledSkills.length > 0 ? { enabled: enabledSkills } : undefined,
-      ralph: existingConfig.ralph,
       memory: existingConfig.memory,
     });
 
     if (options.package) {
       const packageRoot = path.join(cwd, options.package);
-      const { generatePackageAgentsMd } = await import('../../core/generator.js');
+      const { generatePackageAgentsMd } = await import('../../core/generators/generator.js');
       await generatePackageAgentsMd(packageRoot, config, cwd);
       console.log(chalk.green(`\n✅ AGENTS.md generated for package: ${options.package}`));
       return;
@@ -361,28 +313,21 @@ export async function initCommand(options: {
 
     {
       const { installRule, projectRules } = await import('../../core/rule-engine.js');
-      const { getTemplatesDir } = await import('../../core/generator.js');
+      const { getTemplatesDir } = await import('../../core/generators/generator.js');
       const templatesDir = getTemplatesDir();
 
-      const tier1Rules = [
+      const rulesToInstall = [
         'no-shortcuts',
         'git-safety',
         'sequential-editing',
         'research-first',
         'follow-task-sequence',
         'incremental-implementation',
-      ];
-      const tier2Rules = [
         'task-decomposition',
         'incremental-tests',
         'no-deferred',
         'session-workflow',
       ];
-
-      const rulesToInstall = [...tier1Rules];
-      if (complexity.recommendations.tier2Rules) {
-        rulesToInstall.push(...tier2Rules);
-      }
 
       let installedCount = 0;
       for (const name of rulesToInstall) {
@@ -440,6 +385,46 @@ export async function initCommand(options: {
       console.log(chalk.gray('  • GitHub Copilot instructions generated in .github/'));
     }
 
+    if (detection.opencode?.detected) {
+      try {
+        const { generateOpencodeIntegration } = await import(
+          '../../core/ide/opencode-generator.js'
+        );
+        const oc = await generateOpencodeIntegration(cwd, detection);
+        if (oc.configPath) {
+          console.log(
+            chalk.gray(`  • OpenCode config refreshed: ${path.relative(cwd, oc.configPath)}`)
+          );
+        }
+        if (oc.commands.length > 0) {
+          console.log(
+            chalk.gray(`  • OpenCode commands: ${oc.commands.length} written to .opencode/commands/`)
+          );
+        }
+        if (oc.agents.length > 0) {
+          console.log(
+            chalk.gray(`  • OpenCode agents: ${oc.agents.length} written to .opencode/agents/`)
+          );
+        }
+        if (oc.skills.length > 0) {
+          console.log(
+            chalk.gray(`  • OpenCode skills: ${oc.skills.length} written to .opencode/skills/`)
+          );
+        }
+        if (oc.preserved.length > 0) {
+          console.log(
+            chalk.gray(`  · ${oc.preserved.length} user-owned OpenCode file(s) preserved`)
+          );
+        }
+      } catch (err) {
+        console.log(
+          chalk.yellow(
+            `  ⚠ OpenCode integration skipped: ${err instanceof Error ? err.message : String(err)}`
+          )
+        );
+      }
+    }
+
     if (config.generateWorkflows) {
       const workflowSpinner = ora('Generating GitHub Actions workflows...').start();
       const workflows = await generateWorkflows(config, cwd, {
@@ -453,7 +438,7 @@ export async function initCommand(options: {
     }
 
     const gitignoreSpinner = ora('Generating/updating .gitignore...').start();
-    const { generateGitignore } = await import('../../core/gitignore-generator.js');
+    const { generateGitignore } = await import('../../core/generators/gitignore-generator.js');
     const gitignoreResult = await generateGitignore(cwd, detection.languages);
 
     if (gitignoreResult.created) {
@@ -553,21 +538,7 @@ export async function initCommand(options: {
       }
 
       try {
-        const { seedCompactContext } = await import('../../core/compact-context-manager.js');
-        const seedResult = await seedCompactContext(cwd, { languages: detection.languages });
-        if (seedResult.seeded) {
-          console.log(chalk.gray(`  • seeded ${path.relative(cwd, seedResult.path)}`));
-        }
-      } catch (err) {
-        console.log(
-          chalk.gray(
-            `  · COMPACT_CONTEXT seed skipped: ${err instanceof Error ? err.message : String(err)}`
-          )
-        );
-      }
-
-      try {
-        const { applyClaudeSettings } = await import('../../core/claude-settings-manager.js');
+        const { applyClaudeSettings } = await import('../../core/claude/claude-settings-manager.js');
         const rulebookCfg = await configManager.loadConfig();
         const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
         const handoffEnabled = rulebookCfg?.handoff?.enabled ?? true;
@@ -588,7 +559,7 @@ export async function initCommand(options: {
       }
 
       try {
-        const { generateMcpReference } = await import('../../core/mcp-reference-generator.js');
+        const { generateMcpReference } = await import('../../core/docs/mcp-reference-generator.js');
         const mcpRef = await generateMcpReference(cwd);
         if (mcpRef.written) {
           console.log(chalk.gray(`  • generated ${path.relative(cwd, mcpRef.path)}`));
@@ -601,7 +572,7 @@ export async function initCommand(options: {
         'Generating path-scoped .claude/rules/ for detected languages...'
       ).start();
       try {
-        const { generateRules } = await import('../../core/rules-generator.js');
+        const { generateRules } = await import('../../core/generators/rules-generator.js');
         const rulesResult = await generateRules(cwd, { languages: detection.languages });
         if (rulesResult.written.length > 0) {
           rulesSpinner.succeed(
@@ -642,7 +613,7 @@ export async function initCommand(options: {
     if (!minimalMode) {
       const claudeIntSpinner = ora('Checking Claude Code integration...').start();
       try {
-        const { setupClaudeCodeIntegration } = await import('../../core/claude-mcp.js');
+        const { setupClaudeCodeIntegration } = await import('../../core/claude/claude-mcp.js');
         const result = await setupClaudeCodeIntegration(cwd);
         if (result.detected) {
           claudeIntSpinner.succeed('Claude Code integration configured');
@@ -675,19 +646,7 @@ export async function initCommand(options: {
     }
 
     try {
-      const { installRalphScripts } = await import('../../core/ralph-scripts.js');
-      const scripts = await installRalphScripts(cwd);
-      if (scripts.length > 0) {
-        console.log(
-          chalk.gray(`  • ${scripts.length} Ralph scripts installed to .rulebook/scripts/`)
-        );
-      }
-    } catch {
-      // Skip if Ralph scripts installation fails
-    }
-
-    try {
-      const { initPlans } = await import('../../core/plans-manager.js');
+      const { initPlans } = await import('../../core/tasks/plans-manager.js');
       const created = await initPlans(cwd);
       if (created) {
         console.log(chalk.gray('  • PLANS.md created for session continuity'));
@@ -697,7 +656,7 @@ export async function initCommand(options: {
     }
 
     try {
-      const { initOverride } = await import('../../core/override-manager.js');
+      const { initOverride } = await import('../../core/state/override-manager.js');
       const created = await initOverride(cwd);
       if (created) {
         console.log(chalk.gray('  • AGENTS.override.md created (add project-specific rules here)'));

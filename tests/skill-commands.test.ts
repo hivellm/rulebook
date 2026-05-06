@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
-import { SkillsManager, getDefaultTemplatesPath } from '../src/core/skills-manager.js';
+import { SkillsManager, getDefaultTemplatesPath } from '../src/core/skills/skills-manager.js';
 
 describe('Skill Commands', () => {
   let testDir: string;
@@ -346,9 +346,9 @@ describe('Skill Commands', () => {
 
       const partialConfig = {
         languages: ['typescript' as const],
-        frameworks: [],
+
         modules: [],
-        services: [],
+
       };
 
       const detectedSkills = await manager.autoDetectSkills(partialConfig);

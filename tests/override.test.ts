@@ -9,7 +9,7 @@ import {
   readOverrideContent,
   initOverride,
   clearOverride,
-} from '../src/core/override-manager.js';
+} from '../src/core/state/override-manager.js';
 
 let tmpDir: string;
 

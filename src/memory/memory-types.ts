@@ -65,14 +65,14 @@ export interface MemoryConfig {
 }
 
 export interface MemoryStats {
-  dbSizeBytes: number;
+  dbSizeBytes: number; // total bytes across all memory + session markdown files
   memoryCount: number;
   sessionCount: number;
+  fileCount: number; // total managed files on disk (memories + sessions)
   oldestMemory?: number;
   newestMemory?: number;
   maxSizeBytes: number;
   usagePercent: number;
-  indexHealth: 'good' | 'degraded' | 'needs-rebuild';
 }
 
 export interface TimelineEntry {

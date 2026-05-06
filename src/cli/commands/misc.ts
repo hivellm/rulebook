@@ -1,11 +1,34 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import { detectProject } from '../../core/detector.js';
-import { generateWorkflows } from '../../core/workflow-generator.js';
+import { detectProject } from '../../core/detect/detector.js';
+import { generateWorkflows } from '../../core/generators/workflow-generator.js';
 import { existsSync } from 'fs';
 import { RulebookConfig } from '../../types.js';
 import path from 'path';
 import { readFile } from '../../utils/file-system.js';
+
+export async function doctorCommand(): Promise<void> {
+  const cwd = process.cwd();
+  const spinner = ora('Running rulebook doctor...').start();
+  try {
+    const { runDoctor } = await import('../../core/quality/doctor.js');
+    const report = await runDoctor(cwd);
+    spinner.succeed(
+      `Doctor: ${report.passCount} pass, ${report.warnCount} warn, ${report.failCount} fail`
+    );
+    for (const check of report.checks) {
+      const icon =
+        check.status === 'pass'
+          ? chalk.green('✓')
+          : check.status === 'warn'
+            ? chalk.yellow('⚠')
+            : chalk.red('✗');
+      console.log(`  ${icon} ${check.name}: ${check.message}`);
+    }
+  } catch (error) {
+    spinner.fail(`Doctor failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
 
 export async function validateCommand(): Promise<void> {
   try {
@@ -15,7 +38,7 @@ export async function validateCommand(): Promise<void> {
 
     const spinner = ora('Validating project structure...').start();
 
-    const { validateProject } = await import('../../core/validator.js');
+    const { validateProject } = await import('../../core/quality/validator.js');
 
     const result = await validateProject(cwd);
     spinner.stop();
@@ -116,7 +139,7 @@ export async function checkDepsCommand(): Promise<void> {
 
     const spinner = ora('Analyzing dependencies...').start();
 
-    const { checkDependencies } = await import('../../core/dependency-checker.js');
+    const { checkDependencies } = await import('../../core/quality/dependency-checker.js');
     const result = await checkDependencies(cwd);
 
     spinner.succeed('Analysis complete');
@@ -178,7 +201,7 @@ export async function checkCoverageCommand(options: { threshold?: number }): Pro
 
     const spinner = ora('Running coverage analysis...').start();
 
-    const { checkCoverage } = await import('../../core/coverage-checker.js');
+    const { checkCoverage } = await import('../../core/quality/coverage-checker.js');
     const result = await checkCoverage(cwd, threshold);
 
     spinner.succeed('Coverage analysis complete');
@@ -226,54 +249,6 @@ export async function checkCoverageCommand(options: { threshold?: number }): Pro
   }
 }
 
-export async function generateDocsCommand(options: { yes?: boolean }): Promise<void> {
-  try {
-    const cwd = process.cwd();
-
-    console.log(chalk.bold.blue('\n📚 Generate Documentation Structure\n'));
-
-    let config;
-
-    if (options.yes) {
-      config = {
-        projectName: path.basename(cwd),
-        description: 'A modern software project',
-        author: 'Your Name',
-        email: '',
-        license: 'MIT',
-      };
-      console.log(chalk.blue('Using defaults...\n'));
-    } else {
-      const { promptDocsConfig } = await import('../docs-prompts.js');
-      config = await promptDocsConfig();
-    }
-
-    const spinner = ora('Generating documentation structure...').start();
-
-    const { generateDocsStructure } = await import('../../core/docs-generator.js');
-    const generatedFiles = await generateDocsStructure(config, cwd);
-
-    spinner.succeed(`Generated ${generatedFiles.length} files`);
-
-    console.log('');
-    console.log(chalk.green('✅ Files created:\n'));
-    for (const file of generatedFiles) {
-      console.log(chalk.gray(`  - ${path.relative(cwd, file)}`));
-    }
-
-    console.log('');
-    console.log(chalk.bold.green('✨ Documentation structure ready!\n'));
-    console.log(chalk.gray('Next steps:'));
-    console.log(chalk.gray('  1. Review and customize generated files'));
-    console.log(chalk.gray('  2. Add your project-specific content'));
-    console.log(chalk.gray('  3. Update ROADMAP.md with your milestones'));
-    console.log(chalk.gray('  4. Document architecture in ARCHITECTURE.md\n'));
-  } catch (error) {
-    console.error(chalk.red('\n❌ Error generating docs:'), error);
-    process.exit(1);
-  }
-}
-
 export async function versionCommand(options: {
   type: 'major' | 'minor' | 'patch';
 }): Promise<void> {
@@ -282,7 +257,7 @@ export async function versionCommand(options: {
 
     console.log(chalk.bold.blue('\n📦 Version Bump\n'));
 
-    const { bumpProjectVersion } = await import('../../core/version-bumper.js');
+    const { bumpProjectVersion } = await import('../../core/state/version-bumper.js');
 
     const spinner = ora('Bumping version...').start();
 
@@ -314,213 +289,6 @@ export async function versionCommand(options: {
   }
 }
 
-export async function changelogCommand(options: { version?: string }): Promise<void> {
-  try {
-    const cwd = process.cwd();
-
-    console.log(chalk.bold.blue('\n📝 Changelog Generation\n'));
-
-    const { generateChangelog, getCurrentVersion } = await import(
-      '../../core/changelog-generator.js'
-    );
-
-    const version = options.version || (await getCurrentVersion(cwd));
-
-    if (!version) {
-      console.error(chalk.red('❌ Could not determine version'));
-      console.log(chalk.gray('  Specify version with --version flag'));
-      process.exit(1);
-    }
-
-    const spinner = ora('Generating changelog from commits...').start();
-
-    const section = await generateChangelog(cwd, version);
-
-    spinner.succeed(`Changelog generated for version ${version}`);
-
-    console.log('');
-    console.log(chalk.green('✅ Changelog sections:\n'));
-
-    if (section.breaking.length > 0) {
-      console.log(chalk.red('  Breaking Changes: ') + section.breaking.length);
-    }
-    if (section.added.length > 0) {
-      console.log(chalk.green('  Added: ') + section.added.length);
-    }
-    if (section.changed.length > 0) {
-      console.log(chalk.blue('  Changed: ') + section.changed.length);
-    }
-    if (section.fixed.length > 0) {
-      console.log(chalk.yellow('  Fixed: ') + section.fixed.length);
-    }
-
-    console.log('');
-    console.log(chalk.gray('CHANGELOG.md has been updated'));
-    console.log(chalk.gray('Review and edit as needed before committing'));
-  } catch (error) {
-    console.error(chalk.red('\n❌ Error:'), (error as Error).message);
-    process.exit(1);
-  }
-}
-
-export async function healthCommand(): Promise<void> {
-  try {
-    const cwd = process.cwd();
-
-    console.log(chalk.bold.blue('\n🏥 Project Health Check\n'));
-
-    const { calculateHealthScore } = await import('../../core/health-scorer.js');
-
-    const spinner = ora('Analyzing project health...').start();
-
-    const health = await calculateHealthScore(cwd);
-
-    spinner.succeed('Health analysis complete');
-
-    console.log('');
-
-    console.log(chalk.bold(`Overall Health Score: ${health.overall}/100 (${health.grade})`));
-    console.log('');
-
-    console.log(chalk.bold('Category Scores:\n'));
-    console.log(`  📝 Documentation: ${health.categories.documentation}/100`);
-    console.log(`  🧪 Testing: ${health.categories.testing}/100`);
-    console.log(`  🎨 Code Quality: ${health.categories.quality}/100`);
-    console.log(`  🔒 Security: ${health.categories.security}/100`);
-    console.log(`  🔄 CI/CD: ${health.categories.cicd}/100`);
-    console.log(`  📦 Dependencies: ${health.categories.dependencies}/100`);
-    console.log(`  🤖 AGENTS.md: ${health.categories.agentsMd}/100`);
-    console.log(`  🔁 Ralph: ${health.categories.ralph}/100`);
-    console.log(`  🧠 Memory: ${health.categories.memory}/100`);
-    console.log('');
-
-    if (health.recommendations.length > 0) {
-      console.log(chalk.bold.yellow('Recommendations:\n'));
-      health.recommendations.forEach((rec) => {
-        console.log(chalk.yellow(`  ${rec}`));
-      });
-      console.log('');
-    }
-
-    if (health.overall >= 90) {
-      console.log(chalk.green('🌟 Excellent! Your project is in great shape!'));
-    } else if (health.overall >= 70) {
-      console.log(chalk.blue('👍 Good project health. A few improvements suggested.'));
-    } else {
-      console.log(chalk.yellow('⚠️  Project health needs improvement.'));
-      console.log(chalk.gray('  Run: rulebook fix'));
-      console.log(chalk.gray('  To auto-fix common issues.'));
-    }
-  } catch (error) {
-    console.error(chalk.red('\n❌ Error:'), (error as Error).message);
-    process.exit(1);
-  }
-}
-
-export async function fixCommand(): Promise<void> {
-  try {
-    const cwd = process.cwd();
-
-    console.log(chalk.bold.blue('\n🔧 Auto-Fix Common Issues\n'));
-
-    const { autoFixProject, autoFixLint } = await import('../../core/auto-fixer.js');
-
-    const spinner = ora('Analyzing and fixing issues...').start();
-
-    const result = await autoFixProject(cwd);
-
-    spinner.succeed('Auto-fix complete');
-
-    console.log('');
-
-    if (result.applied.length > 0) {
-      console.log(chalk.green('✅ Fixed:\n'));
-      result.applied.forEach((fix) => {
-        console.log(chalk.gray(`  - ${fix}`));
-      });
-      console.log('');
-    }
-
-    if (result.skipped.length > 0) {
-      console.log(chalk.blue('ℹ️  Skipped:\n'));
-      result.skipped.forEach((skip) => {
-        console.log(chalk.gray(`  - ${skip}`));
-      });
-      console.log('');
-    }
-
-    if (result.failed.length > 0) {
-      console.log(chalk.yellow('⚠️  Failed:\n'));
-      result.failed.forEach((fail) => {
-        console.log(chalk.gray(`  - ${fail}`));
-      });
-      console.log('');
-    }
-
-    console.log(chalk.blue('🎨 Attempting to fix lint errors...\n'));
-    const lintFixed = await autoFixLint(cwd);
-
-    if (lintFixed) {
-      console.log(chalk.green('✅ Lint errors fixed'));
-    } else {
-      console.log(chalk.gray('ℹ️  No lint auto-fix available'));
-    }
-
-    console.log('');
-    console.log(chalk.bold.green('✨ Auto-fix complete!\n'));
-    console.log(chalk.gray('Run: rulebook health'));
-    console.log(chalk.gray('To check updated health score.'));
-  } catch (error) {
-    console.error(chalk.red('\n❌ Error:'), (error as Error).message);
-    process.exit(1);
-  }
-}
-
-export async function watcherCommand(): Promise<void> {
-  try {
-    const cwd = process.cwd();
-    const { startWatcher } = await import('../../core/watcher.js');
-
-    console.log(chalk.bold.blue('\n🚀 Starting Modern Console Watcher\n'));
-    console.log(chalk.gray('Full-screen interface with system monitoring'));
-    console.log(chalk.gray('Press Ctrl+C or F10 to exit\n'));
-
-    await startWatcher(cwd);
-  } catch (error) {
-    console.error(chalk.red('\n❌ Watcher error:'), error);
-    process.exit(1);
-  }
-}
-
-export async function agentCommand(options: {
-  dryRun?: boolean;
-  tool?: string;
-  iterations?: number;
-  watch?: boolean;
-}): Promise<void> {
-  try {
-    const cwd = process.cwd();
-    const { startAgent } = await import('../../core/agent-manager.js');
-
-    console.log(chalk.bold.blue('\n🤖 Starting Rulebook Agent\n'));
-
-    const agentOptions = {
-      dryRun: options.dryRun || false,
-      tool: options.tool,
-      maxIterations: options.iterations || 10,
-      watchMode: options.watch || false,
-    };
-
-    if (agentOptions.dryRun) {
-      console.log(chalk.yellow('🔍 DRY RUN MODE - No actual changes will be made\n'));
-    }
-
-    await startAgent(cwd, agentOptions);
-  } catch (error) {
-    console.error(chalk.red('\n❌ Agent error:'), error);
-    process.exit(1);
-  }
-}
 
 export async function configCommand(options: {
   show?: boolean;
@@ -530,7 +298,7 @@ export async function configCommand(options: {
 }): Promise<void> {
   try {
     const cwd = process.cwd();
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
 
     const configManager = createConfigManager(cwd);
 
@@ -544,6 +312,14 @@ export async function configCommand(options: {
       console.log(chalk.white(`CLI Tools: ${summary.cliTools.join(', ') || 'None detected'}`));
       console.log(chalk.white(`Enabled Features: ${summary.enabledFeatures.join(', ')}`));
     } else if (options.feature && typeof options.enable === 'boolean') {
+      // Special-case the `memory` toggle: subsystems read `memory.enabled`
+      // (config root), not `features.memory`. Set both for consistency.
+      if (options.feature === 'memory') {
+        const cfg = await configManager.loadConfig();
+        await configManager.updateConfig({
+          memory: { ...(cfg.memory ?? {}), enabled: options.enable },
+        });
+      }
       await configManager.toggleFeature(
         options.feature as keyof RulebookConfig['features'],
         options.enable
@@ -659,7 +435,7 @@ export async function migrateMemoryDirectory(): Promise<void> {
   const spinner = oraFn('Migrating memory directory structure...').start();
 
   try {
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const fs = await import('fs');
     const fsPromises = fs.promises;
     const cwd = process.cwd();

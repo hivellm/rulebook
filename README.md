@@ -10,7 +10,7 @@
 [![Build](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/build.yml?label=build&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/build.yml)
 [![Lint](https://img.shields.io/github/actions/workflow/status/hivellm/rulebook/lint.yml?label=lint&logo=github)](https://github.com/hivellm/rulebook/actions/workflows/lint.yml)
 
-> Tool-agnostic AI development framework. Standardize projects across Claude Code, Cursor, Gemini, Codex, Windsurf, and Copilot with automated templates, quality gates, persistent memory, and framework detection for 28 languages, 17 frameworks, 13 MCP modules, and 20 services.
+> Tool-agnostic AI development framework. Standardize projects across Claude Code, Cursor, Gemini, Codex, Windsurf, Copilot, and OpenCode with automated templates, quality gates, persistent memory, and language detection for 28 languages and 13 MCP modules.
 
 ---
 
@@ -43,11 +43,10 @@ AI coding assistants produce inconsistent, error-prone code without clear guidel
 |------|-----|
 | **Rules for every AI tool** | `AGENTS.md` + `CLAUDE.md` + `.cursor/rules/` + Gemini/Copilot/Windsurf configs — all generated from a single source of truth |
 | **Quality gates** | Pre-commit hooks (lint, type-check, format) + pre-push hooks (build, tests) — language-aware, cross-platform |
-| **44+ MCP tools** | Task management, persistent memory, skills, decisions, knowledge, learnings, Ralph loop, workspace, terse compression + evals — all via Model Context Protocol |
+| **MCP tools** | Task management, persistent memory, skills, decisions, knowledge, learnings, workspace, terse compression — all via Model Context Protocol |
 | **Structural enforcement** | `PreToolUse` hooks block forbidden patterns (deferred tasks, stubs/TODOs, manual task files) before edits reach disk |
 | **Session continuity** | Persistent memory across sessions, automatic handoff at context limits, STATE.md live status |
-| **Autonomous task solving** | Ralph loop: multi-iteration AI agent with quality gates, learning extraction, pause/resume |
-| **28 languages, 17 frameworks** | Auto-detected with confidence scores, language-specific templates and CI/CD workflows |
+| **28 languages** | Auto-detected with confidence scores, language-specific templates and CI/CD workflows |
 
 ---
 
@@ -73,15 +72,16 @@ Context that survives across AI sessions. Decisions, bugs, patterns, and prefere
 
 | Component | Technology |
 |-----------|-----------|
-| Storage | better-sqlite3 (native) with sql.js WASM fallback |
-| Search | Hybrid BM25 keyword + HNSW vector (256-dim TF-IDF, no API calls) |
-| Ranking | Reciprocal Rank Fusion |
+| Storage | Plain markdown files with YAML frontmatter (one file per memory) |
+| Layout | `.rulebook/memory/{memories,sessions,codegraph}/<YYYY>/<MM>/...` |
+| Search | BM25 over file content + frontmatter tag boost (lazy inverted-index sidecar above 1K entries) |
 | Privacy | Auto-redact `<private>` tags, local-only storage |
+| Migration | One-shot legacy SQLite → markdown via `rulebook memory migrate-from-db` |
 
 ```bash
-rulebook memory search "authentication approach"   # Hybrid search
+rulebook memory search "authentication approach"   # BM25 search
 rulebook memory save "Chose JWT over sessions"     # Save context
-rulebook memory stats                               # DB health
+rulebook memory stats                               # File count + size
 ```
 
 ### Terse Mode — Output & Input Compression (v5.4.0)
@@ -93,29 +93,6 @@ Structurally-enforced output compression via a SessionStart hook that injects a 
 /rulebook-terse ultra        # Maximum compression
 /rulebook-terse off          # Disable
 ```
-
-Paired with `rulebook compress` — input-side compression for memory files (`CLAUDE.md`, `AGENTS.override.md`, `.rulebook/PLANS.md`):
-
-```bash
-rulebook compress --check CLAUDE.md          # Report ratio + validator
-rulebook compress --dry-run CLAUDE.md        # Preview
-rulebook compress CLAUDE.md                  # Rewrite + backup
-rulebook compress --restore CLAUDE.md        # Revert from backup
-```
-
-Preserves code blocks, URLs, file paths, dates, and version numbers byte-for-byte.
-
-**Measured** against a three-arm eval harness (`baseline` / `terse` / `rulebook-terse`) on 10 real prompts executed through the Claude Code CLI, tokens counted with `tiktoken`:
-
-| Arm | Total tokens | vs baseline | vs terse |
-|---|---:|---:|---:|
-| `baseline` (no system prompt) | 2,696 | — | −42% |
-| `terse` (control: `Answer concisely.`) | 4,611 | +71% | — |
-| `rulebook-terse` (skill active) | **1,940** | **−28%** | **−58%** |
-
-Honest delta is **`rulebook-terse` vs `terse` = 57.9% average lift**, per-prompt range **34% → 77%**. All ten prompts clear the 15% threshold individually. Interestingly, the `terse` control is 71% *larger* than `baseline` — `Answer concisely.` alone steers the model toward structured output (headings, code blocks), which inflates tokens. The skill's explicit rules reverse that effect.
-
-Regenerate snapshots against live Claude: `npx tsx evals/cli_run.ts` (shells out to `claude -p`, reuses existing CLI auth). Re-measure offline: `npx tsx evals/measure.ts`.
 
 Auto-activates after `rulebook init` or `rulebook update` — SessionStart hook writes to `.rulebook/.terse-mode`, UserPromptSubmit hook emits a ~45-token attention anchor per user message. Opt-out: set `.rulebook/rulebook.json` → `"terse": {"enabled": false}`. Override level: `"terse": {"defaultMode": "brief"}` or export `RULEBOOK_TERSE_MODE=ultra`.
 
@@ -133,19 +110,6 @@ rulebook task archive phase1_add-auth   # Archive when done
 ```
 
 Each task gets: `proposal.md` (why), `tasks.md` (checklist), `specs/` (technical requirements with SHALL/MUST keywords and Given/When/Then scenarios).
-
-### Ralph Autonomous Loop
-
-Multi-iteration AI agent that solves tasks from a PRD with fresh context per iteration. 5 quality gates (type-check, lint, tests, coverage, security) must pass before an iteration succeeds.
-
-```bash
-rulebook ralph init                     # Generate PRD from tasks
-rulebook ralph run --max-iterations 10  # Execute loop
-rulebook ralph status                   # Check progress
-rulebook ralph history                  # Review iterations
-```
-
-Features: parallel story execution, plan checkpoints, context compression, learning extraction, graceful pause/resume.
 
 ### Multi-Project Workspace
 
@@ -175,7 +139,7 @@ Cross-platform (Node.js, no `jq` dependency).
 
 ## MCP Server
 
-44+ MCP tools exposed via stdio transport. Zero configuration after `rulebook mcp init`.
+MCP tools exposed via stdio transport. Zero configuration after `rulebook mcp init`.
 
 ```bash
 rulebook mcp init    # One-time setup — configures .mcp.json automatically
@@ -183,18 +147,14 @@ rulebook mcp init    # One-time setup — configures .mcp.json automatically
 
 | Category | Tools | Examples |
 |----------|-------|---------|
-| Tasks (7) | CRUD + validate + archive + delete | `rulebook_task_create`, `rulebook_task_list` |
-| Skills (6) | List, show, enable, disable, search, validate | `rulebook_skill_enable`, `rulebook_skill_search` |
-| Memory (6) | Save, search, get, timeline, stats, cleanup | `rulebook_memory_search`, `rulebook_memory_save` |
-| Ralph (4) | Init, run, status, history | `rulebook_ralph_run`, `rulebook_ralph_status` |
-| Workspace (4) | List, status, search, tasks | `rulebook_workspace_search`, `rulebook_workspace_tasks` |
-| Knowledge (3) | Add, list, show | `rulebook_knowledge_add`, `rulebook_knowledge_list` |
-| Decisions (4) | Create, list, show, update | `rulebook_decision_create`, `rulebook_decision_list` |
-| Learnings (3) | Capture, list, promote | `rulebook_learn_capture`, `rulebook_learn_list` |
-| Analysis (3) | Create, list, show | `rulebook_analysis_create`, `rulebook_analysis_list` |
-| Compress (2) | Compress memory files, list candidates | `rulebook_compress`, `rulebook_compress_list` |
-| Evals (2) | Offline measurement, live API regeneration | `rulebook_evals_measure`, `rulebook_evals_run` |
-| Other (3+) | Doctor, rules list, blockers, session, codebase | `rulebook_doctor_run`, `rulebook_rules_list` |
+| Tasks | CRUD + validate + archive + delete | `rulebook_task_create`, `rulebook_task_list` |
+| Skills | List, show, enable, disable, search, validate | `rulebook_skill_enable`, `rulebook_skill_search` |
+| Memory | Save, search, get, timeline, stats, cleanup | `rulebook_memory_search`, `rulebook_memory_save` |
+| Workspace | List, status, search, tasks | `rulebook_workspace_search`, `rulebook_workspace_tasks` |
+| Knowledge | Add, list, show | `rulebook_knowledge_add`, `rulebook_knowledge_list` |
+| Decisions | Create, list, show, update | `rulebook_decision_create`, `rulebook_decision_list` |
+| Learnings | Capture, list, promote | `rulebook_learn_capture`, `rulebook_learn_list` |
+| Other | Rules list, session, codebase | `rulebook_rules_list`, `rulebook_session_start` |
 
 All tools accept optional `projectId` for workspace routing.
 
@@ -210,10 +170,8 @@ rulebook init --minimal          # Essentials only
 rulebook init --lean             # AGENTS.md as <3KB index
 rulebook init --light            # No quality enforcement
 rulebook update                  # Update to latest rules
-rulebook doctor                  # 7 health checks
+rulebook doctor                  # Health checks (file sizes, broken imports, stale state)
 rulebook validate                # Check project standards
-rulebook health                  # Health score (0-100)
-rulebook fix                     # Auto-fix common issues
 ```
 
 ### Task Management
@@ -230,24 +188,14 @@ rulebook task delete <task-id>   # Delete permanently
 ### Memory & Knowledge
 
 ```bash
-rulebook memory search <query>   # Hybrid BM25+vector search
-rulebook memory save <text>      # Save context
-rulebook memory stats            # Database health
-rulebook memory cleanup          # Evict old memories
-rulebook knowledge list          # View patterns and anti-patterns
-rulebook learn list              # View captured learnings
-rulebook decision list           # View architecture decisions
-```
-
-### Ralph Autonomous Loop
-
-```bash
-rulebook ralph init              # Generate PRD from tasks
-rulebook ralph run               # Execute iteration loop
-rulebook ralph status            # Current progress
-rulebook ralph history           # Past iterations
-rulebook ralph pause             # Gracefully pause
-rulebook ralph resume            # Resume from pause
+rulebook memory search <query>      # BM25 search over markdown corpus
+rulebook memory save <text>         # Save context
+rulebook memory stats               # File count + size
+rulebook memory cleanup             # Age-based retention (--force = 1-day cutoff)
+rulebook memory migrate-from-db     # One-shot legacy SQLite -> markdown
+rulebook knowledge list             # View patterns and anti-patterns
+rulebook learn list                 # View captured learnings
+rulebook decision list              # View architecture decisions
 ```
 
 ### Workspace
@@ -277,7 +225,6 @@ rulebook workflows               # Generate GitHub Actions
 rulebook check-deps              # Check dependencies
 rulebook check-coverage          # Check test coverage
 rulebook version <major|minor|patch>  # Bump version
-rulebook changelog               # Generate from git commits
 ```
 
 ---
@@ -286,13 +233,9 @@ rulebook changelog               # Generate from git commits
 
 **28 Languages**: TypeScript, JavaScript, Python, Rust, Go, Java, Kotlin, C, C++, C#, PHP, Ruby, Swift, Elixir, Dart, Scala, Haskell, Julia, R, Lua, Solidity, Zig, Erlang, Ada, SAS, Lisp, Objective-C, SQL
 
-**17 Frameworks**: NestJS, Spring Boot, Laravel, Django, Flask, Rails, Symfony, Zend, Angular, React, Vue, Nuxt, Next.js, jQuery, React Native, Flutter, Electron
-
-**20 Services**: PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, SQLite, MongoDB, Cassandra, DynamoDB, Redis, Memcached, Elasticsearch, Neo4j, InfluxDB, RabbitMQ, Kafka, S3, Azure Blob, GCS, MinIO
-
 **13 MCP Modules**: Vectorizer, Synap, Context7, GitHub MCP, Playwright, Memory, Supabase, Notion, Atlassian, Serena, Figma, Grafana, Sequential Thinking
 
-**23 AI Tools**: Cursor, Windsurf, VS Code, GitHub Copilot, Tabnine, Replit, JetBrains AI, Zed, Aider, Continue, Claude, Claude Code, Gemini, Cline, Amazon Q, Auggie, CodeBuddy, Factory, OpenCode, Kilo, Codex, Codeium, Cursor CLI
+**23 AI Tools**: Cursor, Windsurf, VS Code, GitHub Copilot, Tabnine, Replit, JetBrains AI, Zed, Aider, Continue, Claude, Claude Code, Gemini, Cline, Amazon Q, Auggie, CodeBuddy, Factory, OpenCode (first-class with MCP + commands + agents + skills), Kilo, Codex, Codeium, Cursor CLI
 
 ---
 
@@ -308,10 +251,8 @@ code --install-extension vscode-extension/rulebook-dashboard-*.vsix
 |-----|-------|
 | Agents | Team members with real-time status, memory state, last activity |
 | Tasks | Progress bars, expandable details, Archive & Update buttons |
-| Memory | Stats (count, DB size, types), full-text search |
-| Analysis | Structured analyses with findings and execution plans |
-| Doctor | 7 health checks with auto-run |
-| Telemetry | MCP tool latency and success rates |
+| Memory | Stats (count, file size, types), full-text search |
+| Doctor | Health checks with auto-run |
 
 Status bar: context usage indicator (`ctx 78%` with green/yellow/red), Rulebook button, indexer state.
 
@@ -323,15 +264,13 @@ All config lives in `.rulebook/rulebook.json`:
 
 ```json
 {
-  "version": "5.3.0",
+  "version": "5.6.0",
   "mode": "full",
   "features": {
     "mcp": true,
     "memory": true,
-    "ralph": true,
     "multiAgent": true,
-    "hooks": true,
-    "telemetry": false
+    "hooks": true
   }
 }
 ```
@@ -380,9 +319,8 @@ npm run build
 
 ## Acknowledgments
 
-- **[Ralph](https://github.com/snarktank/ralph)** — Inspired the autonomous loop integration (multi-iteration AI task solving with fresh context per iteration)
 - **[OpenSpec](https://github.com/Fission-AI/openspec)** — Influenced the task management format (delta-based specs, Given/When/Then scenarios, requirement-focused organization)
-- **[Caveman](https://github.com/JuliusBrussee/caveman)** — Grounding for the v5.4.0 terse-mode design (SessionStart + UserPromptSubmit hook pattern, intensity-filtered SKILL.md injection, three-arm eval harness). See [docs/analysis/caveman/](docs/analysis/caveman/) for the full analysis.
+- **[Caveman](https://github.com/JuliusBrussee/caveman)** — Grounding for the v5.4.0 terse-mode design (SessionStart + UserPromptSubmit hook pattern, intensity-filtered SKILL.md injection). See [docs/analysis/caveman/](docs/analysis/caveman/) for the full analysis.
 - **[forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills)** — Source of the four "Editing Discipline" principles (think before coding, simplicity first, surgical changes, goal-driven execution) inlined in the generated `AGENTS.md`. Grounded in [Andrej Karpathy's observations](https://x.com/karpathy/status/2015883857489522876) on common LLM coding pitfalls.
 
 ---

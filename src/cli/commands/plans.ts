@@ -5,7 +5,7 @@ import path from 'path';
 export async function overrideShowCommand(): Promise<void> {
   const cwd = process.cwd();
   const { overrideExists, getOverridePath, readOverrideContent } = await import(
-    '../../core/override-manager.js'
+    '../../core/state/override-manager.js'
   );
   if (!overrideExists(cwd)) {
     console.log(
@@ -28,7 +28,7 @@ export async function overrideShowCommand(): Promise<void> {
 
 export async function overrideEditCommand(): Promise<void> {
   const cwd = process.cwd();
-  const { initOverride, getOverridePath } = await import('../../core/override-manager.js');
+  const { initOverride, getOverridePath } = await import('../../core/state/override-manager.js');
   await initOverride(cwd);
   const overridePath = getOverridePath(cwd);
   const editor = process.env.EDITOR || process.env.VISUAL;
@@ -44,14 +44,14 @@ export async function overrideEditCommand(): Promise<void> {
 
 export async function overrideClearCommand(): Promise<void> {
   const cwd = process.cwd();
-  const { clearOverride } = await import('../../core/override-manager.js');
+  const { clearOverride } = await import('../../core/state/override-manager.js');
   await clearOverride(cwd);
   console.log(chalk.green('✓ AGENTS.override.md reset to empty template'));
 }
 
 export async function modeSetCommand(mode: 'lean' | 'full'): Promise<void> {
   const cwd = process.cwd();
-  const { createConfigManager } = await import('../../core/config-manager.js');
+  const { createConfigManager } = await import('../../core/state/config-manager.js');
   const configManager = createConfigManager(cwd);
   const config = await configManager.loadConfig();
   config.agentsMode = mode;
@@ -75,7 +75,7 @@ export async function modeSetCommand(mode: 'lean' | 'full'): Promise<void> {
 }
 
 export async function plansShowCommand(): Promise<void> {
-  const { readPlans, getPlansPath } = await import('../../core/plans-manager.js');
+  const { readPlans, getPlansPath } = await import('../../core/tasks/plans-manager.js');
   const cwd = process.cwd();
 
   const plans = await readPlans(cwd);
@@ -109,7 +109,7 @@ export async function plansShowCommand(): Promise<void> {
 }
 
 export async function plansInitCommand(): Promise<void> {
-  const { initPlans, getPlansPath } = await import('../../core/plans-manager.js');
+  const { initPlans, getPlansPath } = await import('../../core/tasks/plans-manager.js');
   const cwd = process.cwd();
 
   const created = await initPlans(cwd);
@@ -122,7 +122,7 @@ export async function plansInitCommand(): Promise<void> {
 }
 
 export async function plansClearCommand(): Promise<void> {
-  const { clearPlans, getPlansPath } = await import('../../core/plans-manager.js');
+  const { clearPlans, getPlansPath } = await import('../../core/tasks/plans-manager.js');
   const cwd = process.cwd();
   await clearPlans(cwd);
   console.log(chalk.green(`✓ Cleared ${getPlansPath(cwd)}`));
@@ -131,7 +131,7 @@ export async function plansClearCommand(): Promise<void> {
 
 export async function continueCommand(): Promise<void> {
   const cwd = process.cwd();
-  const { readPlans } = await import('../../core/plans-manager.js');
+  const { readPlans } = await import('../../core/tasks/plans-manager.js');
   const { exec } = await import('child_process');
   const { promisify } = await import('util');
   const execAsync = promisify(exec);
@@ -190,29 +190,6 @@ export async function continueCommand(): Promise<void> {
     // not a git repo or git not available
   }
 
-  const ralphStatePath = path.join(cwd, '.rulebook', 'ralph', 'state.json');
-  if (existsSync(ralphStatePath)) {
-    try {
-      const state = JSON.parse(await fs.readFile(ralphStatePath, 'utf-8'));
-      if (state.enabled) {
-        const prdPath = path.join(cwd, '.rulebook', 'ralph', 'prd.json');
-        let prdInfo = '';
-        if (existsSync(prdPath)) {
-          const prd = JSON.parse(await fs.readFile(prdPath, 'utf-8'));
-          const pending = (prd.userStories ?? []).filter((s: any) => !s.passes).length;
-          const total = (prd.userStories ?? []).length;
-          prdInfo = ` | ${total - pending}/${total} stories complete`;
-        }
-        sections.push(
-          `## Ralph Status\n` +
-            `Iteration ${state.current_iteration}/${state.max_iterations}${prdInfo} | Tool: ${state.tool} | Paused: ${state.paused}`
-        );
-      }
-    } catch {
-      // ignore
-    }
-  }
-
   try {
     const { stdout } = await execAsync('git rev-parse --abbrev-ref HEAD', { cwd });
     const branch = stdout.trim();
@@ -244,7 +221,7 @@ export async function continueCommand(): Promise<void> {
   console.log(output);
 
   if (plans !== null) {
-    const { appendPlansHistory } = await import('../../core/plans-manager.js');
+    const { appendPlansHistory } = await import('../../core/tasks/plans-manager.js');
     try {
       await appendPlansHistory(
         cwd,
@@ -256,73 +233,3 @@ export async function continueCommand(): Promise<void> {
   }
 }
 
-export async function reviewCommand(options: {
-  output?: 'terminal' | 'github-comment' | 'json';
-  failOn?: 'critical' | 'major' | 'minor';
-  baseBranch?: string;
-  tool?: string;
-}): Promise<void> {
-  const { default: ora } = await import('ora');
-  const { default: chalkModule } = await import('chalk');
-  const cwd = process.cwd();
-  const baseBranch = options.baseBranch ?? 'main';
-  const outputFormat = options.output ?? 'terminal';
-  const tool = (options.tool ?? 'claude') as import('../../core/review-manager.js').ReviewTool;
-
-  const {
-    getDiffContext,
-    buildReviewPrompt,
-    runAIReview,
-    parseReviewOutput,
-    formatReviewTerminal,
-    postGitHubComment,
-    readAgentsMd,
-    hasFailingIssues,
-  } = await import('../../core/review-manager.js');
-
-  const diff = await getDiffContext(cwd, baseBranch);
-  if (!diff) {
-    console.log(chalkModule.yellow(`No changes detected vs ${baseBranch}`));
-    return;
-  }
-
-  const agentsMdContent = await readAgentsMd(cwd);
-
-  const projectName = path.basename(cwd);
-  const prompt = buildReviewPrompt(diff, { agentsMdContent, projectName });
-
-  const spinner = ora('Running AI review...').start();
-  const rawOutput = await runAIReview(prompt, tool);
-  if (!rawOutput) {
-    spinner.fail('AI review returned no output. Is the AI tool installed and configured?');
-    process.exit(1);
-  }
-  spinner.succeed('AI review complete');
-
-  const result = parseReviewOutput(rawOutput);
-
-  switch (outputFormat) {
-    case 'terminal':
-      console.log(formatReviewTerminal(result));
-      break;
-    case 'json':
-      console.log(JSON.stringify(result, null, 2));
-      break;
-    case 'github-comment':
-      try {
-        await postGitHubComment(result);
-        console.log(chalkModule.green('Review posted as PR comment'));
-      } catch (error) {
-        console.error(chalkModule.red(`Failed to post comment: ${error}`));
-        process.exit(1);
-      }
-      break;
-  }
-
-  if (options.failOn && hasFailingIssues(result.issues, options.failOn)) {
-    console.log(
-      chalkModule.red(`\nFailing: found issues at or above "${options.failOn}" severity`)
-    );
-    process.exit(1);
-  }
-}

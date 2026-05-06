@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import { SkillsManager, getDefaultTemplatesPath } from '../../core/skills-manager.js';
+import { SkillsManager, getDefaultTemplatesPath } from '../../core/skills/skills-manager.js';
 import type { SkillCategory } from '../../types.js';
 
 export async function skillListCommand(options: {
@@ -12,7 +12,7 @@ export async function skillListCommand(options: {
     const spinner = ora('Discovering skills...').start();
 
     const skillsManager = new SkillsManager(getDefaultTemplatesPath(), cwd);
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const configManager = createConfigManager(cwd);
 
     let skills;
@@ -79,7 +79,7 @@ export async function skillAddCommand(skillId: string): Promise<void> {
     const spinner = ora(`Adding skill: ${skillId}...`).start();
 
     const skillsManager = new SkillsManager(getDefaultTemplatesPath(), cwd);
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const configManager = createConfigManager(cwd);
 
     const skill = await skillsManager.getSkillById(skillId);
@@ -145,7 +145,7 @@ export async function skillRemoveCommand(skillId: string): Promise<void> {
     const spinner = ora(`Removing skill: ${skillId}...`).start();
 
     const skillsManager = new SkillsManager(getDefaultTemplatesPath(), cwd);
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const configManager = createConfigManager(cwd);
 
     const skill = await skillsManager.getSkillById(skillId);
@@ -181,7 +181,7 @@ export async function skillShowCommand(skillId: string): Promise<void> {
     const spinner = ora(`Loading skill: ${skillId}...`).start();
 
     const skillsManager = new SkillsManager(getDefaultTemplatesPath(), cwd);
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const configManager = createConfigManager(cwd);
 
     const skill = await skillsManager.getSkillById(skillId);
@@ -267,7 +267,7 @@ export async function skillSearchCommand(query: string): Promise<void> {
     const spinner = ora(`Searching for: ${query}...`).start();
 
     const skillsManager = new SkillsManager(getDefaultTemplatesPath(), cwd);
-    const { createConfigManager } = await import('../../core/config-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
     const configManager = createConfigManager(cwd);
 
     const skills = await skillsManager.searchSkills(query);

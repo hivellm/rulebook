@@ -27,32 +27,18 @@ export {
   memorySaveCommand,
   memoryListCommand,
   memoryStatsCommand,
-  memoryVerifyCommand,
   memoryCleanupCommand,
   memoryExportCommand,
+  memoryMigrateFromDbCommand,
 } from './memory.js';
-export {
-  ralphInitCommand,
-  ralphRunCommand,
-  ralphStatusCommand,
-  ralphHistoryCommand,
-  ralphPauseCommand,
-  ralphResumeCommand,
-  ralphImportIssuesCommand,
-} from './ralph.js';
 export {
   validateCommand,
   workflowsCommand,
   checkDepsCommand,
   checkCoverageCommand,
-  generateDocsCommand,
   versionCommand,
-  changelogCommand,
-  healthCommand,
-  fixCommand,
-  watcherCommand,
-  agentCommand,
   configCommand,
+  doctorCommand,
 } from './misc.js';
 export {
   plansShowCommand,
@@ -63,10 +49,8 @@ export {
   overrideShowCommand,
   overrideEditCommand,
   overrideClearCommand,
-  reviewCommand,
 } from './plans.js';
 export { setupClaudeCodePlugin, migrateMemoryDirectory } from './misc.js';
-export { compressCommand } from './compress.js';
 export {
   workspaceInitCommand,
   workspaceAddCommand,
@@ -84,13 +68,6 @@ export {
   knowledgeShowCommand,
   knowledgeRemoveCommand,
   learnCaptureCommand,
-  learnFromRalphCommand,
   learnListCommand,
   learnPromoteCommand,
 } from './context-intelligence.js';
-export {
-  analysisCreateCommand,
-  analysisListCommand,
-  analysisShowCommand,
-  doctorCommand,
-} from './analysis.js';
