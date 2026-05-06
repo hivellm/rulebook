@@ -176,7 +176,7 @@ describe.skipIf(!BASH_OK)('enforce-pre-tool.sh — mcp-for-tasks rule', () => {
     const r = runHook({
       tool_name: 'Edit',
       tool_input: {
-        file_path: `${REPO_ROOT}/.rulebook/tasks/phase2_remove-dead-modules/proposal.md`,
+        file_path: `${REPO_ROOT}/.rulebook/tasks/phase2_remove-health-scorer/proposal.md`,
         new_string: 'edit',
       },
     });

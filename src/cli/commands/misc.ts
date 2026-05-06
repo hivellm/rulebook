@@ -226,54 +226,6 @@ export async function checkCoverageCommand(options: { threshold?: number }): Pro
   }
 }
 
-export async function generateDocsCommand(options: { yes?: boolean }): Promise<void> {
-  try {
-    const cwd = process.cwd();
-
-    console.log(chalk.bold.blue('\n📚 Generate Documentation Structure\n'));
-
-    let config;
-
-    if (options.yes) {
-      config = {
-        projectName: path.basename(cwd),
-        description: 'A modern software project',
-        author: 'Your Name',
-        email: '',
-        license: 'MIT',
-      };
-      console.log(chalk.blue('Using defaults...\n'));
-    } else {
-      const { promptDocsConfig } = await import('../docs-prompts.js');
-      config = await promptDocsConfig();
-    }
-
-    const spinner = ora('Generating documentation structure...').start();
-
-    const { generateDocsStructure } = await import('../../core/docs/docs-generator.js');
-    const generatedFiles = await generateDocsStructure(config, cwd);
-
-    spinner.succeed(`Generated ${generatedFiles.length} files`);
-
-    console.log('');
-    console.log(chalk.green('✅ Files created:\n'));
-    for (const file of generatedFiles) {
-      console.log(chalk.gray(`  - ${path.relative(cwd, file)}`));
-    }
-
-    console.log('');
-    console.log(chalk.bold.green('✨ Documentation structure ready!\n'));
-    console.log(chalk.gray('Next steps:'));
-    console.log(chalk.gray('  1. Review and customize generated files'));
-    console.log(chalk.gray('  2. Add your project-specific content'));
-    console.log(chalk.gray('  3. Update ROADMAP.md with your milestones'));
-    console.log(chalk.gray('  4. Document architecture in ARCHITECTURE.md\n'));
-  } catch (error) {
-    console.error(chalk.red('\n❌ Error generating docs:'), error);
-    process.exit(1);
-  }
-}
-
 export async function versionCommand(options: {
   type: 'major' | 'minor' | 'patch';
 }): Promise<void> {
@@ -308,55 +260,6 @@ export async function versionCommand(options: {
     console.log(
       chalk.gray(`  4. Tag: git tag -a v${result.newVersion} -m "Release v${result.newVersion}"`)
     );
-  } catch (error) {
-    console.error(chalk.red('\n❌ Error:'), (error as Error).message);
-    process.exit(1);
-  }
-}
-
-export async function changelogCommand(options: { version?: string }): Promise<void> {
-  try {
-    const cwd = process.cwd();
-
-    console.log(chalk.bold.blue('\n📝 Changelog Generation\n'));
-
-    const { generateChangelog, getCurrentVersion } = await import(
-      '../../core/docs/changelog-generator.js'
-    );
-
-    const version = options.version || (await getCurrentVersion(cwd));
-
-    if (!version) {
-      console.error(chalk.red('❌ Could not determine version'));
-      console.log(chalk.gray('  Specify version with --version flag'));
-      process.exit(1);
-    }
-
-    const spinner = ora('Generating changelog from commits...').start();
-
-    const section = await generateChangelog(cwd, version);
-
-    spinner.succeed(`Changelog generated for version ${version}`);
-
-    console.log('');
-    console.log(chalk.green('✅ Changelog sections:\n'));
-
-    if (section.breaking.length > 0) {
-      console.log(chalk.red('  Breaking Changes: ') + section.breaking.length);
-    }
-    if (section.added.length > 0) {
-      console.log(chalk.green('  Added: ') + section.added.length);
-    }
-    if (section.changed.length > 0) {
-      console.log(chalk.blue('  Changed: ') + section.changed.length);
-    }
-    if (section.fixed.length > 0) {
-      console.log(chalk.yellow('  Fixed: ') + section.fixed.length);
-    }
-
-    console.log('');
-    console.log(chalk.gray('CHANGELOG.md has been updated'));
-    console.log(chalk.gray('Review and edit as needed before committing'));
   } catch (error) {
     console.error(chalk.red('\n❌ Error:'), (error as Error).message);
     process.exit(1);
@@ -413,36 +316,6 @@ export async function healthCommand(): Promise<void> {
     }
   } catch (error) {
     console.error(chalk.red('\n❌ Error:'), (error as Error).message);
-    process.exit(1);
-  }
-}
-
-export async function agentCommand(options: {
-  dryRun?: boolean;
-  tool?: string;
-  iterations?: number;
-  watch?: boolean;
-}): Promise<void> {
-  try {
-    const cwd = process.cwd();
-    const { startAgent } = await import('../../core/agents/agent-manager.js');
-
-    console.log(chalk.bold.blue('\n🤖 Starting Rulebook Agent\n'));
-
-    const agentOptions = {
-      dryRun: options.dryRun || false,
-      tool: options.tool,
-      maxIterations: options.iterations || 10,
-      watchMode: options.watch || false,
-    };
-
-    if (agentOptions.dryRun) {
-      console.log(chalk.yellow('🔍 DRY RUN MODE - No actual changes will be made\n'));
-    }
-
-    await startAgent(cwd, agentOptions);
-  } catch (error) {
-    console.error(chalk.red('\n❌ Agent error:'), error);
     process.exit(1);
   }
 }

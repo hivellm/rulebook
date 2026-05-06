@@ -22,6 +22,23 @@ utilities (`logger`, `merger`, `migrator`, `rule-engine`,
 no logic touched. Full suite stayed green (1985/1985) before the
 follow-up scope cuts described below.
 
+### Removed — three more CLI commands (agent / changelog / generate-docs)
+
+- **`rulebook agent`** + `core/agents/agent-manager.ts` +
+  `core/agents/agent-template-engine.ts` — autonomous agent loop for
+  AI CLI workflows (BETA). Users invoke Claude Code / Cursor / Gemini
+  directly.
+- **`rulebook changelog`** + `core/docs/changelog-generator.ts` —
+  Conventional-Commits → CHANGELOG section generator. Users hand-write
+  CHANGELOG entries (or use any standalone tool like
+  `conventional-changelog`).
+- **`rulebook generate-docs`** + `cli/docs-prompts.ts` — interactive
+  scaffolder for README/CONTRIBUTING/etc. The `core/docs/docs-generator.ts`
+  module survives because `minimal-scaffolder.ts` (used by `rulebook init`
+  in minimal mode) still calls into `generateDocsStructure`.
+
+The `src/core/agents/` subdirectory was deleted (now empty).
+
 ### Removed — five experimental / redundant features
 
 Five modules were removed to shrink the surface area:

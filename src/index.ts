@@ -7,11 +7,8 @@ import {
   workflowsCommand,
   checkDepsCommand,
   checkCoverageCommand,
-  generateDocsCommand,
   versionCommand,
-  changelogCommand,
   healthCommand,
-  agentCommand,
   configCommand,
   tasksCommand,
   taskCreateCommand,
@@ -146,12 +143,6 @@ program
   .action((options) => checkCoverageCommand({ threshold: parseInt(options.threshold) }));
 
 program
-  .command('generate-docs')
-  .description('Generate documentation structure and standard files')
-  .option('-y, --yes', 'Skip prompts and use defaults')
-  .action(generateDocsCommand);
-
-program
   .command('version')
   .description('Bump project version (semantic versioning)')
   .argument('<type>', 'Version bump type: major, minor, or patch')
@@ -163,35 +154,12 @@ program
     versionCommand({ type: type as 'major' | 'minor' | 'patch' });
   });
 
-program
-  .command('changelog')
-  .description('Generate changelog from git commits')
-  .option('-v, --version <version>', 'Specify version (default: auto-detect)')
-  .action(changelogCommand);
-
 program.command('health').description('Check project health score').action(healthCommand);
 program
   .command('doctor')
   .description('Run rulebook health checks (file sizes, broken imports, stale state)')
   .action(doctorCommand);
 
-
-// New advanced commands (BETA)
-program
-  .command('agent')
-  .description('Start autonomous agent for managing AI CLI workflows [BETA]')
-  .option('--dry-run', 'Simulate execution without making changes')
-  .option('--tool <name>', 'Specify CLI tool to use (cursor-agent, claude-code, gemini-cli)')
-  .option('--iterations <number>', 'Maximum number of iterations', '10')
-  .option('--watch', 'Enable watcher mode for real-time monitoring')
-  .action((options) =>
-    agentCommand({
-      dryRun: options.dryRun,
-      tool: options.tool,
-      iterations: parseInt(options.iterations),
-      watch: options.watch,
-    })
-  );
 
 program
   .command('config')

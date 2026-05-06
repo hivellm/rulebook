@@ -45,11 +45,8 @@ export {
   workflowsCommand,
   checkDepsCommand,
   checkCoverageCommand,
-  generateDocsCommand,
   versionCommand,
-  changelogCommand,
   healthCommand,
-  agentCommand,
   configCommand,
 } from './misc.js';
 export {
