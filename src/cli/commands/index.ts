@@ -38,6 +38,7 @@ export {
   checkCoverageCommand,
   versionCommand,
   configCommand,
+  doctorCommand,
 } from './misc.js';
 export {
   plansShowCommand,
@@ -71,9 +72,3 @@ export {
   learnListCommand,
   learnPromoteCommand,
 } from './context-intelligence.js';
-export {
-  analysisCreateCommand,
-  analysisListCommand,
-  analysisShowCommand,
-  doctorCommand,
-} from './analysis.js';

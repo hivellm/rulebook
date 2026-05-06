@@ -64,9 +64,6 @@ import {
   learnListCommand,
   learnPromoteCommand,
   // Analysis commands (v5.3.0)
-  analysisCreateCommand,
-  analysisListCommand,
-  analysisShowCommand,
   // Doctor command (v5.3.0)
   doctorCommand,
   // Compress command (v5.4.0)
@@ -611,31 +608,6 @@ learnCommand
   .action((id: string, target: string, options: { title?: string }) =>
     learnPromoteCommand(id, target, options)
   );
-
-// ── Analysis commands (v5.3.0) ──────────────────────────────────────────
-
-const analysisCommand = program
-  .command('analysis')
-  .description('Create and manage structured analyses in docs/analysis/');
-
-analysisCommand
-  .command('create <topic>')
-  .description('Scaffold a new analysis directory')
-  .option('--agents <list>', 'Comma-separated agent list override')
-  .option('--no-tasks', 'Skip task materialization')
-  .action((topic: string, options: { agents?: string; noTasks?: boolean }) =>
-    analysisCreateCommand(topic, options)
-  );
-
-analysisCommand
-  .command('list')
-  .description('List existing analyses')
-  .action(() => analysisListCommand());
-
-analysisCommand
-  .command('show <slug>')
-  .description('Show analysis README')
-  .action((slug: string) => analysisShowCommand(slug));
 
 // ── Compress command (v5.4.0) ───────────────────────────────────────────
 

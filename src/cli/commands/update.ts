@@ -344,6 +344,88 @@ export async function updateSingleProject(
     // non-fatal
   }
 
+  // 5.6.0: prune legacy Ralph artifacts left over from older versions.
+  // The Ralph subsystem was removed in 5.6.0. Existing user projects
+  // upgraded from 5.5.x still have the scripts and history dir.
+  try {
+    const { rm } = await import('node:fs/promises');
+    const { readdirSync, existsSync, statSync } = await import('node:fs');
+    const removed: string[] = [];
+
+    // .rulebook/ralph/ — entire directory (history, lock files, etc.)
+    const ralphDir = path.join(cwd, '.rulebook', 'ralph');
+    if (existsSync(ralphDir) && statSync(ralphDir).isDirectory()) {
+      await rm(ralphDir, { recursive: true, force: true });
+      removed.push('.rulebook/ralph/');
+    }
+
+    // .rulebook/scripts/ralph-*.{sh,bat}
+    const scriptsDir = path.join(cwd, '.rulebook', 'scripts');
+    if (existsSync(scriptsDir) && statSync(scriptsDir).isDirectory()) {
+      for (const f of readdirSync(scriptsDir)) {
+        if (/^ralph-.*\.(sh|bat)$/.test(f)) {
+          await rm(path.join(scriptsDir, f), { force: true });
+          removed.push(`.rulebook/scripts/${f}`);
+        }
+      }
+    }
+
+    // .claude/commands/ralph-*.md (user's slash commands)
+    const cmdsDir = path.join(cwd, '.claude', 'commands');
+    if (existsSync(cmdsDir) && statSync(cmdsDir).isDirectory()) {
+      for (const f of readdirSync(cmdsDir)) {
+        if (/^ralph-.*\.md$/.test(f)) {
+          await rm(path.join(cmdsDir, f), { force: true });
+          removed.push(`.claude/commands/${f}`);
+        }
+      }
+    }
+
+    // .cursor/rules/ralph.mdc
+    const cursorRalph = path.join(cwd, '.cursor', 'rules', 'ralph.mdc');
+    if (existsSync(cursorRalph)) {
+      await rm(cursorRalph, { force: true });
+      removed.push('.cursor/rules/ralph.mdc');
+    }
+
+    if (removed.length > 0) {
+      console.log(chalk.gray(`  • Pruned ${removed.length} legacy Ralph artifact(s)`));
+    }
+  } catch {
+    // non-fatal
+  }
+
+  // 5.6.0: prune Ralph-tagged memory entries on update.
+  try {
+    const { MemoryManager } = await import('../../memory/memory-manager.js');
+    const { createConfigManager } = await import('../../core/state/config-manager.js');
+    const cm = createConfigManager(cwd);
+    const cfg = await cm.loadConfig();
+    if (cfg.memory?.enabled !== false) {
+      const mm = new MemoryManager(cwd, cfg.memory ?? {});
+      const ralphMemories = await mm.searchMemories({
+        query: 'ralph',
+        limit: 1000,
+      });
+      let pruned = 0;
+      for (const m of ralphMemories) {
+        // Only delete entries truly tagged with `ralph` or sourced from it
+        const full = await mm.getFullDetails([m.id]);
+        const detail = full[0];
+        if (detail?.tags?.includes('ralph')) {
+          await mm.deleteMemory(m.id);
+          pruned++;
+        }
+      }
+      await mm.close();
+      if (pruned > 0) {
+        console.log(chalk.gray(`  • Pruned ${pruned} Ralph-tagged memory entries`));
+      }
+    }
+  } catch {
+    // non-fatal — memory subsystem may not be initialized
+  }
+
   try {
     const { generateMcpReference } = await import('../../core/docs/mcp-reference-generator.js');
     const mcpRef = await generateMcpReference(cwd);

@@ -22,6 +22,40 @@ utilities (`logger`, `merger`, `migrator`, `rule-engine`,
 no logic touched. Full suite stayed green (1985/1985) before the
 follow-up scope cuts described below.
 
+### Removed — 7 unnecessary MCP tools + `rulebook analysis` CLI
+
+Trimmed the MCP server's tool catalog. Each removed tool either
+duplicated CLI functionality, had no documented consumer, or modeled
+the same data as another existing tool group:
+
+  rulebook_analysis_create   -> use rulebook_decision_create
+  rulebook_analysis_list     -> use rulebook_knowledge_list / decision_list
+  rulebook_analysis_show     -> use rulebook_decision_show
+  rulebook_evals_measure     -> experimental, no documented consumer
+  rulebook_evals_run         -> experimental, requires API key, no consumer
+  rulebook_blockers          -> orphan, never integrated with task system
+  rulebook_doctor_run        -> use the CLI `rulebook doctor` directly
+
+CLI surface dropped: `rulebook analysis create/list/show`. Files
+removed:
+  src/cli/commands/analysis.ts (its `doctorCommand` moved to misc.ts)
+  src/core/tasks/analysis-manager.ts
+  tests/analysis-manager.test.ts
+
+### Added — `rulebook update` cleans up legacy 5.5.x artifacts
+
+Upgrading to 5.6.0 via `rulebook update` now removes leftover Ralph
+files and memory entries from user projects:
+
+  .rulebook/ralph/                         (entire dir)
+  .rulebook/scripts/ralph-*.{sh,bat}
+  .claude/commands/ralph-*.md
+  .cursor/rules/ralph.mdc
+  Memory entries tagged `ralph`            (via MemoryManager)
+
+All cleanup is non-destructive of unrelated data and silently
+non-fatal — if any of the targets do not exist, the step is a no-op.
+
 ### Removed — Ralph autonomous loop subsystem
 
 The entire Ralph autonomous-loop feature is gone. Claude Code's
