@@ -16,14 +16,12 @@ function slugify(title: string): string {
 
 export class LearnManager {
   private learningsPath: string;
-  private ralphHistoryPath: string;
   private decisionManager: DecisionManager;
   private knowledgeManager: KnowledgeManager;
 
   constructor(projectRoot: string, rulebookDir: string = '.rulebook') {
     const rbPath = join(projectRoot, rulebookDir);
     this.learningsPath = join(rbPath, LEARNINGS_DIR);
-    this.ralphHistoryPath = join(rbPath, 'ralph', 'history');
     this.decisionManager = new DecisionManager(projectRoot, rulebookDir);
     this.knowledgeManager = new KnowledgeManager(projectRoot, rulebookDir);
   }
@@ -83,47 +81,6 @@ export class LearnManager {
     );
 
     return learning;
-  }
-
-  async fromRalph(): Promise<Learning[]> {
-    this.ensureDir();
-    if (!existsSync(this.ralphHistoryPath)) return [];
-
-    const files = readdirSync(this.ralphHistoryPath).filter(
-      (f) => f.startsWith('iteration-') && f.endsWith('.json')
-    );
-
-    // Load existing learning titles for dedup
-    const existing = await this.list();
-    const existingTitles = new Set(existing.map((l) => l.title));
-
-    const newLearnings: Learning[] = [];
-
-    for (const file of files) {
-      const raw = await readFileUtil(join(this.ralphHistoryPath, file));
-      if (!raw) continue;
-      try {
-        const iteration = JSON.parse(raw);
-        const learnings: string[] = iteration.learnings ?? [];
-        for (const text of learnings) {
-          // Use first line or first 60 chars as title
-          const title = text.split('\n')[0].slice(0, 80);
-          if (existingTitles.has(title)) continue;
-          existingTitles.add(title);
-
-          const learning = await this.capture(title, text, {
-            source: 'ralph',
-            relatedTask: iteration.task_id,
-            tags: ['ralph', `iteration-${iteration.iteration}`],
-          });
-          newLearnings.push(learning);
-        }
-      } catch {
-        // skip malformed
-      }
-    }
-
-    return newLearnings;
   }
 
   async list(limit?: number): Promise<Learning[]> {

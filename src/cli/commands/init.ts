@@ -306,7 +306,6 @@ export async function initCommand(options: {
       rulebookDir: config.rulebookDir || '.rulebook',
       ...(config.agentsMode ? { agentsMode: config.agentsMode } : {}),
       skills: enabledSkills.length > 0 ? { enabled: enabledSkills } : undefined,
-      ralph: existingConfig.ralph,
       memory: existingConfig.memory,
     });
 
@@ -643,18 +642,6 @@ export async function initCommand(options: {
       } catch {
         claudeIntSpinner.info('Claude Code integration skipped');
       }
-    }
-
-    try {
-      const { installRalphScripts } = await import('../../core/ralph/ralph-scripts.js');
-      const scripts = await installRalphScripts(cwd);
-      if (scripts.length > 0) {
-        console.log(
-          chalk.gray(`  • ${scripts.length} Ralph scripts installed to .rulebook/scripts/`)
-        );
-      }
-    } catch {
-      // Skip if Ralph scripts installation fails
     }
 
     try {

@@ -145,22 +145,6 @@ export async function learnCaptureCommand(options: {
   }
 }
 
-export async function learnFromRalphCommand(): Promise<void> {
-  const { LearnManager } = await import('../../core/tasks/learn-manager.js');
-  const mgr = new LearnManager(process.cwd());
-  const spinner = ora('Extracting learnings from Ralph history...').start();
-  try {
-    const learnings = await mgr.fromRalph();
-    if (learnings.length === 0) {
-      spinner.info('No new learnings found in Ralph history.');
-    } else {
-      spinner.succeed(`Extracted ${learnings.length} learning(s) from Ralph history.`);
-    }
-  } catch (error) {
-    spinner.fail(`Failed: ${String(error)}`);
-  }
-}
-
 export async function learnListCommand(options: { limit?: string }): Promise<void> {
   const { LearnManager } = await import('../../core/tasks/learn-manager.js');
   const mgr = new LearnManager(process.cwd());

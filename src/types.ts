@@ -273,25 +273,6 @@ export interface RulebookConfig {
     usePolling?: boolean; // default: false — use polling instead of native watchers (lower FD usage)
     debounceMs?: number; // default: 3000 — debounce interval for file change events
   };
-  // Ralph autonomous loop configuration (v3.0)
-  ralph?: {
-    enabled?: boolean; // default: true
-    maxIterations?: number; // default: 10
-    tool?: 'claude' | 'amp' | 'gemini'; // default: 'claude'
-    maxContextLoss?: number; // default: 3
-    securityGate?: {
-      enabled?: boolean; // default: true
-      failOn?: 'critical' | 'high' | 'moderate' | 'low'; // default: 'high'
-      tool?: 'auto' | 'npm-audit' | 'trivy' | 'semgrep'; // default: 'auto'
-    };
-    contextCompression?: {
-      enabled?: boolean; // default: true
-      recentCount?: number; // default: 3 — how many recent iterations show full detail
-      threshold?: number; // default: 5 — minimum iterations before compression kicks in
-    };
-    parallel?: ParallelRalphConfig;
-    planCheckpoint?: PlanCheckpointConfig;
-  };
   // Multi-agent / Teams enforcement (v5.3.0)
   multiAgent?: {
     enabled?: boolean; // default: false — auto-detected when `.claude/agents/` has ≥3 files
@@ -432,94 +413,6 @@ export interface SkillValidationResult {
   errors: string[];
   warnings: string[];
   conflicts: SkillConflict[];
-}
-
-// Ralph Plan Checkpoint Types (v4.0)
-
-export interface PlanCheckpointConfig {
-  enabled: boolean;
-  autoApproveAfterSeconds: number; // 0 = never auto-approve
-  requireApprovalForStories: 'all' | 'failed' | 'none';
-}
-
-// Ralph Parallel Execution Types (v4.0)
-
-export interface ParallelRalphConfig {
-  enabled: boolean;
-  maxWorkers: number;
-}
-
-// Ralph Autonomous Loop Types (v3.0)
-
-export interface PRDUserStory {
-  id: string;
-  title: string;
-  description: string;
-  acceptanceCriteria: string[];
-  priority: number;
-  passes: boolean;
-  notes: string;
-  sourceTaskId?: string;
-}
-
-export interface RalphPRD {
-  project: string;
-  branchName: string;
-  description: string;
-  userStories: PRDUserStory[];
-}
-
-export interface IterationResult {
-  iteration: number;
-  timestamp: string;
-  task_id: string;
-  task_title: string;
-  status: 'success' | 'partial' | 'failed';
-  ai_tool: 'claude' | 'amp' | 'gemini';
-  execution_time_ms: number;
-  quality_checks: {
-    type_check: boolean;
-    lint: boolean;
-    tests: boolean;
-    coverage_met: boolean;
-    security?: boolean; // optional — only present when gate ran
-  };
-  output_summary: string;
-  git_commit?: string;
-  errors?: string[];
-  learnings?: string[];
-  metadata: {
-    context_loss_count: number;
-    token_count?: number;
-    parsed_completion?: boolean;
-  };
-}
-
-export interface RalphLoopState {
-  enabled: boolean;
-  current_iteration: number;
-  max_iterations: number;
-  total_iterations: number;
-  completed_tasks: number;
-  total_tasks: number;
-  paused: boolean;
-  paused_at?: string;
-  started_at: string;
-  last_updated: string;
-  current_task_id?: string;
-  tool: 'claude' | 'amp' | 'gemini';
-}
-
-export interface RalphIterationMetadata {
-  iteration: number;
-  started_at: string;
-  completed_at?: string;
-  task_id: string;
-  task_title: string;
-  duration_ms?: number;
-  status: IterationResult['status'];
-  git_commit?: string;
-  quality_checks: IterationResult['quality_checks'];
 }
 
 // Context Intelligence Layer Types (v4.4)

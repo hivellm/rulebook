@@ -32,14 +32,6 @@ import {
   memoryVerifyCommand,
   memoryCleanupCommand,
   memoryExportCommand,
-  // Ralph commands (v3.0)
-  ralphInitCommand,
-  ralphRunCommand,
-  ralphStatusCommand,
-  ralphHistoryCommand,
-  ralphPauseCommand,
-  ralphResumeCommand,
-  ralphImportIssuesCommand,
   // Plans commands (v4.0)
   plansShowCommand,
   plansInitCommand,
@@ -69,7 +61,6 @@ import {
   knowledgeShowCommand,
   knowledgeRemoveCommand,
   learnCaptureCommand,
-  learnFromRalphCommand,
   learnListCommand,
   learnPromoteCommand,
   // Analysis commands (v5.3.0)
@@ -436,70 +427,6 @@ memoryCommand
   .option('--output <path>', 'Output file path (default: stdout)')
   .action((options: { format?: string; output?: string }) => memoryExportCommand(options));
 
-// Ralph Autonomous Loop Commands (v3.0)
-const ralphCommand = program.command('ralph').description('Ralph autonomous AI agent loop');
-
-ralphCommand
-  .command('init')
-  .description('Initialize Ralph and create PRD from rulebook tasks')
-  .action(() => ralphInitCommand());
-
-ralphCommand
-  .command('run')
-  .description('Execute autonomous iteration loop')
-  .option('--max-iterations <n>', 'Maximum iterations', '10')
-  .option('--tool <tool>', 'AI CLI tool: claude, amp, gemini', 'claude')
-  .option('--parallel <n>', 'Run N stories concurrently (default: sequential)')
-  .option('--plan-first', 'Require plan approval before each story implementation')
-  .action(
-    (options: { maxIterations?: string; tool?: string; parallel?: string; planFirst?: boolean }) =>
-      ralphRunCommand({
-        maxIterations: options.maxIterations ? parseInt(options.maxIterations) : undefined,
-        tool: (options.tool as 'claude' | 'amp' | 'gemini') || 'claude',
-        parallel: options.parallel ? parseInt(options.parallel) : undefined,
-        planFirst: options.planFirst,
-      })
-  );
-
-ralphCommand
-  .command('status')
-  .description('Show loop progress and current iteration')
-  .action(() => ralphStatusCommand());
-
-ralphCommand
-  .command('history')
-  .description('Display iteration history and learnings')
-  .option('--limit <n>', 'Max iterations to show', '10')
-  .action((options: { limit?: string }) =>
-    ralphHistoryCommand({ limit: options.limit ? parseInt(options.limit) : undefined })
-  );
-
-ralphCommand
-  .command('pause')
-  .description('Gracefully pause autonomous loop')
-  .action(() => ralphPauseCommand());
-
-ralphCommand
-  .command('resume')
-  .description('Resume from paused state')
-  .action(() => ralphResumeCommand());
-
-ralphCommand
-  .command('import-issues')
-  .description('Import GitHub issues as Ralph user stories')
-  .option('--label <label>', 'Filter by label')
-  .option('--milestone <milestone>', 'Filter by milestone')
-  .option('--limit <n>', 'Maximum issues to import', '20')
-  .option('--dry-run', 'Preview without writing to PRD')
-  .action((options) =>
-    ralphImportIssuesCommand({
-      label: options.label,
-      milestone: options.milestone,
-      limit: options.limit ? parseInt(options.limit) : 20,
-      dryRun: options.dryRun,
-    })
-  );
-
 // Plans commands (v4.0) — PLANS.md session scratchpad
 const plansCommand = program.command('plans').description('Manage PLANS.md session scratchpad');
 
@@ -670,11 +597,6 @@ learnCommand
   .action((options: { title?: string; content?: string; relatedTask?: string; tags?: string }) =>
     learnCaptureCommand(options)
   );
-
-learnCommand
-  .command('from-ralph')
-  .description('Extract learnings from Ralph iteration history')
-  .action(() => learnFromRalphCommand());
 
 learnCommand
   .command('list')

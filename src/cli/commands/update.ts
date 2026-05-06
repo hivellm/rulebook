@@ -222,7 +222,6 @@ export async function updateSingleProject(
   }
 
   const existingSkills = existingConfig.skills?.enabled || [];
-  const existingRalph = existingConfig.ralph;
 
   let detectedSkills: string[] = [];
   try {
@@ -262,7 +261,6 @@ export async function updateSingleProject(
     modular: config.modular ?? true,
     rulebookDir: config.rulebookDir || '.rulebook',
     skills: detectedSkills.length > 0 ? { enabled: detectedSkills } : undefined,
-    ralph: existingRalph,
     memory: existingConfig.memory,
   });
 
@@ -541,7 +539,6 @@ export async function updateSingleProject(
       testRun: 600000,
     },
     ...(existingConfig.memory ? { memory: existingConfig.memory } : {}),
-    ...(existingConfig.ralph ? { ralph: existingConfig.ralph } : {}),
     ...(existingConfig.skills ? { skills: existingConfig.skills } : {}),
     ...(leanMode
       ? { agentsMode: 'lean' as const }
@@ -582,16 +579,6 @@ export async function updateSingleProject(
     }
   } catch {
     claudeSpinner.info('Claude Code integration skipped');
-  }
-
-  try {
-    const { installRalphScripts } = await import('../../core/ralph/ralph-scripts.js');
-    const scripts = await installRalphScripts(cwd);
-    if (scripts.length > 0) {
-      console.log(chalk.gray(`  • ${scripts.length} Ralph scripts updated in .rulebook/scripts/`));
-    }
-  } catch {
-    // Skip if Ralph scripts installation fails
   }
 
   try {

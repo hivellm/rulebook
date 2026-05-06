@@ -32,15 +32,6 @@ export {
   memoryExportCommand,
 } from './memory.js';
 export {
-  ralphInitCommand,
-  ralphRunCommand,
-  ralphStatusCommand,
-  ralphHistoryCommand,
-  ralphPauseCommand,
-  ralphResumeCommand,
-  ralphImportIssuesCommand,
-} from './ralph.js';
-export {
   validateCommand,
   workflowsCommand,
   checkDepsCommand,
@@ -77,7 +68,6 @@ export {
   knowledgeShowCommand,
   knowledgeRemoveCommand,
   learnCaptureCommand,
-  learnFromRalphCommand,
   learnListCommand,
   learnPromoteCommand,
 } from './context-intelligence.js';

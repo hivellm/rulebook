@@ -89,59 +89,6 @@ describe('LearnManager', () => {
     });
   });
 
-  describe('fromRalph', () => {
-    it('should return empty when no ralph history', async () => {
-      const learnings = await mgr.fromRalph();
-      expect(learnings).toEqual([]);
-    });
-
-    it('should extract learnings from ralph iterations', async () => {
-      // Create mock ralph history
-      const historyDir = join(testDir, '.rulebook', 'ralph', 'history');
-      await fs.mkdir(historyDir, { recursive: true });
-      await fs.writeFile(
-        join(historyDir, 'iteration-1.json'),
-        JSON.stringify({
-          iteration: 1,
-          task_id: 'US-001',
-          learnings: ['Always validate input', 'Use parameterized queries'],
-        })
-      );
-      await fs.writeFile(
-        join(historyDir, 'iteration-2.json'),
-        JSON.stringify({
-          iteration: 2,
-          task_id: 'US-002',
-          learnings: [],
-        })
-      );
-
-      const learnings = await mgr.fromRalph();
-      expect(learnings.length).toBe(2);
-      expect(learnings[0].source).toBe('ralph');
-      expect(learnings[0].relatedTask).toBe('US-001');
-    });
-
-    it('should deduplicate on second run', async () => {
-      const historyDir = join(testDir, '.rulebook', 'ralph', 'history');
-      await fs.mkdir(historyDir, { recursive: true });
-      await fs.writeFile(
-        join(historyDir, 'iteration-1.json'),
-        JSON.stringify({
-          iteration: 1,
-          task_id: 'US-001',
-          learnings: ['Important lesson'],
-        })
-      );
-
-      const first = await mgr.fromRalph();
-      expect(first.length).toBe(1);
-
-      const second = await mgr.fromRalph();
-      expect(second.length).toBe(0);
-    });
-  });
-
   describe('promote', () => {
     it('should return null for non-existent learning', async () => {
       const result = await mgr.promote('nonexistent', 'knowledge');

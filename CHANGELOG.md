@@ -22,6 +22,43 @@ utilities (`logger`, `merger`, `migrator`, `rule-engine`,
 no logic touched. Full suite stayed green (1985/1985) before the
 follow-up scope cuts described below.
 
+### Removed — Ralph autonomous loop subsystem
+
+The entire Ralph autonomous-loop feature is gone. Claude Code's
+built-in `/loop` skill plus the standard rulebook task workflow
+(`rulebook_task_create` / `_update` / `_archive`) cover the same
+ground without the parallel infrastructure.
+
+CLI surface dropped:
+  rulebook ralph init / run / status / history / pause / resume
+  rulebook ralph import-issues
+  rulebook learn from-ralph
+  rulebook assess (already gone with complexity-detector)
+
+MCP tools dropped: `rulebook_ralph_init`, `rulebook_ralph_run`,
+`rulebook_ralph_status`, `rulebook_ralph_get_iteration_history`
+(~590 lines from `mcp/rulebook-server.ts`).
+
+Source removed:
+  src/agents/ralph-parser.ts
+  src/cli/commands/ralph.ts
+  src/core/ralph/  (6 files: manager, parallel, plan-checkpoint,
+                   scripts, prd-generator, iteration-tracker)
+  src/core/github/github-issues-importer.ts (Ralph PRD dep)
+  templates/ralph/  (entire dir)
+  .rulebook/scripts/ralph-*.{sh,bat}
+  .claude/commands/ralph-*.md  (6 slash commands)
+  + 13 ralph-related test files
+
+Types dropped from `src/types.ts`: RalphPRD, PRDUserStory,
+RalphLoopState, RalphIterationMetadata, IterationResult,
+ParallelRalphConfig, PlanCheckpointConfig. The `ralph` block in
+`RulebookConfig` is gone — existing entries are silently ignored.
+
+LearnManager.fromRalph + the corresponding test block also removed
+(it scraped Ralph's iteration history for learnings; without that
+history, the method is meaningless).
+
 ### Removed — health-scorer, complexity-detector, cursor-mdc-generator,
 ### orphan IDE templates
 

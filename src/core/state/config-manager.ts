@@ -181,31 +181,6 @@ export class ConfigManager {
         autoCapture: false,
         vectorDimensions: 256,
       },
-      ralph: {
-        enabled: true,
-        maxIterations: 10,
-        tool: 'claude',
-        maxContextLoss: 3,
-        securityGate: {
-          enabled: true,
-          failOn: 'high',
-          tool: 'auto',
-        },
-        contextCompression: {
-          enabled: true,
-          recentCount: 3,
-          threshold: 5,
-        },
-        parallel: {
-          enabled: false,
-          maxWorkers: 3,
-        },
-        planCheckpoint: {
-          enabled: false,
-          autoApproveAfterSeconds: 0,
-          requireApprovalForStories: 'all',
-        },
-      },
       agentsMode: 'lean',
       monorepo: {
         detected: false,
@@ -280,34 +255,6 @@ export class ConfigManager {
       if (!migrated.memory.maxSizeBytes) migrated.memory.maxSizeBytes = 524288000;
       if (migrated.memory.autoCapture === undefined) migrated.memory.autoCapture = false;
       if (!migrated.memory.vectorDimensions) migrated.memory.vectorDimensions = 256;
-    }
-
-    // Add/update Ralph config with defaults enabled
-    if (!migrated.ralph) {
-      migrated.ralph = {
-        enabled: true,
-        maxIterations: 10,
-        tool: 'claude',
-        maxContextLoss: 3,
-      };
-    } else {
-      // Ensure Ralph is enabled in migration
-      migrated.ralph.enabled = true;
-      if (!migrated.ralph.maxIterations) migrated.ralph.maxIterations = 10;
-      if (!migrated.ralph.tool) migrated.ralph.tool = 'claude';
-      if (!migrated.ralph.maxContextLoss) migrated.ralph.maxContextLoss = 3;
-      // Add parallel config if missing
-      if (!migrated.ralph.parallel) {
-        migrated.ralph.parallel = { enabled: false, maxWorkers: 3 };
-      }
-      // Add plan checkpoint config if missing
-      if (!migrated.ralph.planCheckpoint) {
-        migrated.ralph.planCheckpoint = {
-          enabled: false,
-          autoApproveAfterSeconds: 0,
-          requireApprovalForStories: 'all',
-        };
-      }
     }
 
     // v4 migration: ensure .rulebook/scripts/ dir is noted in config
