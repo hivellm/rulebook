@@ -8,7 +8,7 @@ maxTurns: 25
 
 ## Responsibilities
 
-- Design and implement CI/CD pipelines for {{language}} projects
+- Design and implement CI/CD pipelines for rust projects
 - Write Dockerfiles, docker-compose files, and Kubernetes manifests
 - Define infrastructure as code using Terraform, Pulumi, or CloudFormation
 - Establish deployment strategies: blue/green, canary, rolling updates
