@@ -7,6 +7,6 @@
 - [x] 1.6 Add `LEGACY_SIGNATURES` cleanup pass in the settings-manager so `rulebook update` strips stale entries from older versions automatically
 
 ## 2. Tail (mandatory — enforced by rulebook v5.3.0)
-- [ ] 2.1 Update or create documentation covering the implementation
-- [ ] 2.2 Write tests covering the new behavior
-- [ ] 2.3 Run tests and confirm they pass
+- [x] 2.1 Update or create documentation covering the implementation (CHANGELOG.md 5.6.0 entry)
+- [x] 2.2 Write tests covering the new behavior (`tests/enforce-pre-tool-shell.test.ts` 13 tests + `tests/claude-settings-manager-enforce.test.ts` 8 tests)
+- [x] 2.3 Run tests and confirm they pass (21/21 across the two new files)

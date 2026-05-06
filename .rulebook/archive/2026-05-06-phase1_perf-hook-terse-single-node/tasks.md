@@ -6,6 +6,6 @@
 - [x] 1.5 Mirror the change in `templates/hooks/terse-mode-tracker.sh`
 
 ## 2. Tail (mandatory — enforced by rulebook v5.3.0)
-- [ ] 2.1 Update or create documentation covering the implementation
-- [ ] 2.2 Write tests covering the new behavior
-- [ ] 2.3 Run tests and confirm they pass
+- [x] 2.1 Update or create documentation covering the implementation (CHANGELOG.md 5.6.0 entry)
+- [x] 2.2 Write tests covering the new behavior (existing `tests/terse-hooks-shell.test.ts` 31 tests cover the refactor; passes confirm behavior preservation)
+- [x] 2.3 Run tests and confirm they pass (31/31)

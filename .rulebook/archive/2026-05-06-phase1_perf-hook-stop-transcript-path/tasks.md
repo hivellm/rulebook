@@ -5,6 +5,6 @@
 - [x] 1.4 Mirror the change in `.claude/hooks/check-context-and-handoff.sh`
 
 ## 2. Tail (mandatory — enforced by rulebook v5.3.0)
-- [ ] 2.1 Update or create documentation covering the implementation
-- [ ] 2.2 Write tests covering the new behavior
-- [ ] 2.3 Run tests and confirm they pass
+- [x] 2.1 Update or create documentation covering the implementation (CHANGELOG.md 5.6.0 entry)
+- [x] 2.2 Write tests covering the new behavior (`tests/check-context-and-handoff-shell.test.ts`)
+- [x] 2.3 Run tests and confirm they pass (1985/1985 — 6 new pass; 4 jq-gated tests excluded locally, exercised on CI)

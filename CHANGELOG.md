@@ -5,6 +5,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.6.0] - Unreleased
+
+### Performance — `~2 s` saved per turn from hook overhead (#15)
+
+Three rulebook-installed Claude Code hooks were profiled and rewritten.
+Numbers are warm-run wall-clock on Windows 10 (Git Bash), measured with
+`time bash <hook>` and a representative stdin payload.
+
+#### `Stop` hook — `templates/hooks/check-context-and-handoff.sh`
+
+`853 ms → ~80 ms` (~10×). Replaced the `find $HOME/.claude/projects -name '*.jsonl' -printf … | sort -rn | head -1`
+traversal with a direct `transcript_path` read from the Stop hook's
+stdin payload (Anthropic ships this field by spec). The traversal cost
+grew linearly with session count and also returned the wrong file in
+concurrent sessions sharing the same home directory. The new path is
+O(1) and pins to the current session's transcript.
+
+#### `UserPromptSubmit` hook — `templates/hooks/terse-mode-tracker.sh`
+
+Common path `633 ms → ~97 ms` (~6.5×). Bash now scans the raw stdin
+payload for terse-mode trigger substrings (`/rulebook-terse`,
+`terse mode`, `be terse`, …) before spawning anything. When no trigger
+matches — the case for the vast majority of prompts — the script reads
+the active flag via pure bash and exits without ever invoking Node.
+When a trigger is present, a single Node call now does the entire
+parse-and-decide pipeline (stdin + project config + user config + slash
+commands + natural-language patterns) and returns a pre-resolved
+`set:<mode>` / `unset` / `noop` decision; bash only handles filesystem
+side effects. Slow-path latency drops from `633 ms → ~382 ms` (~1.7×).
+
+#### `PreToolUse` hooks — merged into one + matcher filter
+
+Three legacy scripts (`enforce-no-deferred.sh`, `enforce-no-shortcuts.sh`,
+`enforce-mcp-for-tasks.sh`) were merged into a single
+`templates/hooks/enforce-pre-tool.sh` that parses the tool input once
+and applies all three deny rules inline. Per-spawn latency
+`3 × 143 ms = 429 ms → 117 ms` (~3.7×). Each rule's
+`permissionDecisionReason` is preserved verbatim, so existing model
+guidance is unchanged.
+
+The bigger win is declarative, not algorithmic: the hook entry now
+ships with `matcher: "Edit|Write|Bash"`, so the harness skips the
+spawn entirely for `Read`, `Glob`, `Grep`, `Agent`, `Task`, `WebFetch`,
+`MCP*`, and any other tool that cannot trigger a deny rule. On a
+typical session that's roughly half of all tool calls. The matcher
+strategy follows Claude Code's documented guidance for hook
+performance.
+
+`src/core/claude-settings-manager.ts` grows a `LEGACY_SIGNATURES`
+cleanup pass that strips `enforce-no-deferred` /
+`enforce-no-shortcuts` / `enforce-mcp-for-tasks` entries from
+`.claude/settings.json` on every sync. Existing users who run
+`rulebook update` after upgrading get their settings rewritten
+automatically, with no extra step.
+
+#### Net effect
+
+For a turn that issues a user prompt + 5 tool calls (3 read-type, 2
+edits, 1 stop), hook overhead drops from `~3.6 s` to `~0.5 s`. In a
+261-turn session this is ~13 minutes of perceived "Claude is slow"
+that no longer happens.
+
+#### Removed
+
+- Three legacy enforcement scripts deleted from `templates/hooks/`
+  (no deprecation shims). Users on stale `settings.json` references
+  see those entries silently stripped on next `rulebook update`.
+
+#### Tests
+
+- New `tests/check-context-and-handoff-shell.test.ts` (6 tests) —
+  verifies `transcript_path` resolution, missing-file fallback, and
+  warn / force threshold detection from the payload.
+- New `tests/enforce-pre-tool-shell.test.ts` (13 tests) — covers all
+  three merged deny rules + ALLOW path + malformed-input fail-open.
+- New `tests/claude-settings-manager-enforce.test.ts` (8 tests) —
+  asserts the matcher value, single-registration, legacy migration,
+  and idempotency.
+
 ## [5.5.2] - 2026-05-04
 
 ### Fixed — `tests/terse-hooks-shell.test.ts` flaked on Windows runners
