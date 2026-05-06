@@ -67,12 +67,19 @@ const SIGNATURES = {
   compactReinject: 'on-compact-reinject',
   handoffCheck: 'check-context-and-handoff',
   handoffResume: 'resume-from-handoff',
-  noDeferred: 'enforce-no-deferred',
-  noShortcuts: 'enforce-no-shortcuts',
-  mcpForTasks: 'enforce-mcp-for-tasks',
+  enforcePreTool: 'enforce-pre-tool',
   terseActivate: 'terse-activate.sh',
   terseModeTracker: 'terse-mode-tracker.sh',
 } as const;
+
+// Hook signatures retired in past releases. Always removed during sync so
+// stale settings.json entries from older rulebook versions get cleaned up
+// even when the user upgrades without changing their `desire` flags.
+const LEGACY_SIGNATURES = [
+  'enforce-no-deferred',
+  'enforce-no-shortcuts',
+  'enforce-mcp-for-tasks',
+];
 
 export function getClaudeSettingsPath(projectRoot: string): string {
   return path.join(projectRoot, '.claude', 'settings.json');
@@ -181,25 +188,25 @@ export async function applyClaudeSettings(
     removeHook(existing.hooks, 'UserPromptSubmit', SIGNATURES.terseModeTracker);
   }
 
-  // Quality enforcement hooks (no-deferred, no-shortcuts, mcp-for-tasks)
+  // Quality enforcement: single consolidated PreToolUse hook (v5.6.0).
+  // The three legacy scripts (enforce-no-deferred/no-shortcuts/mcp-for-tasks)
+  // were merged into enforce-pre-tool.sh for ~3x lower per-tool latency.
   if (desire.qualityEnforcement) {
-    for (const [sig, script] of [
-      [SIGNATURES.noDeferred, 'enforce-no-deferred.sh'],
-      [SIGNATURES.noShortcuts, 'enforce-no-shortcuts.sh'],
-      [SIGNATURES.mcpForTasks, 'enforce-mcp-for-tasks.sh'],
-    ] as const) {
-      upsertHook(
-        existing.hooks,
-        'PreToolUse',
-        undefined,
-        sig,
-        buildCommandFor(projectRoot, script)
-      );
-    }
+    upsertHook(
+      existing.hooks,
+      'PreToolUse',
+      undefined,
+      SIGNATURES.enforcePreTool,
+      buildCommandFor(projectRoot, 'enforce-pre-tool.sh')
+    );
   } else {
-    removeHook(existing.hooks, 'PreToolUse', SIGNATURES.noDeferred);
-    removeHook(existing.hooks, 'PreToolUse', SIGNATURES.noShortcuts);
-    removeHook(existing.hooks, 'PreToolUse', SIGNATURES.mcpForTasks);
+    removeHook(existing.hooks, 'PreToolUse', SIGNATURES.enforcePreTool);
+  }
+  // Always strip stale entries from older rulebook versions, regardless of
+  // the qualityEnforcement flag. Without this, users upgrading from v5.5.x
+  // would still have settings.json pointing at deleted scripts.
+  for (const legacy of LEGACY_SIGNATURES) {
+    removeHook(existing.hooks, 'PreToolUse', legacy);
   }
 
   // Collapse empty arrays/objects so we don't leave noise behind.
@@ -297,9 +304,7 @@ async function installHookScripts(
     shellScripts.push('resume-from-handoff.sh');
   }
   if (desire.qualityEnforcement) {
-    shellScripts.push('enforce-no-deferred.sh');
-    shellScripts.push('enforce-no-shortcuts.sh');
-    shellScripts.push('enforce-mcp-for-tasks.sh');
+    shellScripts.push('enforce-pre-tool.sh');
   }
   if (desire.terseMode) {
     shellScripts.push('terse-activate.sh');

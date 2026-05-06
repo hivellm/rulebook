@@ -24,14 +24,14 @@ Merging them into one hook reduces the per-tool-call cost to a single
     creation) inline in a single `node` call.
   - Emits a single `permissionDecision` (deny on first match, allow otherwise)
     with the corresponding `permissionDecisionReason` from the original hooks.
-- Update the rulebook installer (`src/cli/commands/init.ts` /
-  `templates/hooks-config.json` or wherever `PreToolUse` is registered) to
-  register one hook entry instead of three.
-- Mirror the change in `.claude/hooks/` and `.claude/settings.json` for this
-  repo's own config.
-- Keep the three existing scripts in `templates/hooks/` for one release as
-  deprecated shims that delegate to `enforce-pre-tool.sh`, so users on older
-  `settings.json` files do not break. Remove them in the next major.
+- Update `src/core/claude-settings-manager.ts` so it registers one hook
+  entry, and **always removes** the legacy `enforce-no-deferred` /
+  `enforce-no-shortcuts` / `enforce-mcp-for-tasks` signatures during sync —
+  this gives users a clean migration path on `rulebook update`.
+- Delete the three legacy scripts (`enforce-no-deferred.sh`,
+  `enforce-no-shortcuts.sh`, `enforce-mcp-for-tasks.sh`) from both
+  `templates/hooks/` and `.claude/hooks/`. No deprecation shims — the
+  settings-manager rewrite cleans up stale entries on next sync.
 
 ## Impact
 
@@ -40,10 +40,14 @@ Merging them into one hook reduces the per-tool-call cost to a single
 - Affected code:
   - New: `templates/hooks/enforce-pre-tool.sh`,
     `.claude/hooks/enforce-pre-tool.sh`
-  - Modified: `templates/settings.template.json` (or hook registration source),
-    `.claude/settings.json`
-  - Modified: `templates/hooks/enforce-no-deferred.sh`,
+  - Modified: `src/core/claude-settings-manager.ts`
+    (single registration + LEGACY_SIGNATURES cleanup pass)
+  - Deleted: `templates/hooks/enforce-no-deferred.sh`,
     `templates/hooks/enforce-no-shortcuts.sh`,
-    `templates/hooks/enforce-mcp-for-tasks.sh` (deprecated shims)
-- Breaking change: NO (deprecation shims maintain compatibility for one release).
+    `templates/hooks/enforce-mcp-for-tasks.sh`,
+    plus their `.claude/hooks/` mirrors
+- Breaking change: minor — users running `rulebook update` after upgrading
+  get their `settings.json` rewritten automatically. Users who skip
+  `rulebook update` see the orphan settings entries fail to invoke
+  (deleted scripts), but the hook system continues running the rest.
 - User benefit: ~280 ms saved per tool call; ~1–1.5 s saved per typical turn.

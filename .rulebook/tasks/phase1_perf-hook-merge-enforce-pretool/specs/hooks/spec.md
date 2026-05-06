@@ -31,16 +31,23 @@ When the merged enforcement hook runs
 Then it emits `permissionDecision: allow`
 And only one `bash + node` process tree is spawned for the entire check.
 
-## MODIFIED Requirements
+## REMOVED Requirements
 
-### Requirement: Legacy enforcement scripts remain compatible
-The system SHALL keep `enforce-no-deferred.sh`, `enforce-no-shortcuts.sh`,
-and `enforce-mcp-for-tasks.sh` available as one-line shims that delegate to
-the merged hook for one release cycle, so existing user `settings.json` files
-do not break.
+### Requirement: Legacy enforcement scripts
+The system SHALL NOT ship `enforce-no-deferred.sh`,
+`enforce-no-shortcuts.sh`, or `enforce-mcp-for-tasks.sh`. These three
+scripts MUST be deleted from both `templates/hooks/` and any project's
+`.claude/hooks/`. No deprecation shim is provided.
 
-#### Scenario: Old settings.json points at deprecated shim
-Given a user's `.claude/settings.json` still references `enforce-no-deferred.sh`
-When the shim runs
-Then it execs `enforce-pre-tool.sh` with the same stdin
-And the resulting permission decision matches what the old script would have produced.
+### Requirement: settings.json migration on update
+The system SHALL strip stale `enforce-no-deferred`, `enforce-no-shortcuts`,
+and `enforce-mcp-for-tasks` entries from `.claude/settings.json` whenever
+`syncClaudeSettings` runs, regardless of whether `qualityEnforcement` is
+enabled. This ensures `rulebook update` cleans up old installs without
+extra user action.
+
+#### Scenario: rulebook update after upgrade
+Given a user's `.claude/settings.json` still references the three legacy hook scripts
+When the user runs `rulebook update` (which calls `syncClaudeSettings`)
+Then the legacy entries are removed from the PreToolUse list
+And a single `enforce-pre-tool.sh` entry is registered in their place.
