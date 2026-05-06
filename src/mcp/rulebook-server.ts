@@ -324,19 +324,7 @@ export async function startRulebookMcpServer(): Promise<void> {
     version: '5.2.0',
   });
 
-  // --- v5.3.0 F10: opt-in telemetry middleware ---
-  const { createTelemetryMiddleware } = await import('../core/state/telemetry.js');
-  const telemetryEnabled = configManager
-    ? (await configManager.loadConfig())?.features?.telemetry === true
-    : false;
-  const telemetry = createTelemetryMiddleware({
-    enabled: telemetryEnabled,
-    dir: join(projectRoot, '.rulebook', 'telemetry'),
-  });
-
-  // --- Wrap all tool handlers with timeout guard + telemetry ---
-  // Intercept registerTool to automatically add timeout protection and
-  // optional telemetry recording to every handler.
+  // --- Wrap all tool handlers with a timeout guard ---
   const originalRegisterTool = server.registerTool.bind(server);
   server.registerTool = ((
     name: string,
@@ -344,12 +332,9 @@ export async function startRulebookMcpServer(): Promise<void> {
     handler: (...handlerArgs: any[]) => Promise<any>
   ) => {
     const wrappedHandler = async (...handlerArgs: any[]) => {
-      const start = Date.now();
-      let success = true;
       try {
         return await withTimeout(handler(...handlerArgs), MCP_TOOL_TIMEOUT_MS, name);
       } catch (error) {
-        success = false;
         const msg = error instanceof Error ? error.message : String(error);
         console.error(`[rulebook-mcp] ${name} error: ${msg}`);
         return {
@@ -357,13 +342,6 @@ export async function startRulebookMcpServer(): Promise<void> {
             { type: 'text' as const, text: JSON.stringify({ success: false, error: msg }) },
           ],
         };
-      } finally {
-        telemetry.record({
-          tool: name,
-          latency_ms: Date.now() - start,
-          success,
-          timestamp: new Date().toISOString(),
-        });
       }
     };
     return originalRegisterTool(name, config, wrappedHandler);

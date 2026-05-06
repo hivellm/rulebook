@@ -553,20 +553,6 @@ export async function initCommand(options: {
       }
 
       try {
-        const { seedCompactContext } = await import('../../core/claude/compact-context-manager.js');
-        const seedResult = await seedCompactContext(cwd, { languages: detection.languages });
-        if (seedResult.seeded) {
-          console.log(chalk.gray(`  • seeded ${path.relative(cwd, seedResult.path)}`));
-        }
-      } catch (err) {
-        console.log(
-          chalk.gray(
-            `  · COMPACT_CONTEXT seed skipped: ${err instanceof Error ? err.message : String(err)}`
-          )
-        );
-      }
-
-      try {
         const { applyClaudeSettings } = await import('../../core/claude/claude-settings-manager.js');
         const rulebookCfg = await configManager.loadConfig();
         const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;

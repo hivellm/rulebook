@@ -7,7 +7,6 @@ import { WorkspaceManager } from '../../core/workspace/workspace-manager.js';
  */
 export async function mcpInitCommand(options?: {
   workspace?: boolean;
-  telemetry?: boolean;
 }): Promise<void> {
   const { findRulebookConfig } = await import('../../mcp/rulebook-server.js');
   const { existsSync, readFileSync, writeFileSync, statSync } = await import('fs');
@@ -87,13 +86,6 @@ export async function mcpInitCommand(options?: {
     if (config.mcp.enabled === undefined) config.mcp.enabled = true;
     if (!config.mcp.tasksDir) config.mcp.tasksDir = '.rulebook/tasks';
     if (!config.mcp.archiveDir) config.mcp.archiveDir = '.rulebook/archive';
-
-    // F10: opt-in telemetry
-    if (options?.telemetry) {
-      config.features = config.features ?? {};
-      config.features.telemetry = true;
-      console.log(chalk.gray('  • Telemetry enabled (local NDJSON at .rulebook/telemetry/)'));
-    }
 
     writeFileSync(configFilePath, JSON.stringify(config, null, 2) + '\n');
 

@@ -49,8 +49,6 @@ export {
   versionCommand,
   changelogCommand,
   healthCommand,
-  fixCommand,
-  watcherCommand,
   agentCommand,
   configCommand,
 } from './misc.js';
@@ -63,7 +61,6 @@ export {
   overrideShowCommand,
   overrideEditCommand,
   overrideClearCommand,
-  reviewCommand,
 } from './plans.js';
 export { setupClaudeCodePlugin, migrateMemoryDirectory } from './misc.js';
 export { compressCommand } from './compress.js';

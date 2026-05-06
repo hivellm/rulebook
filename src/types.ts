@@ -216,7 +216,6 @@ export interface RulebookConfig {
     watcher: boolean;
     agent: boolean;
     logging: boolean;
-    telemetry: boolean;
     notifications: boolean;
     dryRun: boolean;
     gitHooks: boolean;

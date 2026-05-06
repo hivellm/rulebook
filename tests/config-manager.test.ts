@@ -50,7 +50,6 @@ describe('ConfigManager', () => {
         watcher: true,
         agent: true,
         logging: true,
-        telemetry: true,
       });
     });
 
@@ -197,7 +196,6 @@ describe('getDefaultConfig', () => {
       watcher: true,
       agent: true,
       logging: true,
-      telemetry: true,
     });
   });
 
@@ -224,7 +222,6 @@ describe('getDefaultConfig', () => {
     expect(config.features).toHaveProperty('watcher');
     expect(config.features).toHaveProperty('agent');
     expect(config.features).toHaveProperty('logging');
-    expect(config.features).toHaveProperty('telemetry');
     expect(config.features).toHaveProperty('notifications');
     expect(config.features).toHaveProperty('dryRun');
     expect(config.features).toHaveProperty('gitHooks');
@@ -296,7 +293,6 @@ describe('ConfigManager edge cases and error handling', () => {
       'watcher',
       'agent',
       'logging',
-      'telemetry',
       'notifications',
       'dryRun',
       'gitHooks',

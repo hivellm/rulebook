@@ -335,20 +335,12 @@ export async function updateSingleProject(
   }
 
   try {
-    const { seedCompactContext } = await import('../../core/claude/compact-context-manager.js');
-    await seedCompactContext(cwd, { languages: detection.languages });
-  } catch {
-    // non-fatal
-  }
-
-  try {
     const { ensureGitignoreEntries } = await import('../../utils/gitignore.js');
     await ensureGitignoreEntries(cwd, [
       'CLAUDE.local.md',
       '.rulebook/backup/',
       '.rulebook/handoff/_pending.md',
       '.rulebook/handoff/.urgent',
-      '.rulebook/telemetry/',
     ]);
   } catch {
     // non-fatal
@@ -523,7 +515,6 @@ export async function updateSingleProject(
     watcher: false,
     agent: false,
     logging: true,
-    telemetry: false,
     notifications: false,
     dryRun: false,
     gitHooks: gitHooksActiveAfterUpdate,

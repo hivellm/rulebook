@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [5.6.0] - Unreleased
 
+### Refactor — `src/core/` reorganized into 13 thematic subdirectories
+
+The 50-file flat layout under `src/core/` had grown unmanageable. Files
+are now grouped by responsibility into `agents/`, `claude/`, `console/`,
+`detect/`, `docs/`, `generators/`, `github/`, `ide/`, `quality/`,
+`ralph/`, `skills/`, `state/`, and `tasks/`. Pre-existing subdirs
+`compress/`, `indexer/`, `workspace/` were preserved. Five shared
+utilities (`logger`, `merger`, `migrator`, `rule-engine`,
+`custom-templates`) remain at `src/core/` root.
+
+47 `git mv` operations preserve file history. 211 import sites and 9
+`__dirname`-based template-path computations were updated mechanically;
+no logic touched. Full suite stayed green (1985/1985) before the
+follow-up scope cuts described below.
+
+### Removed — five experimental / redundant features
+
+Five modules were removed to shrink the surface area:
+
+- **Telemetry** (`state/telemetry.ts`, MCP middleware, `--telemetry`
+  CLI flag) — local opt-in NDJSON tool-latency log, no documented
+  consumer. The MCP server still wraps every tool with a timeout
+  guard; only the latency-recording side effect went away.
+- **Auto-fixer** (`quality/auto-fixer.ts`, `rulebook fix` command) —
+  bundled lint + format + heuristic fix loop. Users run `npm run lint`
+  / `cargo fix` / etc. directly.
+- **Review manager** (`tasks/review-manager.ts`, `rulebook review`
+  command) — AI-driven PR review via `claude` / `gemini` / `amp` CLIs.
+  Users invoke those tools directly.
+- **Watcher + modern-console** (`console/watcher.ts`,
+  `console/modern-console.ts`, `rulebook watcher` BETA command) —
+  full-screen TUI with system monitoring. Cost: a `blessed` UI tree
+  that nobody used.
+- **Compact-context seed** (`claude/compact-context-manager.ts`) —
+  seeded `.rulebook/COMPACT_CONTEXT.md` at init. Anthropic's
+  `/compact` re-reads `CLAUDE.md` imports natively, making this
+  redundant. The separate `on-compact-reinject.sh` hook is still
+  installed when `compactContextReinject` is enabled.
+
+CLI surface drops three commands: `rulebook fix`, `rulebook watcher`,
+`rulebook review`. The `--telemetry` flag on `rulebook mcp init` is
+also gone.
+
+The `RulebookConfig['features']` type drops the `telemetry` boolean.
+Existing `.rulebook/rulebook.json` files with that field continue to
+load — extra unknown fields are tolerated.
+
 ### Performance — `~2 s` saved per turn from hook overhead (#15)
 
 Three rulebook-installed Claude Code hooks were profiled and rewritten.

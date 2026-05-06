@@ -11,8 +11,6 @@ import {
   versionCommand,
   changelogCommand,
   healthCommand,
-  fixCommand,
-  watcherCommand,
   agentCommand,
   configCommand,
   tasksCommand,
@@ -56,8 +54,6 @@ import {
   overrideShowCommand,
   overrideEditCommand,
   overrideClearCommand,
-  // Review command (v4.0)
-  reviewCommand,
   // Setup commands
   setupClaudeCodePlugin,
   migrateMemoryDirectory,
@@ -179,14 +175,8 @@ program
   .description('Run rulebook health checks (file sizes, broken imports, stale state)')
   .action(doctorCommand);
 
-program.command('fix').description('Auto-fix common project issues').action(fixCommand);
 
 // New advanced commands (BETA)
-program
-  .command('watcher')
-  .description('Start modern full-screen console watcher for tasks and agent progress [BETA]')
-  .action(watcherCommand);
-
 program
   .command('agent')
   .description('Start autonomous agent for managing AI CLI workflows [BETA]')
@@ -385,8 +375,7 @@ mcpCommand
   .command('init')
   .description('Initialize MCP configuration in .rulebook and .cursor/mcp.json')
   .option('--workspace', 'Configure MCP for workspace mode (multi-project)')
-  .option('--telemetry', 'Enable local opt-in MCP telemetry (.rulebook/telemetry/)')
-  .action((options: { workspace?: boolean; telemetry?: boolean }) => mcpInitCommand(options));
+  .action((options: { workspace?: boolean }) => mcpInitCommand(options));
 
 program
   .command('mcp-server')
@@ -601,26 +590,6 @@ overrideCommand
   .command('clear')
   .description('Reset AGENTS.override.md to empty template')
   .action(() => overrideClearCommand());
-
-// Review command — AI-powered code review
-program
-  .command('review')
-  .description('Run AI code review on current changes vs base branch')
-  .option('--output <format>', 'Output format: terminal, github-comment, json', 'terminal')
-  .option(
-    '--fail-on <severity>',
-    'Fail with exit 1 if issues of this severity or higher: critical, major, minor'
-  )
-  .option('--base-branch <branch>', 'Base branch to diff against', 'main')
-  .option('--tool <tool>', 'AI tool to use: claude, gemini, amp', 'claude')
-  .action((options) =>
-    reviewCommand({
-      output: options.output as 'terminal' | 'github-comment' | 'json',
-      failOn: options.failOn as 'critical' | 'major' | 'minor' | undefined,
-      baseBranch: options.baseBranch,
-      tool: options.tool,
-    })
-  );
 
 // Setup commands
 program
