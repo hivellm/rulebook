@@ -117,4 +117,26 @@ describe('claude-settings-manager — rulebook claude setup flags', () => {
     expect(settings.model).toBe('sonnet');
     expect(settings.hooks).toBeDefined();
   });
+
+  it('writes portable $CLAUDE_PROJECT_DIR hook paths, not absolute paths', async () => {
+    await applyClaudeSettings(testDir, {
+      teamEnforcement: true,
+      sessionHandoff: true,
+      qualityEnforcement: true,
+      terseMode: true,
+    });
+    const settings = await readSettings(testDir);
+    const commands: string[] = [];
+    for (const event of Object.values(settings.hooks as Record<string, unknown[]>)) {
+      for (const entry of event as Array<{ hooks: Array<{ command: string }> }>) {
+        for (const h of entry.hooks) commands.push(h.command);
+      }
+    }
+    expect(commands.length).toBeGreaterThan(0);
+    for (const cmd of commands) {
+      expect(cmd).toContain('$CLAUDE_PROJECT_DIR/.claude/hooks/');
+      // Must NOT bake in the absolute temp dir path.
+      expect(cmd).not.toContain(testDir);
+    }
+  });
 });

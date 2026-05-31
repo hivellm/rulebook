@@ -275,9 +275,12 @@ export async function applyClaudeSettings(
   return { path: settingsPath, changed };
 }
 
-function buildCommandFor(projectRoot: string, scriptName: string): string {
-  const scriptPath = getHookScriptPath(projectRoot, scriptName);
-  return `bash ${scriptPath.replace(/\\/g, '/')}`;
+function buildCommandFor(_projectRoot: string, scriptName: string): string {
+  // Use $CLAUDE_PROJECT_DIR so the committed settings.json stays portable
+  // across machines/clones. Claude Code expands it to the project root at
+  // runtime. The script itself is still installed under the real projectRoot
+  // by installHookScripts().
+  return `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${scriptName}`;
 }
 
 type HookEvent = 'PreToolUse' | 'SessionStart' | 'Stop' | 'UserPromptSubmit';

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `/spec` interactive spec-authoring skill
+
+`/spec <topic>` runs in the main conversation and drives the `spec-author`
+workflow as its engine: draft → ask the user the workflow's clarifying questions
+(via AskUserQuestion) → iterate until ready → confirm with the user → create the
+rulebook tasks (`rulebook_task_create` + validate) → hand off to
+`/rulebook-driver`. This is the interactive front-end the non-interactive
+workflow cannot be on its own. Installed to `.claude/skills/spec/`.
+
+### Changed
+
+- **Quality gate now runs on opus.** `quality-gatekeeper` agent bumped
+  `sonnet` → `opus` so the final correctness verdict is as reliable as possible
+  (the `bugfix` workflow already pinned the verify step to opus).
+- **Portable hook paths.** `applyClaudeSettings` now writes hook commands as
+  `bash $CLAUDE_PROJECT_DIR/.claude/hooks/<script>` instead of an absolute path,
+  so a committed `.claude/settings.json` survives clones and moves across
+  machines.
+
 ### Added — `rulebook claude` setup command
 
 `rulebook claude` (alias `rulebook claude setup`) applies the recommended Claude
