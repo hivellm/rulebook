@@ -34,8 +34,10 @@ command -v jq &>/dev/null || emit_none
 installed="$(jq -r '.version // empty' "$CONFIG_FILE" 2>/dev/null || true)"
 [[ -z "$installed" ]] && emit_none
 
-# Allow opt-out via config: { "updateCheck": { "enabled": false } }
-enabled="$(jq -r '.updateCheck.enabled // true' "$CONFIG_FILE" 2>/dev/null || echo true)"
+# Allow opt-out via config: { "updateCheck": { "enabled": false } }.
+# Note: jq's `//` treats `false` as empty, so `.updateCheck.enabled // true`
+# would wrongly yield true when explicitly disabled — test the value directly.
+enabled="$(jq -r 'if .updateCheck.enabled == false then "false" else "true" end' "$CONFIG_FILE" 2>/dev/null || echo true)"
 [[ "$enabled" == "false" ]] && emit_none
 
 # --- Determine latest version (cache-first) ---------------------------------
