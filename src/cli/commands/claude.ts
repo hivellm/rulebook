@@ -44,6 +44,7 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
       permissionsAllowlist: true,
       statusLine: true,
       defaultModel,
+      updateCheck: true,
     });
 
     console.log(chalk.green('\n✅ Claude Code setup applied'));

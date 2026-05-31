@@ -47,6 +47,12 @@ export interface ClaudeSettingsDesire {
   statusLine?: boolean;
   /** Set the default model (cost-aware daily driver). Skipped when undefined. */
   defaultModel?: string;
+  /**
+   * Enable the SessionStart rulebook update-check hook. Compares the project's
+   * installed rulebook version against the latest on npm (cached 24h) and emits
+   * an advisory so Claude can offer to run `rulebook update`.
+   */
+  updateCheck?: boolean;
 }
 
 /**
@@ -103,6 +109,7 @@ const SIGNATURES = {
   enforcePreTool: 'enforce-pre-tool',
   terseActivate: 'terse-activate.sh',
   terseModeTracker: 'terse-mode-tracker.sh',
+  updateCheck: 'update-check.sh',
 } as const;
 
 // Hook signatures retired in past releases. Always removed during sync so
@@ -194,6 +201,19 @@ export async function applyClaudeSettings(
   } else {
     removeHook(existing.hooks, 'Stop', SIGNATURES.handoffCheck);
     removeHook(existing.hooks, 'SessionStart', SIGNATURES.handoffResume);
+  }
+
+  // SessionStart rulebook update-check
+  if (desire.updateCheck) {
+    upsertHook(
+      existing.hooks,
+      'SessionStart',
+      undefined,
+      SIGNATURES.updateCheck,
+      buildCommandFor(projectRoot, 'update-check.sh')
+    );
+  } else {
+    removeHook(existing.hooks, 'SessionStart', SIGNATURES.updateCheck);
   }
 
   // rulebook-terse: SessionStart + UserPromptSubmit (v5.4.0)
@@ -368,6 +388,10 @@ async function installHookScripts(
     shellScripts.push('terse-activate.ps1');
     shellScripts.push('terse-mode-tracker.sh');
     shellScripts.push('terse-mode-tracker.ps1');
+  }
+  if (desire.updateCheck) {
+    shellScripts.push('update-check.sh');
+    shellScripts.push('update-check.ps1');
   }
 
   for (const name of shellScripts) {

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — session-start update check
+
+A new SessionStart hook (`update-check.sh` / `.ps1`) compares the project's
+installed rulebook version (`.rulebook/rulebook.json` → `version`) against the
+latest `@hivehub/rulebook` on npm and, when a newer version exists, injects an
+advisory so Claude offers to run `rulebook update` (never auto-updates). The npm
+lookup is cached 24h in `.rulebook/.update-check`, runs with a 5s timeout, and
+no-ops offline. Enabled by default via `rulebook claude` / `init` / `update`;
+opt out with `.rulebook/rulebook.json` → `{ "updateCheck": { "enabled": false } }`.
+New `updateCheck` flag on `ClaudeSettingsDesire`. +6 tests.
+
 ### Docs
 
 - New `docs/usage-examples.md` with end-to-end examples for every workflow
