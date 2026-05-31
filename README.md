@@ -25,9 +25,21 @@ npx @hivehub/rulebook@latest update
 
 # Check project health
 npx @hivehub/rulebook@latest doctor
+
+# Apply the recommended Claude Code setup (MCP, agents, workflows, settings)
+npx @hivehub/rulebook@latest claude
 ```
 
 That's it. Rulebook detects your stack, generates rules for every AI tool in your project, sets up quality gates, and configures MCP integration — all in one command.
+
+Then, inside Claude Code, spec a feature and let the backlog implement itself:
+
+```
+/spec rate-limit the public REST API   # asks questions, creates rulebook tasks
+/rulebook-driver                        # implements every task, opus review gate
+```
+
+See [Usage Examples](docs/usage-examples.md) for the full set of end-to-end flows.
 
 > Install globally with `npm install -g @hivehub/rulebook` to use `rulebook` directly.
 
@@ -367,6 +379,7 @@ All config lives in `.rulebook/rulebook.json`:
 
 Full documentation in [`/docs`](docs/):
 
+- [Usage Examples](docs/usage-examples.md) — end-to-end flows for every workflow
 - [Getting Started](docs/guides/GETTING_STARTED.md)
 - [Best Practices](docs/guides/BEST_PRACTICES.md)
 - [CLI Agents](docs/CLI_AGENTS.md)
