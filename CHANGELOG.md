@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Docs
+
+- New `docs/usage-examples.md` with end-to-end examples for every workflow
+  (`/spec` → `/rulebook-driver`, `bugfix`, `feature-pipeline`, `review-fanout`,
+  `release-gate`) and `rulebook claude`. README Quick Start now shows the
+  spec → driver flow; the Documentation section links the new guide and drops
+  five stale links to guides that were never written.
+
 ### Added — `/spec` interactive spec-authoring skill
 
 `/spec <topic>` runs in the main conversation and drives the `spec-author`
