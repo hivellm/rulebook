@@ -41,7 +41,37 @@ export interface ClaudeSettingsDesire {
    * produced `dist/hooks/*.js`.
    */
   terseMode?: boolean;
+  /** Add a safe read-only Bash + rulebook MCP permissions allowlist. */
+  permissionsAllowlist?: boolean;
+  /** Add a command statusLine showing project dir + git branch. */
+  statusLine?: boolean;
+  /** Set the default model (cost-aware daily driver). Skipped when undefined. */
+  defaultModel?: string;
 }
+
+/**
+ * Safe, read-only Bash commands plus the rulebook MCP server. These never
+ * mutate the working tree, so auto-approving them removes routine permission
+ * prompts without weakening safety.
+ */
+const SAFE_PERMISSIONS: readonly string[] = [
+  'Bash(ls:*)',
+  'Bash(cat:*)',
+  'Bash(grep:*)',
+  'Bash(rg:*)',
+  'Bash(find:*)',
+  'Bash(git status:*)',
+  'Bash(git diff:*)',
+  'Bash(git log:*)',
+  'Bash(git blame:*)',
+  'Bash(npm run type-check:*)',
+  'Bash(npm test:*)',
+  'mcp__rulebook',
+];
+
+/** Portable statusLine: "<dir> | <branch>" (branch segment omitted outside a repo). */
+const STATUS_LINE_COMMAND =
+  'echo "$(basename "$(pwd)")$(git branch --show-current 2>/dev/null | sed "s/^/ | /")"';
 
 interface HookCommand {
   type: 'command';
@@ -59,6 +89,9 @@ interface SettingsShape {
     Stop?: HookEntry[];
     [k: string]: HookEntry[] | undefined;
   };
+  permissions?: { allow?: string[]; [k: string]: unknown };
+  statusLine?: { type: string; command: string };
+  model?: string;
   [k: string]: unknown;
 }
 
@@ -206,6 +239,28 @@ export async function applyClaudeSettings(
   // would still have settings.json pointing at deleted scripts.
   for (const legacy of LEGACY_SIGNATURES) {
     removeHook(existing.hooks, 'PreToolUse', legacy);
+  }
+
+  // Safe read-only permissions allowlist (additive, de-duplicated).
+  if (desire.permissionsAllowlist) {
+    const permissions = existing.permissions ?? {};
+    const current = Array.isArray(permissions.allow) ? permissions.allow : [];
+    const merged = [...current];
+    for (const rule of SAFE_PERMISSIONS) {
+      if (!merged.includes(rule)) merged.push(rule);
+    }
+    permissions.allow = merged;
+    existing.permissions = permissions;
+  }
+
+  // statusLine — only set when absent, never clobber a user-authored one.
+  if (desire.statusLine && !existing.statusLine) {
+    existing.statusLine = { type: 'command', command: STATUS_LINE_COMMAND };
+  }
+
+  // Default model — only set when absent, respect an explicit user choice.
+  if (desire.defaultModel && !existing.model) {
+    existing.model = desire.defaultModel;
   }
 
   // Collapse empty arrays/objects so we don't leave noise behind.

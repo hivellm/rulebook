@@ -189,6 +189,8 @@ rulebook init --light            # No quality enforcement
 rulebook update                  # Update to latest rules
 rulebook doctor                  # Health checks (file sizes, broken imports, stale state)
 rulebook validate                # Check project standards
+rulebook claude                  # Apply recommended Claude Code setup (MCP, agents, workflows, settings)
+rulebook claude --model opus     # Same, overriding the default model (default: sonnet)
 ```
 
 ### Task Management

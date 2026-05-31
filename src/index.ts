@@ -346,6 +346,20 @@ program
     mcpServerCommand();
   });
 
+// Claude Code setup command
+const claudeCommand = program
+  .command('claude')
+  .description('Apply the recommended Claude Code setup (MCP, agents, workflows, settings)');
+
+claudeCommand
+  .command('setup', { isDefault: true })
+  .description('Install integrations and apply opinionated, cost-aware settings')
+  .option('--model <model>', 'Default model for settings.json (default: sonnet)')
+  .action(async (opts: { model?: string }) => {
+    const { claudeSetupCommand } = await import('./cli/commands/claude.js');
+    await claudeSetupCommand({ model: opts.model });
+  });
+
 // Skills commands (v2.0)
 const skillCommand = program.command('skill').description('Manage Rulebook skills (v2.0)');
 
