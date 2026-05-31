@@ -7,10 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `rulebook claude` setup command
+
+`rulebook claude` (alias `rulebook claude setup`) applies the recommended Claude
+Code setup in one idempotent, non-interactive step: installs MCP + skills +
+agents + workflows via `setupClaudeCodeIntegration`, then layers opinionated,
+cost-aware settings onto `.claude/settings.json` and prints a summary.
+
+- Settings applied: team/quality/handoff/terse hooks, a safe read-only
+  permissions allowlist (`ls`/`cat`/`grep`/`rg`/`find`/`git status|diff|log|blame`/
+  `npm run type-check`/`npm test` + `mcp__rulebook`), a portable `statusLine`
+  (dir + git branch), and a default `model` (`sonnet`; `--model` to override).
+- All settings are additive and non-clobbering: existing `permissions.allow`
+  entries, a user-authored `statusLine`, and an explicit `model` are preserved.
+- New `ClaudeSettingsDesire` flags: `permissionsAllowlist`, `statusLine`,
+  `defaultModel` in `claude-settings-manager.ts`. +13 tests.
+
 ### Added — multi-agent workflows
 
-Five Claude Code Workflow scripts in `.claude/workflows/` orchestrating the
-bundled agents with cost-tiered models:
+Six Claude Code Workflow scripts in `.claude/workflows/` orchestrating the
+bundled agents with cost-tiered models (`haiku` read-only, `sonnet` impl,
+`opus` on the final review gate of every workflow):
+
+- `spec-author` — research → draft proposal + SHALL/MUST spec → opus gap-critic
+  returning ranked clarifying questions + gaps. Pass `args: { topic, answers? }`.
+- `rulebook-driver` now **loops the backlog** (discover → implement → opus
+  review → document → next) until drained / a item fails / `maxItems` / low
+  budget. Args `{ once?, maxItems?, minBudget? }`.
+
+The original five:
 
 - `rulebook-driver` — discover the next unchecked task item → implement →
   independent SDD+TDD review loop (max 3 rounds, reviewer sees only the diff +
