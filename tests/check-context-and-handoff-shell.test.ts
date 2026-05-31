@@ -100,10 +100,9 @@ describe.skipIf(!BASH_OK || !JQ_OK)('check-context-and-handoff.sh — threshold 
     const r = runHook({ cwd: projectRoot, transcript_path: transcriptPath }, projectRoot);
     expect(r.status).toBe(0);
     const parsed = JSON.parse(r.stdout);
-    expect(parsed.hookSpecificOutput.hookEventName).toBe('Stop');
-    expect(parsed.hookSpecificOutput.additionalContext).toMatch(
-      /Context at \d+%.*invoke \/handoff/i
-    );
+    // Warn is advisory → surfaced to the user via systemMessage (Stop has no
+    // additionalContext field).
+    expect(parsed.systemMessage).toMatch(/Context at \d+%.*invoke \/handoff/i);
   });
 
   it('emits force advisory when transcript crosses 90 % of budget', () => {
@@ -113,9 +112,9 @@ describe.skipIf(!BASH_OK || !JQ_OK)('check-context-and-handoff.sh — threshold 
     const r = runHook({ cwd: projectRoot, transcript_path: transcriptPath }, projectRoot);
     expect(r.status).toBe(0);
     const parsed = JSON.parse(r.stdout);
-    expect(parsed.hookSpecificOutput.additionalContext).toMatch(
-      /FORCE THRESHOLD.*MUST invoke \/handoff/i
-    );
+    // Force blocks the stop and feeds the instruction back to the model.
+    expect(parsed.decision).toBe('block');
+    expect(parsed.reason).toMatch(/FORCE THRESHOLD.*MUST invoke \/handoff/i);
   });
 
   it('honors handoff thresholds from .rulebook/rulebook.json', () => {
@@ -129,8 +128,6 @@ describe.skipIf(!BASH_OK || !JQ_OK)('check-context-and-handoff.sh — threshold 
     const r = runHook({ cwd: projectRoot, transcript_path: transcriptPath }, projectRoot);
     expect(r.status).toBe(0);
     const parsed = JSON.parse(r.stdout);
-    expect(parsed.hookSpecificOutput.additionalContext).toMatch(
-      /Context at \d+%.*invoke \/handoff/i
-    );
+    expect(parsed.systemMessage).toMatch(/Context at \d+%.*invoke \/handoff/i);
   });
 });

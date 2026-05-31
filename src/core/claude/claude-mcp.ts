@@ -20,6 +20,7 @@ export interface ClaudeCodeSetupResult {
   devSkillsInstalled: string[];
   agentTeamsEnabled: boolean;
   agentDefinitionsInstalled: string[];
+  workflowDefinitionsInstalled: string[];
 }
 
 /**
@@ -234,6 +235,43 @@ export async function installAgentDefinitions(
 }
 
 /**
+ * Install multi-agent workflow scripts into .claude/workflows/.
+ * Copies templates/claude-workflows/*.js to the project's .claude/workflows/
+ * directory so the Claude Code Workflow tool can run them by name. Existing
+ * files are overwritten to keep them in sync on `rulebook update`.
+ * Returns the list of installed file names.
+ */
+export async function installWorkflowDefinitions(
+  projectRoot: string,
+  templatesPath: string
+): Promise<string[]> {
+  const workflowsSourceDir = join(templatesPath, 'claude-workflows');
+  const workflowsTargetDir = join(projectRoot, '.claude', 'workflows');
+
+  if (!(await fileExists(workflowsSourceDir))) {
+    return [];
+  }
+
+  await ensureDir(workflowsTargetDir);
+
+  const entries = await readdir(workflowsSourceDir);
+  const installed: string[] = [];
+
+  for (const entry of entries) {
+    if (!entry.endsWith('.js')) continue;
+
+    const sourcePath = join(workflowsSourceDir, entry);
+    const targetPath = join(workflowsTargetDir, entry);
+
+    const content = await readFile(sourcePath);
+    await writeFile(targetPath, content);
+    installed.push(entry);
+  }
+
+  return installed;
+}
+
+/**
  * Get the templates path (same logic as generator.ts getTemplatesDir)
  */
 function getTemplatesPath(): string {
@@ -261,6 +299,7 @@ export async function setupClaudeCodeIntegration(
       devSkillsInstalled: [],
       agentTeamsEnabled: false,
       agentDefinitionsInstalled: [],
+      workflowDefinitionsInstalled: [],
     };
   }
 
@@ -276,6 +315,10 @@ export async function setupClaudeCodeIntegration(
     projectRoot,
     resolvedTemplatesPath
   );
+  const workflowDefinitionsInstalled = await installWorkflowDefinitions(
+    projectRoot,
+    resolvedTemplatesPath
+  );
 
   return {
     detected: true,
@@ -284,5 +327,6 @@ export async function setupClaudeCodeIntegration(
     devSkillsInstalled,
     agentTeamsEnabled,
     agentDefinitionsInstalled,
+    workflowDefinitionsInstalled,
   };
 }

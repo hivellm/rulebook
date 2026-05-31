@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added — multi-agent workflows
+
+Five Claude Code Workflow scripts in `.claude/workflows/` orchestrating the
+bundled agents with cost-tiered models:
+
+- `rulebook-driver` — discover the next unchecked task item → implement →
+  independent SDD+TDD review loop (max 3 rounds, reviewer sees only the diff +
+  spec, no dev context) → document. Researcher (haiku) for discovery,
+  typescript-implementer + code-reviewer (sonnet) for the loop, docs-writer
+  (haiku) for docs.
+- `feature-pipeline` — research → architect (opus) → implement → test → review →
+  document. Pass `args: { feature }`.
+- `bugfix` — root-cause (haiku) → TDD fix → quality-gatekeeper verdict loop
+  (max 2). Pass `args: { bug }`.
+- `review-fanout` — adversarial multi-dimension review of the diff (correctness,
+  security, performance, tests), each finding independently verified.
+- `release-gate` — parallel build / tests+coverage / security / docs gates →
+  single go/no-go verdict.
+
+Distributed to consumer projects via `installWorkflowDefinitions()`
+(`templates/claude-workflows/` → `.claude/workflows/`), surfaced in
+`init`/`update` output. `project-manager` and `quality-gatekeeper` agent
+definitions added to `templates/agents/`.
+
+### Fixed
+
+- `implementer`/`code-reviewer` agent definitions referenced "rust" in a
+  TypeScript project; corrected to TypeScript. `typescript-implementer`
+  downgraded from `opus` to `sonnet` for cost-appropriate routine work.
+
+### Added — library/framework detection with lean, stack-aware rules
+
+A deliberately lean re-introduction of framework awareness (the heavyweight
+`templates/frameworks/` system removed in 5.7.0). Detection is data-driven and
+emits a rule spec only for libraries the project actually uses.
+
+- New `libraries` dimension in `DetectionResult` and `ProjectConfig`, distinct
+  from `modules` (MCP integrations).
+- Data-driven catalog in `src/core/detect/library-registry.ts` — adding a
+  library is one registry entry plus one template, no detector/generator code
+  changes. Ships 31 entries across TS/JS (React, Next.js, Vue, Svelte, Angular,
+  Tailwind, HeroUI, Radix, shadcn/ui, Prisma, Drizzle, tRPC, Zod, Express,
+  NestJS, Vitest, Jest), Python (Django, FastAPI, Flask, SQLAlchemy, Pydantic,
+  pytest), Rust (Axum, Actix, Tokio, Serde, SQLx), and Go (Gin, Echo, GORM).
+- `detectLibraries()` parses `package.json`, `Cargo.toml`,
+  `pyproject.toml`/`requirements.txt`, and `go.mod`, considering only direct
+  dependencies. npm patterns ending in `*` match scoped packages by prefix.
+- Generation writes `.rulebook/specs/<LIB>.md` and references it in `AGENTS.md`;
+  libraries with `rulePaths` also emit a path-scoped `.claude/rules/<lib>.md`.
+- `init` now offers interactive language + library selection (confirm/edit) in a
+  TTY. An empty project is no longer a dead-end: the user is shown the language
+  checklist (and an optional library checklist) instead of getting an empty
+  config. Non-interactive runs (`--yes`, CI) keep auto-from-detection behavior.
+
 ## [5.7.0] - 2026-05-06
 
 ### Removed — framework templates, service templates, compress CLI, eval harness

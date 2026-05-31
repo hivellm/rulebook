@@ -5,14 +5,17 @@ import { fileExists, findFiles, readFile, readJsonFile } from '../../utils/file-
 import type {
   DetectionResult,
   LanguageDetection,
+  LibraryDetection,
   ModuleDetection,
   ExistingAgentsInfo,
   AgentBlock,
   MonorepoDetection,
 } from '../../types.js';
+import { LIBRARY_REGISTRY } from './library-registry.js';
 
 export async function detectProject(cwd: string = process.cwd()): Promise<DetectionResult> {
   const languages = await detectLanguages(cwd);
+  const libraries = await detectLibraries(cwd);
   const modules = await detectModules(cwd);
   const existingAgents = await detectExistingAgents(cwd);
   const gitHooks = await detectGitHooks(cwd);
@@ -26,6 +29,7 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
 
   return {
     languages,
+    libraries,
     modules,
     existingAgents,
     gitHooks,
@@ -637,4 +641,225 @@ async function detectGitHooks(
     preCommitExists: await fileExists(preCommitPath),
     prePushExists: await fileExists(prePushPath),
   };
+}
+
+/** Read direct npm dependency names (dependencies + devDependencies) from package.json. */
+async function readNpmDeps(cwd: string): Promise<Set<string>> {
+  const pkg = await readJsonFile<{
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  }>(path.join(cwd, 'package.json'));
+  if (!pkg) return new Set();
+  return new Set([
+    ...Object.keys(pkg.dependencies ?? {}),
+    ...Object.keys(pkg.devDependencies ?? {}),
+  ]);
+}
+
+/**
+ * Read direct crate names from the [dependencies], [dev-dependencies], and
+ * [build-dependencies] tables of Cargo.toml. Only top-level keys are considered.
+ */
+async function readCargoDeps(cwd: string): Promise<Set<string>> {
+  const file = path.join(cwd, 'Cargo.toml');
+  if (!(await fileExists(file))) return new Set();
+  let content = '';
+  try {
+    content = await readFile(file);
+  } catch {
+    return new Set();
+  }
+  const deps = new Set<string>();
+  let inDeps = false;
+  for (const raw of content.split('\n')) {
+    const line = raw.trim();
+    if (line.startsWith('[')) {
+      inDeps = /^\[(dependencies|dev-dependencies|build-dependencies)\]$/.test(line);
+      continue;
+    }
+    if (!inDeps || line === '' || line.startsWith('#')) continue;
+    const match = line.match(/^([A-Za-z0-9_-]+)\s*(=|\.)/);
+    if (match) deps.add(match[1]);
+  }
+  return deps;
+}
+
+/** Normalize a Python distribution name for case- and separator-insensitive matching. */
+function normalizePyName(name: string): string {
+  return name.toLowerCase().replace(/_/g, '-');
+}
+
+/**
+ * Read direct Python dependency names from pyproject.toml ([project].dependencies and
+ * [tool.poetry.dependencies]) and requirements.txt.
+ */
+async function readPipDeps(cwd: string): Promise<Set<string>> {
+  const deps = new Set<string>();
+
+  const pyproject = path.join(cwd, 'pyproject.toml');
+  if (await fileExists(pyproject)) {
+    let content = '';
+    try {
+      content = await readFile(pyproject);
+    } catch {
+      content = '';
+    }
+    const arrayMatch = content.match(/dependencies\s*=\s*\[([^\]]*)\]/s);
+    if (arrayMatch) {
+      for (const item of arrayMatch[1].split(',')) {
+        const name = item
+          .replace(/['"]/g, '')
+          .trim()
+          .split(/[<>=!~ ;[]/)[0];
+        if (name) deps.add(normalizePyName(name));
+      }
+    }
+    let inPoetry = false;
+    for (const raw of content.split('\n')) {
+      const line = raw.trim();
+      if (line.startsWith('[')) {
+        inPoetry = line === '[tool.poetry.dependencies]';
+        continue;
+      }
+      if (!inPoetry || line === '' || line.startsWith('#')) continue;
+      const match = line.match(/^([A-Za-z0-9_.-]+)\s*=/);
+      if (match && match[1].toLowerCase() !== 'python') deps.add(normalizePyName(match[1]));
+    }
+  }
+
+  const requirements = path.join(cwd, 'requirements.txt');
+  if (await fileExists(requirements)) {
+    let content = '';
+    try {
+      content = await readFile(requirements);
+    } catch {
+      content = '';
+    }
+    for (const raw of content.split('\n')) {
+      const line = raw.trim();
+      if (line === '' || line.startsWith('#') || line.startsWith('-')) continue;
+      const name = line.split(/[<>=!~ ;[]/)[0];
+      if (name) deps.add(normalizePyName(name));
+    }
+  }
+  return deps;
+}
+
+/** Read required module paths from go.mod (both single-line and require-block forms). */
+async function readGoDeps(cwd: string): Promise<Set<string>> {
+  const file = path.join(cwd, 'go.mod');
+  if (!(await fileExists(file))) return new Set();
+  let content = '';
+  try {
+    content = await readFile(file);
+  } catch {
+    return new Set();
+  }
+  const mods = new Set<string>();
+  let inBlock = false;
+  for (const raw of content.split('\n')) {
+    const line = raw.trim();
+    if (line.startsWith('require (')) {
+      inBlock = true;
+      continue;
+    }
+    if (inBlock && line === ')') {
+      inBlock = false;
+      continue;
+    }
+    if (inBlock) {
+      const match = line.match(/^(\S+)\s+v/);
+      if (match) mods.add(match[1]);
+      continue;
+    }
+    const single = line.match(/^require\s+(\S+)\s+v/);
+    if (single) mods.add(single[1]);
+  }
+  return mods;
+}
+
+/** Map a library's language to the manifest filename used as its detection source. */
+function manifestForLanguage(language: LanguageDetection['language']): string {
+  switch (language) {
+    case 'rust':
+      return 'Cargo.toml';
+    case 'python':
+      return 'pyproject.toml';
+    case 'go':
+      return 'go.mod';
+    default:
+      return 'package.json';
+  }
+}
+
+/**
+ * Detect libraries/frameworks by matching project manifests against the library
+ * registry. Only direct dependencies are considered; transitive dependencies are
+ * ignored. Marker files raise detection even without a manifest dependency. Results
+ * are sorted by descending confidence.
+ */
+export async function detectLibraries(cwd: string): Promise<LibraryDetection[]> {
+  const [npm, cargo, pip, gomod] = await Promise.all([
+    readNpmDeps(cwd),
+    readCargoDeps(cwd),
+    readPipDeps(cwd),
+    readGoDeps(cwd),
+  ]);
+
+  const detections: LibraryDetection[] = [];
+
+  for (const def of LIBRARY_REGISTRY) {
+    const indicators: string[] = [];
+    let depMatch = false;
+
+    for (const p of def.detect.npm ?? []) {
+      if (p.endsWith('*')) {
+        const prefix = p.slice(0, -1);
+        for (const dep of npm) {
+          if (dep.startsWith(prefix)) {
+            indicators.push(`npm:${dep}`);
+            depMatch = true;
+          }
+        }
+      } else if (npm.has(p)) {
+        indicators.push(`npm:${p}`);
+        depMatch = true;
+      }
+    }
+    for (const p of def.detect.cargo ?? []) {
+      if (cargo.has(p)) {
+        indicators.push(`cargo:${p}`);
+        depMatch = true;
+      }
+    }
+    for (const p of def.detect.pip ?? []) {
+      if (pip.has(normalizePyName(p))) {
+        indicators.push(`pip:${p}`);
+        depMatch = true;
+      }
+    }
+    for (const p of def.detect.gomod ?? []) {
+      for (const mod of gomod) {
+        if (mod === p || mod.startsWith(`${p}/`)) {
+          indicators.push(`gomod:${p}`);
+          depMatch = true;
+          break;
+        }
+      }
+    }
+    for (const f of def.detect.files ?? []) {
+      if (await fileExists(path.join(cwd, f))) indicators.push(`file:${f}`);
+    }
+
+    if (indicators.length === 0) continue;
+
+    detections.push({
+      library: def.id,
+      confidence: depMatch ? 1.0 : 0.8,
+      indicators,
+      source: manifestForLanguage(def.language),
+    });
+  }
+
+  return detections.sort((a, b) => b.confidence - a.confidence);
 }

@@ -75,3 +75,4 @@ CLAUDE.local.md
 .rulebook/handoff/_pending.md
 .rulebook/handoff/.urgent
 .rulebook/telemetry/
+.claude/scheduled_tasks.lock

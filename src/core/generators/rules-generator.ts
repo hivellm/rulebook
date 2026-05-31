@@ -2,6 +2,7 @@ import path from 'path';
 import { readFile, writeFile, fileExists, ensureDir } from '../../utils/file-system.js';
 import type { DetectionResult } from '../../types.js';
 import { getTemplatesDir } from './generator.js';
+import { LIBRARY_REGISTRY, type LibraryDef } from '../detect/library-registry.js';
 
 /**
  * v5.3.0 `.claude/rules/` generator.
@@ -123,9 +124,25 @@ export function hasGeneratedSentinel(content: string): boolean {
  * Generate `.claude/rules/<language>.md` for every detected language that
  * has a shipped template. User-authored rules (no sentinel) are preserved.
  */
+/**
+ * Build a path-scoped `.claude/rules/<lib>.md` body for a library: YAML `paths:`
+ * frontmatter from the registry, the generated sentinel, then the library template
+ * content with its `<!-- ID:START/END -->` markers stripped.
+ */
+function buildLibraryRuleContent(def: LibraryDef, templateBody: string): string {
+  const paths = (def.rulePaths ?? []).map((p) => `  - "${p}"`).join('\n');
+  const body = templateBody
+    .split('\n')
+    .filter((l) => !/^<!--\s+\w+:(START|END)\s+-->\s*$/.test(l.trim()))
+    .join('\n')
+    .trim();
+  return `---\npaths:\n${paths}\n---\n<!-- ${GENERATED_SENTINEL} — delete this comment to prevent regeneration on \`rulebook update\` -->\n\n${body}\n`;
+}
+
 export async function generateRules(
   projectRoot: string,
-  detection: Pick<DetectionResult, 'languages'>
+  detection: Pick<DetectionResult, 'languages'>,
+  libraries: string[] = []
 ): Promise<RulesGenerationResult> {
   const rulesDir = getRulesDir(projectRoot);
   await ensureDir(rulesDir);
@@ -182,6 +199,31 @@ export async function generateRules(
       await writeFile(targetPath, template);
       result.written.push(targetPath);
     }
+  }
+
+  // Library path-scoped rules — only for detected/selected libraries that declare globs.
+  const seenLib = new Set<string>();
+  for (const libId of libraries) {
+    if (seenLib.has(libId)) continue;
+    seenLib.add(libId);
+
+    const def = LIBRARY_REGISTRY.find((d) => d.id === libId);
+    if (!def || !def.rulePaths || def.rulePaths.length === 0) continue;
+
+    const targetPath = path.join(rulesDir, `${libId}.md`);
+    if (await fileExists(targetPath)) {
+      const existing = await readFile(targetPath);
+      if (!hasGeneratedSentinel(existing)) {
+        result.preserved.push(targetPath);
+        continue;
+      }
+    }
+
+    const templatePath = path.join(getTemplatesDir(), 'libraries', def.template);
+    if (!(await fileExists(templatePath))) continue;
+    const template = await readFile(templatePath);
+    await writeFile(targetPath, buildLibraryRuleContent(def, template));
+    result.written.push(targetPath);
   }
 
   return result;

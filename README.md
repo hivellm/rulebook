@@ -137,6 +137,23 @@ Cross-platform (Node.js, no `jq` dependency).
 
 ---
 
+## Multi-Agent Workflows
+
+`rulebook init`/`update` installs orchestrated [Claude Code Workflow](https://code.claude.com/docs/en/workflows) scripts into `.claude/workflows/`. Each fans work out across the bundled agents with cost-tiered models — `haiku` for read-only steps, `sonnet` for implementation, `opus` for the final review gate.
+
+| Workflow | What it does | Args |
+|----------|--------------|------|
+| `rulebook-driver` | Loops the backlog: discover next unchecked task item → implement (SDD+TDD) → independent **opus** reviewer gate (≤3 rounds) → document → next, until drained / a item fails / cap / low budget | `{ once?, maxItems?, minBudget? }` |
+| `spec-author` | Help author a task spec: research → draft proposal + SHALL/MUST spec → **opus** gap-critic returns ranked clarifying questions + gaps for you to answer (re-run with answers to iterate) | `{ topic, answers? }` |
+| `feature-pipeline` | research → architect (opus) → implement → test → **opus** review → document | `{ feature }` |
+| `bugfix` | root-cause → TDD fix → **opus** quality-gatekeeper verdict (≤2 rounds) | `{ bug }` |
+| `review-fanout` | Adversarial multi-dimension review of the diff (correctness/security/perf/tests), each finding verified, **opus** synthesis | — |
+| `release-gate` | Parallel build / tests+coverage / security / docs → single go/no-go | — |
+
+The independent reviewers run as fresh subagents with **no developer context** — they see only the `git diff` plus the spec, so the gate is a genuine second opinion. Run a workflow from Claude Code via the matching slash command (e.g. `/rulebook-driver`).
+
+---
+
 ## MCP Server
 
 MCP tools exposed via stdio transport. Zero configuration after `rulebook mcp init`.

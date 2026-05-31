@@ -23,7 +23,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/on-compact-reinject.sh"
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/on-compact-reinject.sh"
           }
         ]
       },
@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/resume-from-handoff.sh"
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/resume-from-handoff.sh"
           }
         ]
       },
@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/terse-activate.sh"
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/terse-activate.sh"
           }
         ]
       }
@@ -49,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/check-context-and-handoff.sh"
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/check-context-and-handoff.sh"
           }
         ]
       }
@@ -60,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/enforce-pre-tool.sh"
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/enforce-pre-tool.sh"
           }
         ]
       }
@@ -70,7 +70,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash E:/HiveLLM/Rulebook/.claude/hooks/terse-mode-tracker.sh"
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/terse-mode-tracker.sh"
           }
         ]
       }

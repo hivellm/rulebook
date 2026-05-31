@@ -458,7 +458,9 @@ export async function updateSingleProject(
   ).start();
   try {
     const { generateRules } = await import('../../core/generators/rules-generator.js');
-    const rulesResult = await generateRules(cwd, { languages: detection.languages });
+    const rulesResult = await generateRules(cwd, { languages: detection.languages }, [
+      ...new Set(detection.libraries.map((d) => d.library)),
+    ]);
     if (rulesResult.written.length > 0) {
       rulesUpdateSpinner.succeed(
         `Refreshed ${rulesResult.written.length} language rule file(s) in .claude/rules/`
@@ -673,6 +675,13 @@ export async function updateSingleProject(
         console.log(
           chalk.gray(
             `  • ${result.agentDefinitionsInstalled.length} agent definitions updated in .claude/agents/`
+          )
+        );
+      }
+      if (result.workflowDefinitionsInstalled.length > 0) {
+        console.log(
+          chalk.gray(
+            `  • ${result.workflowDefinitionsInstalled.length} workflows updated in .claude/workflows/`
           )
         );
       }

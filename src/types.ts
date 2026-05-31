@@ -6,6 +6,7 @@ export interface MonorepoDetection {
 
 export interface DetectionResult {
   languages: LanguageDetection[];
+  libraries: LibraryDetection[];
   modules: ModuleDetection[];
   existingAgents: ExistingAgentsInfo | null;
   projectType?: 'monorepo' | 'library' | 'application' | 'cli';
@@ -73,6 +74,54 @@ export interface LanguageDetection {
   indicators: string[];
 }
 
+export type LibraryId =
+  // TypeScript / JavaScript
+  | 'react'
+  | 'next'
+  | 'vue'
+  | 'svelte'
+  | 'angular'
+  | 'tailwind'
+  | 'heroui'
+  | 'radix'
+  | 'shadcn'
+  | 'prisma'
+  | 'drizzle'
+  | 'trpc'
+  | 'zod'
+  | 'express'
+  | 'nestjs'
+  | 'vitest'
+  | 'jest'
+  // Python
+  | 'django'
+  | 'fastapi'
+  | 'flask'
+  | 'sqlalchemy'
+  | 'pydantic'
+  | 'pytest'
+  // Rust
+  | 'axum'
+  | 'actix'
+  | 'tokio'
+  | 'serde'
+  | 'sqlx'
+  // Go
+  | 'gin'
+  | 'echo'
+  | 'gorm';
+
+/**
+ * A library/framework detected in the project (e.g. React, Prisma). Distinct from
+ * {@link ModuleDetection}, which models MCP servers and external integrations.
+ */
+export interface LibraryDetection {
+  library: LibraryId;
+  confidence: number;
+  indicators: string[];
+  source: string;
+}
+
 export interface ModuleDetection {
   module:
     | 'vectorizer'
@@ -108,6 +157,7 @@ export interface AgentBlock {
 
 export interface ProjectConfig {
   languages: string[];
+  libraries?: string[];
   modules: string[];
   ides: string[];
   projectType: 'monorepo' | 'library' | 'application' | 'cli';

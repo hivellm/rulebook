@@ -1,6 +1,7 @@
 import path from 'path';
 import { readFile, fileExists, writeFile, ensureDir } from '../../utils/file-system.js';
 import type { ProjectConfig } from '../../types.js';
+import { LIBRARY_REGISTRY } from '../detect/library-registry.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { DecisionManager } from '../tasks/decision-manager.js';
@@ -395,6 +396,21 @@ export async function generateModuleRules(module: string): Promise<string> {
   return `<!-- ${module.toUpperCase()}:START -->\n# ${module.charAt(0).toUpperCase() + module.slice(1)} Instructions\n\nModule-specific instructions for ${module}.\n<!-- ${module.toUpperCase()}:END -->\n`;
 }
 
+export async function generateLibraryRules(library: string): Promise<string> {
+  const def = LIBRARY_REGISTRY.find((d) => d.id === library);
+  const templatesDir = path.join(getTemplatesDir(), 'libraries');
+  const templatePath = def
+    ? path.join(templatesDir, def.template)
+    : path.join(templatesDir, `${library}.md`);
+
+  if (await fileExists(templatePath)) {
+    return await readFile(templatePath);
+  }
+
+  const label = def?.label ?? library.charAt(0).toUpperCase() + library.slice(1);
+  return `<!-- ${library.toUpperCase()}:START -->\n# ${label} Rules\n\nLibrary-specific rules for ${label}.\n<!-- ${library.toUpperCase()}:END -->\n`;
+}
+
 export async function generateGitRules(pushMode: string): Promise<string> {
   const templatesDir = path.join(getTemplatesDir(), 'git');
   const templatePath = path.join(templatesDir, 'GIT_WORKFLOW.md');
@@ -537,6 +553,19 @@ function generateModuleReference(module: string, rulebookDir: string = '.ruleboo
     `${moduleName} Instructions`,
     module.toUpperCase(),
     `${moduleName}-specific instructions`,
+    quickRef,
+    rulebookDir
+  );
+}
+
+function generateLibraryReference(library: string, rulebookDir: string = '.rulebook'): string {
+  const def = LIBRARY_REGISTRY.find((d) => d.id === library);
+  const libraryName = def?.label ?? library.charAt(0).toUpperCase() + library.slice(1);
+  const quickRef = ['Idiomatic conventions', 'Common pitfalls to avoid'];
+  return generateReferenceSection(
+    `${libraryName} Rules`,
+    library.toUpperCase(),
+    `${libraryName}-specific conventions`,
     quickRef,
     rulebookDir
   );
@@ -1007,6 +1036,31 @@ export async function generateModularAgents(
     sections.push('');
   }
 
+  // Write library files and add references (lean: only detected/selected libraries)
+  const libraries = mergedConfig.libraries ?? [];
+  if (libraries.length > 0) {
+    sections.push('## Library-Specific Rules');
+    sections.push('');
+    sections.push(
+      `The following libraries are configured for this project. For detailed rules, see the corresponding files in \`/${rulebookDir}/specs/\`:`
+    );
+    sections.push('');
+
+    for (const library of libraries) {
+      const libRules = await generateLibraryRules(library);
+      await writeModularFile(projectRoot, library.toUpperCase(), libRules, rulebookDir);
+    }
+
+    for (const library of libraries) {
+      sections.push(generateLibraryReference(library, rulebookDir));
+    }
+
+    sections.push(
+      `**Usage**: When working with a library, reference the corresponding \`/${rulebookDir}/specs/[LIBRARY].md\` file for its conventions.`
+    );
+    sections.push('');
+  }
+
   // Write module files and add references
   // First, write AGENT_AUTOMATION if not minimal (core file, not module)
   if (!mergedConfig.minimal) {
@@ -1150,6 +1204,7 @@ export async function generateModularAgents(
 
     await generateMultiToolConfigs(projectRoot, {
       languages: [],
+      libraries: [],
       modules: [],
       existingAgents: null,
       geminiCli,

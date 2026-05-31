@@ -1,0 +1,17 @@
+<!-- VITEST:START -->
+# Vitest Rules
+
+## Conventions
+- Configure Vitest in `vitest.config.ts` (not inside `vite.config.ts`) for clarity — use `defineConfig` from `vitest/config`
+- Use `vi.mock()` at the top of the file (hoisted automatically); use `vi.importMock()` for dynamic mocks
+- Reset mocks between tests with `vi.clearAllMocks()` in `afterEach` or set `clearMocks: true` globally in config
+- Use `expect.assertions(n)` in async tests that must reach a callback to prevent silent false-positives
+- Use `vi.useFakeTimers()` + `vi.runAllTimersAsync()` for testing debounce, throttle, and setTimeout logic
+- Type spy return values: `vi.spyOn(service, "method").mockResolvedValue(typed value)` — avoids `any` leaking into assertions
+
+## Avoid
+- Using `test.only` or `describe.only` — remove before committing; they silently skip all other tests
+- Importing from `vitest` and `jest` in the same file — pick one globals source
+- Asserting on implementation details (internal function call counts) when behavior tests suffice
+- Using `setTimeout` with real delays in tests — always fake timers for time-dependent logic
+<!-- VITEST:END -->

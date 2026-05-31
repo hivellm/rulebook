@@ -9,6 +9,7 @@ import {
   installClaudeCodeSkills,
   configureClaudeSettings,
   installAgentDefinitions,
+  installWorkflowDefinitions,
   setupClaudeCodeIntegration,
 } from '../src/core/claude/claude-mcp';
 
@@ -359,6 +360,64 @@ describe('claude-mcp', () => {
 
       expect(installed).toHaveLength(1);
       expect(installed).toContain('agent.md');
+    });
+  });
+
+  describe('installWorkflowDefinitions', () => {
+    let templatesDir: string;
+    let workflowsSourceDir: string;
+
+    beforeEach(async () => {
+      templatesDir = path.join(testDir, 'templates');
+      workflowsSourceDir = path.join(templatesDir, 'claude-workflows');
+      await fs.mkdir(workflowsSourceDir, { recursive: true });
+
+      await fs.writeFile(
+        path.join(workflowsSourceDir, 'rulebook-driver.js'),
+        'export const meta = { name: "rulebook-driver", description: "drive" }\n'
+      );
+      await fs.writeFile(
+        path.join(workflowsSourceDir, 'review-fanout.js'),
+        'export const meta = { name: "review-fanout", description: "review" }\n'
+      );
+    });
+
+    it('should install workflow scripts to .claude/workflows/', async () => {
+      const projectDir = path.join(testDir, 'project');
+      await fs.mkdir(projectDir, { recursive: true });
+
+      const installed = await installWorkflowDefinitions(projectDir, templatesDir);
+
+      expect(installed).toContain('rulebook-driver.js');
+      expect(installed).toContain('review-fanout.js');
+
+      const targetDir = path.join(projectDir, '.claude', 'workflows');
+      const content = await fs.readFile(path.join(targetDir, 'rulebook-driver.js'), 'utf8');
+      expect(content).toContain('rulebook-driver');
+    });
+
+    it('should return empty when templates/claude-workflows is missing', async () => {
+      const projectDir = path.join(testDir, 'project');
+      await fs.mkdir(projectDir, { recursive: true });
+
+      const emptyTemplates = path.join(testDir, 'empty-templates');
+      await fs.mkdir(emptyTemplates, { recursive: true });
+
+      const installed = await installWorkflowDefinitions(projectDir, emptyTemplates);
+
+      expect(installed).toHaveLength(0);
+    });
+
+    it('should skip non-.js files', async () => {
+      const projectDir = path.join(testDir, 'project');
+      await fs.mkdir(projectDir, { recursive: true });
+
+      await fs.writeFile(path.join(workflowsSourceDir, 'readme.md'), 'ignore');
+
+      const installed = await installWorkflowDefinitions(projectDir, templatesDir);
+
+      expect(installed).toContain('rulebook-driver.js');
+      expect(installed).not.toContain('readme.md');
     });
   });
 

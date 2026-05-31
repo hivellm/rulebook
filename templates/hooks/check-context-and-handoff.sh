@@ -3,8 +3,10 @@
 #
 # Runs after every model turn. Estimates the current context usage
 # from the JSONL transcript and, when it exceeds the configured
-# threshold, emits additionalContext instructing the model to invoke
-# the /handoff skill and tell the user to type /clear.
+# threshold, instructs the model to invoke the /handoff skill and tell
+# the user to type /clear. The Stop event has no `additionalContext`
+# field, so force mode uses `decision:"block"`+`reason` (fed to the
+# model) and warn mode uses `systemMessage` (surfaced to the user).
 #
 # Thresholds are read from .rulebook/rulebook.json `handoff` section.
 # Defaults: warn=75, force=90 (percentage of estimated max context).
@@ -62,11 +64,19 @@ if [[ "$pct" -ge "$FORCE_PCT" ]]; then
   # Force mode: write urgent sentinel + emit strong instruction
   mkdir -p "$HANDOFF_DIR"
   touch "${HANDOFF_DIR}/.urgent"
-  msg="⚠️ CONTEXT AT ${pct}% (FORCE THRESHOLD). You MUST invoke /handoff NOW to save session state to .rulebook/handoff/_pending.md. After it succeeds, tell the user: '>>> TYPE /clear NOW — your context will be auto-restored in the next session <<<'. Do NOT continue working until the user has typed /clear."
-  jq -nc --arg msg "$msg" '{ hookSpecificOutput: { hookEventName: "Stop", additionalContext: $msg } }'
+  # Block exactly once: drive the model to invoke /handoff. After the handoff
+  # file exists, switch to a non-blocking systemMessage so we don't trap the
+  # model in a stop-loop that burns context at the worst possible moment.
+  if [[ -f "${HANDOFF_DIR}/_pending.md" ]]; then
+    msg="⚠️ CONTEXT AT ${pct}% — handoff already saved to .rulebook/handoff/_pending.md. >>> TYPE /clear NOW — your context will be auto-restored in the next session <<<"
+    jq -nc --arg msg "$msg" '{ systemMessage: $msg }'
+  else
+    msg="⚠️ CONTEXT AT ${pct}% (FORCE THRESHOLD). You MUST invoke /handoff NOW to save session state to .rulebook/handoff/_pending.md. After it succeeds, tell the user: '>>> TYPE /clear NOW — your context will be auto-restored in the next session <<<'. Do NOT continue working until the user has typed /clear."
+    jq -nc --arg msg "$msg" '{ decision: "block", reason: $msg }'
+  fi
 elif [[ "$pct" -ge "$WARN_PCT" ]]; then
-  msg="⚠️ Context at ${pct}%. Recommended: invoke /handoff to save session state. After it succeeds, tell the user to type /clear for a fresh session."
-  jq -nc --arg msg "$msg" '{ hookSpecificOutput: { hookEventName: "Stop", additionalContext: $msg } }'
+  msg="⚠️ Context at ${pct}%. Recommended: invoke /handoff to save session state, then type /clear for a fresh session."
+  jq -nc --arg msg "$msg" '{ systemMessage: $msg }'
 else
   # Below threshold — no-op
   printf '%s' '{}'
