@@ -150,7 +150,61 @@ Cross-platform (Node.js, no `jq` dependency).
 | `review-fanout` | Adversarial multi-dimension review of the diff (correctness/security/perf/tests), each finding verified, **opus** synthesis | — |
 | `release-gate` | Parallel build / tests+coverage / security / docs → single go/no-go | — |
 
-The independent reviewers run as fresh subagents with **no developer context** — they see only the `git diff` plus the spec, so the gate is a genuine second opinion. Run a workflow from Claude Code via the matching slash command (e.g. `/rulebook-driver`).
+The independent reviewers run as fresh subagents with **no developer context** — they see only the `git diff` plus the spec, so the gate is a genuine second opinion.
+
+### Running a workflow
+
+Invoke a workflow from Claude Code with the matching slash command. Some take arguments (a JSON object):
+
+```
+/rulebook-driver                              # drain the whole backlog
+/rulebook-driver { "once": true }             # one item, then stop
+/rulebook-driver { "maxItems": 5 }            # at most 5 items this run
+/spec-author { "topic": "rate-limit the public API" }
+/feature-pipeline { "feature": "add CSV export to the report page" }
+/bugfix { "bug": "tasks.md checkbox state lost on archive" }
+/review-fanout                                # reviews the current git diff
+/release-gate                                 # go/no-go before a release
+```
+
+### `rulebook-driver` — the backlog loop
+
+Discovers the first unchecked `- [ ]` item (lowest phase first, never reordered), then per item: implement (SDD+TDD) → independent **opus** review → on reject, loops back to the dev with the blocking issues (max 3 rounds) → document. It then moves to the next item and repeats until one of: backlog drained, an item fails review after 3 rounds (the loop halts — sequential tasks must not build on a broken item), `maxItems` reached (default 25), or the token budget runs low (`minBudget`, default 60k). Args: `{ once?, maxItems?, minBudget? }`.
+
+### `spec-author` — interactive spec authoring
+
+Because workflow subagents are **non-interactive**, `spec-author` cannot prompt you mid-run. Instead it researches the codebase, drafts a proposal + SHALL/MUST spec, then returns ranked clarifying **questions** and detected **gaps**. The loop:
+
+1. `/spec-author { "topic": "..." }` → returns a draft + questions/gaps.
+2. Answer the questions.
+3. Re-run feeding the answers back: `/spec-author { "topic": "...", "answers": [{ "question": "...", "answer": "..." }] }`.
+4. Repeat until it returns `ready: true` (no open questions). Then create the task with `rulebook task create` using the finalized spec.
+
+### What the reviewers check
+
+The `rulebook-driver`, `feature-pipeline`, and `bugfix` gates judge two axes and only pass when both hold: **SDD** — every SHALL/MUST scenario in the spec is satisfied and nothing unspecified was added; **TDD** — tests exist for the new behavior, were written for it, and actually run and pass. The reviewer runs the type-checker and the relevant tests itself rather than trusting the developer's report.
+
+---
+
+## Claude Code Setup
+
+`rulebook claude` applies the recommended Claude Code setup in one idempotent, non-interactive step — useful to (re)apply the best configuration at any time without re-running `init`.
+
+```bash
+rulebook claude                 # apply the recommended setup
+rulebook claude --model opus    # same, but set the default model to opus (default: sonnet)
+```
+
+It installs the MCP server entry, skills, agent definitions, and the workflows above, then layers an opinionated, cost-aware `.claude/settings.json`:
+
+| Applied | Detail |
+|---------|--------|
+| Hooks | team enforcement, quality gates, session handoff, terse mode |
+| Permissions allowlist | auto-approves safe read-only Bash (`ls`/`cat`/`grep`/`rg`/`find`/`git status\|diff\|log\|blame`/`npm run type-check`/`npm test`) + `mcp__rulebook` — fewer prompts, no loss of safety |
+| `statusLine` | shows project dir + git branch |
+| `model` | cost-aware default (`sonnet`; `opus` stays reserved for the workflow review gates) |
+
+All settings are **additive and non-clobbering**: existing `permissions.allow` entries, a user-authored `statusLine`, and an explicit `model` are preserved. Restart Claude Code after running it to load the new configuration. Requires Claude Code installed (`~/.claude`); otherwise it no-ops with a notice.
 
 ---
 
