@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.8.2] - 2026-06-01
+
+### Changed — rulebook-driver commits each item; fanout is opt-in
+
+- `rulebook-driver` now commits every approved item right after the independent
+  SDD+TDD reviewer passes and docs are updated, via a `build-engineer` step
+  (Conventional Commits, pre-commit hooks must pass, never `--no-verify`). The
+  working tree is clean between items, so the per-task `review-fanout` gate
+  scopes by `baseRef` (HEAD at task start) — `git diff <ref>..HEAD` — instead of
+  a working-tree snapshot. `review-fanout` gained an `args.baseRef` mode.
+- The per-task `review-fanout` adversarial gate is now **opt-in** — it is the
+  most token-expensive phase, so it is OFF by default. Enable with
+  `{ fanout: true }`. The per-item SDD+TDD opus review and the commit pre-commit
+  hooks still gate every item regardless. Default `fanoutRounds` dropped 2 → 1.
+
+### Performance
+
+- `review-fanout` synthesizes its report on `sonnet` instead of `opus` (the
+  synthesis only groups already-verified findings), cutting the dominant cost of
+  the fanout phase.
+
+### CI
+
+- The bundled TypeScript test workflow template now **fails CI** on high/critical
+  production `npm audit` findings (`--audit-level=high`, gated to a single matrix
+  cell), instead of swallowing them with `|| true`. Kept in CI rather than the
+  pre-push hook so it never blocks offline local pushes.
+
 ## [5.8.1] - 2026-06-01
 
 ### Fixed — agent placeholders not substituted on `rulebook claude`
