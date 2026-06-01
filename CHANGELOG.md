@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.8.0] - 2026-06-01
+
+### Changed — per-task review-fanout gate in rulebook-driver
+
+- `rulebook-driver` now gates each *completed task* through `review-fanout`
+  once (not per item), with a separate remediation loop (`fanoutRounds`,
+  default 2) so a fanout finding never competes with the per-item SDD/TDD
+  round budget. After the backlog drains cleanly it runs `release-gate` once
+  for a single go/no-go verdict (skipped on halt or when nothing passed).
+- `review-fanout` accepts `args.paths` to scope the review to one changeset
+  and exposes a `blocking[]` subset (verified blocker/major findings). The
+  driver snapshots a per-task baseline of changed files and passes the delta,
+  so a task gate reviews only its own diff instead of all accumulated work.
+
 ### Added — session-start update check
 
 A new SessionStart hook (`update-check.sh` / `.ps1`) compares the project's
