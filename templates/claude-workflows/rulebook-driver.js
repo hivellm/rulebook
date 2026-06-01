@@ -6,20 +6,26 @@ export const meta = {
     { title: 'Discover', detail: 'find first unchecked item (lowest phase)', model: 'haiku' },
     { title: 'Implement', detail: 'dev implements; independent opus reviewer gates; loop ≤3', model: 'sonnet' },
     { title: 'Review', detail: 'independent full SDD+TDD review', model: 'opus' },
+    { title: 'Fanout', detail: 'review-fanout adversarial diff review per approved item' },
     { title: 'Document', detail: 'docs-writer updates README/CHANGELOG', model: 'haiku' },
+    { title: 'Gate', detail: 'release-gate go/no-go once the backlog is drained' },
   ],
 }
 
 // ---- Tunables (override via args) ------------------------------------------
-// args: { once?: boolean, maxItems?: number, minBudget?: number }
-//   once     — process a single item then stop (legacy one-shot behavior)
-//   maxItems — hard cap on items processed in one run (default 25 safety stop)
-//   minBudget — stop before the next item if remaining tokens fall below this
+// args: { once?: boolean, maxItems?: number, minBudget?: number, fanoutRounds?: number }
+//   once         — process a single item then stop (legacy one-shot behavior)
+//   maxItems     — hard cap on items processed in one run (default 25 safety stop)
+//   minBudget    — stop before the next item if remaining tokens fall below this
+//   fanoutRounds — max review-fanout remediation rounds per completed task (default 2)
 const opts = args && typeof args === 'object' ? args : {}
 const ONCE = opts.once === true
 const MAX_ITEMS = typeof opts.maxItems === 'number' ? opts.maxItems : 25
 const MIN_BUDGET = typeof opts.minBudget === 'number' ? opts.minBudget : 60_000
 const MAX_REVIEW_ROUNDS = 3
+// Per-completed-task adversarial gate. Counted SEPARATELY from MAX_REVIEW_ROUNDS so a
+// fanout finding never competes with the per-item SDD/TDD round budget.
+const MAX_FANOUT_ROUNDS = typeof opts.fanoutRounds === 'number' ? opts.fanoutRounds : 2
 
 // ---- Structured-output schemas --------------------------------------------
 
@@ -64,6 +70,19 @@ const VERDICT_SCHEMA = {
       description: 'concrete, actionable blocking problems; empty array when pass=true',
     },
     summary: { type: 'string', description: 'one-paragraph verdict rationale' },
+  },
+}
+
+const FILES_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['files'],
+  properties: {
+    files: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'union of changed file paths from `git diff --name-only` and `--staged`',
+    },
   },
 }
 
@@ -159,10 +178,82 @@ Report which documentation files you updated.`,
   return { passed: true, passedRound, review: verdict.summary, docs }
 }
 
+// Snapshot the set of changed files (via git). Used to scope each task's review-fanout
+// to only that task's changeset, since the driver does not commit between items/tasks.
+async function gitChangedFiles() {
+  const r = await agent(
+    'Run `git --no-pager diff --name-only` and `git --no-pager diff --name-only --staged`. Return the de-duplicated union of file paths, one per entry. Return an empty list if there are no changes.',
+    { label: 'git-files', phase: 'Discover', agentType: 'researcher', model: 'haiku', schema: FILES_SCHEMA }
+  )
+  return (r && Array.isArray(r.files) ? r.files : []).filter(Boolean)
+}
+
+// ---- Per-task adversarial gate (review-fanout) -----------------------------
+// Runs ONCE per completed task, not per item. Scoped (via paths) to that task's
+// changeset. Blocking (blocker/major) findings are remediated by a dev agent and
+// re-reviewed, up to MAX_FANOUT_ROUNDS. Returns { passed, rounds, blocking } —
+// passed=false means the task could not be cleaned.
+async function reviewFanoutGate(taskId, specPaths, paths) {
+  const scope = paths && paths.length ? { paths } : undefined
+  const scopeLabel = scope ? ` (scoped to ${paths.length} file(s))` : ''
+  for (let fround = 1; fround <= MAX_FANOUT_ROUNDS; fround++) {
+    phase('Fanout')
+    log(`Task ${taskId}: review-fanout round ${fround}/${MAX_FANOUT_ROUNDS}${scopeLabel}…`)
+    const fanout = await workflow('review-fanout', scope)
+    const blocking = (fanout && fanout.blocking) || []
+
+    if (blocking.length === 0) {
+      log(`Task ${taskId}: review-fanout clean (round ${fround}).`)
+      return { passed: true, rounds: fround, blocking: [] }
+    }
+
+    if (fround === MAX_FANOUT_ROUNDS) {
+      log(`Task ${taskId}: still ${blocking.length} blocking issue(s) after ${fround} fanout round(s) — escalating.`)
+      return { passed: false, rounds: fround, blocking }
+    }
+
+    const issues = blocking
+      .map((f) => `[${f.severity}] ${f.file || ''} — ${f.title}: ${f.detail || ''} (${f.dimension || 'review'})`)
+      .join('\n')
+    log(`Task ${taskId}: review-fanout flagged ${blocking.length} blocking issue(s); remediating.`)
+    await agent(
+      `An independent adversarial review of task ${taskId} found blocking issues in the current diff. Fix ONLY these; do not touch anything else, and do not weaken or delete tests to make them pass:
+
+${issues}
+
+Specs that still must hold: ${(specPaths || []).join(', ') || '(see task directory)'}
+Re-run the type-checker and the relevant tests (both must pass). Report which files you changed.`,
+      { label: `fanout-fix:${taskId}:r${fround}`, phase: 'Fanout', agentType: 'typescript-implementer', model: 'sonnet' }
+    )
+  }
+  return { passed: true, rounds: MAX_FANOUT_ROUNDS, blocking: [] }
+}
+
 // ---- Backlog loop ---------------------------------------------------------
 
 const processed = []
+const taskGates = []
 let stopReason = 'backlog-drained'
+let currentTaskId = null
+let currentSpecPaths = []
+let currentTaskBaseline = []
+let halted = false
+
+// Run the per-task review-fanout gate once, scoped to the task's changeset, and record it.
+async function gateCompletedTask(taskId, specPaths, baseline) {
+  const now = await gitChangedFiles()
+  const baseSet = new Set(baseline || [])
+  const paths = now.filter((f) => !baseSet.has(f))
+  const gate = await reviewFanoutGate(taskId, specPaths, paths)
+  taskGates.push({
+    taskId,
+    passed: gate.passed,
+    rounds: gate.rounds,
+    blockingCount: gate.blocking.length,
+    scopedFiles: paths.length,
+  })
+  return gate
+}
 
 for (let i = 1; i <= MAX_ITEMS; i++) {
   if (budget.total && budget.remaining() < MIN_BUDGET) {
@@ -190,6 +281,23 @@ Set found=false (and leave the other string fields empty) if every item in every
     break
   }
 
+  // Task boundary: a new taskId means the previous task is fully checked → gate it once,
+  // then snapshot the new task's baseline file set so its gate is scoped to its own diff.
+  if (task.taskId !== currentTaskId) {
+    if (currentTaskId) {
+      const gate = await gateCompletedTask(currentTaskId, currentSpecPaths, currentTaskBaseline)
+      if (!gate.passed) {
+        stopReason = 'task-fanout-failed'
+        log(`Halting: task ${currentTaskId} failed the review-fanout gate.`)
+        halted = true
+        break
+      }
+    }
+    currentTaskId = task.taskId
+    currentSpecPaths = task.specPaths || []
+    currentTaskBaseline = await gitChangedFiles()
+  }
+
   log(`[${i}/${MAX_ITEMS}] ${task.taskId} / ${task.phase}: ${task.item}`)
   const result = await driveItem(task, i)
   processed.push({ taskId: task.taskId, phase: task.phase, item: task.item, ...result })
@@ -197,6 +305,7 @@ Set found=false (and leave the other string fields empty) if every item in every
   if (!result.passed) {
     stopReason = 'item-failed-review'
     log(`Item ${i} failed after ${MAX_REVIEW_ROUNDS} rounds — halting loop (sequential tasks must not build on a broken item).`)
+    halted = true
     break
   }
 
@@ -207,7 +316,28 @@ Set found=false (and leave the other string fields empty) if every item in every
   if (i === MAX_ITEMS) stopReason = 'max-items'
 }
 
+// Gate the final task only when the backlog drained cleanly (last task fully checked).
+// Mid-task stops (once / max-items / budget-low) leave the task incomplete — skip the gate.
+if (!halted && stopReason === 'backlog-drained' && currentTaskId) {
+  const gate = await gateCompletedTask(currentTaskId, currentSpecPaths, currentTaskBaseline)
+  if (!gate.passed) {
+    stopReason = 'task-fanout-failed'
+    halted = true
+  }
+}
+
 const passed = processed.filter((p) => p.passed).length
+
+// FINAL: one release-gate pass over the work completed this run. Skipped when we halted on a
+// failure (broken state) or when nothing passed.
+let releaseGate = null
+if (passed > 0 && !halted) {
+  phase('Gate')
+  log(`Running release-gate over ${passed} completed item(s)…`)
+  releaseGate = await workflow('release-gate')
+  log(`release-gate: ${releaseGate && releaseGate.go ? 'GO ✅' : 'NO-GO ⛔'}`)
+}
+
 log(`Done: ${passed}/${processed.length} item(s) passed. Stop reason: ${stopReason}.`)
 
-return { stopReason, processedCount: processed.length, passedCount: passed, processed }
+return { stopReason, processedCount: processed.length, passedCount: passed, processed, taskGates, releaseGate }

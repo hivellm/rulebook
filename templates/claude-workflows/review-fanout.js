@@ -64,14 +64,26 @@ const DIMENSIONS = [
   },
 ]
 
+// Optional path-scoping: when invoked with args.paths, review ONLY those files (the
+// caller's changeset) instead of the whole uncommitted diff. Avoids re-reviewing
+// unrelated accumulated changes when there are no commits between units of work.
+const scopePaths = args && Array.isArray(args.paths) && args.paths.length ? args.paths : null
+const diffCmd = scopePaths
+  ? `git --no-pager diff -- ${scopePaths.join(' ')} ; git --no-pager diff --staged -- ${scopePaths.join(' ')}`
+  : 'git --no-pager diff ; git --no-pager diff --staged'
+const scopeNote = scopePaths
+  ? `Review ONLY these files (the caller's changeset): ${scopePaths.join(', ')}. Ignore changes in any other file.`
+  : 'Review the full current diff.'
+
 // Pipeline: each dimension's findings verify as soon as that dimension finishes —
 // no barrier, so the fast haiku security pass is not blocked by the slower lenses.
 const results = await pipeline(
   DIMENSIONS,
   (d) =>
     agent(
-      `Review the CURRENT git diff for ${d.key} issues. Focus on: ${d.focus}.
-Run \`git --no-pager diff\` (and \`--staged\`) to see the changes. Report only issues introduced or exposed by this diff — not pre-existing debt.`,
+      `Review the current git diff for ${d.key} issues. Focus on: ${d.focus}.
+${scopeNote}
+Run \`${diffCmd}\` to see the changes. Report only issues introduced or exposed by this diff — not pre-existing debt.`,
       { label: `review:${d.key}`, phase: 'Review', agentType: d.agentType, model: d.model, schema: FINDINGS_SCHEMA }
     ),
   (review, d) =>
@@ -92,6 +104,10 @@ const confirmed = results
   .filter(Boolean)
   .filter((f) => f.verdict && f.verdict.real)
 
+// blocking = verified findings severe enough to fail a gate (blocker/major).
+// Consumers (e.g. rulebook-driver) feed these back to the implementer.
+const blocking = confirmed.filter((f) => /^(blocker|major)$/i.test(f.severity || ''))
+
 phase('Synthesize')
 const report = await agent(
   `Synthesize a prioritized code-review report from these confirmed findings (already verified as real). Group by severity, give each a one-line fix recommendation, and lead with blockers.
@@ -99,4 +115,4 @@ ${JSON.stringify(confirmed, null, 2)}`,
   { label: 'synthesize', phase: 'Synthesize', model: 'opus' }
 )
 
-return { confirmedCount: confirmed.length, confirmed, report }
+return { confirmedCount: confirmed.length, confirmed, blocking, report }
