@@ -64,16 +64,23 @@ const DIMENSIONS = [
   },
 ]
 
-// Optional path-scoping: when invoked with args.paths, review ONLY those files (the
-// caller's changeset) instead of the whole uncommitted diff. Avoids re-reviewing
-// unrelated accumulated changes when there are no commits between units of work.
-const scopePaths = args && Array.isArray(args.paths) && args.paths.length ? args.paths : null
-const diffCmd = scopePaths
-  ? `git --no-pager diff -- ${scopePaths.join(' ')} ; git --no-pager diff --staged -- ${scopePaths.join(' ')}`
-  : 'git --no-pager diff ; git --no-pager diff --staged'
-const scopeNote = scopePaths
-  ? `Review ONLY these files (the caller's changeset): ${scopePaths.join(', ')}. Ignore changes in any other file.`
-  : 'Review the full current diff.'
+// Scoping, in priority order:
+//   args.baseRef — review everything committed since this ref (`git diff <ref>..HEAD`).
+//                  Preferred when the caller commits each unit of work (rulebook-driver).
+//   args.paths   — review only these files in the uncommitted working-tree diff.
+//   (neither)    — review the full uncommitted diff.
+const baseRef = args && typeof args.baseRef === 'string' && args.baseRef ? args.baseRef : null
+const scopePaths = !baseRef && args && Array.isArray(args.paths) && args.paths.length ? args.paths : null
+const diffCmd = baseRef
+  ? `git --no-pager diff ${baseRef}..HEAD`
+  : scopePaths
+    ? `git --no-pager diff -- ${scopePaths.join(' ')} ; git --no-pager diff --staged -- ${scopePaths.join(' ')}`
+    : 'git --no-pager diff ; git --no-pager diff --staged'
+const scopeNote = baseRef
+  ? `Review ONLY the changes committed since ${baseRef} (this task's changeset). Ignore anything before that ref.`
+  : scopePaths
+    ? `Review ONLY these files (the caller's changeset): ${scopePaths.join(', ')}. Ignore changes in any other file.`
+    : 'Review the full current diff.'
 
 // Pipeline: each dimension's findings verify as soon as that dimension finishes —
 // no barrier, so the fast haiku security pass is not blocked by the slower lenses.
