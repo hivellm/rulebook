@@ -2,7 +2,7 @@ export const meta = {
   name: 'review-fanout',
   description:
     'Adversarial multi-dimension review of the current git diff (correctness, security, performance, tests). Each finding is independently verified before it survives, then synthesized into a prioritized report.',
-  phases: [{ title: 'Review' }, { title: 'Verify' }, { title: 'Synthesize', model: 'opus' }],
+  phases: [{ title: 'Review' }, { title: 'Verify' }, { title: 'Synthesize', model: 'sonnet' }],
 }
 
 const FINDINGS_SCHEMA = {
@@ -119,7 +119,7 @@ phase('Synthesize')
 const report = await agent(
   `Synthesize a prioritized code-review report from these confirmed findings (already verified as real). Group by severity, give each a one-line fix recommendation, and lead with blockers.
 ${JSON.stringify(confirmed, null, 2)}`,
-  { label: 'synthesize', phase: 'Synthesize', model: 'opus' }
+  { label: 'synthesize', phase: 'Synthesize', model: 'sonnet' }
 )
 
 return { confirmedCount: confirmed.length, confirmed, blocking, report }
