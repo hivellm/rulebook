@@ -8,25 +8,31 @@ export const meta = {
     { title: 'Review', detail: 'independent full SDD+TDD review', model: 'opus' },
     { title: 'Document', detail: 'docs-writer updates README/CHANGELOG', model: 'haiku' },
     { title: 'Commit', detail: 'commit the approved item (conventional, hooks must pass)', model: 'sonnet' },
-    { title: 'Fanout', detail: 'review-fanout adversarial review of the task changeset', model: 'sonnet' },
+    { title: 'Fanout', detail: 'OPT-IN ({ fanout: true }) review-fanout adversarial review of the task changeset', model: 'sonnet' },
     { title: 'Gate', detail: 'release-gate go/no-go once the backlog is drained', model: 'sonnet' },
   ],
 }
 
 // ---- Tunables (override via args) ------------------------------------------
-// args: { once?: boolean, maxItems?: number, minBudget?: number, fanoutRounds?: number }
+// args: { once?, maxItems?, minBudget?, fanout?, fanoutRounds? }
 //   once         — process a single item then stop (legacy one-shot behavior)
 //   maxItems     — hard cap on items processed in one run (default 25 safety stop)
 //   minBudget    — stop before the next item if remaining tokens fall below this
-//   fanoutRounds — max review-fanout remediation rounds per completed task (default 2)
+//   fanout       — run the per-task review-fanout adversarial gate. DEFAULT false
+//                  (it is the most token-expensive phase). Pass { fanout: true } to
+//                  enable. The per-item SDD+TDD opus review + the commit hooks still
+//                  run regardless; fanout is the extra multi-dimension pass.
+//   fanoutRounds — max review-fanout remediation rounds per completed task (default 1)
 const opts = args && typeof args === 'object' ? args : {}
 const ONCE = opts.once === true
 const MAX_ITEMS = typeof opts.maxItems === 'number' ? opts.maxItems : 25
 const MIN_BUDGET = typeof opts.minBudget === 'number' ? opts.minBudget : 60_000
 const MAX_REVIEW_ROUNDS = 3
+// Fanout is OFF by default — opt in with { fanout: true }.
+const FANOUT_ENABLED = opts.fanout === true
 // Per-completed-task adversarial gate. Counted SEPARATELY from MAX_REVIEW_ROUNDS so a
 // fanout finding never competes with the per-item SDD/TDD round budget.
-const MAX_FANOUT_ROUNDS = typeof opts.fanoutRounds === 'number' ? opts.fanoutRounds : 2
+const MAX_FANOUT_ROUNDS = typeof opts.fanoutRounds === 'number' ? opts.fanoutRounds : 1
 
 // ---- Structured-output schemas --------------------------------------------
 
@@ -288,7 +294,13 @@ let currentTaskBaseRef = null
 let halted = false
 
 // Run the per-task review-fanout gate once, scoped to the task's committed changeset (baseRef).
+// No-op (auto-pass) when fanout is disabled — the per-item SDD+TDD review + commit hooks
+// already gated every item; fanout is the opt-in extra adversarial pass.
 async function gateCompletedTask(taskId, specPaths, baseRef) {
+  if (!FANOUT_ENABLED) {
+    taskGates.push({ taskId, passed: true, rounds: 0, blockingCount: 0, baseRef, skipped: true })
+    return { passed: true, rounds: 0, blocking: [] }
+  }
   const gate = await reviewFanoutGate(taskId, specPaths, baseRef)
   taskGates.push({ taskId, passed: gate.passed, rounds: gate.rounds, blockingCount: gate.blocking.length, baseRef })
   return gate
