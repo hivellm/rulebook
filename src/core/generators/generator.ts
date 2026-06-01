@@ -769,8 +769,11 @@ export function generateDelegationSection(config: ProjectConfig): string {
 /**
  * Resolve placeholder values from project config.
  */
-export function resolveAgentPlaceholders(config: ProjectConfig): Record<string, string> {
-  const primaryLang = config.languages?.[0] || 'TypeScript';
+export function resolveAgentPlaceholders(
+  config: ProjectConfig | string | undefined
+): Record<string, string> {
+  const primaryLang =
+    (typeof config === 'string' ? config : config?.languages?.[0]) || 'TypeScript';
 
   // Map language to common test framework
   const testFrameworkMap: Record<string, string> = {

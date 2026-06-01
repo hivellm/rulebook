@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.8.1] - 2026-06-01
+
+### Fixed — agent placeholders not substituted on `rulebook claude`
+
+- `installAgentDefinitions` (used by `rulebook claude` /
+  `setupClaudeCodeIntegration`) copied agent templates verbatim, leaking raw
+  `{{language}}` / `{{file_naming}}` / `{{test_framework}}` placeholders into
+  the consumer's `.claude/agents/`. It now resolves them from the project's
+  detected primary language (falling back to TypeScript defaults), matching the
+  `generator.ts` install path. `resolveAgentPlaceholders` accepts a language
+  string in addition to a `ProjectConfig`. +2 regression tests.
+
+### Changed — agent definition hygiene
+
+- Re-rendered this repo's `.claude/agents/` with the correct TypeScript stack
+  (was `rust`/`cargo`/`snake_case` from a bad render).
+- Normalized the `project-manager`, `quality-gatekeeper`, and
+  `typescript-implementer` agent frontmatter to the standard `tools` /
+  `maxTurns` (and `disallowedTools` for the review-only gatekeeper) schema used
+  by the other bundled agents.
+
 ## [5.8.0] - 2026-06-01
 
 ### Changed — per-task review-fanout gate in rulebook-driver

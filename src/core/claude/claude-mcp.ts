@@ -12,6 +12,11 @@ import { homedir } from 'os';
 import { readdir } from 'fs/promises';
 import { fileExists, readFile, writeFile, ensureDir } from '../../utils/file-system.js';
 import { WorkspaceManager } from '../workspace/workspace-manager.js';
+import {
+  resolveAgentPlaceholders,
+  substituteAgentPlaceholders,
+} from '../generators/generator.js';
+import { detectProject } from '../detect/detector.js';
 
 export interface ClaudeCodeSetupResult {
   detected: boolean;
@@ -206,7 +211,8 @@ export async function configureClaudeSettings(projectRoot: string): Promise<bool
  */
 export async function installAgentDefinitions(
   projectRoot: string,
-  templatesPath: string
+  templatesPath: string,
+  language?: string
 ): Promise<string[]> {
   const agentsSourceDir = join(templatesPath, 'agents');
   const agentsTargetDir = join(projectRoot, '.claude', 'agents');
@@ -216,6 +222,12 @@ export async function installAgentDefinitions(
   if (!(await fileExists(agentsSourceDir))) {
     return [];
   }
+
+  // Agent templates carry {{language}}/{{file_naming}}/{{test_framework}}
+  // placeholders. Resolve them from the project's primary language so the
+  // installed agents are stack-correct (e.g. TypeScript/kebab-case/vitest)
+  // instead of leaking raw placeholders to the consumer.
+  const placeholders = resolveAgentPlaceholders(language);
 
   const entries = await readdir(agentsSourceDir);
   const installed: string[] = [];
@@ -227,7 +239,7 @@ export async function installAgentDefinitions(
     const targetPath = join(agentsTargetDir, entry);
 
     const content = await readFile(sourcePath);
-    await writeFile(targetPath, content);
+    await writeFile(targetPath, substituteAgentPlaceholders(content, placeholders));
     installed.push(entry);
   }
 
@@ -311,9 +323,20 @@ export async function setupClaudeCodeIntegration(
   const skillsInstalled = await installClaudeCodeSkills(projectRoot, resolvedTemplatesPath);
   const devSkillsInstalled = await installDevSkills(projectRoot, resolvedTemplatesPath);
   const agentTeamsEnabled = await configureClaudeSettings(projectRoot);
+
+  // Resolve the project's primary language so agent placeholders render correctly.
+  let primaryLanguage: string | undefined;
+  try {
+    const detection = await detectProject(projectRoot);
+    primaryLanguage = detection.languages[0]?.language;
+  } catch {
+    // Detection failure → installAgentDefinitions falls back to TypeScript defaults.
+  }
+
   const agentDefinitionsInstalled = await installAgentDefinitions(
     projectRoot,
-    resolvedTemplatesPath
+    resolvedTemplatesPath,
+    primaryLanguage
   );
   const workflowDefinitionsInstalled = await installWorkflowDefinitions(
     projectRoot,

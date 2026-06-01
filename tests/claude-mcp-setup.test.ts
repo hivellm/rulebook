@@ -361,6 +361,49 @@ describe('claude-mcp', () => {
       expect(installed).toHaveLength(1);
       expect(installed).toContain('agent.md');
     });
+
+    it('should substitute {{language}}/{{file_naming}}/{{test_framework}} from the project language', async () => {
+      const projectDir = path.join(testDir, 'project');
+      await fs.mkdir(projectDir, { recursive: true });
+
+      await fs.writeFile(
+        path.join(agentsSourceDir, 'implementer.md'),
+        '---\nname: implementer\ndescription: Writes production-quality {{language}} code.\n---\nFollow {{file_naming}} naming. Run {{test_framework}}.'
+      );
+
+      await installAgentDefinitions(projectDir, templatesDir, 'typescript');
+
+      const content = await fs.readFile(
+        path.join(projectDir, '.claude', 'agents', 'implementer.md'),
+        'utf8'
+      );
+      expect(content).toContain('production-quality typescript code');
+      expect(content).toContain('Follow kebab-case naming');
+      expect(content).toContain('Run vitest');
+      expect(content).not.toContain('{{language}}');
+      expect(content).not.toContain('{{file_naming}}');
+      expect(content).not.toContain('{{test_framework}}');
+    });
+
+    it('should fall back to TypeScript defaults when no language is given', async () => {
+      const projectDir = path.join(testDir, 'project');
+      await fs.mkdir(projectDir, { recursive: true });
+
+      await fs.writeFile(
+        path.join(agentsSourceDir, 'implementer.md'),
+        '---\nname: implementer\n---\nWrite {{language}} with {{file_naming}} files.'
+      );
+
+      await installAgentDefinitions(projectDir, templatesDir);
+
+      const content = await fs.readFile(
+        path.join(projectDir, '.claude', 'agents', 'implementer.md'),
+        'utf8'
+      );
+      expect(content).not.toContain('{{language}}');
+      expect(content).not.toContain('{{file_naming}}');
+      expect(content).toContain('kebab-case files');
+    });
   });
 
   describe('installWorkflowDefinitions', () => {
