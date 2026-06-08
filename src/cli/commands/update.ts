@@ -13,7 +13,6 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { SkillsManager, getDefaultTemplatesPath } from '../../core/skills/skills-manager.js';
 import { WorkspaceManager } from '../../core/workspace/workspace-manager.js';
-import { setupClaudeCodePlugin } from './misc.js';
 import { migrateMemoryDirectory } from './misc.js';
 
 function getRulebookVersion(): string {
@@ -691,12 +690,6 @@ export async function updateSingleProject(
         await migrateMemoryDirectory();
     } catch {
         // Silently skip if migration fails
-    }
-
-    try {
-        await setupClaudeCodePlugin();
-    } catch {
-        // Silently skip if plugin installation fails
     }
 
     try {

@@ -14,6 +14,16 @@ projects with `.rulebook/`: features with near-zero real adoption are removed so
 the toolkit ships only what people actually use. Delivered in phases; this
 section is appended as each phase lands.
 
+### Removed — Claude Code plugin distribution
+
+- Dropped the Claude Code plugin/marketplace distribution. Rulebook is used via
+  its MCP server, not as a Claude plugin, so the plugin payload and installer
+  were dead weight. Removed the root `commands/` and `skills/` plugin payload,
+  `.claude-plugin/` (plugin.json + marketplace.json), the root `marketplace.json`
+  duplicate, the `setup:plugin` CLI command and its `setupClaudeCodePlugin`
+  installer (which wrote into `~/.claude/plugins`), and the plugin test suite.
+  `package.json` `files` now ships only `dist` + `templates`.
+
 ### Internal — readability
 
 - Reformatted the codebase to 4-space indentation (`prettier` `tabWidth: 4`).

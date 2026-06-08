@@ -53,7 +53,6 @@ import {
     overrideEditCommand,
     overrideClearCommand,
     // Setup commands
-    setupClaudeCodePlugin,
     migrateMemoryDirectory,
     // Workspace commands (v4.2)
     workspaceInitCommand,
@@ -506,12 +505,6 @@ overrideCommand
     .command('clear')
     .description('Reset AGENTS.override.md to empty template')
     .action(() => overrideClearCommand());
-
-// Setup commands
-program
-    .command('setup:plugin')
-    .description('Install Rulebook plugin in Claude Code')
-    .action(() => setupClaudeCodePlugin());
 
 program
     .command('migrate:memory')

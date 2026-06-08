@@ -96,9 +96,7 @@
   },
   "files": [
     "dist",
-    "templates",
-    ".claude-plugin",
-    ".claude/commands"
+    "templates"
   ],
   "repository": {
     "type": "git",

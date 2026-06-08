@@ -50,7 +50,7 @@ export {
     overrideEditCommand,
     overrideClearCommand,
 } from './plans.js';
-export { setupClaudeCodePlugin, migrateMemoryDirectory } from './misc.js';
+export { migrateMemoryDirectory } from './misc.js';
 export {
     workspaceInitCommand,
     workspaceAddCommand,

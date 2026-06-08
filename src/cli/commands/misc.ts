@@ -5,7 +5,6 @@ import { generateWorkflows } from '../../core/generators/workflow-generator.js';
 import { existsSync } from 'fs';
 import { RulebookConfig } from '../../types.js';
 import path from 'path';
-import { readFile } from '../../utils/file-system.js';
 
 export async function doctorCommand(): Promise<void> {
     const cwd = process.cwd();
@@ -366,87 +365,6 @@ export async function configCommand(options: {
         }
     } catch (error) {
         console.error(chalk.red('\n❌ Config error:'), error);
-        process.exit(1);
-    }
-}
-
-export async function setupClaudeCodePlugin(): Promise<void> {
-    const oraModule = await import('ora');
-    const oraFn = oraModule.default;
-    const spinner = oraFn('Setting up Claude Code plugin...').start();
-
-    try {
-        const fs = await import('fs/promises');
-        const url = await import('url');
-        const os = await import('os');
-
-        const packageDir = path.dirname(url.fileURLToPath(import.meta.url));
-        const pluginJsonPath = path.join(
-            packageDir,
-            '..',
-            '..',
-            '..',
-            '.claude-plugin',
-            'plugin.json'
-        );
-        const pluginJson = JSON.parse(await readFile(pluginJsonPath));
-
-        const homeDir = os.homedir();
-        const pluginsDir = path.join(homeDir, '.claude', 'plugins');
-        const installedPluginsPath = path.join(pluginsDir, 'installed_plugins.json');
-
-        await fs.mkdir(pluginsDir, { recursive: true });
-
-        let installedPlugins: { version: number; plugins: Record<string, unknown[]> } = {
-            version: 2,
-            plugins: {},
-        };
-
-        if (existsSync(installedPluginsPath)) {
-            const content = await readFile(installedPluginsPath);
-            installedPlugins = JSON.parse(content);
-        }
-
-        const pluginKey = `rulebook@hivehub`;
-        const version = pluginJson.version || '3.2.1';
-        const installPath = path.join(pluginsDir, 'cache', 'hivehub', 'rulebook', version);
-
-        if (!installedPlugins.plugins[pluginKey]) {
-            installedPlugins.plugins[pluginKey] = [];
-        }
-
-        const entries = installedPlugins.plugins[pluginKey] as Record<string, unknown>[];
-
-        if (entries.length > 0) {
-            const originalInstalledAt = (entries[0] as { installedAt?: string }).installedAt;
-            installedPlugins.plugins[pluginKey] = [
-                {
-                    scope: 'user',
-                    installPath: installPath,
-                    version: version,
-                    installedAt: originalInstalledAt || new Date().toISOString(),
-                    lastUpdated: new Date().toISOString(),
-                },
-            ];
-        } else {
-            entries.push({
-                scope: 'user',
-                installPath: installPath,
-                version: version,
-                installedAt: new Date().toISOString(),
-                lastUpdated: new Date().toISOString(),
-            });
-        }
-
-        await fs.writeFile(installedPluginsPath, JSON.stringify(installedPlugins, null, 2));
-
-        spinner.succeed('Claude Code plugin installed');
-        console.log(`\n  ${chalk.green('✓')} Plugin: ${pluginKey} v${version}`);
-        console.log(`  ${chalk.gray('Installed to:')} ${installPath}`);
-        console.log(`\n  ${chalk.blue('Note:')} Restart Claude Code to load the plugin.\n`);
-    } catch (error) {
-        spinner.fail('Failed to install plugin');
-        console.error(chalk.red(String(error)));
         process.exit(1);
     }
 }
