@@ -8,8 +8,6 @@ When you start working on any task whose `proposal.md` contains a
 1. Read the referenced analysis README and findings
 2. Run `rulebook_knowledge_list` (or `rulebook knowledge list`) and
    scan for entries tagged `analysis:<slug>`
-3. Run `rulebook_memory_search` with query `analysis:<slug>` to
-   retrieve any prior session context about this analysis
 
 Only after reviewing these results may you begin implementation.
 

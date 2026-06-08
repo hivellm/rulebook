@@ -26,7 +26,7 @@ Implement [feature] with tests first (95%+ coverage)."
 2. Request features with standards reference
 3. Review generated code
 4. Run quality checks
-5. Save learnings to persistent memory
+5. Capture knowledge/learnings/decisions
 
 **Critical**: Claude has 200K context - paste full AGENTS.md for best results.
 
@@ -81,37 +81,22 @@ Next Steps:
 
 Put details in code comments, not markdown.
 
-## Persistent Memory Integration
+## Knowledge Capture
 
-### Search for Past Context
-Before implementing a feature, search memory for similar past work:
-
-```bash
-# Search for past implementations
-rulebook memory search "feature name" --mode hybrid --type feature
-
-# View timeline of related work
-rulebook memory timeline --memoryId <id>
-```
-
-### Save Implementation Insights
-After completing implementation, capture key learnings:
+### Review Past Context
+Before implementing a feature, review the file-based knowledge base for similar past work:
 
 ```bash
-# Save feature implementation
-rulebook memory save "Implemented [feature] with [approach]. Key decision: [why]. Gotcha: [edge case]. Pattern: [reusable solution]" --type feature --title "[Feature name]" --tags tag1,tag2
-
-# Save bugfix insights
-rulebook memory save "Fixed [bug] by [solution]. Root cause: [why it happened]. Test case: [added validation]" --type bugfix --title "[Bug description]" --tags bugfix,area
-
-# Save architectural decisions
-rulebook memory save "Chose [approach] over [alternative] because [reasoning]. Tradeoffs: [what was sacrificed]. Future implications: [impact on architecture]" --type decision --title "[Decision name]" --tags architecture,decision
+rulebook knowledge list
+rulebook learn list
+rulebook decision list
 ```
 
-### Use Context from Memory
-When Claude Code returns, your memory system auto-captures learnings. Review and augment:
-1. Search relevant memories: `rulebook memory search "your topic"`
-2. Review 3-layer search results: compact → timeline → full details
-3. Reference past patterns in new implementations
+### Capture Implementation Insights
+After completing implementation, record key learnings (committed with the repo):
+
+- `rulebook_knowledge_add` — reusable patterns and anti-patterns.
+- `rulebook_learn_capture` — gotchas, edge cases, and performance insights.
+- `rulebook_decision_create` — architectural decisions and their tradeoffs.
 
 <!-- CLAUDE:END -->

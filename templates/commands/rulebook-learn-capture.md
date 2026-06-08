@@ -6,7 +6,7 @@ description: Capture a learning from implementation work for future reference.
 ---
 <!-- RULEBOOK:START -->
 **Guardrails**
-- Learnings are saved to both the memory system and `.rulebook/learnings/` for offline backup.
+- Learnings are saved as markdown under `.rulebook/learnings/`, committed with the repo.
 - Learnings can be promoted to patterns/decisions later via `rulebook learn promote`.
 
 **Steps**
@@ -35,7 +35,6 @@ rulebook learn promote <id> decision     # → creates an ADR
 ```
 
 **Reference**
-- Learnings are searchable via `rulebook memory search`
 - Use `rulebook learn list` to see all learnings
 - Learnings captured during `rulebook task archive` have source `task-archive`
 <!-- RULEBOOK:END -->
