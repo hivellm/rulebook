@@ -7,37 +7,37 @@ import path from 'path';
  * Preserves any existing content and comments.
  */
 export async function ensureGitignoreEntries(
-  projectRoot: string,
-  entries: string[]
+    projectRoot: string,
+    entries: string[]
 ): Promise<{ path: string; added: string[] }> {
-  const gitignorePath = path.join(projectRoot, '.gitignore');
-  let existing = '';
-  try {
-    existing = await fs.readFile(gitignorePath, 'utf-8');
-  } catch {
-    // File does not exist — will be created.
-  }
+    const gitignorePath = path.join(projectRoot, '.gitignore');
+    let existing = '';
+    try {
+        existing = await fs.readFile(gitignorePath, 'utf-8');
+    } catch {
+        // File does not exist — will be created.
+    }
 
-  const lines = existing.split('\n');
-  const added: string[] = [];
+    const lines = existing.split('\n');
+    const added: string[] = [];
 
-  for (const entry of entries) {
-    const trimmed = entry.trim();
-    if (!trimmed) continue;
-    // Check if already present (exact match on a trimmed line)
-    if (lines.some((l) => l.trim() === trimmed)) continue;
-    lines.push(trimmed);
-    added.push(trimmed);
-  }
+    for (const entry of entries) {
+        const trimmed = entry.trim();
+        if (!trimmed) continue;
+        // Check if already present (exact match on a trimmed line)
+        if (lines.some((l) => l.trim() === trimmed)) continue;
+        lines.push(trimmed);
+        added.push(trimmed);
+    }
 
-  if (added.length > 0) {
-    const final =
-      lines
-        .join('\n')
-        .replace(/\n{3,}/g, '\n\n')
-        .trimEnd() + '\n';
-    await fs.writeFile(gitignorePath, final, 'utf-8');
-  }
+    if (added.length > 0) {
+        const final =
+            lines
+                .join('\n')
+                .replace(/\n{3,}/g, '\n\n')
+                .trimEnd() + '\n';
+        await fs.writeFile(gitignorePath, final, 'utf-8');
+    }
 
-  return { path: gitignorePath, added };
+    return { path: gitignorePath, added };
 }

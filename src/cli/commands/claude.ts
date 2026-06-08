@@ -12,67 +12,75 @@ import { setupClaudeCodeIntegration } from '../../core/claude/claude-mcp.js';
 import { applyClaudeSettings } from '../../core/claude/claude-settings-manager.js';
 
 export interface ClaudeSetupOptions {
-  /** Cost-aware default model written to settings.json when none is set. */
-  model?: string;
+    /** Cost-aware default model written to settings.json when none is set. */
+    model?: string;
 }
 
 /**
  * `rulebook claude` / `rulebook claude setup`.
  */
 export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Promise<void> {
-  const cwd = process.cwd();
-  const defaultModel = options.model ?? 'sonnet';
+    const cwd = process.cwd();
+    const defaultModel = options.model ?? 'sonnet';
 
-  try {
-    const result = await setupClaudeCodeIntegration(cwd);
+    try {
+        const result = await setupClaudeCodeIntegration(cwd);
 
-    if (!result.detected) {
-      console.log(chalk.yellow('⚠ Claude Code not detected (no ~/.claude). Nothing applied.'));
-      console.log(chalk.gray('  Install Claude Code, then re-run "rulebook claude".'));
-      return;
+        if (!result.detected) {
+            console.log(
+                chalk.yellow('⚠ Claude Code not detected (no ~/.claude). Nothing applied.')
+            );
+            console.log(chalk.gray('  Install Claude Code, then re-run "rulebook claude".'));
+            return;
+        }
+
+        // v5.9.0: only the consolidated quality-enforcement PreToolUse hook is
+        // wired by default. The per-turn (Stop), per-prompt (UserPromptSubmit)
+        // and SessionStart hooks added measurable latency for marginal value;
+        // they were removed so a default install ships exactly one hook. They
+        // remain available via explicit rulebook.json opt-in (handled by the
+        // manager's desire flags), and stale entries self-heal on next sync.
+        await applyClaudeSettings(cwd, {
+            teamEnforcement: false,
+            sessionHandoff: false,
+            qualityEnforcement: true,
+            terseMode: false,
+            permissionsAllowlist: true,
+            statusLine: true,
+            defaultModel,
+            updateCheck: false,
+        });
+
+        console.log(chalk.green('\n✅ Claude Code setup applied'));
+        if (result.mcpConfigured) console.log(chalk.gray('  • MCP server configured in .mcp.json'));
+        if (result.skillsInstalled.length)
+            console.log(
+                chalk.gray(`  • ${result.skillsInstalled.length} skills → .claude/commands/`)
+            );
+        if (result.devSkillsInstalled.length)
+            console.log(
+                chalk.gray(`  • ${result.devSkillsInstalled.length} dev skills → .claude/skills/`)
+            );
+        if (result.agentDefinitionsInstalled.length)
+            console.log(
+                chalk.gray(
+                    `  • ${result.agentDefinitionsInstalled.length} agents → .claude/agents/`
+                )
+            );
+        if (result.workflowDefinitionsInstalled.length)
+            console.log(
+                chalk.gray(
+                    `  • ${result.workflowDefinitionsInstalled.length} workflows → .claude/workflows/`
+                )
+            );
+        console.log(chalk.gray('  • settings.json: hooks, safe permissions allowlist, statusLine'));
+        console.log(
+            chalk.gray(`  • settings.json: default model "${defaultModel}", terse mode on`)
+        );
+        console.log(chalk.gray('\nRestart Claude Code to load the updated configuration.'));
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(chalk.red(`\n❌ Failed to apply Claude Code setup: ${message}`));
+        process.exit(1);
     }
-
-    // v5.9.0: only the consolidated quality-enforcement PreToolUse hook is
-    // wired by default. The per-turn (Stop), per-prompt (UserPromptSubmit)
-    // and SessionStart hooks added measurable latency for marginal value;
-    // they were removed so a default install ships exactly one hook. They
-    // remain available via explicit rulebook.json opt-in (handled by the
-    // manager's desire flags), and stale entries self-heal on next sync.
-    await applyClaudeSettings(cwd, {
-      teamEnforcement: false,
-      sessionHandoff: false,
-      qualityEnforcement: true,
-      terseMode: false,
-      permissionsAllowlist: true,
-      statusLine: true,
-      defaultModel,
-      updateCheck: false,
-    });
-
-    console.log(chalk.green('\n✅ Claude Code setup applied'));
-    if (result.mcpConfigured) console.log(chalk.gray('  • MCP server configured in .mcp.json'));
-    if (result.skillsInstalled.length)
-      console.log(chalk.gray(`  • ${result.skillsInstalled.length} skills → .claude/commands/`));
-    if (result.devSkillsInstalled.length)
-      console.log(
-        chalk.gray(`  • ${result.devSkillsInstalled.length} dev skills → .claude/skills/`)
-      );
-    if (result.agentDefinitionsInstalled.length)
-      console.log(
-        chalk.gray(`  • ${result.agentDefinitionsInstalled.length} agents → .claude/agents/`)
-      );
-    if (result.workflowDefinitionsInstalled.length)
-      console.log(
-        chalk.gray(
-          `  • ${result.workflowDefinitionsInstalled.length} workflows → .claude/workflows/`
-        )
-      );
-    console.log(chalk.gray('  • settings.json: hooks, safe permissions allowlist, statusLine'));
-    console.log(chalk.gray(`  • settings.json: default model "${defaultModel}", terse mode on`));
-    console.log(chalk.gray('\nRestart Claude Code to load the updated configuration.'));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(chalk.red(`\n❌ Failed to apply Claude Code setup: ${message}`));
-    process.exit(1);
-  }
 }

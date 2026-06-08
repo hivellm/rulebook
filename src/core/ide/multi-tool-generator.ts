@@ -27,10 +27,10 @@ const RULEBOOK_MARKER = '<!-- RULEBOOK:START -->';
 
 /** Result of multi-tool config generation. Each field is the path written, or undefined if skipped. */
 export interface MultiToolGeneratorResult {
-  geminiMd?: string;
-  continueRules?: string;
-  windsurfRules?: string;
-  copilotInstructions?: string;
+    geminiMd?: string;
+    continueRules?: string;
+    windsurfRules?: string;
+    copilotInstructions?: string;
 }
 
 /**
@@ -38,7 +38,7 @@ export interface MultiToolGeneratorResult {
  * Uses the same __dirname strategy as cursor-mdc-generator.ts.
  */
 function getTemplatesDir(): string {
-  return path.join(__dirname, '..', '..', '..', 'templates', 'ides');
+    return path.join(__dirname, '..', '..', '..', 'templates', 'ides');
 }
 
 /**
@@ -46,11 +46,11 @@ function getTemplatesDir(): string {
  * Returns the template content or null if the template does not exist.
  */
 async function readTemplate(templateName: string): Promise<string | null> {
-  const templatePath = path.join(getTemplatesDir(), templateName);
-  if (!existsSync(templatePath)) {
-    return null;
-  }
-  return readFile(templatePath, 'utf-8');
+    const templatePath = path.join(getTemplatesDir(), templateName);
+    if (!existsSync(templatePath)) {
+        return null;
+    }
+    return readFile(templatePath, 'utf-8');
 }
 
 /**
@@ -62,22 +62,22 @@ async function readTemplate(templateName: string): Promise<string | null> {
  * Returns the absolute path written, or null if skipped.
  */
 async function writeIdempotent(destPath: string, content: string): Promise<string | null> {
-  if (existsSync(destPath)) {
-    const existing = await readFile(destPath, 'utf-8');
-    if (!existing.includes(RULEBOOK_MARKER)) {
-      // User-owned file — do not overwrite
-      return null;
+    if (existsSync(destPath)) {
+        const existing = await readFile(destPath, 'utf-8');
+        if (!existing.includes(RULEBOOK_MARKER)) {
+            // User-owned file — do not overwrite
+            return null;
+        }
     }
-  }
 
-  // Ensure the parent directory exists
-  const parentDir = path.dirname(destPath);
-  if (!existsSync(parentDir)) {
-    await mkdir(parentDir, { recursive: true });
-  }
+    // Ensure the parent directory exists
+    const parentDir = path.dirname(destPath);
+    if (!existsSync(parentDir)) {
+        await mkdir(parentDir, { recursive: true });
+    }
 
-  await writeFile(destPath, content, 'utf-8');
-  return destPath;
+    await writeFile(destPath, content, 'utf-8');
+    return destPath;
 }
 
 /**
@@ -87,13 +87,13 @@ async function writeIdempotent(destPath: string, content: string): Promise<strin
  * @returns The path written, or null if skipped.
  */
 export async function generateGeminiMd(projectRoot: string): Promise<string | null> {
-  const template = await readTemplate('GEMINI_RULES.md');
-  if (!template) {
-    return null;
-  }
+    const template = await readTemplate('GEMINI_RULES.md');
+    if (!template) {
+        return null;
+    }
 
-  const destPath = path.join(projectRoot, 'GEMINI.md');
-  return writeIdempotent(destPath, template);
+    const destPath = path.join(projectRoot, 'GEMINI.md');
+    return writeIdempotent(destPath, template);
 }
 
 /**
@@ -103,13 +103,13 @@ export async function generateGeminiMd(projectRoot: string): Promise<string | nu
  * @returns The path written, or null if skipped.
  */
 export async function generateContinueRules(projectRoot: string): Promise<string | null> {
-  const template = await readTemplate('CONTINUE_RULES.md');
-  if (!template) {
-    return null;
-  }
+    const template = await readTemplate('CONTINUE_RULES.md');
+    if (!template) {
+        return null;
+    }
 
-  const destPath = path.join(projectRoot, '.continue', 'rules', 'RULEBOOK.md');
-  return writeIdempotent(destPath, template);
+    const destPath = path.join(projectRoot, '.continue', 'rules', 'RULEBOOK.md');
+    return writeIdempotent(destPath, template);
 }
 
 /**
@@ -119,13 +119,13 @@ export async function generateContinueRules(projectRoot: string): Promise<string
  * @returns The path written, or null if skipped.
  */
 export async function generateWindsurfRules(projectRoot: string): Promise<string | null> {
-  const template = await readTemplate('WINDSURF_RULES.md');
-  if (!template) {
-    return null;
-  }
+    const template = await readTemplate('WINDSURF_RULES.md');
+    if (!template) {
+        return null;
+    }
 
-  const destPath = path.join(projectRoot, '.windsurfrules');
-  return writeIdempotent(destPath, template);
+    const destPath = path.join(projectRoot, '.windsurfrules');
+    return writeIdempotent(destPath, template);
 }
 
 /**
@@ -135,13 +135,13 @@ export async function generateWindsurfRules(projectRoot: string): Promise<string
  * @returns The path written, or null if skipped.
  */
 export async function generateCopilotInstructions(projectRoot: string): Promise<string | null> {
-  const template = await readTemplate('COPILOT_INSTRUCTIONS.md');
-  if (!template) {
-    return null;
-  }
+    const template = await readTemplate('COPILOT_INSTRUCTIONS.md');
+    if (!template) {
+        return null;
+    }
 
-  const destPath = path.join(projectRoot, '.github', 'copilot-instructions.md');
-  return writeIdempotent(destPath, template);
+    const destPath = path.join(projectRoot, '.github', 'copilot-instructions.md');
+    return writeIdempotent(destPath, template);
 }
 
 /**
@@ -153,38 +153,38 @@ export async function generateCopilotInstructions(projectRoot: string): Promise<
  * @returns An object with paths of all generated files (undefined for skipped tools).
  */
 export async function generateMultiToolConfigs(
-  projectRoot: string,
-  detection: DetectionResult
+    projectRoot: string,
+    detection: DetectionResult
 ): Promise<MultiToolGeneratorResult> {
-  const result: MultiToolGeneratorResult = {};
+    const result: MultiToolGeneratorResult = {};
 
-  if (detection.geminiCli?.detected) {
-    const written = await generateGeminiMd(projectRoot);
-    if (written) {
-      result.geminiMd = written;
+    if (detection.geminiCli?.detected) {
+        const written = await generateGeminiMd(projectRoot);
+        if (written) {
+            result.geminiMd = written;
+        }
     }
-  }
 
-  if (detection.continueDev?.detected) {
-    const written = await generateContinueRules(projectRoot);
-    if (written) {
-      result.continueRules = written;
+    if (detection.continueDev?.detected) {
+        const written = await generateContinueRules(projectRoot);
+        if (written) {
+            result.continueRules = written;
+        }
     }
-  }
 
-  if (detection.windsurf?.detected) {
-    const written = await generateWindsurfRules(projectRoot);
-    if (written) {
-      result.windsurfRules = written;
+    if (detection.windsurf?.detected) {
+        const written = await generateWindsurfRules(projectRoot);
+        if (written) {
+            result.windsurfRules = written;
+        }
     }
-  }
 
-  if (detection.githubCopilot?.detected) {
-    const written = await generateCopilotInstructions(projectRoot);
-    if (written) {
-      result.copilotInstructions = written;
+    if (detection.githubCopilot?.detected) {
+        const written = await generateCopilotInstructions(projectRoot);
+        if (written) {
+            result.copilotInstructions = written;
+        }
     }
-  }
 
-  return result;
+    return result;
 }

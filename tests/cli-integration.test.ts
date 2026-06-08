@@ -10,231 +10,231 @@ import type { ProjectConfig } from '../src/types.js';
  * These tests verify that the CLI configuration files are generated correctly
  */
 describe('AI CLI Integration Files', () => {
-  let testDir: string;
-  let config: ProjectConfig;
+    let testDir: string;
+    let config: ProjectConfig;
 
-  beforeEach(async () => {
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rulebook-cli-integration-test-'));
+    beforeEach(async () => {
+        testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rulebook-cli-integration-test-'));
 
-    config = {
-      languages: ['typescript'],
-      modules: [],
+        config = {
+            languages: ['typescript'],
+            modules: [],
 
-      ides: ['cursor'],
-      projectType: 'application',
-      coverageThreshold: 95,
-      strictDocs: true,
-      generateWorkflows: true,
-      includeGitWorkflow: true,
-      gitPushMode: 'manual',
-      installGitHooks: false,
-      minimal: false,
-      modular: true,
-    };
-  });
-
-  afterEach(async () => {
-    await fs.rm(testDir, { recursive: true, force: true });
-  });
-
-  describe('generateAICLIFiles', () => {
-    // CLAUDE.md generation moved to `src/core/claude-md-generator.ts` in
-    // v5.3.0. Coverage is in `tests/claude-md-generator.test.ts`. This file
-    // now only verifies the remaining CODEX/GEMINI outputs of generateAICLIFiles.
-
-    it('should generate CODEX.md for Codex CLI', async () => {
-      const files = await generateAICLIFiles(config, testDir);
-
-      const codexPath = path.join(testDir, 'CODEX.md');
-      const exists = await fs
-        .access(codexPath)
-        .then(() => true)
-        .catch(() => false);
-
-      expect(exists).toBe(true);
-      expect(files).toContain(codexPath);
-
-      const content = await fs.readFile(codexPath, 'utf-8');
-      expect(content).toContain('Codex');
-      expect(content).toContain('AGENTS.md');
+            ides: ['cursor'],
+            projectType: 'application',
+            coverageThreshold: 95,
+            strictDocs: true,
+            generateWorkflows: true,
+            includeGitWorkflow: true,
+            gitPushMode: 'manual',
+            installGitHooks: false,
+            minimal: false,
+            modular: true,
+        };
     });
 
-    it('should generate GEMINI.md for Gemini CLI', async () => {
-      const files = await generateAICLIFiles(config, testDir);
-
-      const geminiPath = path.join(testDir, 'GEMINI.md');
-      const exists = await fs
-        .access(geminiPath)
-        .then(() => true)
-        .catch(() => false);
-
-      expect(exists).toBe(true);
-      expect(files).toContain(geminiPath);
-
-      const content = await fs.readFile(geminiPath, 'utf-8');
-      expect(content).toContain('Gemini');
-      expect(content).toContain('AGENTS.md');
+    afterEach(async () => {
+        await fs.rm(testDir, { recursive: true, force: true });
     });
 
-    it('should generate gemini-extension.json for Gemini CLI extension', async () => {
-      const files = await generateAICLIFiles(config, testDir);
+    describe('generateAICLIFiles', () => {
+        // CLAUDE.md generation moved to `src/core/claude-md-generator.ts` in
+        // v5.3.0. Coverage is in `tests/claude-md-generator.test.ts`. This file
+        // now only verifies the remaining CODEX/GEMINI outputs of generateAICLIFiles.
 
-      const geminiExtPath = path.join(testDir, 'gemini-extension.json');
-      const exists = await fs
-        .access(geminiExtPath)
-        .then(() => true)
-        .catch(() => false);
+        it('should generate CODEX.md for Codex CLI', async () => {
+            const files = await generateAICLIFiles(config, testDir);
 
-      expect(exists).toBe(true);
-      expect(files).toContain(geminiExtPath);
+            const codexPath = path.join(testDir, 'CODEX.md');
+            const exists = await fs
+                .access(codexPath)
+                .then(() => true)
+                .catch(() => false);
 
-      const content = await fs.readFile(geminiExtPath, 'utf-8');
-      const jsonContent = JSON.parse(content);
+            expect(exists).toBe(true);
+            expect(files).toContain(codexPath);
 
-      expect(jsonContent).toBeDefined();
-      expect(jsonContent.name).toBeDefined();
+            const content = await fs.readFile(codexPath, 'utf-8');
+            expect(content).toContain('Codex');
+            expect(content).toContain('AGENTS.md');
+        });
+
+        it('should generate GEMINI.md for Gemini CLI', async () => {
+            const files = await generateAICLIFiles(config, testDir);
+
+            const geminiPath = path.join(testDir, 'GEMINI.md');
+            const exists = await fs
+                .access(geminiPath)
+                .then(() => true)
+                .catch(() => false);
+
+            expect(exists).toBe(true);
+            expect(files).toContain(geminiPath);
+
+            const content = await fs.readFile(geminiPath, 'utf-8');
+            expect(content).toContain('Gemini');
+            expect(content).toContain('AGENTS.md');
+        });
+
+        it('should generate gemini-extension.json for Gemini CLI extension', async () => {
+            const files = await generateAICLIFiles(config, testDir);
+
+            const geminiExtPath = path.join(testDir, 'gemini-extension.json');
+            const exists = await fs
+                .access(geminiExtPath)
+                .then(() => true)
+                .catch(() => false);
+
+            expect(exists).toBe(true);
+            expect(files).toContain(geminiExtPath);
+
+            const content = await fs.readFile(geminiExtPath, 'utf-8');
+            const jsonContent = JSON.parse(content);
+
+            expect(jsonContent).toBeDefined();
+            expect(jsonContent.name).toBeDefined();
+        });
+
+        it('should not overwrite existing CODEX.md', async () => {
+            const codexPath = path.join(testDir, 'CODEX.md');
+            const customContent = '# Custom CODEX.md content';
+            await fs.writeFile(codexPath, customContent);
+
+            const files = await generateAICLIFiles(config, testDir);
+
+            expect(files).not.toContain(codexPath);
+            const content = await fs.readFile(codexPath, 'utf-8');
+            expect(content).toBe(customContent);
+        });
+
+        it('should generate all files in correct directory', async () => {
+            await generateAICLIFiles(config, testDir);
+
+            const expectedFiles = ['CODEX.md', 'GEMINI.md', 'gemini-extension.json'];
+
+            for (const file of expectedFiles) {
+                const filePath = path.join(testDir, file);
+                const exists = await fs
+                    .access(filePath)
+                    .then(() => true)
+                    .catch(() => false);
+                expect(exists).toBe(true);
+            }
+        });
     });
 
-    it('should not overwrite existing CODEX.md', async () => {
-      const codexPath = path.join(testDir, 'CODEX.md');
-      const customContent = '# Custom CODEX.md content';
-      await fs.writeFile(codexPath, customContent);
+    // CLAUDE.md content tests moved to tests/claude-md-generator.test.ts
+    // (v5.3.0 @import-based generator).
 
-      const files = await generateAICLIFiles(config, testDir);
+    describe('CODEX.md content', () => {
+        it('should include project languages', async () => {
+            config.languages = ['go', 'rust'];
+            await generateAICLIFiles(config, testDir);
 
-      expect(files).not.toContain(codexPath);
-      const content = await fs.readFile(codexPath, 'utf-8');
-      expect(content).toBe(customContent);
+            const content = await fs.readFile(path.join(testDir, 'CODEX.md'), 'utf-8');
+            expect(content).toContain('Go');
+            expect(content).toContain('Rust');
+        });
+
+        it('should reference rulebook standards', async () => {
+            await generateAICLIFiles(config, testDir);
+
+            const content = await fs.readFile(path.join(testDir, 'CODEX.md'), 'utf-8');
+            expect(content).toContain('rulebook');
+        });
     });
 
-    it('should generate all files in correct directory', async () => {
-      await generateAICLIFiles(config, testDir);
+    describe('GEMINI.md content', () => {
+        it('should include project languages', async () => {
+            config.languages = ['java', 'kotlin'];
+            await generateAICLIFiles(config, testDir);
 
-      const expectedFiles = ['CODEX.md', 'GEMINI.md', 'gemini-extension.json'];
+            const content = await fs.readFile(path.join(testDir, 'GEMINI.md'), 'utf-8');
+            expect(content).toContain('Java');
+            expect(content).toContain('Kotlin');
+        });
 
-      for (const file of expectedFiles) {
-        const filePath = path.join(testDir, file);
-        const exists = await fs
-          .access(filePath)
-          .then(() => true)
-          .catch(() => false);
-        expect(exists).toBe(true);
-      }
-    });
-  });
+        it('should reference AGENTS.md', async () => {
+            await generateAICLIFiles(config, testDir);
 
-  // CLAUDE.md content tests moved to tests/claude-md-generator.test.ts
-  // (v5.3.0 @import-based generator).
-
-  describe('CODEX.md content', () => {
-    it('should include project languages', async () => {
-      config.languages = ['go', 'rust'];
-      await generateAICLIFiles(config, testDir);
-
-      const content = await fs.readFile(path.join(testDir, 'CODEX.md'), 'utf-8');
-      expect(content).toContain('Go');
-      expect(content).toContain('Rust');
+            const content = await fs.readFile(path.join(testDir, 'GEMINI.md'), 'utf-8');
+            expect(content).toContain('AGENTS.md');
+        });
     });
 
-    it('should reference rulebook standards', async () => {
-      await generateAICLIFiles(config, testDir);
+    describe('gemini-extension.json content', () => {
+        it('should have valid JSON structure', async () => {
+            await generateAICLIFiles(config, testDir);
 
-      const content = await fs.readFile(path.join(testDir, 'CODEX.md'), 'utf-8');
-      expect(content).toContain('rulebook');
-    });
-  });
+            const content = await fs.readFile(path.join(testDir, 'gemini-extension.json'), 'utf-8');
+            const jsonContent = JSON.parse(content);
 
-  describe('GEMINI.md content', () => {
-    it('should include project languages', async () => {
-      config.languages = ['java', 'kotlin'];
-      await generateAICLIFiles(config, testDir);
+            expect(jsonContent.name).toBeDefined();
+            expect(jsonContent.version).toBeDefined();
+            expect(jsonContent.description).toBeDefined();
+        });
 
-      const content = await fs.readFile(path.join(testDir, 'GEMINI.md'), 'utf-8');
-      expect(content).toContain('Java');
-      expect(content).toContain('Kotlin');
-    });
+        it('should include project name from directory', async () => {
+            await generateAICLIFiles(config, testDir);
 
-    it('should reference AGENTS.md', async () => {
-      await generateAICLIFiles(config, testDir);
+            const content = await fs.readFile(path.join(testDir, 'gemini-extension.json'), 'utf-8');
+            const jsonContent = JSON.parse(content);
 
-      const content = await fs.readFile(path.join(testDir, 'GEMINI.md'), 'utf-8');
-      expect(content).toContain('AGENTS.md');
-    });
-  });
-
-  describe('gemini-extension.json content', () => {
-    it('should have valid JSON structure', async () => {
-      await generateAICLIFiles(config, testDir);
-
-      const content = await fs.readFile(path.join(testDir, 'gemini-extension.json'), 'utf-8');
-      const jsonContent = JSON.parse(content);
-
-      expect(jsonContent.name).toBeDefined();
-      expect(jsonContent.version).toBeDefined();
-      expect(jsonContent.description).toBeDefined();
+            expect(jsonContent.name).toBeDefined();
+            expect(typeof jsonContent.name).toBe('string');
+        });
     });
 
-    it('should include project name from directory', async () => {
-      await generateAICLIFiles(config, testDir);
+    describe('Template Files Existence', () => {
+        it('should have CLAUDE.md template', async () => {
+            const { fileURLToPath } = await import('url');
+            const { dirname } = await import('path');
 
-      const content = await fs.readFile(path.join(testDir, 'gemini-extension.json'), 'utf-8');
-      const jsonContent = JSON.parse(content);
+            const __filename = fileURLToPath(import.meta.url);
+            const __dirname = dirname(__filename);
+            const templatesDir = path.join(__dirname, '..', 'templates', 'cli');
 
-      expect(jsonContent.name).toBeDefined();
-      expect(typeof jsonContent.name).toBe('string');
+            const claudeTemplatePath = path.join(templatesDir, 'CLAUDE.md');
+            const exists = await fs
+                .access(claudeTemplatePath)
+                .then(() => true)
+                .catch(() => false);
+
+            expect(exists).toBe(true);
+        });
+
+        it('should have CODEX.md template', async () => {
+            const { fileURLToPath } = await import('url');
+            const { dirname } = await import('path');
+
+            const __filename = fileURLToPath(import.meta.url);
+            const __dirname = dirname(__filename);
+            const templatesDir = path.join(__dirname, '..', 'templates', 'cli');
+
+            const codexTemplatePath = path.join(templatesDir, 'CODEX.md');
+            const exists = await fs
+                .access(codexTemplatePath)
+                .then(() => true)
+                .catch(() => false);
+
+            expect(exists).toBe(true);
+        });
+
+        it('should have GEMINI.md template', async () => {
+            const { fileURLToPath } = await import('url');
+            const { dirname } = await import('path');
+
+            const __filename = fileURLToPath(import.meta.url);
+            const __dirname = dirname(__filename);
+            const templatesDir = path.join(__dirname, '..', 'templates', 'cli');
+
+            const geminiTemplatePath = path.join(templatesDir, 'GEMINI.md');
+            const exists = await fs
+                .access(geminiTemplatePath)
+                .then(() => true)
+                .catch(() => false);
+
+            expect(exists).toBe(true);
+        });
     });
-  });
-
-  describe('Template Files Existence', () => {
-    it('should have CLAUDE.md template', async () => {
-      const { fileURLToPath } = await import('url');
-      const { dirname } = await import('path');
-
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = dirname(__filename);
-      const templatesDir = path.join(__dirname, '..', 'templates', 'cli');
-
-      const claudeTemplatePath = path.join(templatesDir, 'CLAUDE.md');
-      const exists = await fs
-        .access(claudeTemplatePath)
-        .then(() => true)
-        .catch(() => false);
-
-      expect(exists).toBe(true);
-    });
-
-    it('should have CODEX.md template', async () => {
-      const { fileURLToPath } = await import('url');
-      const { dirname } = await import('path');
-
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = dirname(__filename);
-      const templatesDir = path.join(__dirname, '..', 'templates', 'cli');
-
-      const codexTemplatePath = path.join(templatesDir, 'CODEX.md');
-      const exists = await fs
-        .access(codexTemplatePath)
-        .then(() => true)
-        .catch(() => false);
-
-      expect(exists).toBe(true);
-    });
-
-    it('should have GEMINI.md template', async () => {
-      const { fileURLToPath } = await import('url');
-      const { dirname } = await import('path');
-
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = dirname(__filename);
-      const templatesDir = path.join(__dirname, '..', 'templates', 'cli');
-
-      const geminiTemplatePath = path.join(templatesDir, 'GEMINI.md');
-      const exists = await fs
-        .access(geminiTemplatePath)
-        .then(() => true)
-        .catch(() => false);
-
-      expect(exists).toBe(true);
-    });
-  });
 });

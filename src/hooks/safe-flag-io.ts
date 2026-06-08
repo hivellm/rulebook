@@ -33,15 +33,15 @@
  */
 
 import {
-  closeSync,
-  constants,
-  fchmodSync,
-  lstatSync,
-  openSync,
-  readSync,
-  renameSync,
-  writeSync,
-  mkdirSync,
+    closeSync,
+    constants,
+    fchmodSync,
+    lstatSync,
+    openSync,
+    readSync,
+    renameSync,
+    writeSync,
+    mkdirSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 
@@ -72,7 +72,7 @@ export const MAX_FLAG_BYTES = 32;
 const O_NOFOLLOW = typeof constants.O_NOFOLLOW === 'number' ? constants.O_NOFOLLOW : 0;
 
 function isValidMode(s: string): s is TerseMode {
-  return (VALID_MODES as readonly string[]).includes(s);
+    return (VALID_MODES as readonly string[]).includes(s);
 }
 
 /**
@@ -90,51 +90,51 @@ function isValidMode(s: string): s is TerseMode {
  * this is useful for test fixtures that want to simulate corruption.
  */
 export function safeWriteFlag(flagPath: string, content: string): void {
-  try {
-    const flagDir = dirname(flagPath);
-
-    // Ensure the parent exists. If a parent along the chain is a
-    // symlink, that is NOT caught here — we only guard the immediate
-    // parent because macOS legitimately routes home directories
-    // through symlinks (`/tmp → /private/tmp`) and a full walk would
-    // produce false positives. The attack surface requires write
-    // access to the immediate parent, which is what we check.
-    mkdirSync(flagDir, { recursive: true });
-
     try {
-      if (lstatSync(flagDir).isSymbolicLink()) return;
+        const flagDir = dirname(flagPath);
+
+        // Ensure the parent exists. If a parent along the chain is a
+        // symlink, that is NOT caught here — we only guard the immediate
+        // parent because macOS legitimately routes home directories
+        // through symlinks (`/tmp → /private/tmp`) and a full walk would
+        // produce false positives. The attack surface requires write
+        // access to the immediate parent, which is what we check.
+        mkdirSync(flagDir, { recursive: true });
+
+        try {
+            if (lstatSync(flagDir).isSymbolicLink()) return;
+        } catch {
+            return;
+        }
+
+        try {
+            if (lstatSync(flagPath).isSymbolicLink()) return;
+        } catch (e) {
+            const code = (e as NodeJS.ErrnoException).code;
+            if (code !== 'ENOENT') return;
+        }
+
+        const tempPath = join(flagDir, `.terse-mode.tmp.${process.pid}.${Date.now()}`);
+        const flags = constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | O_NOFOLLOW;
+
+        let fd: number | undefined;
+        try {
+            fd = openSync(tempPath, flags, 0o600);
+            writeSync(fd, String(content));
+            // Best-effort chmod — Windows ignores but doesn't throw.
+            try {
+                fchmodSync(fd, 0o600);
+            } catch {
+                /* ignored on platforms where fchmod is a no-op */
+            }
+        } finally {
+            if (fd !== undefined) closeSync(fd);
+        }
+
+        renameSync(tempPath, flagPath);
     } catch {
-      return;
+        // Silent fail — flag is best-effort.
     }
-
-    try {
-      if (lstatSync(flagPath).isSymbolicLink()) return;
-    } catch (e) {
-      const code = (e as NodeJS.ErrnoException).code;
-      if (code !== 'ENOENT') return;
-    }
-
-    const tempPath = join(flagDir, `.terse-mode.tmp.${process.pid}.${Date.now()}`);
-    const flags = constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | O_NOFOLLOW;
-
-    let fd: number | undefined;
-    try {
-      fd = openSync(tempPath, flags, 0o600);
-      writeSync(fd, String(content));
-      // Best-effort chmod — Windows ignores but doesn't throw.
-      try {
-        fchmodSync(fd, 0o600);
-      } catch {
-        /* ignored on platforms where fchmod is a no-op */
-      }
-    } finally {
-      if (fd !== undefined) closeSync(fd);
-    }
-
-    renameSync(tempPath, flagPath);
-  } catch {
-    // Silent fail — flag is best-effort.
-  }
 }
 
 /**
@@ -150,32 +150,32 @@ export function safeWriteFlag(flagPath: string, content: string): void {
  *   - Silent-fails on any other filesystem error.
  */
 export function readFlag(flagPath: string): TerseMode | null {
-  try {
-    let st;
     try {
-      st = lstatSync(flagPath);
+        let st;
+        try {
+            st = lstatSync(flagPath);
+        } catch {
+            return null;
+        }
+
+        if (st.isSymbolicLink() || !st.isFile()) return null;
+        if (st.size > MAX_FLAG_BYTES) return null;
+
+        const flags = constants.O_RDONLY | O_NOFOLLOW;
+        let fd: number | undefined;
+        let raw: string;
+        try {
+            fd = openSync(flagPath, flags);
+            const buf = Buffer.alloc(MAX_FLAG_BYTES);
+            const n = readSync(fd, buf, 0, MAX_FLAG_BYTES, 0);
+            raw = buf.subarray(0, n).toString('utf8');
+        } finally {
+            if (fd !== undefined) closeSync(fd);
+        }
+
+        const normalized = raw.trim().toLowerCase();
+        return isValidMode(normalized) ? normalized : null;
     } catch {
-      return null;
+        return null;
     }
-
-    if (st.isSymbolicLink() || !st.isFile()) return null;
-    if (st.size > MAX_FLAG_BYTES) return null;
-
-    const flags = constants.O_RDONLY | O_NOFOLLOW;
-    let fd: number | undefined;
-    let raw: string;
-    try {
-      fd = openSync(flagPath, flags);
-      const buf = Buffer.alloc(MAX_FLAG_BYTES);
-      const n = readSync(fd, buf, 0, MAX_FLAG_BYTES, 0);
-      raw = buf.subarray(0, n).toString('utf8');
-    } finally {
-      if (fd !== undefined) closeSync(fd);
-    }
-
-    const normalized = raw.trim().toLowerCase();
-    return isValidMode(normalized) ? normalized : null;
-  } catch {
-    return null;
-  }
 }

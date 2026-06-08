@@ -2,118 +2,118 @@ import path from 'path';
 import { writeFile, ensureDir, fileExists } from '../../utils/file-system.js';
 
 export interface DocsConfig {
-  projectName: string;
-  description: string;
-  author: string;
-  email?: string;
-  license: string;
+    projectName: string;
+    description: string;
+    author: string;
+    email?: string;
+    license: string;
 }
 
 export async function generateDocsStructure(
-  config: DocsConfig,
-  targetDir: string = process.cwd(),
-  mode: 'full' | 'minimal' = 'full'
+    config: DocsConfig,
+    targetDir: string = process.cwd(),
+    mode: 'full' | 'minimal' = 'full'
 ): Promise<string[]> {
-  const generatedFiles: string[] = [];
+    const generatedFiles: string[] = [];
 
-  // Create /docs directory structure
-  const docsDir = path.join(targetDir, 'docs');
-  await ensureDir(docsDir);
-  await ensureDir(path.join(docsDir, 'specs'));
-  await ensureDir(path.join(docsDir, 'guides'));
-  await ensureDir(path.join(docsDir, 'diagrams'));
-  await ensureDir(path.join(docsDir, 'benchmarks'));
-  await ensureDir(path.join(docsDir, 'versions'));
-  await ensureDir(path.join(docsDir, 'examples'));
+    // Create /docs directory structure
+    const docsDir = path.join(targetDir, 'docs');
+    await ensureDir(docsDir);
+    await ensureDir(path.join(docsDir, 'specs'));
+    await ensureDir(path.join(docsDir, 'guides'));
+    await ensureDir(path.join(docsDir, 'diagrams'));
+    await ensureDir(path.join(docsDir, 'benchmarks'));
+    await ensureDir(path.join(docsDir, 'versions'));
+    await ensureDir(path.join(docsDir, 'examples'));
 
-  // Generate root README (concise version)
-  const readmePath = path.join(targetDir, 'README.md');
-  if (!(await fileExists(readmePath))) {
-    const readmeContent = generateRootReadme(config, mode);
-    await writeFile(readmePath, readmeContent);
-    generatedFiles.push(readmePath);
-  }
-
-  // Generate ROADMAP.md
-  const roadmapPath = path.join(docsDir, 'ROADMAP.md');
-  if (!(await fileExists(roadmapPath))) {
-    const roadmap = generateRoadmap(config);
-    await writeFile(roadmapPath, roadmap);
-    generatedFiles.push(roadmapPath);
-  }
-
-  // Generate ARCHITECTURE.md
-  const archPath = path.join(docsDir, 'ARCHITECTURE.md');
-  if (!(await fileExists(archPath))) {
-    const architecture = generateArchitecture(config);
-    await writeFile(archPath, architecture);
-    generatedFiles.push(archPath);
-  }
-
-  // Generate DEVELOPMENT.md
-  const developmentPath = path.join(docsDir, 'DEVELOPMENT.md');
-  if (!(await fileExists(developmentPath))) {
-    const development = generateDevelopment(config);
-    await writeFile(developmentPath, development);
-    generatedFiles.push(developmentPath);
-  }
-
-  if (mode === 'full') {
-    // Generate DAG.md
-    const dagPath = path.join(docsDir, 'DAG.md');
-    if (!(await fileExists(dagPath))) {
-      const dag = generateDAG(config);
-      await writeFile(dagPath, dag);
-      generatedFiles.push(dagPath);
+    // Generate root README (concise version)
+    const readmePath = path.join(targetDir, 'README.md');
+    if (!(await fileExists(readmePath))) {
+        const readmeContent = generateRootReadme(config, mode);
+        await writeFile(readmePath, readmeContent);
+        generatedFiles.push(readmePath);
     }
 
-    // Generate CONTRIBUTING.md
-    const contributingPath = path.join(targetDir, 'CONTRIBUTING.md');
-    if (!(await fileExists(contributingPath))) {
-      const contributing = generateContributing(config);
-      await writeFile(contributingPath, contributing);
-      generatedFiles.push(contributingPath);
+    // Generate ROADMAP.md
+    const roadmapPath = path.join(docsDir, 'ROADMAP.md');
+    if (!(await fileExists(roadmapPath))) {
+        const roadmap = generateRoadmap(config);
+        await writeFile(roadmapPath, roadmap);
+        generatedFiles.push(roadmapPath);
     }
 
-    // Generate CODE_OF_CONDUCT.md
-    const cocPath = path.join(targetDir, 'CODE_OF_CONDUCT.md');
-    if (!(await fileExists(cocPath))) {
-      const coc = generateCodeOfConduct(config);
-      await writeFile(cocPath, coc);
-      generatedFiles.push(cocPath);
+    // Generate ARCHITECTURE.md
+    const archPath = path.join(docsDir, 'ARCHITECTURE.md');
+    if (!(await fileExists(archPath))) {
+        const architecture = generateArchitecture(config);
+        await writeFile(archPath, architecture);
+        generatedFiles.push(archPath);
     }
 
-    // Generate SECURITY.md
-    const securityPath = path.join(targetDir, 'SECURITY.md');
-    if (!(await fileExists(securityPath))) {
-      const security = generateSecurity(config);
-      await writeFile(securityPath, security);
-      generatedFiles.push(securityPath);
+    // Generate DEVELOPMENT.md
+    const developmentPath = path.join(docsDir, 'DEVELOPMENT.md');
+    if (!(await fileExists(developmentPath))) {
+        const development = generateDevelopment(config);
+        await writeFile(developmentPath, development);
+        generatedFiles.push(developmentPath);
     }
-  }
 
-  return generatedFiles;
+    if (mode === 'full') {
+        // Generate DAG.md
+        const dagPath = path.join(docsDir, 'DAG.md');
+        if (!(await fileExists(dagPath))) {
+            const dag = generateDAG(config);
+            await writeFile(dagPath, dag);
+            generatedFiles.push(dagPath);
+        }
+
+        // Generate CONTRIBUTING.md
+        const contributingPath = path.join(targetDir, 'CONTRIBUTING.md');
+        if (!(await fileExists(contributingPath))) {
+            const contributing = generateContributing(config);
+            await writeFile(contributingPath, contributing);
+            generatedFiles.push(contributingPath);
+        }
+
+        // Generate CODE_OF_CONDUCT.md
+        const cocPath = path.join(targetDir, 'CODE_OF_CONDUCT.md');
+        if (!(await fileExists(cocPath))) {
+            const coc = generateCodeOfConduct(config);
+            await writeFile(cocPath, coc);
+            generatedFiles.push(cocPath);
+        }
+
+        // Generate SECURITY.md
+        const securityPath = path.join(targetDir, 'SECURITY.md');
+        if (!(await fileExists(securityPath))) {
+            const security = generateSecurity(config);
+            await writeFile(securityPath, security);
+            generatedFiles.push(securityPath);
+        }
+    }
+
+    return generatedFiles;
 }
 
 function generateRootReadme(config: DocsConfig, mode: 'full' | 'minimal'): string {
-  const documentationLinks = [
-    '- [Architecture](docs/ARCHITECTURE.md)',
-    '- [Development Guide](docs/DEVELOPMENT.md)',
-    '- [Roadmap](docs/ROADMAP.md)',
-  ];
+    const documentationLinks = [
+        '- [Architecture](docs/ARCHITECTURE.md)',
+        '- [Development Guide](docs/DEVELOPMENT.md)',
+        '- [Roadmap](docs/ROADMAP.md)',
+    ];
 
-  if (mode === 'full') {
-    documentationLinks.push('- [Component DAG](docs/DAG.md)');
-  }
+    if (mode === 'full') {
+        documentationLinks.push('- [Component DAG](docs/DAG.md)');
+    }
 
-  const communityLinks = [] as string[];
-  if (mode === 'full') {
-    communityLinks.push('- [Contributing](CONTRIBUTING.md)');
-    communityLinks.push('- [Code of Conduct](CODE_OF_CONDUCT.md)');
-    communityLinks.push('- [Security Policy](SECURITY.md)');
-  }
+    const communityLinks = [] as string[];
+    if (mode === 'full') {
+        communityLinks.push('- [Contributing](CONTRIBUTING.md)');
+        communityLinks.push('- [Code of Conduct](CODE_OF_CONDUCT.md)');
+        communityLinks.push('- [Security Policy](SECURITY.md)');
+    }
 
-  return `# ${config.projectName}
+    return `# ${config.projectName}
 
 > ${config.description}
 
@@ -134,13 +134,13 @@ function generateRootReadme(config: DocsConfig, mode: 'full' | 'minimal'): strin
 ${documentationLinks.join('\n')}
 
 ${
-  communityLinks.length > 0
-    ? `## Community & Support
+    communityLinks.length > 0
+        ? `## Community & Support
 
 ${communityLinks.join('\n')}
 
 `
-    : ''
+        : ''
 }## License
 
 This project is licensed under the ${config.license} License.
@@ -148,7 +148,7 @@ This project is licensed under the ${config.license} License.
 }
 
 function generateRoadmap(config: DocsConfig): string {
-  return `# ${config.projectName} - Roadmap
+    return `# ${config.projectName} - Roadmap
 
 ## Overview
 
@@ -200,7 +200,7 @@ This document outlines the development roadmap for ${config.projectName}.
 }
 
 function generateArchitecture(config: DocsConfig): string {
-  return `# ${config.projectName} - Architecture
+    return `# ${config.projectName} - Architecture
 
 ## Overview
 
@@ -261,7 +261,7 @@ This document describes the system architecture of ${config.projectName}.
 }
 
 function generateDAG(config: DocsConfig): string {
-  return `# ${config.projectName} - Component Dependencies (DAG)
+    return `# ${config.projectName} - Component Dependencies (DAG)
 
 ## Overview
 
@@ -324,7 +324,7 @@ Run dependency check:
 }
 
 function generateContributing(config: DocsConfig): string {
-  return `# Contributing to ${config.projectName}
+    return `# Contributing to ${config.projectName}
 
 Thank you for your interest in contributing to ${config.projectName}!
 
@@ -420,7 +420,7 @@ By contributing, you agree that your contributions will be licensed under the ${
 }
 
 function generateCodeOfConduct(config: DocsConfig): string {
-  return `# Code of Conduct
+    return `# Code of Conduct
 
 ## Our Pledge
 
@@ -466,7 +466,7 @@ This Code of Conduct is adapted from the Contributor Covenant, version 2.1.
 }
 
 function generateSecurity(config: DocsConfig): string {
-  return `# Security Policy
+    return `# Security Policy
 
 ## Supported Versions
 
@@ -525,7 +525,7 @@ We appreciate your efforts to responsibly disclose your findings and will make e
 }
 
 function generateDevelopment(config: DocsConfig): string {
-  return `# ${config.projectName} - Development Guide
+    return `# ${config.projectName} - Development Guide
 
 ## Prerequisites
 

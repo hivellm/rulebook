@@ -7,211 +7,215 @@
  */
 
 export interface GeminiEvent {
-  type: 'progress' | 'text' | 'tool_call' | 'completion' | 'error';
-  content: string;
-  timestamp: number;
+    type: 'progress' | 'text' | 'tool_call' | 'completion' | 'error';
+    content: string;
+    timestamp: number;
 }
 
 export interface ParsedResult {
-  success: boolean;
-  text: string;
-  toolCalls: Array<{
-    type: 'read' | 'write' | 'bash';
-    details: string;
-    result?: string;
-  }>;
-  duration: number;
-  sessionId: string;
+    success: boolean;
+    text: string;
+    toolCalls: Array<{
+        type: 'read' | 'write' | 'bash';
+        details: string;
+        result?: string;
+    }>;
+    duration: number;
+    sessionId: string;
 }
 
 /**
  * Parse a single line from gemini-cli output
  */
 export function parseGeminiLine(line: string): GeminiEvent | null {
-  try {
-    const trimmed = line.trim();
-    if (!trimmed) return null;
+    try {
+        const trimmed = line.trim();
+        if (!trimmed) return null;
 
-    // Look for progress indicators
-    if (trimmed.includes('...') || trimmed.includes('thinking') || trimmed.includes('processing')) {
-      return {
-        type: 'progress',
-        content: trimmed,
-        timestamp: Date.now(),
-      };
+        // Look for progress indicators
+        if (
+            trimmed.includes('...') ||
+            trimmed.includes('thinking') ||
+            trimmed.includes('processing')
+        ) {
+            return {
+                type: 'progress',
+                content: trimmed,
+                timestamp: Date.now(),
+            };
+        }
+
+        // Look for tool calls
+        if (trimmed.includes('🔧') || trimmed.includes('Tool:') || trimmed.includes('Executing:')) {
+            return {
+                type: 'tool_call',
+                content: trimmed,
+                timestamp: Date.now(),
+            };
+        }
+
+        // Look for completion indicators
+        if (trimmed.includes('✅') || trimmed.includes('Complete') || trimmed.includes('Done')) {
+            return {
+                type: 'completion',
+                content: trimmed,
+                timestamp: Date.now(),
+            };
+        }
+
+        // Look for errors
+        if (trimmed.includes('❌') || trimmed.includes('Error:') || trimmed.includes('Failed:')) {
+            return {
+                type: 'error',
+                content: trimmed,
+                timestamp: Date.now(),
+            };
+        }
+
+        // Default to text content
+        return {
+            type: 'text',
+            content: trimmed,
+            timestamp: Date.now(),
+        };
+    } catch {
+        // Failed to parse line - ignore silently
+        return null;
     }
-
-    // Look for tool calls
-    if (trimmed.includes('🔧') || trimmed.includes('Tool:') || trimmed.includes('Executing:')) {
-      return {
-        type: 'tool_call',
-        content: trimmed,
-        timestamp: Date.now(),
-      };
-    }
-
-    // Look for completion indicators
-    if (trimmed.includes('✅') || trimmed.includes('Complete') || trimmed.includes('Done')) {
-      return {
-        type: 'completion',
-        content: trimmed,
-        timestamp: Date.now(),
-      };
-    }
-
-    // Look for errors
-    if (trimmed.includes('❌') || trimmed.includes('Error:') || trimmed.includes('Failed:')) {
-      return {
-        type: 'error',
-        content: trimmed,
-        timestamp: Date.now(),
-      };
-    }
-
-    // Default to text content
-    return {
-      type: 'text',
-      content: trimmed,
-      timestamp: Date.now(),
-    };
-  } catch {
-    // Failed to parse line - ignore silently
-    return null;
-  }
 }
 
 /**
  * Process gemini-cli stream output with real-time progress
  */
 export class GeminiStreamParser {
-  private accumulatedText = '';
-  private toolCalls: ParsedResult['toolCalls'] = [];
-  private sessionId = `gemini-${Date.now()}`;
-  private startTime = Date.now();
-  private toolCount = 0;
-  private completed = false;
-  private completionCallback?: () => void;
+    private accumulatedText = '';
+    private toolCalls: ParsedResult['toolCalls'] = [];
+    private sessionId = `gemini-${Date.now()}`;
+    private startTime = Date.now();
+    private toolCount = 0;
+    private completed = false;
+    private completionCallback?: () => void;
 
-  /**
-   * Set callback to be called when completion is detected
-   */
-  onComplete(callback: () => void): void {
-    this.completionCallback = callback;
-  }
-
-  /**
-   * Check if parsing is completed
-   */
-  isCompleted(): boolean {
-    return this.completed;
-  }
-
-  /**
-   * Process a single event from the stream
-   */
-  processEvent(event: GeminiEvent): void {
-    switch (event.type) {
-      case 'progress':
-        this.handleProgressEvent(event);
-        break;
-      case 'text':
-        this.handleTextEvent(event);
-        break;
-      case 'tool_call':
-        this.handleToolCallEvent(event);
-        break;
-      case 'completion':
-        this.handleCompletionEvent(event);
-        break;
-      case 'error':
-        this.handleErrorEvent(event);
-        break;
-    }
-  }
-
-  /**
-   * Process multiple lines of stream output
-   */
-  processLines(output: string): void {
-    const lines = output.split('\n');
-    for (const line of lines) {
-      const event = parseGeminiLine(line);
-      if (event) {
-        this.processEvent(event);
-      }
-    }
-  }
-
-  /**
-   * Get the final parsed result
-   */
-  getResult(): ParsedResult {
-    return {
-      success: !this.completed || this.accumulatedText.length > 0,
-      text: this.accumulatedText,
-      toolCalls: this.toolCalls,
-      duration: Date.now() - this.startTime,
-      sessionId: this.sessionId,
-    };
-  }
-
-  private handleProgressEvent(_event: GeminiEvent): void {
-    // Progress logged silently
-  }
-
-  private handleTextEvent(event: GeminiEvent): void {
-    // Accumulate text content
-    if (event.content && !this.accumulatedText.includes(event.content)) {
-      this.accumulatedText += event.content + '\n';
-      // Progress logged silently
-    }
-  }
-
-  private handleToolCallEvent(event: GeminiEvent): void {
-    this.toolCount++;
-
-    // Extract tool type and details from content
-    let toolType: 'read' | 'write' | 'bash' = 'bash';
-    const details = event.content;
-
-    if (event.content.includes('read') || event.content.includes('📖')) {
-      toolType = 'read';
-    } else if (event.content.includes('write') || event.content.includes('📝')) {
-      toolType = 'write';
+    /**
+     * Set callback to be called when completion is detected
+     */
+    onComplete(callback: () => void): void {
+        this.completionCallback = callback;
     }
 
-    // Tool call logged silently
-    this.toolCalls.push({
-      type: toolType,
-      details,
-    });
-  }
-
-  private handleCompletionEvent(_event: GeminiEvent): void {
-    // Completion logged silently
-
-    // Mark as completed and trigger callback
-    this.completed = true;
-    if (this.completionCallback) {
-      this.completionCallback();
+    /**
+     * Check if parsing is completed
+     */
+    isCompleted(): boolean {
+        return this.completed;
     }
-  }
 
-  private handleErrorEvent(event: GeminiEvent): void {
-    // Error logged silently
-
-    // Update last tool call with error if available
-    if (this.toolCalls.length > 0) {
-      this.toolCalls[this.toolCalls.length - 1].result = `Error: ${event.content}`;
+    /**
+     * Process a single event from the stream
+     */
+    processEvent(event: GeminiEvent): void {
+        switch (event.type) {
+            case 'progress':
+                this.handleProgressEvent(event);
+                break;
+            case 'text':
+                this.handleTextEvent(event);
+                break;
+            case 'tool_call':
+                this.handleToolCallEvent(event);
+                break;
+            case 'completion':
+                this.handleCompletionEvent(event);
+                break;
+            case 'error':
+                this.handleErrorEvent(event);
+                break;
+        }
     }
-  }
+
+    /**
+     * Process multiple lines of stream output
+     */
+    processLines(output: string): void {
+        const lines = output.split('\n');
+        for (const line of lines) {
+            const event = parseGeminiLine(line);
+            if (event) {
+                this.processEvent(event);
+            }
+        }
+    }
+
+    /**
+     * Get the final parsed result
+     */
+    getResult(): ParsedResult {
+        return {
+            success: !this.completed || this.accumulatedText.length > 0,
+            text: this.accumulatedText,
+            toolCalls: this.toolCalls,
+            duration: Date.now() - this.startTime,
+            sessionId: this.sessionId,
+        };
+    }
+
+    private handleProgressEvent(_event: GeminiEvent): void {
+        // Progress logged silently
+    }
+
+    private handleTextEvent(event: GeminiEvent): void {
+        // Accumulate text content
+        if (event.content && !this.accumulatedText.includes(event.content)) {
+            this.accumulatedText += event.content + '\n';
+            // Progress logged silently
+        }
+    }
+
+    private handleToolCallEvent(event: GeminiEvent): void {
+        this.toolCount++;
+
+        // Extract tool type and details from content
+        let toolType: 'read' | 'write' | 'bash' = 'bash';
+        const details = event.content;
+
+        if (event.content.includes('read') || event.content.includes('📖')) {
+            toolType = 'read';
+        } else if (event.content.includes('write') || event.content.includes('📝')) {
+            toolType = 'write';
+        }
+
+        // Tool call logged silently
+        this.toolCalls.push({
+            type: toolType,
+            details,
+        });
+    }
+
+    private handleCompletionEvent(_event: GeminiEvent): void {
+        // Completion logged silently
+
+        // Mark as completed and trigger callback
+        this.completed = true;
+        if (this.completionCallback) {
+            this.completionCallback();
+        }
+    }
+
+    private handleErrorEvent(event: GeminiEvent): void {
+        // Error logged silently
+
+        // Update last tool call with error if available
+        if (this.toolCalls.length > 0) {
+            this.toolCalls[this.toolCalls.length - 1].result = `Error: ${event.content}`;
+        }
+    }
 }
 
 /**
  * Parse complete gemini-cli output
  */
 export function parseGeminiOutput(output: string): ParsedResult {
-  const parser = new GeminiStreamParser();
-  parser.processLines(output);
-  return parser.getResult();
+    const parser = new GeminiStreamParser();
+    parser.processLines(output);
+    return parser.getResult();
 }
