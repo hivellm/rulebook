@@ -14,6 +14,20 @@ projects with `.rulebook/`: features with near-zero real adoption are removed so
 the toolkit ships only what people actually use. Delivered in phases; this
 section is appended as each phase lands.
 
+### Removed — over-provisioned agents & niche MCP modules
+
+- Pruned the agent template library from 21 flat agents + 5 project-type subdirs
+  to the 11 actually used (delegation core + `performance-engineer`,
+  `quality-gatekeeper`, `team-lead`). The 10 never-dispatched role agents and
+  their delegation-table entries were removed, along with the orphaned
+  `compiler`/`game-engine`/`generic`/`mobile`/`web-app` agent subdirs (the
+  installer only ever copied the flat `*.md`).
+- Removed the niche, never-detected MCP module docs/skills `figma`, `grafana`,
+  `notion`, `atlassian` (and their `ModuleId`/init-prompt entries). The
+  remaining modules (vectorizer, synap, context7, github, playwright, supabase,
+  serena, rulebook-mcp, sequential-thinking) and the language/dev/core skill
+  library are retained — they are detected and heavily used.
+
 ### Removed — persistent-memory & indexer subsystem
 
 - Removed the persistent-memory and background-indexer subsystem. Cross-project
