@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { generateWorkflows, generateIDEFiles } from '../src/core/generators/workflow-generator';
+import { generateWorkflows } from '../src/core/generators/workflow-generator';
 import type { ProjectConfig } from '../src/types';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -124,84 +124,6 @@ describe('workflow-generator', () => {
             expect(workflows.some((w) => w.includes('typescript-test.yml'))).toBe(true);
             expect(workflows.some((w) => w.includes('typescript-lint.yml'))).toBe(false);
             expect(workflows.some((w) => w.includes('codespell.yml'))).toBe(false);
-        });
-    });
-
-    describe('generateIDEFiles', () => {
-        it('should generate .cursorrules for Cursor', async () => {
-            const config = { ...baseConfig, ides: ['cursor'] };
-
-            const files = await generateIDEFiles(config, testDir);
-
-            expect(files.some((f) => f.endsWith('.cursorrules'))).toBe(true);
-
-            const cursorRules = await fs.readFile(path.join(testDir, '.cursorrules'), 'utf-8');
-            expect(cursorRules).toContain('@hivellm/rulebook');
-            expect(cursorRules).toContain('95%+ coverage');
-        });
-
-        it('should generate .windsurfrules for Windsurf', async () => {
-            const config = { ...baseConfig, ides: ['windsurf'] };
-
-            const files = await generateIDEFiles(config, testDir);
-
-            expect(files.some((f) => f.endsWith('.windsurfrules'))).toBe(true);
-
-            const windsurfRules = await fs.readFile(path.join(testDir, '.windsurfrules'), 'utf-8');
-            expect(windsurfRules).toContain('@hivellm/rulebook');
-        });
-
-        it('should generate VS Code settings', async () => {
-            const config = { ...baseConfig, ides: ['vscode'] };
-
-            const files = await generateIDEFiles(config, testDir);
-
-            // Normalize paths for cross-platform compatibility
-            const normalizedFiles = files.map((f) => path.normalize(f));
-            const expectedPath = path.normalize(path.join(testDir, '.vscode', 'settings.json'));
-            expect(normalizedFiles).toContain(expectedPath);
-
-            const settingsPath = path.join(testDir, '.vscode', 'settings.json');
-            const settings = await fs.readFile(settingsPath, 'utf-8');
-            const parsed = JSON.parse(settings);
-            expect(parsed['editor.formatOnSave']).toBe(true);
-        });
-
-        it('should generate Copilot instructions', async () => {
-            const config = { ...baseConfig, ides: ['copilot'] };
-
-            const files = await generateIDEFiles(config, testDir);
-
-            expect(files.some((f) => f.includes('copilot-instructions.md'))).toBe(true);
-
-            const copilotPath = path.join(testDir, '.github', 'copilot-instructions.md');
-            const content = await fs.readFile(copilotPath, 'utf-8');
-            expect(content).toContain('AGENTS.md');
-        });
-
-        it('should not overwrite existing IDE files', async () => {
-            const config = { ...baseConfig, ides: ['cursor'] };
-
-            const customContent = '# Custom cursor rules';
-            await fs.writeFile(path.join(testDir, '.cursorrules'), customContent);
-
-            const files = await generateIDEFiles(config, testDir);
-
-            // .cursorrules should not be overwritten, but Cursor commands may be generated
-            // Commands are only generated if they don't exist, so count may vary
-            expect(files).not.toContain(path.join(testDir, '.cursorrules'));
-
-            const content = await fs.readFile(path.join(testDir, '.cursorrules'), 'utf-8');
-            expect(content).toBe(customContent);
-        });
-
-        it('should respect coverage threshold in generated files', async () => {
-            const config = { ...baseConfig, ides: ['cursor'], coverageThreshold: 85 };
-
-            await generateIDEFiles(config, testDir);
-
-            const cursorRules = await fs.readFile(path.join(testDir, '.cursorrules'), 'utf-8');
-            expect(cursorRules).toContain('85%+ coverage');
         });
     });
 });

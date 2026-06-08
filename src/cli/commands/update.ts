@@ -175,55 +175,6 @@ export async function updateSingleProject(
         });
     }
 
-    const cursorRulesPath = path.join(cwd, '.cursorrules');
-    const cursorCommandsDir = path.join(cwd, '.cursor', 'commands');
-    const usesCursor = existsSync(cursorRulesPath) || existsSync(cursorCommandsDir);
-
-    if (existsSync(cursorRulesPath)) {
-        console.log(
-            chalk.yellow(
-                '  ⚠ .cursorrules is deprecated as of Cursor v0.45. Use .cursor/rules/*.mdc instead.'
-            )
-        );
-    }
-
-    if (usesCursor) {
-        const existingCommandsDir = path.join(cwd, '.cursor', 'commands');
-        if (existsSync(existingCommandsDir)) {
-            const { readdir } = await import('fs/promises');
-            const existingFiles = await readdir(existingCommandsDir);
-            const hasRulebookCommands = existingFiles.some((file) =>
-                file.startsWith('rulebook-task-')
-            );
-
-            if (!hasRulebookCommands) {
-                const { generateCursorCommands } = await import(
-                    '../../core/generators/workflow-generator.js'
-                );
-                const generatedCommands = await generateCursorCommands(cwd);
-                if (generatedCommands.length > 0) {
-                    console.log(
-                        chalk.green(
-                            `  Generated ${generatedCommands.length} Rulebook command(s) in .cursor/commands/`
-                        )
-                    );
-                }
-            }
-        } else {
-            const { generateCursorCommands } = await import(
-                '../../core/generators/workflow-generator.js'
-            );
-            const generatedCommands = await generateCursorCommands(cwd);
-            if (generatedCommands.length > 0) {
-                console.log(
-                    chalk.green(
-                        `  Generated ${generatedCommands.length} Rulebook command(s) in .cursor/commands/`
-                    )
-                );
-            }
-        }
-    }
-
     const existingSkills = existingConfig.skills?.enabled || [];
 
     let detectedSkills: string[] = [];

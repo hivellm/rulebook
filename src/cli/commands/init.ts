@@ -3,11 +3,7 @@ import ora from 'ora';
 import { detectProject } from '../../core/detect/detector.js';
 import { generateFullAgents } from '../../core/generators/generator.js';
 import { mergeFullAgents, mergeClaudeMd } from '../../core/merger.js';
-import {
-    generateWorkflows,
-    generateIDEFiles,
-    generateAICLIFiles,
-} from '../../core/generators/workflow-generator.js';
+import { generateWorkflows } from '../../core/generators/workflow-generator.js';
 import { writeFile, ensureDir } from '../../utils/file-system.js';
 import { existsSync } from 'fs';
 import { parseRulesIgnore } from '../../utils/rulesignore.js';
@@ -433,20 +429,6 @@ export async function initCommand(options: {
             gitignoreSpinner.info('.gitignore already contains all necessary patterns');
         }
 
-        if (!minimalMode && config.ides.length > 0) {
-            const ideSpinner = ora('Generating IDE-specific files...').start();
-            const ideFiles = await generateIDEFiles(config, cwd);
-
-            if (ideFiles.length > 0) {
-                ideSpinner.succeed(`Generated ${ideFiles.length} IDE configuration files`);
-                for (const file of ideFiles) {
-                    console.log(chalk.gray(`  - ${path.relative(cwd, file)}`));
-                }
-            } else {
-                ideSpinner.info('IDE files already exist (skipped)');
-            }
-        }
-
         if (!minimalMode) {
             const claudeSpinner = ora('Generating CLAUDE.md (v5.3.0 @import format)...').start();
             try {
@@ -596,18 +578,6 @@ export async function initCommand(options: {
                 rulesSpinner.warn(
                     `Rules generation skipped: ${err instanceof Error ? err.message : String(err)}`
                 );
-            }
-
-            const cliSpinner = ora('Generating AI CLI configuration files...').start();
-            const cliFiles = await generateAICLIFiles(config, cwd);
-
-            if (cliFiles.length > 0) {
-                cliSpinner.succeed(`Generated ${cliFiles.length} AI CLI configuration files`);
-                for (const file of cliFiles) {
-                    console.log(chalk.gray(`  - ${path.relative(cwd, file)}`));
-                }
-            } else {
-                cliSpinner.info('AI CLI files already exist (skipped)');
             }
         }
 
