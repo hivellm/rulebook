@@ -1216,33 +1216,6 @@ export async function generateModularAgents(
         // Monorepo detection failed — skip silently
     }
 
-    // Generate multi-tool IDE config files (GEMINI.md, .windsurfrules, etc.)
-    try {
-        const { detectGeminiCli, detectContinueDev, detectWindsurf, detectGithubCopilot } =
-            await import('../detect/detector.js');
-        const { generateMultiToolConfigs } = await import('../ide/multi-tool-generator.js');
-
-        const [geminiCli, continueDev, windsurf, githubCopilot] = await Promise.all([
-            detectGeminiCli(projectRoot),
-            detectContinueDev(projectRoot),
-            detectWindsurf(projectRoot),
-            detectGithubCopilot(projectRoot),
-        ]);
-
-        await generateMultiToolConfigs(projectRoot, {
-            languages: [],
-            libraries: [],
-            modules: [],
-            existingAgents: null,
-            geminiCli,
-            continueDev,
-            windsurf,
-            githubCopilot,
-        });
-    } catch {
-        // Multi-tool generation failed - skip silently
-    }
-
     // Generate agent delegation section
     sections.push(generateDelegationSection(mergedConfig));
 
