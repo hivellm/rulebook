@@ -209,7 +209,6 @@ export async function updateSingleProject(
         modular: config.modular ?? true,
         rulebookDir: config.rulebookDir || '.rulebook',
         skills: detectedSkills.length > 0 ? { enabled: detectedSkills } : undefined,
-        memory: existingConfig.memory,
     });
 
     await configManager.ensureGitignore();
@@ -483,7 +482,6 @@ export async function updateSingleProject(
             cliResponse: 180000,
             testRun: 600000,
         },
-        ...(existingConfig.memory ? { memory: existingConfig.memory } : {}),
         ...(existingConfig.skills ? { skills: existingConfig.skills } : {}),
         ...(leanMode
             ? { agentsMode: 'lean' as const }

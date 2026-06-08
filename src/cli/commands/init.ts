@@ -266,8 +266,6 @@ export async function initCommand(options: {
             // Skills system not available or error - continue without skills
         }
 
-        const existingConfig = await configManager.loadConfig();
-
         await configManager.updateConfig({
             languages: config.languages as LanguageDetection['language'][],
             modules: config.modules as ModuleDetection['module'][],
@@ -275,7 +273,6 @@ export async function initCommand(options: {
             rulebookDir: config.rulebookDir || '.rulebook',
             ...(config.agentsMode ? { agentsMode: config.agentsMode } : {}),
             skills: enabledSkills.length > 0 ? { enabled: enabledSkills } : undefined,
-            memory: existingConfig.memory,
         });
 
         if (options.package) {

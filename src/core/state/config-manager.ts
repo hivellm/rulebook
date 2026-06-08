@@ -168,13 +168,6 @@ export class ConfigManager {
                 cliResponse: 60000, // 1 minute
                 testRun: 120000, // 2 minutes
             },
-            memory: {
-                enabled: false,
-                dbPath: '.rulebook/memory/memory.db',
-                maxSizeBytes: 524288000,
-                autoCapture: false,
-                vectorDimensions: 256,
-            },
             agentsMode: 'lean',
             monorepo: {
                 detected: false,
@@ -232,23 +225,6 @@ export class ConfigManager {
                 cliResponse: 60000,
                 testRun: 120000,
             };
-        }
-
-        // Add memory config with defaults (disabled by default to save resources)
-        if (!migrated.memory) {
-            migrated.memory = {
-                enabled: false,
-                dbPath: '.rulebook/memory/memory.db',
-                maxSizeBytes: 524288000,
-                autoCapture: false,
-                vectorDimensions: 256,
-            };
-        } else {
-            // Preserve existing memory.enabled — don't force it
-            if (!migrated.memory.dbPath) migrated.memory.dbPath = '.rulebook/memory/memory.db';
-            if (!migrated.memory.maxSizeBytes) migrated.memory.maxSizeBytes = 524288000;
-            if (migrated.memory.autoCapture === undefined) migrated.memory.autoCapture = false;
-            if (!migrated.memory.vectorDimensions) migrated.memory.vectorDimensions = 256;
         }
 
         // v4 migration: ensure .rulebook/scripts/ dir is noted in config
@@ -613,9 +589,6 @@ export function getDefaultConfig(): RulebookConfig {
             taskExecution: 300000,
             cliResponse: 60000,
             testRun: 120000,
-        },
-        memory: {
-            enabled: false,
         },
     };
 }

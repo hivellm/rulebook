@@ -208,22 +208,6 @@ export interface RulebookConfig {
         tasksDir?: string; // Relative to project root
         archiveDir?: string; // Relative to project root
     };
-    // Memory system configuration (v3.0)
-    memory?: {
-        enabled?: boolean;
-        dbPath?: string; // default: '.rulebook/memory/memory.db'
-        maxSizeBytes?: number; // default: 524288000 (500MB)
-        autoCapture?: boolean; // default: true
-        vectorDimensions?: number; // default: 256
-    };
-    // Background indexer configuration (file watcher)
-    indexer?: {
-        watchPaths?: string[]; // default: ['.'] — directories to watch relative to project root
-        ignorePatterns?: string[]; // default: ['node_modules', '.git', 'dist', 'build', '.rulebook', 'coverage']
-        depth?: number; // default: 4 — max directory depth for file watching
-        usePolling?: boolean; // default: false — use polling instead of native watchers (lower FD usage)
-        debounceMs?: number; // default: 3000 — debounce interval for file change events
-    };
     // Multi-agent / Teams enforcement (v5.3.0)
     multiAgent?: {
         enabled?: boolean; // default: false — auto-detected when `.claude/agents/` has ≥3 files

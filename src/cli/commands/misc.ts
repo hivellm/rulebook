@@ -323,14 +323,6 @@ export async function configCommand(options: {
             );
             console.log(chalk.white(`Enabled Features: ${summary.enabledFeatures.join(', ')}`));
         } else if (options.feature && typeof options.enable === 'boolean') {
-            // Special-case the `memory` toggle: subsystems read `memory.enabled`
-            // (config root), not `features.memory`. Set both for consistency.
-            if (options.feature === 'memory') {
-                const cfg = await configManager.loadConfig();
-                await configManager.updateConfig({
-                    memory: { ...(cfg.memory ?? {}), enabled: options.enable },
-                });
-            }
             await configManager.toggleFeature(
                 options.feature as keyof RulebookConfig['features'],
                 options.enable
@@ -405,9 +397,6 @@ export async function migrateMemoryDirectory(): Promise<void> {
 
         const configManager = createConfigManager(cwd);
         const existingConfig = await configManager.loadConfig();
-        if (existingConfig.memory) {
-            existingConfig.memory.dbPath = '.rulebook/memory/memory.db';
-        }
         await configManager.updateConfig(existingConfig);
 
         spinner.succeed('Memory directory migrated');
