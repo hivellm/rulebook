@@ -19,6 +19,20 @@ Given the MCP server boots in a project
 When startup completes
 Then no `BackgroundIndexer` watcher or indexing thread is running
 
+## Audit findings (phase 2, item 1)
+
+- `knowledge-manager`, `learn-manager`, `decision-manager`, `plans-manager`
+  import nothing from `src/memory/*` or `src/core/indexer/*` — fully decoupled.
+- `session_start` / `session_end` are PLANS.md-based; memory use is optional and
+  guarded (`if (memoryManager)` / `if (args.query && memoryManager)`).
+- Disposition: **keep** `session_start` / `session_end`, removing only the
+  optional memory branches (memory search in start, `saveMemory` in end).
+- Deletion set: `src/memory/*` (6), `src/core/indexer/*` (3),
+  `src/cli/commands/memory.ts`, codebase search/graph module. Rewire:
+  `rulebook-server.ts`, `index.ts`, `update.ts` (ralph memory-purge block),
+  `config-manager.ts` + `types.ts` (memory/indexer config), `project-worker.ts`,
+  `workspace-manager.ts`, MCP reference generator.
+
 ## ADDED Requirements
 
 ### Requirement: File-based knowledge/learn/decision retained

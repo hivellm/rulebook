@@ -1,8 +1,8 @@
 ## 1. Dependency audit (do first)
 
-- [ ] 1.1 Map what `knowledge_*`, `learn_*`, `decision_*`, `session_start`, `session_end` import from the memory/indexer modules; record every shared helper
-- [ ] 1.2 Confirm knowledge/learn/decision search reads markdown/metadata files, not the SQLite index; capture the call graph
-- [ ] 1.3 Decide session_start/session_end disposition: keep file-based (PLANS.md) or remove; document the choice in the spec
+- [x] 1.1 Map what `knowledge_*`, `learn_*`, `decision_*`, `session_start`, `session_end` import from the memory/indexer modules; record every shared helper
+- [x] 1.2 Confirm knowledge/learn/decision search reads markdown/metadata files, not the SQLite index; capture the call graph
+- [x] 1.3 Decide session_start/session_end disposition: keep file-based (PLANS.md) or remove; document the choice in the spec
 
 ## 2. Remove MCP tools
 
