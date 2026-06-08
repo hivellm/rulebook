@@ -9,7 +9,8 @@
     "rulebook-mcp": "./dist/mcp/rulebook-server.js"
   },
   "scripts": {
-    "build": "tsc",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc",
     "dev": "tsx src/index.ts",
     "test": "vitest run --no-watch",
     "test:watch": "vitest",
