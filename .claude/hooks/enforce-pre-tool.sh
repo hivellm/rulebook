@@ -1,12 +1,33 @@
 #!/usr/bin/env bash
-# PreToolUse hook (v5.6.0): consolidated deny rules.
+# PreToolUse hook (v5.9.0): consolidated deny rules — perf-optimized.
 #
-# Replaces three legacy hooks (enforce-no-deferred / enforce-no-shortcuts /
-# enforce-mcp-for-tasks) with a single bash + node invocation. Each rule's
-# permissionDecisionReason is preserved verbatim so existing user guidance
-# is unchanged.
+# Matcher is Edit|Write only (Bash excluded) so it never fires on the
+# most frequent tool. A pure-bash trigger pre-filter short-circuits to
+# "allow" without spawning node for the overwhelming majority of edits;
+# node is only invoked when the raw payload contains a suspicious token,
+# keeping per-call cost at ~one bash spawn for normal work.
+#
+# Rules enforced (unchanged semantics):
+#   mcp-for-tasks  — block manual creation of task proposal.md/.metadata.json
+#   no-deferred    — tasks.md must not contain deferred/skip/later/TODO
+#   no-shortcuts   — source files must not contain TODO/FIXME/HACK or stub/placeholder
 set -euo pipefail
 input="$(cat)"
+
+allow() {
+  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
+  exit 0
+}
+
+# Fast path: if the raw payload contains no trigger token at all, allow
+# immediately without spawning node. deferred/skip/later only matter inside
+# tasks.md, which is already caught by the "tasks.md" path token below.
+shopt -s nocasematch
+case "$input" in
+  *TODO*|*FIXME*|*HACK*|*placeholder*|*stub*|*tasks.md*|*proposal.md*|*.metadata.json*) ;;
+  *) allow ;;
+esac
+shopt -u nocasematch
 
 result="$(node -e "
 const input = JSON.parse(process.argv[1]);
@@ -14,7 +35,6 @@ const tool = input.tool_name || '';
 const ti = input.tool_input || {};
 const file = (ti.file_path || ti.filePath || '').replace(/\\\\/g, '/');
 const content = ti.new_string || ti.content || '';
-const cmd = ti.command || '';
 
 // Rule: mcp-for-tasks — manual creation of task scaffolding is forbidden.
 if (tool === 'Write' || tool === 'Edit') {
@@ -23,9 +43,6 @@ if (tool === 'Write' || tool === 'Edit') {
     try { require('fs').accessSync(file); /* existing file: allow edit */ }
     catch { console.log('DENY_MCP'); process.exit(0); }
   }
-}
-if (tool === 'Bash' && /mkdir.*\\.rulebook\\/tasks\\//.test(cmd)) {
-  console.log('DENY_MCP'); process.exit(0);
 }
 
 // Rule: no-deferred — tasks.md must not contain deferred / skip / later / TODO.

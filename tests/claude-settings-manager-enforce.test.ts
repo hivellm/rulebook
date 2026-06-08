@@ -45,14 +45,14 @@ describe('claude-settings-manager — qualityEnforcement enabled', () => {
     expect(matches.length).toBe(1);
   });
 
-  it('uses matcher "Edit|Write|Bash" so Read/Glob/Grep never spawn the hook', async () => {
+  it('uses matcher "Edit|Write" so Bash/Read/Glob/Grep never spawn the hook', async () => {
     await applyClaudeSettings(projectRoot, { qualityEnforcement: true });
     const settings = readSettings(projectRoot);
     const entry = (settings.hooks?.PreToolUse ?? []).find((e: { hooks: { command: string }[] }) =>
       e.hooks.some((h) => h.command.includes('enforce-pre-tool.sh'))
     );
     expect(entry).toBeDefined();
-    expect(entry.matcher).toBe('Edit|Write|Bash');
+    expect(entry.matcher).toBe('Edit|Write');
   });
 
   it('does NOT register the three legacy enforce scripts', async () => {

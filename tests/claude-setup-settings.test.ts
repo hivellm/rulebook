@@ -40,9 +40,7 @@ describe('claude-settings-manager — rulebook claude setup flags', () => {
         JSON.stringify({ permissions: { allow: ['Bash(custom:*)'] } }, null, 2)
       );
       await applyClaudeSettings(testDir, { permissionsAllowlist: true });
-      const allow = (
-        (await readSettings(testDir)).permissions as { allow: string[] }
-      ).allow;
+      const allow = ((await readSettings(testDir)).permissions as { allow: string[] }).allow;
       expect(allow).toContain('Bash(custom:*)');
       expect(allow).toContain('mcp__rulebook');
     });
@@ -50,9 +48,7 @@ describe('claude-settings-manager — rulebook claude setup flags', () => {
     it('does not duplicate on repeated apply', async () => {
       await applyClaudeSettings(testDir, { permissionsAllowlist: true });
       await applyClaudeSettings(testDir, { permissionsAllowlist: true });
-      const allow = (
-        (await readSettings(testDir)).permissions as { allow: string[] }
-      ).allow;
+      const allow = ((await readSettings(testDir)).permissions as { allow: string[] }).allow;
       const occurrences = allow.filter((r) => r === 'mcp__rulebook').length;
       expect(occurrences).toBe(1);
     });

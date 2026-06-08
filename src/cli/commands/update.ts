@@ -431,14 +431,17 @@ export async function updateSingleProject(
 
   try {
     const { applyClaudeSettings } = await import('../../core/claude/claude-settings-manager.js');
+    // v5.9.0: a default install ships exactly one hook (quality enforcement).
+    // handoff/terse/compact default OFF (opt-in via rulebook.json); the
+    // manager's else branch removes any stale entries from older versions.
     const rulebookCfg = await configManager.loadConfig();
     const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
-    const handoffEnabled = rulebookCfg?.handoff?.enabled ?? true;
-    const terseEnabled = rulebookCfg?.terse?.enabled ?? true;
+    const handoffEnabled = rulebookCfg?.handoff?.enabled ?? false;
+    const terseEnabled = rulebookCfg?.terse?.enabled ?? false;
     const settingsResult = await applyClaudeSettings(cwd, {
       teamEnforcement: multiAgentEnabled,
       sessionHandoff: handoffEnabled,
-      compactContextReinject: true,
+      compactContextReinject: false,
       qualityEnforcement: true,
       terseMode: terseEnabled,
     });

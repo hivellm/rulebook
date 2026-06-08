@@ -237,17 +237,20 @@ export async function applyClaudeSettings(
     removeHook(existing.hooks, 'UserPromptSubmit', SIGNATURES.terseModeTracker);
   }
 
-  // Quality enforcement: single consolidated PreToolUse hook (v5.6.0).
+  // Quality enforcement: single consolidated PreToolUse hook (v5.9.0).
   // The three legacy scripts (enforce-no-deferred/no-shortcuts/mcp-for-tasks)
-  // were merged into enforce-pre-tool.sh for ~3x lower per-tool latency.
-  // The matcher restricts spawn to Edit/Write/Bash — Read/Glob/Grep/Agent/
-  // MCP/etc never trigger any deny rule, so spawning the hook for them is
-  // wasted work (cuts ~60% of invocations on a typical session).
+  // were merged into enforce-pre-tool.sh. The matcher restricts spawn to
+  // Edit/Write only — Bash/Read/Glob/Grep/Agent/MCP/etc never trigger any
+  // deny rule (the sole Bash rule, manual `mkdir .rulebook/tasks/`, is already
+  // covered by the MCP task tooling), so excluding Bash removes the hook from
+  // the single most frequent tool. The script additionally short-circuits to
+  // "allow" in pure bash — without spawning node — whenever the payload
+  // contains no trigger token, so a normal edit costs ~one bash spawn.
   if (desire.qualityEnforcement) {
     upsertHook(
       existing.hooks,
       'PreToolUse',
-      'Edit|Write|Bash',
+      'Edit|Write',
       SIGNATURES.enforcePreTool,
       buildCommandFor(projectRoot, 'enforce-pre-tool.sh')
     );

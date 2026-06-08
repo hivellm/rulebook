@@ -27,24 +27,26 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
     const result = await setupClaudeCodeIntegration(cwd);
 
     if (!result.detected) {
-      console.log(
-        chalk.yellow('⚠ Claude Code not detected (no ~/.claude). Nothing applied.')
-      );
-      console.log(
-        chalk.gray('  Install Claude Code, then re-run "rulebook claude".')
-      );
+      console.log(chalk.yellow('⚠ Claude Code not detected (no ~/.claude). Nothing applied.'));
+      console.log(chalk.gray('  Install Claude Code, then re-run "rulebook claude".'));
       return;
     }
 
+    // v5.9.0: only the consolidated quality-enforcement PreToolUse hook is
+    // wired by default. The per-turn (Stop), per-prompt (UserPromptSubmit)
+    // and SessionStart hooks added measurable latency for marginal value;
+    // they were removed so a default install ships exactly one hook. They
+    // remain available via explicit rulebook.json opt-in (handled by the
+    // manager's desire flags), and stale entries self-heal on next sync.
     await applyClaudeSettings(cwd, {
-      teamEnforcement: true,
-      sessionHandoff: true,
+      teamEnforcement: false,
+      sessionHandoff: false,
       qualityEnforcement: true,
-      terseMode: true,
+      terseMode: false,
       permissionsAllowlist: true,
       statusLine: true,
       defaultModel,
-      updateCheck: true,
+      updateCheck: false,
     });
 
     console.log(chalk.green('\n✅ Claude Code setup applied'));
@@ -52,7 +54,9 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
     if (result.skillsInstalled.length)
       console.log(chalk.gray(`  • ${result.skillsInstalled.length} skills → .claude/commands/`));
     if (result.devSkillsInstalled.length)
-      console.log(chalk.gray(`  • ${result.devSkillsInstalled.length} dev skills → .claude/skills/`));
+      console.log(
+        chalk.gray(`  • ${result.devSkillsInstalled.length} dev skills → .claude/skills/`)
+      );
     if (result.agentDefinitionsInstalled.length)
       console.log(
         chalk.gray(`  • ${result.agentDefinitionsInstalled.length} agents → .claude/agents/`)

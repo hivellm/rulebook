@@ -12,10 +12,7 @@ import { homedir } from 'os';
 import { readdir } from 'fs/promises';
 import { fileExists, readFile, writeFile, ensureDir } from '../../utils/file-system.js';
 import { WorkspaceManager } from '../workspace/workspace-manager.js';
-import {
-  resolveAgentPlaceholders,
-  substituteAgentPlaceholders,
-} from '../generators/generator.js';
+import { resolveAgentPlaceholders, substituteAgentPlaceholders } from '../generators/generator.js';
 import { detectProject } from '../detect/detector.js';
 
 export interface ClaudeCodeSetupResult {

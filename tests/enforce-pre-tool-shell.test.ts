@@ -151,13 +151,16 @@ describe.skipIf(!BASH_OK)('enforce-pre-tool.sh — no-deferred rule', () => {
 });
 
 describe.skipIf(!BASH_OK)('enforce-pre-tool.sh — mcp-for-tasks rule', () => {
-  it('denies mkdir into .rulebook/tasks/', () => {
+  it('allows Bash mkdir into .rulebook/tasks/ (v5.9.0: Bash dropped from matcher)', () => {
+    // The hook's matcher is Edit|Write only, so Claude Code never invokes it
+    // for Bash. The standalone mkdir guard was removed — manual task creation
+    // is already prevented by the rulebook MCP task tooling and the Write rule
+    // on proposal.md/.metadata.json below. Invoked directly, it now allows.
     const r = runHook({
       tool_name: 'Bash',
       tool_input: { command: 'mkdir -p .rulebook/tasks/phase999_evil' },
     });
-    expect(r.decision).toBe('deny');
-    expect(r.reason).toMatch(/rulebook_task_create/);
+    expect(r.decision).toBe('allow');
   });
 
   it('denies Write of new proposal.md inside non-existent task dir', () => {

@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.9.0] - 2026-06-08
+
+### Changed — default install ships exactly one hook (perf)
+
+- A default `rulebook init` / `rulebook update` / `rulebook claude` now wires a
+  single Claude Code hook: the consolidated `enforce-pre-tool.sh` quality gate.
+  The previously-default hooks — session handoff (`Stop` + `SessionStart`),
+  rulebook-terse (`SessionStart` + `UserPromptSubmit`), `COMPACT_CONTEXT`
+  reinjection and the npm update-check — added per-turn, per-prompt and
+  per-session subprocess latency (each spawn costs ~50–140 ms on Windows) for
+  marginal value. They now default **off** and are opt-in via `rulebook.json`
+  (`handoff.enabled`, `terse.enabled`, `multiAgent.enabled`). The settings
+  manager's existing `else` branch strips the stale entries on the next sync, so
+  upgrading users are cleaned up automatically.
+
+### Performance — enforce-pre-tool.sh
+
+- The `PreToolUse` matcher narrowed from `Edit|Write|Bash` to `Edit|Write`, so
+  the hook no longer spawns on `Bash` — the single most frequent tool. The lone
+  Bash rule (blocking manual `mkdir .rulebook/tasks/`) was redundant with the
+  rulebook MCP task tooling and the existing `proposal.md`/`.metadata.json`
+  Write guard, so it was dropped.
+- The script now short-circuits to `allow` in pure bash — without spawning
+  `node` — whenever the raw payload contains no trigger token
+  (`TODO`/`FIXME`/`HACK`/`placeholder`/`stub`/`tasks.md`/`proposal.md`/
+  `.metadata.json`). A normal source edit now costs ~one bash spawn instead of
+  bash + node, cutting the dominant per-edit cost. Deny semantics are unchanged.
+
 ## [5.8.2] - 2026-06-01
 
 ### Changed — rulebook-driver commits each item; fanout is opt-in
