@@ -20,12 +20,6 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
     const existingAgents = await detectExistingAgents(cwd);
     const gitHooks = await detectGitHooks(cwd);
     const monorepo = await detectMonorepo(cwd);
-    const cursor = await detectCursor(cwd);
-    const geminiCli = await detectGeminiCli(cwd);
-    const continueDev = await detectContinueDev(cwd);
-    const windsurf = await detectWindsurf(cwd);
-    const githubCopilot = await detectGithubCopilot(cwd);
-    const opencode = await detectOpencode(cwd);
 
     return {
         languages,
@@ -34,103 +28,7 @@ export async function detectProject(cwd: string = process.cwd()): Promise<Detect
         existingAgents,
         gitHooks,
         monorepo,
-        cursor,
-        geminiCli,
-        continueDev,
-        windsurf,
-        githubCopilot,
-        opencode,
     };
-}
-
-/**
- * Detect OpenCode CLI presence by checking the project for `opencode.json`,
- * `opencode.jsonc`, or a `.opencode/` directory. The PATH-level binary probe
- * is handled by `ConfigManager.detectCLITools()` (which adds `'opencode'`
- * to the cliTools list) so that this detector stays pure and deterministic
- * for tests.
- */
-export async function detectOpencode(
-    cwd: string
-): Promise<NonNullable<DetectionResult['opencode']>> {
-    const hasConfigJson =
-        existsSync(path.join(cwd, 'opencode.json')) || existsSync(path.join(cwd, 'opencode.jsonc'));
-    const hasOpencodeDir = existsSync(path.join(cwd, '.opencode'));
-    return {
-        detected: hasConfigJson || hasOpencodeDir,
-        hasConfigJson,
-        hasOpencodeDir,
-    };
-}
-
-/**
- * Detect Cursor IDE presence and configuration status.
- */
-export async function detectCursor(cwd: string): Promise<DetectionResult['cursor']> {
-    const cursorDir = path.join(cwd, '.cursor');
-    const cursorrules = path.join(cwd, '.cursorrules');
-    const rulesDir = path.join(cursorDir, 'rules');
-
-    const hasCursorDir = existsSync(cursorDir);
-    const hasCursorrules = existsSync(cursorrules);
-    const detected = hasCursorDir || hasCursorrules;
-
-    let hasMdcRules = false;
-    if (existsSync(rulesDir)) {
-        try {
-            const files = await readdir(rulesDir);
-            hasMdcRules = files.some((f) => f.endsWith('.mdc'));
-        } catch {
-            // ignore
-        }
-    }
-
-    return { detected, hasCursorrules, hasMdcRules };
-}
-
-/**
- * Detect Gemini CLI presence by checking for GEMINI.md in the project root.
- */
-export async function detectGeminiCli(
-    cwd: string
-): Promise<NonNullable<DetectionResult['geminiCli']>> {
-    const geminiMd = path.join(cwd, 'GEMINI.md');
-    const detected = existsSync(geminiMd);
-    return { detected };
-}
-
-/**
- * Detect Continue.dev IDE extension by checking for the .continue/ directory.
- */
-export async function detectContinueDev(
-    cwd: string
-): Promise<NonNullable<DetectionResult['continueDev']>> {
-    const continueDir = path.join(cwd, '.continue');
-    const rulesDir = path.join(continueDir, 'rules');
-    const detected = existsSync(continueDir);
-    return { detected, rulesDir };
-}
-
-/**
- * Detect Windsurf IDE by checking for .windsurfrules in the project root.
- */
-export async function detectWindsurf(
-    cwd: string
-): Promise<NonNullable<DetectionResult['windsurf']>> {
-    const windsurfrules = path.join(cwd, '.windsurfrules');
-    const detected = existsSync(windsurfrules);
-    return { detected };
-}
-
-/**
- * Detect GitHub Copilot by checking for .github/copilot-instructions.md.
- */
-export async function detectGithubCopilot(
-    cwd: string
-): Promise<NonNullable<DetectionResult['githubCopilot']>> {
-    const copilotInstructions = path.join(cwd, '.github', 'copilot-instructions.md');
-    const detected = existsSync(copilotInstructions);
-    return { detected };
 }
 
 /**

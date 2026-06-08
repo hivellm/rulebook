@@ -448,39 +448,13 @@ export async function updateSingleProject(
         const ruleResult = await projectRules(cwd, {
             claudeCode:
                 existsSync(path.join(cwd, '.claude')) || existsSync(path.join(cwd, 'CLAUDE.md')),
-            cursor: detection.cursor?.detected,
-            gemini: detection.geminiCli?.detected,
-            windsurf: detection.windsurf?.detected,
-            copilot: detection.githubCopilot?.detected,
-            continueDev: detection.continueDev?.detected,
         });
 
-        const totalProjected =
-            ruleResult.claudeCode.length +
-            ruleResult.cursor.length +
-            ruleResult.gemini.length +
-            ruleResult.copilot.length +
-            ruleResult.windsurf.length +
-            ruleResult.continueDev.length;
-
-        if (totalProjected > 0) {
+        if (ruleResult.claudeCode.length > 0) {
             console.log(
-                chalk.gray(`  • Projected ${totalProjected} canonical rules to detected tools`)
+                chalk.gray(`  • Projected ${ruleResult.claudeCode.length} canonical rule file(s)`)
             );
         }
-    }
-
-    if (detection.geminiCli?.detected) {
-        console.log(chalk.gray('  • Gemini CLI config updated: GEMINI.md'));
-    }
-    if (detection.continueDev?.detected) {
-        console.log(chalk.gray('  • Continue.dev rules updated in .continue/rules/'));
-    }
-    if (detection.windsurf?.detected) {
-        console.log(chalk.gray('  • Windsurf rules updated: .windsurfrules'));
-    }
-    if (detection.githubCopilot?.detected) {
-        console.log(chalk.gray('  • GitHub Copilot instructions updated in .github/'));
     }
 
     if (installHooksOnUpdate) {

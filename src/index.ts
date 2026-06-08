@@ -684,42 +684,15 @@ rulesCommand
     .description('Project canonical rules to all detected tool formats')
     .action(async () => {
         const { projectRules } = await import('./core/rule-engine.js');
-        const { detectProject } = await import('./core/detect/detector.js');
         const { existsSync } = await import('fs');
         const { join } = await import('path');
-        const chalk = (await import('chalk')).default;
         const ora = (await import('ora')).default;
         const cwd = process.cwd();
-        const spinner = ora('Projecting rules to detected tools...').start();
-        const detection = await detectProject(cwd);
+        const spinner = ora('Projecting rules to Claude Code...').start();
         const result = await projectRules(cwd, {
             claudeCode: existsSync(join(cwd, '.claude')) || existsSync(join(cwd, 'CLAUDE.md')),
-            cursor: detection.cursor?.detected,
-            gemini: detection.geminiCli?.detected,
-            windsurf: detection.windsurf?.detected,
-            copilot: detection.githubCopilot?.detected,
-            continueDev: detection.continueDev?.detected,
         });
-        const total =
-            result.claudeCode.length +
-            result.cursor.length +
-            result.gemini.length +
-            result.copilot.length +
-            result.windsurf.length +
-            result.continueDev.length;
-        spinner.succeed(`Projected rules to ${total} tool-specific files`);
-        if (result.claudeCode.length)
-            console.log(chalk.gray(`  • Claude Code: ${result.claudeCode.length} files`));
-        if (result.cursor.length)
-            console.log(chalk.gray(`  • Cursor: ${result.cursor.length} files`));
-        if (result.gemini.length)
-            console.log(chalk.gray(`  • Gemini: ${result.gemini.length} files`));
-        if (result.copilot.length)
-            console.log(chalk.gray(`  • Copilot: ${result.copilot.length} files`));
-        if (result.windsurf.length)
-            console.log(chalk.gray(`  • Windsurf: ${result.windsurf.length} files`));
-        if (result.continueDev.length)
-            console.log(chalk.gray(`  • Continue.dev: ${result.continueDev.length} files`));
+        spinner.succeed(`Projected ${result.claudeCode.length} rule file(s)`);
     });
 
 program.parse(process.argv);

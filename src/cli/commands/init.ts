@@ -362,47 +362,13 @@ export async function initCommand(options: {
                 claudeCode:
                     existsSync(path.join(cwd, '.claude')) ||
                     existsSync(path.join(cwd, 'CLAUDE.md')),
-                cursor: detection.cursor?.detected,
-                gemini: detection.geminiCli?.detected,
-                windsurf: detection.windsurf?.detected,
-                copilot: detection.githubCopilot?.detected,
-                continueDev: detection.continueDev?.detected,
             });
 
-            const totalProjected =
-                ruleResult.claudeCode.length +
-                ruleResult.cursor.length +
-                ruleResult.gemini.length +
-                ruleResult.copilot.length +
-                ruleResult.windsurf.length +
-                ruleResult.continueDev.length;
-
-            if (totalProjected > 0) {
+            if (ruleResult.claudeCode.length > 0) {
                 console.log(
-                    chalk.gray(`  • Projected rules to ${totalProjected} tool-specific files`)
+                    chalk.gray(`  • Projected ${ruleResult.claudeCode.length} rule file(s)`)
                 );
             }
-        }
-
-        if (detection.cursor?.detected) {
-            if (detection.cursor.hasMdcRules) {
-                console.log(chalk.gray('  • Cursor .mdc rules updated in .cursor/rules/'));
-            } else {
-                console.log(chalk.gray('  • Cursor .mdc rules generated in .cursor/rules/'));
-            }
-        }
-
-        if (detection.geminiCli?.detected) {
-            console.log(chalk.gray('  • Gemini CLI config generated: GEMINI.md'));
-        }
-        if (detection.continueDev?.detected) {
-            console.log(chalk.gray('  • Continue.dev rules generated in .continue/rules/'));
-        }
-        if (detection.windsurf?.detected) {
-            console.log(chalk.gray('  • Windsurf rules generated: .windsurfrules'));
-        }
-        if (detection.githubCopilot?.detected) {
-            console.log(chalk.gray('  • GitHub Copilot instructions generated in .github/'));
         }
 
         if (config.generateWorkflows) {
