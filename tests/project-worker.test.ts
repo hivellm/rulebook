@@ -108,7 +108,6 @@ describe('ProjectWorker', () => {
             expect(config?.version).toBe('1.0.0');
             expect(config?.projectId).toBe('test-project');
         });
-
     });
 
     describe('touch()', () => {

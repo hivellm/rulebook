@@ -307,7 +307,6 @@ export async function updateSingleProject(
         // non-fatal
     }
 
-
     try {
         const { generateMcpReference } = await import('../../core/docs/mcp-reference-generator.js');
         const mcpRef = await generateMcpReference(cwd);

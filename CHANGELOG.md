@@ -77,6 +77,16 @@ section is appended as each phase lands.
   installer (which wrote into `~/.claude/plugins`), and the plugin test suite.
   `package.json` `files` now ships only `dist` + `templates`.
 
+### Build
+
+- Pinned `@modelcontextprotocol/sdk` to `1.22.0`. SDK ≥1.26 (the first
+  security-patched line) regressed `registerTool`'s generic types into a
+  `TS2589` "type instantiation excessively deep" error in the per-domain tool
+  modules. The advisory the newer line fixes (GHSA-345p-7cg4-v4c7 — cross-client
+  data leak via a shared server/transport instance) does not apply to rulebook's
+  per-process stdio MCP server (one client per process). Tracked for an upgrade
+  once the SDK type regression is resolved.
+
 ### Internal — readability
 
 - Rewrote the README for the 6.0.0 direction: removed the multi-IDE matrix, the
