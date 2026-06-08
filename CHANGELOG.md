@@ -14,6 +14,14 @@ projects with `.rulebook/`: features with near-zero real adoption are removed so
 the toolkit ships only what people actually use. Delivered in phases; this
 section is appended as each phase lands.
 
+### Internal — readability
+
+- Reformatted the codebase to 4-space indentation (`prettier` `tabWidth: 4`).
+- Split the 2400-line `src/mcp/rulebook-server.ts` into per-domain tool modules
+  under `src/mcp/tools/*` (task, skill, workspace, decision, knowledge, learn,
+  rules), each exporting `registerXxxTools(server, ctx)`. No file exceeds 1500
+  lines. Pure structural refactor — no behavior change.
+
 ### Removed — dead feature flags (phase 1)
 
 - Removed six `features` flags that were OFF in every sampled project and gated
