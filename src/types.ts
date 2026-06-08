@@ -136,7 +136,6 @@ export interface ProjectConfig {
     languages: string[];
     libraries?: string[];
     modules: string[];
-    ides: string[];
     projectType: 'monorepo' | 'library' | 'application' | 'cli';
     coverageThreshold: number;
     strictDocs: boolean;
@@ -161,7 +160,6 @@ export interface TemplateData {
     projectName: string;
     languages: string[];
     modules: string[];
-    ides: string[];
     coverageThreshold: number;
     strictDocs: boolean;
     timestamp: string;

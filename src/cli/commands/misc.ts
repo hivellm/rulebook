@@ -113,7 +113,6 @@ export async function workflowsCommand(): Promise<void> {
         const config = {
             languages: detection.languages.map((l) => l.language),
             modules: [],
-            ides: [],
             projectType: 'application' as const,
             coverageThreshold: 95,
             strictDocs: true,

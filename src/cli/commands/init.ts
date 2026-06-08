@@ -153,7 +153,6 @@ export async function initCommand(options: {
             modules: cliMinimal
                 ? []
                 : detection.modules.filter((m) => m.detected).map((m) => m.module),
-            ides: cliMinimal ? [] : ['cursor'],
             projectType: 'application' as const,
             coverageThreshold: 95,
             strictDocs: true,
@@ -170,7 +169,6 @@ export async function initCommand(options: {
         const minimalMode = config.minimal ?? cliMinimal;
         config.minimal = minimalMode;
         config.modules = minimalMode ? [] : config.modules || [];
-        config.ides = minimalMode ? [] : config.ides || ['cursor'];
         config.includeGitWorkflow = config.includeGitWorkflow ?? true;
         config.generateWorkflows = config.generateWorkflows ?? true;
         config.modular = config.modular ?? true;

@@ -148,7 +148,6 @@ export async function updateSingleProject(
         modules: minimalMode
             ? []
             : detection.modules.filter((m) => m.detected).map((m) => m.module),
-        ides: [],
         projectType: 'application' as const,
         coverageThreshold: 95,
         strictDocs: true,
@@ -162,7 +161,6 @@ export async function updateSingleProject(
     };
 
     if (minimalMode) {
-        config.ides = [];
         config.generateWorkflows = true;
     }
 

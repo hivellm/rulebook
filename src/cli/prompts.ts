@@ -190,25 +190,6 @@ export async function promptProjectConfig(
         });
     }
 
-    // IDE selection
-    questions.push({
-        type: 'checkbox',
-        name: 'ides',
-        message: 'Select IDEs/tools to generate rules for:',
-        choices: [
-            { name: 'Cursor', value: 'cursor' },
-            { name: 'Windsurf', value: 'windsurf' },
-            { name: 'VS Code', value: 'vscode' },
-            { name: 'GitHub Copilot', value: 'copilot' },
-            { name: 'Tabnine', value: 'tabnine' },
-            { name: 'Replit', value: 'replit' },
-            { name: 'JetBrains AI', value: 'jetbrains' },
-            { name: 'Zed', value: 'zed' },
-            { name: 'OpenCode', value: 'opencode' },
-        ],
-        default: ['cursor'],
-    });
-
     // Coverage threshold
     questions.push({
         type: 'number',
@@ -296,7 +277,6 @@ export async function promptProjectConfig(
     return {
         languages: answers.languages || detection.languages.map((l) => l.language),
         modules: isMinimal ? [] : answers.modules || [],
-        ides: answers.ides || ['cursor'],
         projectType: answers.projectType,
         coverageThreshold: answers.coverageThreshold,
         strictDocs: answers.strictDocs,
@@ -398,7 +378,6 @@ export async function promptSimplifiedConfig(detection: DetectionResult): Promis
     return {
         languages,
         modules,
-        ides: ['cursor'], // Default to Cursor
         projectType: 'application',
         coverageThreshold: 95,
         strictDocs: true,
