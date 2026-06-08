@@ -299,7 +299,7 @@ export class ConfigManager {
         const { execa } = await import('execa');
         const cliTools: string[] = [];
 
-        const tools = ['cursor-agent', 'claude-code', 'gemini-cli', 'opencode'];
+        const tools = ['claude-code'];
 
         for (const tool of tools) {
             try {
