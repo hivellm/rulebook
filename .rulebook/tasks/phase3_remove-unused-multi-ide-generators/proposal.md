@@ -2,47 +2,59 @@
 
 ## Why
 
-Rulebook generates integration files for six external tools beyond Claude Code
-(OpenCode, Gemini, Codex, Windsurf, Copilot, Cursor). Adoption across the 8
-sampled projects is near-zero and isolated:
+Rulebook ships a large per-tool adapter matrix — IDE/CLI integrations for
+Cursor, Windsurf, Gemini, Codex, GitHub Copilot, OpenCode, Cline, Continue,
+Aider, Amazon Q, Auggie, Codebuddy, Codeium, Factory, Kilocode, JetBrains AI,
+Replit, Tabnine, Zed, VS Code, and more. Each adds detection, generators,
+templates, agent stream-parsers, config plumbing, and tests.
 
-- OpenCode: 1 project (Cortex)
-- Cursor: 1 project (Rulebook)
-- Windsurf: 1 project (Rulebook)
-- Copilot: 1 project (Vectorizer)
-- Gemini: 0 projects
-- Codex: 0 projects
-
-Every project's primary surface is Claude Code. The multi-IDE generators add
-templates, translators, and per-tool output that almost nobody keeps, at real
-maintenance cost.
+This matrix is now redundant: **`AGENTS.md` is the universal standard** that all
+of these tools read natively. Keeping `AGENTS.md` (+ `CLAUDE.md` and `.claude/`
+for Claude Code, the team's primary tool) preserves full tool-agnostic coverage
+while deleting the N per-tool adapters. The decision (user): remove **all**
+IDE/CLI-specific resources, including Cursor, and rely on AGENTS.md generality.
 
 ## What Changes
 
-- Keep **Claude Code** (primary) and **Cursor** (the default `ides` entry and
-  the most standard external target).
-- Remove the generators, templates, and translators for **OpenCode, Gemini,
-  Codex, Windsurf, Copilot**: their output writers in
-  `src/core/generators/workflow-generator.ts` (`generateIDEFiles` /
-  `generateAICLIFiles`), the per-tool template blocks (e.g. the OpenCode rules
-  template), and any detector/config plumbing that targets them.
-- Update `ProjectConfig.ides` and detection so removed tools are no longer
-  selectable; normalize legacy configs that still list them.
+Keep only the tool-agnostic outputs: **`AGENTS.md`**, **`AGENTS.override.md`**,
+**`CLAUDE.md`**, and the **`.claude/`** directory (Claude Code).
+
+Remove every per-tool adapter end-to-end:
+
+- Pure files: `src/core/ide/multi-tool-generator.ts`,
+  `src/core/ide/opencode-generator.ts`, `src/agents/cursor-agent.ts`,
+  `src/agents/gemini-cli.ts`.
+- Mixed files: `src/core/detect/detector.ts` (IDE detection),
+  `src/core/generators/workflow-generator.ts` (IDE/CLI rule generators),
+  `src/core/console/cli-bridge.ts` (cursor/gemini agent runners),
+  `src/cli/prompts.ts` (IDE selection), `src/types.ts`
+  (`ProjectConfig.ides` + IDE detection types), `src/core/state/config-manager.ts`,
+  `src/cli/commands/init.ts` + `update.ts` (IDE generation + `.cursorrules`/
+  `.windsurfrules` handling), `src/index.ts`.
+- Templates: `templates/ides/`, the non-Claude entries in `templates/cli/`,
+  `templates/skills/ides/*`, and the non-Claude entries in `templates/skills/cli/*`.
+- Tests covering IDE detection/generation.
+
+Sequential-thinking MCP and `.vscode/` editor settings are retained (not
+AI-rule adapters); MCP config targets `.mcp.json` only.
 
 ## Impact
 
-- Affected specs: `specs/ide-generators/spec.md` (this task)
-- Affected code: `src/core/generators/workflow-generator.ts`,
-  `src/core/generators/*` IDE/CLI writers, `templates/` per-tool blocks,
-  `src/core/detect/detector.ts`, config-manager, related tests
-- Breaking change: YES — removes IDE targets from `rulebook init`/`update`
-  (target release 6.0.0). Already-generated files in user repos are left in
-  place (no deletion of user files); they simply stop being regenerated.
-- User benefit: smaller template/generator surface; faster init; the two
-  targets people actually use (Claude Code, Cursor) remain first-class.
+- Affected specs: `specs/ide-generators/spec.md`
+- Affected code: detector, generators, cli-bridge, prompts, types,
+  config-manager, init/update, index, and the template matrix + tests.
+- Breaking change: YES (target 6.0.0). Already-generated IDE files in user
+  repos are left in place; they simply stop being regenerated. Legacy configs
+  with an `ides` field are normalized away without error.
+- User benefit: far smaller surface; rulebook becomes a focused AGENTS.md +
+  Claude tool while staying tool-agnostic via the AGENTS.md standard.
 
-## Note
+## Staged execution (each stage ships green)
 
-The keep/remove line (Claude + Cursor) is tunable. Gemini and Codex have zero
-adoption and are unambiguous removals; OpenCode/Windsurf/Copilot have a single
-niche adopter each and are removed under the user's "remove unused" decision.
+1. **OpenCode** — generator + calls + templates + tests. ✅ done
+2. **multi-tool-generator** — Gemini/Windsurf/Copilot/Continue generation + templates.
+3. **Agent runners** — remove cursor/gemini stream-parsers; cli-bridge keeps Claude only.
+4. **Detection** — remove IDE detection from detector.ts + IDE detection types.
+5. **workflow-generator** — remove IDE/CLI rule generators + init/update calls + `.cursorrules`/`.windsurfrules`.
+6. **Config surface** — remove `ProjectConfig.ides`, prompts IDE selection, config-manager plumbing.
+7. **Templates + tests** — delete the remaining per-tool template matrix; prune/adjust tests; CHANGELOG.
