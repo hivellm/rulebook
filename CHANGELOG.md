@@ -14,6 +14,29 @@ projects with `.rulebook/`: features with near-zero real adoption are removed so
 the toolkit ships only what people actually use. Delivered in phases; this
 section is appended as each phase lands.
 
+### Removed — all IDE/CLI adapters (tool-agnostic via AGENTS.md)
+
+- Rulebook no longer ships per-tool adapters. It generates only the
+  tool-agnostic `AGENTS.md` (+ `AGENTS.override.md`, `CLAUDE.md`, and `.claude/`
+  for Claude Code) — every other agent reads `AGENTS.md` natively, so coverage
+  is unchanged with far less surface. Removed:
+  - **OpenCode** integration (generator + templates).
+  - **multi-tool generator** (Gemini/Windsurf/Copilot/Continue config files) +
+    `templates/ides/`.
+  - **IDE/CLI rule generators** in `workflow-generator.ts` (cursor/windsurf/
+    vscode/copilot rules, cursor commands, CODEX/GEMINI CLI files) and the
+    non-Claude `templates/cli/*`.
+  - **IDE detection** (`detectCursor/GeminiCli/ContinueDev/Windsurf/
+    GithubCopilot/Opencode`) and the detection types.
+  - **`ProjectConfig.ides`** and the "Select IDEs/tools" init prompt.
+  - **rule-engine IDE projection** (`projectToCursor/Gemini/Copilot/Windsurf/
+    ContinueDev`); `projectRules` now targets Claude Code only.
+  - The **IDE/CLI skill matrix**: `templates/skills/ides/*` and the non-Claude
+    `templates/skills/cli/*`.
+- **`rulebook agent`** removed: the external-CLI runner (`cli-bridge.ts` + the
+  cursor/gemini/claude stream parsers in `src/agents/`) was orphaned dead code
+  with no CLI command wiring it up.
+
 ### Removed — Claude Code plugin distribution
 
 - Dropped the Claude Code plugin/marketplace distribution. Rulebook is used via
