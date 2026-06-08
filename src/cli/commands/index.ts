@@ -23,15 +23,6 @@ export {
     skillSearchCommand,
 } from './skills.js';
 export {
-    memorySearchCommand,
-    memorySaveCommand,
-    memoryListCommand,
-    memoryStatsCommand,
-    memoryCleanupCommand,
-    memoryExportCommand,
-    memoryMigrateFromDbCommand,
-} from './memory.js';
-export {
     validateCommand,
     workflowsCommand,
     checkDepsCommand,

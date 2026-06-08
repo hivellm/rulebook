@@ -330,67 +330,6 @@ describe('WorkspaceManager', () => {
         });
     });
 
-    // --- Cross-Project Memory Search ---
-
-    describe('searchMemoryAcrossProjects()', () => {
-        it('should skip projects without memory manager', async () => {
-            const results = await manager.searchMemoryAcrossProjects('query');
-            // Workers are spawned lazily via getWorker, memoryManager returns null
-            expect(results).toEqual([]);
-        });
-
-        it('should collect results from projects with memory', async () => {
-            // Pre-spawn a worker with memory
-            const worker = await manager.spawnWorker('frontend');
-            vi.mocked(worker.getMemoryManager).mockReturnValue({
-                searchMemories: vi.fn().mockResolvedValue([{ id: 'm1', content: 'result' }]),
-            } as any);
-
-            // Also spawn backend without memory
-            const w2 = await manager.spawnWorker('backend');
-            vi.mocked(w2.getMemoryManager).mockReturnValue(null);
-
-            const results = await manager.searchMemoryAcrossProjects('auth');
-            expect(results).toHaveLength(1);
-            expect(results[0].project).toBe('frontend');
-            expect(results[0].results).toHaveLength(1);
-        });
-
-        it('should pass limit option to search', async () => {
-            const worker = await manager.spawnWorker('frontend');
-            const mockSearch = vi.fn().mockResolvedValue([]);
-            vi.mocked(worker.getMemoryManager).mockReturnValue({
-                searchMemories: mockSearch,
-            } as any);
-
-            await manager.searchMemoryAcrossProjects('query', { limit: 5 });
-            expect(mockSearch).toHaveBeenCalledWith({ query: 'query', limit: 5 });
-        });
-
-        it('should use default limit of 10', async () => {
-            const worker = await manager.spawnWorker('frontend');
-            const mockSearch = vi.fn().mockResolvedValue([]);
-            vi.mocked(worker.getMemoryManager).mockReturnValue({
-                searchMemories: mockSearch,
-            } as any);
-
-            await manager.searchMemoryAcrossProjects('query');
-            expect(mockSearch).toHaveBeenCalledWith({ query: 'query', limit: 10 });
-        });
-
-        it('should skip projects that fail to initialize', async () => {
-            // First spawn succeeds, getWorker for second project fails during spawn
-            const worker = await manager.spawnWorker('frontend');
-            vi.mocked(worker.getMemoryManager).mockReturnValue({
-                searchMemories: vi.fn().mockResolvedValue([{ id: 'm1' }]),
-            } as any);
-
-            // No need to pre-spawn backend — it will try to spawn via getWorker and fail gracefully
-            const results = await manager.searchMemoryAcrossProjects('query');
-            expect(results).toHaveLength(1);
-        });
-    });
-
     // --- Static Discovery ---
 
     describe('findWorkspaceConfig()', () => {

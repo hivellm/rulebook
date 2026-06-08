@@ -5,7 +5,6 @@
  * Tracks idle time for lifecycle management.
  */
 
-import { join } from 'node:path';
 import { TaskManager } from '../tasks/task-manager.js';
 import { ConfigManager } from '../state/config-manager.js';
 import { SkillsManager, getDefaultTemplatesPath } from '../skills/skills-manager.js';
@@ -24,10 +23,6 @@ export class ProjectWorker {
     private decisionManager: DecisionManager | null = null;
     private knowledgeManager: KnowledgeManager | null = null;
     private learnManager: LearnManager | null = null;
-    private memoryManager: Awaited<
-        ReturnType<typeof import('../../memory/memory-manager.js').createMemoryManager>
-    > | null = null;
-    private bgIndexer: { stop(): void } | null = null;
 
     private _lastAccessedAt: number = Date.now();
     private _initialized = false;
@@ -73,38 +68,12 @@ export class ProjectWorker {
         this.knowledgeManager = new KnowledgeManager(this.projectRoot, '.rulebook');
         this.learnManager = new LearnManager(this.projectRoot, '.rulebook');
 
-        // Lazy-load memory if enabled in project config
-        if (this._rulebookConfig.memory?.enabled) {
-            try {
-                const { createMemoryManager } = await import('../../memory/memory-manager.js');
-                const dbPath = join(
-                    this.projectRoot,
-                    this._rulebookConfig.memory.dbPath ?? '.rulebook/memory/memory.db'
-                );
-                console.error(`[rulebook-mcp] Memory DB (${this.projectId}): ${dbPath}`);
-                this.memoryManager = createMemoryManager(
-                    this.projectRoot,
-                    this._rulebookConfig.memory
-                );
-            } catch {
-                // Memory init failures are non-fatal
-            }
-        }
-
         this._initialized = true;
         this.touch();
     }
 
     /** Gracefully shut down all managers and release resources. */
     async shutdown(): Promise<void> {
-        if (this.bgIndexer) {
-            this.bgIndexer.stop();
-            this.bgIndexer = null;
-        }
-        if (this.memoryManager) {
-            await this.memoryManager.close();
-            this.memoryManager = null;
-        }
         this._initialized = false;
     }
 
@@ -113,12 +82,6 @@ export class ProjectWorker {
         this.touch();
         if (!this.taskManager) throw new Error(`Worker ${this.projectId} not initialized`);
         return this.taskManager;
-    }
-
-    /** Returns the MemoryManager, or null if memory is disabled. */
-    getMemoryManager(): typeof this.memoryManager {
-        this.touch();
-        return this.memoryManager;
     }
 
     /** Returns the SkillsManager for this project. Throws if not initialized. */

@@ -68,47 +68,6 @@ export function registerWorkspaceTools(server: McpServer, ctx: ToolContext): voi
         }
     );
 
-    // Register tool: rulebook_workspace_search
-    server.registerTool(
-        'rulebook_workspace_search',
-        {
-            title: 'Cross-Project Memory Search',
-            description: 'Search memories across all projects in the workspace',
-            inputSchema: {
-                query: z.string().describe('Search query'),
-                limit: z.number().optional().describe('Max results per project (default 10)'),
-            },
-        },
-        async (args) => {
-            try {
-                const results = await workspaceManager.searchMemoryAcrossProjects(args.query, {
-                    limit: args.limit,
-                });
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({
-                                success: true,
-                                results,
-                                projectsSearched: results.length,
-                            }),
-                        },
-                    ],
-                };
-            } catch (error) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({ success: false, error: String(error) }),
-                        },
-                    ],
-                };
-            }
-        }
-    );
-
     // Register tool: rulebook_workspace_tasks
     server.registerTool(
         'rulebook_workspace_tasks',

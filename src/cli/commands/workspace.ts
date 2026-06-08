@@ -160,9 +160,8 @@ export async function workspaceStatusCommand(): Promise<void> {
             const configBadge = p.hasRulebookConfig
                 ? chalk.green('.rulebook')
                 : chalk.dim('no config');
-            const memBadge = p.memoryEnabled ? chalk.blue('memory') : '';
             const taskBadge = p.taskCount > 0 ? chalk.yellow(`${p.taskCount} tasks`) : '';
-            const badges = [configBadge, memBadge, taskBadge].filter(Boolean).join('  ');
+            const badges = [configBadge, taskBadge].filter(Boolean).join('  ');
             console.log(`  ${chalk.cyan(p.name)}  ${badges}`);
             console.log(`    ${chalk.dim(p.path)}`);
         }

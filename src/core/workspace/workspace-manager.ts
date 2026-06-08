@@ -146,7 +146,6 @@ export class WorkspaceManager {
                     path: projectRoot,
                     workerActive: worker?.initialized ?? false,
                     hasRulebookConfig: hasConfig,
-                    memoryEnabled: worker?.getRulebookConfig()?.memory?.enabled ?? false,
                     taskCount,
                     lastAccessed: worker?.lastAccessedAt,
                 };
@@ -159,38 +158,6 @@ export class WorkspaceManager {
             activeWorkers: this.workers.size,
             totalProjects: this.config.projects.length,
         };
-    }
-
-    // --- Cross-Project Operations ---
-
-    /**
-     * Search memory across all active workers.
-     * Returns results tagged with project name.
-     */
-    async searchMemoryAcrossProjects(
-        query: string,
-        options?: { limit?: number; type?: string }
-    ): Promise<Array<{ project: string; results: unknown[] }>> {
-        const results: Array<{ project: string; results: unknown[] }> = [];
-
-        for (const project of this.getProjects()) {
-            try {
-                const worker = await this.getWorker(project.name);
-                const mm = worker.getMemoryManager();
-                if (!mm) continue;
-
-                const searchResults = await mm.searchMemories({
-                    query,
-                    limit: options?.limit ?? 10,
-                });
-                if (searchResults.length > 0) {
-                    results.push({ project: project.name, results: searchResults });
-                }
-            } catch {
-                // Skip projects that fail to initialize
-            }
-        }
-        return results;
     }
 
     // --- Static Discovery ---

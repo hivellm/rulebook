@@ -52,13 +52,6 @@ vi.mock('../src/core/skills/skills-manager.js', () => ({
     getDefaultTemplatesPath: vi.fn().mockReturnValue('/mock/templates'),
 }));
 
-vi.mock('../src/memory/memory-manager.js', () => ({
-    createMemoryManager: vi.fn().mockReturnValue({
-        close: vi.fn().mockResolvedValue(undefined),
-        save: vi.fn(),
-    }),
-}));
-
 describe('ProjectWorker', () => {
     let worker: ProjectWorker;
 
@@ -116,55 +109,6 @@ describe('ProjectWorker', () => {
             expect(config?.projectId).toBe('test-project');
         });
 
-        it('should not initialize memory when disabled', async () => {
-            const { createMemoryManager } = await import('../src/memory/memory-manager.js');
-
-            await worker.initialize();
-
-            // Default mock config has no memory.enabled
-            expect(createMemoryManager).not.toHaveBeenCalled();
-            expect(worker.getMemoryManager()).toBeNull();
-        });
-
-        it('should initialize memory when enabled', async () => {
-            const { ConfigManager } = await import('../src/core/state/config-manager.js');
-            const { createMemoryManager } = await import('../src/memory/memory-manager.js');
-
-            vi.mocked(ConfigManager).mockImplementationOnce(function (this: any) {
-                this.loadConfig = vi.fn().mockResolvedValue({
-                    ...DEFAULT_CONFIG,
-                    memory: { enabled: true },
-                });
-            } as any);
-
-            const memWorker = new ProjectWorker('mem-project', '/projects/mem');
-            await memWorker.initialize();
-
-            expect(createMemoryManager).toHaveBeenCalledWith('/projects/mem', { enabled: true });
-            expect(memWorker.getMemoryManager()).not.toBeNull();
-        });
-
-        it('should handle memory initialization failure gracefully', async () => {
-            const { ConfigManager } = await import('../src/core/state/config-manager.js');
-            const { createMemoryManager } = await import('../src/memory/memory-manager.js');
-
-            vi.mocked(ConfigManager).mockImplementationOnce(function (this: any) {
-                this.loadConfig = vi.fn().mockResolvedValue({
-                    ...DEFAULT_CONFIG,
-                    memory: { enabled: true },
-                });
-            } as any);
-
-            vi.mocked(createMemoryManager).mockImplementationOnce(() => {
-                throw new Error('WASM not available');
-            });
-
-            const failWorker = new ProjectWorker('fail-mem', '/projects/fail');
-            await failWorker.initialize();
-
-            expect(failWorker.initialized).toBe(true);
-            expect(failWorker.getMemoryManager()).toBeNull();
-        });
     });
 
     describe('touch()', () => {
@@ -217,10 +161,6 @@ describe('ProjectWorker', () => {
             expect(() => worker.getConfigManager()).toThrow('Worker frontend not initialized');
         });
 
-        it('getMemoryManager() should return null when not initialized', () => {
-            expect(worker.getMemoryManager()).toBeNull();
-        });
-
         it('getRulebookConfig() should return null when not initialized', () => {
             expect(worker.getRulebookConfig()).toBeNull();
         });
@@ -263,47 +203,10 @@ describe('ProjectWorker', () => {
             expect(worker.initialized).toBe(false);
         });
 
-        it('should close memory manager if present', async () => {
-            const { ConfigManager } = await import('../src/core/state/config-manager.js');
-            const { createMemoryManager } = await import('../src/memory/memory-manager.js');
-
-            const mockClose = vi.fn().mockResolvedValue(undefined);
-            vi.mocked(createMemoryManager).mockReturnValueOnce({
-                close: mockClose,
-                save: vi.fn(),
-            } as any);
-
-            vi.mocked(ConfigManager).mockImplementationOnce(function (this: any) {
-                this.loadConfig = vi.fn().mockResolvedValue({
-                    ...DEFAULT_CONFIG,
-                    memory: { enabled: true },
-                });
-            } as any);
-
-            const memWorker = new ProjectWorker('mem-shutdown', '/projects/mem');
-            await memWorker.initialize();
-            await memWorker.shutdown();
-
-            expect(mockClose).toHaveBeenCalled();
-        });
-
         it('should be safe to call shutdown without initialization', async () => {
             // Should not throw
             await worker.shutdown();
             expect(worker.initialized).toBe(false);
-        });
-
-        it('should stop bgIndexer if present', async () => {
-            await worker.initialize();
-
-            // Inject a mock bgIndexer via private field
-            const mockStop = vi.fn();
-            (worker as any).bgIndexer = { stop: mockStop };
-
-            await worker.shutdown();
-
-            expect(mockStop).toHaveBeenCalled();
-            expect((worker as any).bgIndexer).toBeNull();
         });
     });
 });

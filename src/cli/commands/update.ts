@@ -308,36 +308,6 @@ export async function updateSingleProject(
         // non-fatal
     }
 
-    // 5.6.0: prune Ralph-tagged memory entries on update.
-    try {
-        const { MemoryManager } = await import('../../memory/memory-manager.js');
-        const { createConfigManager } = await import('../../core/state/config-manager.js');
-        const cm = createConfigManager(cwd);
-        const cfg = await cm.loadConfig();
-        if (cfg.memory?.enabled !== false) {
-            const mm = new MemoryManager(cwd, cfg.memory ?? {});
-            const ralphMemories = await mm.searchMemories({
-                query: 'ralph',
-                limit: 1000,
-            });
-            let pruned = 0;
-            for (const m of ralphMemories) {
-                // Only delete entries truly tagged with `ralph` or sourced from it
-                const full = await mm.getFullDetails([m.id]);
-                const detail = full[0];
-                if (detail?.tags?.includes('ralph')) {
-                    await mm.deleteMemory(m.id);
-                    pruned++;
-                }
-            }
-            await mm.close();
-            if (pruned > 0) {
-                console.log(chalk.gray(`  • Pruned ${pruned} Ralph-tagged memory entries`));
-            }
-        }
-    } catch {
-        // non-fatal — memory subsystem may not be initialized
-    }
 
     try {
         const { generateMcpReference } = await import('../../core/docs/mcp-reference-generator.js');

@@ -34,7 +34,6 @@ export interface WorkspaceProjectStatus {
     path: string;
     workerActive: boolean;
     hasRulebookConfig: boolean;
-    memoryEnabled: boolean;
     taskCount: number;
     lastAccessed?: number;
 }
