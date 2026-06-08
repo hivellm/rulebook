@@ -532,43 +532,6 @@ export async function updateSingleProject(
         console.log(chalk.gray('  • GitHub Copilot instructions updated in .github/'));
     }
 
-    if (detection.opencode?.detected) {
-        try {
-            const { generateOpencodeIntegration } = await import(
-                '../../core/ide/opencode-generator.js'
-            );
-            const oc = await generateOpencodeIntegration(cwd, detection);
-            if (oc.configPath) {
-                console.log(
-                    chalk.gray(
-                        `  • OpenCode config refreshed: ${path.relative(cwd, oc.configPath)}`
-                    )
-                );
-            }
-            if (oc.commands.length > 0) {
-                console.log(
-                    chalk.gray(`  • OpenCode commands refreshed (${oc.commands.length} files)`)
-                );
-            }
-            if (oc.agents.length > 0) {
-                console.log(
-                    chalk.gray(`  • OpenCode agents refreshed (${oc.agents.length} files)`)
-                );
-            }
-            if (oc.skills.length > 0) {
-                console.log(
-                    chalk.gray(`  • OpenCode skills refreshed (${oc.skills.length} files)`)
-                );
-            }
-        } catch (err) {
-            console.log(
-                chalk.yellow(
-                    `  ⚠ OpenCode integration skipped: ${err instanceof Error ? err.message : String(err)}`
-                )
-            );
-        }
-    }
-
     if (installHooksOnUpdate) {
         const hookLanguages: LanguageDetection[] =
             detection.languages.length > 0

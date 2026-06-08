@@ -1,15 +1,5 @@
 #!/usr/bin/env node
 
-// Library re-exports for programmatic consumers (kept above CLI bootstrap).
-export {
-    generateOpencodeIntegration,
-    generateOpencodeConfig,
-    generateOpencodeCommands,
-    generateOpencodeAgents,
-    generateOpencodeSkills,
-    normalizeOpencodeSkillName,
-} from './core/ide/opencode-generator.js';
-
 import { Command } from 'commander';
 import {
     initCommand,
