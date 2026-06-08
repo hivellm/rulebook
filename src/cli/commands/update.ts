@@ -337,50 +337,11 @@ export async function updateSingleProject(
     // non-fatal
   }
 
-  // 5.6.0: prune legacy Ralph artifacts left over from older versions.
-  // The Ralph subsystem was removed in 5.6.0. Existing user projects
-  // upgraded from 5.5.x still have the scripts and history dir.
+  // Prune legacy Ralph artifacts left over from older versions. The Ralph
+  // subsystem was removed; projects upgraded from older releases still carry
+  // its scripts, history dir, slash commands, and cursor rule.
   try {
-    const { rm } = await import('node:fs/promises');
-    const { readdirSync, existsSync, statSync } = await import('node:fs');
-    const removed: string[] = [];
-
-    // .rulebook/ralph/ — entire directory (history, lock files, etc.)
-    const ralphDir = path.join(cwd, '.rulebook', 'ralph');
-    if (existsSync(ralphDir) && statSync(ralphDir).isDirectory()) {
-      await rm(ralphDir, { recursive: true, force: true });
-      removed.push('.rulebook/ralph/');
-    }
-
-    // .rulebook/scripts/ralph-*.{sh,bat}
-    const scriptsDir = path.join(cwd, '.rulebook', 'scripts');
-    if (existsSync(scriptsDir) && statSync(scriptsDir).isDirectory()) {
-      for (const f of readdirSync(scriptsDir)) {
-        if (/^ralph-.*\.(sh|bat)$/.test(f)) {
-          await rm(path.join(scriptsDir, f), { force: true });
-          removed.push(`.rulebook/scripts/${f}`);
-        }
-      }
-    }
-
-    // .claude/commands/ralph-*.md (user's slash commands)
-    const cmdsDir = path.join(cwd, '.claude', 'commands');
-    if (existsSync(cmdsDir) && statSync(cmdsDir).isDirectory()) {
-      for (const f of readdirSync(cmdsDir)) {
-        if (/^ralph-.*\.md$/.test(f)) {
-          await rm(path.join(cmdsDir, f), { force: true });
-          removed.push(`.claude/commands/${f}`);
-        }
-      }
-    }
-
-    // .cursor/rules/ralph.mdc
-    const cursorRalph = path.join(cwd, '.cursor', 'rules', 'ralph.mdc');
-    if (existsSync(cursorRalph)) {
-      await rm(cursorRalph, { force: true });
-      removed.push('.cursor/rules/ralph.mdc');
-    }
-
+    const removed = await purgeLegacyRalphArtifacts(cwd);
     if (removed.length > 0) {
       console.log(chalk.gray(`  • Pruned ${removed.length} legacy Ralph artifact(s)`));
     }
@@ -611,17 +572,11 @@ export async function updateSingleProject(
 
   const configSpinner = ora('Updating .rulebook configuration...').start();
   const rulebookFeatures: RulebookConfig['features'] = {
-    watcher: false,
-    agent: false,
     logging: true,
-    notifications: false,
-    dryRun: false,
     gitHooks: gitHooksActiveAfterUpdate,
-    repl: false,
     templates: true,
     context: minimalMode ? false : true,
     health: true,
-    plugins: false,
     parallel: minimalMode ? false : true,
     smartContinue: minimalMode ? false : true,
   };
@@ -894,4 +849,54 @@ export async function updateCommand(options: {
     console.error(chalk.red('\n❌ Update failed:'), error);
     process.exit(1);
   }
+}
+
+/**
+ * Remove legacy Ralph artifacts from a project. The Ralph subsystem was
+ * removed; projects upgraded from older releases may still carry its history
+ * dir, scripts, slash commands, and cursor rule. Returns the list of removed
+ * paths (relative to cwd). Best-effort and non-throwing per entry.
+ */
+export async function purgeLegacyRalphArtifacts(cwd: string): Promise<string[]> {
+  const { rm } = await import('node:fs/promises');
+  const { readdirSync, existsSync, statSync } = await import('node:fs');
+  const removed: string[] = [];
+
+  // .rulebook/ralph/ — entire directory (history, lock files, etc.)
+  const ralphDir = path.join(cwd, '.rulebook', 'ralph');
+  if (existsSync(ralphDir) && statSync(ralphDir).isDirectory()) {
+    await rm(ralphDir, { recursive: true, force: true });
+    removed.push('.rulebook/ralph/');
+  }
+
+  // .rulebook/scripts/ralph-*.{sh,bat}
+  const scriptsDir = path.join(cwd, '.rulebook', 'scripts');
+  if (existsSync(scriptsDir) && statSync(scriptsDir).isDirectory()) {
+    for (const f of readdirSync(scriptsDir)) {
+      if (/^ralph-.*\.(sh|bat)$/.test(f)) {
+        await rm(path.join(scriptsDir, f), { force: true });
+        removed.push(`.rulebook/scripts/${f}`);
+      }
+    }
+  }
+
+  // .claude/commands/ralph-*.md (user's slash commands)
+  const cmdsDir = path.join(cwd, '.claude', 'commands');
+  if (existsSync(cmdsDir) && statSync(cmdsDir).isDirectory()) {
+    for (const f of readdirSync(cmdsDir)) {
+      if (/^ralph-.*\.md$/.test(f)) {
+        await rm(path.join(cmdsDir, f), { force: true });
+        removed.push(`.claude/commands/${f}`);
+      }
+    }
+  }
+
+  // .cursor/rules/ralph.mdc
+  const cursorRalph = path.join(cwd, '.cursor', 'rules', 'ralph.mdc');
+  if (existsSync(cursorRalph)) {
+    await rm(cursorRalph, { force: true });
+    removed.push('.cursor/rules/ralph.mdc');
+  }
+
+  return removed;
 }

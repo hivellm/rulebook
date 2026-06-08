@@ -475,7 +475,7 @@ describe('Backward Compatibility v1.x to v2.0', () => {
 
       expect(reloadedConfig.projectId).toBe('custom-project-id');
       expect(reloadedConfig.mode).toBe('minimal');
-      expect(reloadedConfig.features?.watcher).toBe(true);
+      expect(reloadedConfig.features?.gitHooks).toBe(true);
       expect(reloadedConfig.coverageThreshold).toBe(80);
       expect(reloadedConfig.language).toBe('pt-BR');
       expect(reloadedConfig.cliTools).toContain('cursor');

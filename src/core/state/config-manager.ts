@@ -150,17 +150,11 @@ export class ConfigManager {
       projectId,
       mode: 'full',
       features: {
-        watcher: true,
-        agent: true,
         logging: true,
-        notifications: false,
-        dryRun: false,
         gitHooks: false,
-        repl: false,
         templates: false,
         context: false,
         health: false,
-        plugins: false,
         parallel: false,
         smartContinue: false,
       },
@@ -204,22 +198,22 @@ export class ConfigManager {
 
     // Add missing features with defaults
     const defaultFeatures = {
-      watcher: true,
-      agent: true,
       logging: true,
-      notifications: false,
-      dryRun: false,
       gitHooks: false,
-      repl: false,
       templates: false,
       context: false,
       health: false,
-      plugins: false,
       parallel: false,
       smartContinue: false,
     };
 
     migrated.features = { ...defaultFeatures, ...migrated.features };
+
+    // Normalize: drop feature flags removed in v6.0.0 (watcher, agent,
+    // notifications, dryRun, repl, plugins) if present in legacy configs.
+    for (const removed of ['watcher', 'agent', 'notifications', 'dryRun', 'repl', 'plugins']) {
+      delete (migrated.features as Record<string, unknown>)[removed];
+    }
 
     if (!migrated.mode) {
       migrated.mode = 'full';
@@ -602,17 +596,11 @@ export function getDefaultConfig(): RulebookConfig {
     projectId,
     mode: 'full',
     features: {
-      watcher: true,
-      agent: true,
       logging: true,
-      notifications: false,
-      dryRun: false,
       gitHooks: false,
-      repl: false,
       templates: false,
       context: false,
       health: false,
-      plugins: false,
       parallel: false,
       smartContinue: false,
     },

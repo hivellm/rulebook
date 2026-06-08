@@ -197,17 +197,11 @@ export interface RulebookConfig {
   projectId: string;
   mode: 'full' | 'minimal';
   features: {
-    watcher: boolean;
-    agent: boolean;
     logging: boolean;
-    notifications: boolean;
-    dryRun: boolean;
     gitHooks: boolean;
-    repl: boolean;
     templates: boolean;
     context: boolean;
     health: boolean;
-    plugins: boolean;
     parallel: boolean;
     smartContinue: boolean;
   };

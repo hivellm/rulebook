@@ -47,9 +47,8 @@ describe('ConfigManager', () => {
       });
 
       expect(config.features).toMatchObject({
-        watcher: true,
-        agent: true,
         logging: true,
+        gitHooks: false,
       });
     });
 
@@ -193,9 +192,8 @@ describe('getDefaultConfig', () => {
     });
 
     expect(config.features).toMatchObject({
-      watcher: true,
-      agent: true,
       logging: true,
+      gitHooks: false,
     });
   });
 
@@ -219,19 +217,21 @@ describe('getDefaultConfig', () => {
   it('should have all required features', () => {
     const config = getDefaultConfig();
 
-    expect(config.features).toHaveProperty('watcher');
-    expect(config.features).toHaveProperty('agent');
     expect(config.features).toHaveProperty('logging');
-    expect(config.features).toHaveProperty('notifications');
-    expect(config.features).toHaveProperty('dryRun');
     expect(config.features).toHaveProperty('gitHooks');
-    expect(config.features).toHaveProperty('repl');
     expect(config.features).toHaveProperty('templates');
     expect(config.features).toHaveProperty('context');
     expect(config.features).toHaveProperty('health');
-    expect(config.features).toHaveProperty('plugins');
     expect(config.features).toHaveProperty('parallel');
     expect(config.features).toHaveProperty('smartContinue');
+
+    // Removed in v6.0.0
+    expect(config.features).not.toHaveProperty('watcher');
+    expect(config.features).not.toHaveProperty('agent');
+    expect(config.features).not.toHaveProperty('notifications');
+    expect(config.features).not.toHaveProperty('dryRun');
+    expect(config.features).not.toHaveProperty('repl');
+    expect(config.features).not.toHaveProperty('plugins');
   });
 
   it('should have correct timeout values', () => {
@@ -281,8 +281,10 @@ describe('ConfigManager edge cases and error handling', () => {
     const migrated = await configManager.migrateConfig(oldConfig);
 
     expect(migrated.version).toBe(PKG_VERSION);
-    expect(migrated.features.watcher).toBe(false);
-    expect(migrated.features.agent).toBe(false);
+    // v6.0.0: removed flags are stripped from legacy configs during migration.
+    expect(migrated.features).not.toHaveProperty('watcher');
+    expect(migrated.features).not.toHaveProperty('agent');
+    expect(migrated.features.logging).toBe(true);
   });
 
   it('should handle feature enablement edge cases', async () => {
@@ -290,17 +292,11 @@ describe('ConfigManager edge cases and error handling', () => {
 
     // Test all feature keys
     const features = [
-      'watcher',
-      'agent',
       'logging',
-      'notifications',
-      'dryRun',
       'gitHooks',
-      'repl',
       'templates',
       'context',
       'health',
-      'plugins',
       'parallel',
       'smartContinue',
     ] as const;

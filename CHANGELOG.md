@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.0.0] - 2026-06-08
+
+Scope reduction (breaking). Driven by a cross-project usage analysis of 8
+projects with `.rulebook/`: features with near-zero real adoption are removed so
+the toolkit ships only what people actually use. Delivered in phases; this
+section is appended as each phase lands.
+
+### Removed — dead feature flags (phase 1)
+
+- Removed six `features` flags that were OFF in every sampled project and gated
+  no behavior: `watcher`, `agent`, `notifications`, `dryRun`, `repl`, `plugins`.
+  The `RulebookFeatures` type now exposes only `logging`, `gitHooks`,
+  `templates`, `context`, `health`, `parallel`, `smartContinue`. Legacy
+  `rulebook.json` files carrying the removed keys are normalized (the keys are
+  dropped) on load/migrate — no error.
+
+### Changed — Ralph cleanup (phase 1)
+
+- The legacy-Ralph purge that `rulebook update` runs is now an exported,
+  unit-tested function (`purgeLegacyRalphArtifacts`). The Ralph subsystem was
+  already removed; this finishes the cleanup and guards it with a regression
+  test. Archived task records under `.rulebook/archive/` are retained as project
+  history.
+
 ## [5.9.0] - 2026-06-08
 
 ### Changed — default install ships exactly one hook (perf)
