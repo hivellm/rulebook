@@ -9,14 +9,42 @@
 #
 # Emits `{}` (no-op) on any of: no config, no network/npm, already current,
 # cache still fresh with no known update, or any error. Never blocks startup.
+#
+# JSON is parsed/emitted with `node` (always present for a node CLI tool) so
+# the hook does not depend on `jq` being installed.
 
 set -euo pipefail
+
+emit_none() { printf '%s' '{}'; exit 0; }
+
+# node is required for JSON handling; without it, no-op gracefully.
+command -v node &>/dev/null || emit_none
+
+# Read a dotted field from a JSON file via node. Prints empty string on any
+# error / missing key. Booleans print as `true`/`false`.
+json_get() {
+  node -e '
+    const fs = require("fs");
+    let raw = "";
+    try { raw = fs.readFileSync(process.argv[1], "utf8"); } catch { process.exit(0); }
+    try {
+      let v = JSON.parse(raw);
+      for (const k of process.argv[2].split(".")) v = v == null ? undefined : v[k];
+      if (v !== undefined && v !== null) process.stdout.write(String(v));
+    } catch {}
+  ' "$1" "$2"
+}
 
 # --- Resolve project root (from stdin JSON cwd, else env, else pwd) ----------
 input="$(cat || true)"
 PROJECT_ROOT=""
-if [[ -n "$input" ]] && command -v jq &>/dev/null; then
-  PROJECT_ROOT="$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null || true)"
+if [[ -n "$input" ]]; then
+  PROJECT_ROOT="$(printf '%s' "$input" | node -e '
+    let d = "";
+    process.stdin.on("data", (c) => (d += c)).on("end", () => {
+      try { process.stdout.write(JSON.parse(d).cwd || ""); } catch {}
+    });
+  ' 2>/dev/null || true)"
 fi
 [[ -z "$PROJECT_ROOT" ]] && PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
@@ -25,28 +53,21 @@ CACHE_FILE="${PROJECT_ROOT}/.rulebook/.update-check"
 PKG="@hivehub/rulebook"
 CACHE_TTL=86400 # 24h in seconds
 
-emit_none() { printf '%s' '{}'; exit 0; }
-
-# Need jq + a config to do anything useful.
-command -v jq &>/dev/null || emit_none
 [[ -f "$CONFIG_FILE" ]] || emit_none
 
-installed="$(jq -r '.version // empty' "$CONFIG_FILE" 2>/dev/null || true)"
+installed="$(json_get "$CONFIG_FILE" version)"
 [[ -z "$installed" ]] && emit_none
 
 # Allow opt-out via config: { "updateCheck": { "enabled": false } }.
-# Note: jq's `//` treats `false` as empty, so `.updateCheck.enabled // true`
-# would wrongly yield true when explicitly disabled — test the value directly.
-enabled="$(jq -r 'if .updateCheck.enabled == false then "false" else "true" end' "$CONFIG_FILE" 2>/dev/null || echo true)"
-[[ "$enabled" == "false" ]] && emit_none
+[[ "$(json_get "$CONFIG_FILE" updateCheck.enabled)" == "false" ]] && emit_none
 
 # --- Determine latest version (cache-first) ---------------------------------
 now="$(date -u +%s)"
 latest=""
 cache_ts=0
 if [[ -f "$CACHE_FILE" ]]; then
-  cache_ts="$(jq -r '.checkedAt // 0' "$CACHE_FILE" 2>/dev/null || echo 0)"
-  latest="$(jq -r '.latest // empty' "$CACHE_FILE" 2>/dev/null || true)"
+  cache_ts="$(json_get "$CACHE_FILE" checkedAt)"; cache_ts="${cache_ts:-0}"
+  latest="$(json_get "$CACHE_FILE" latest)"
 fi
 
 age=$(( now - cache_ts ))
@@ -63,8 +84,12 @@ if [[ -z "$latest" || "$age" -ge "$CACHE_TTL" ]]; then
   if [[ -n "$fetched" ]]; then
     latest="$fetched"
     # Refresh cache (best-effort; ignore write failures).
-    jq -nc --arg l "$latest" --argjson t "$now" \
-      '{latest: $l, checkedAt: $t}' > "$CACHE_FILE" 2>/dev/null || true
+    node -e '
+      const fs = require("fs");
+      try {
+        fs.writeFileSync(process.argv[1], JSON.stringify({ latest: process.argv[2], checkedAt: Number(process.argv[3]) }));
+      } catch {}
+    ' "$CACHE_FILE" "$latest" "$now" 2>/dev/null || true
   fi
 fi
 
@@ -91,12 +116,11 @@ ver_gt() {
 
 if ver_gt "$latest" "$installed"; then
   ctx="## Rulebook update available\n\nThis project is on rulebook **${installed}**, but **${latest}** is published on npm.\n\nAsk the user whether they want to update. If they agree, run \`rulebook update\` (or \`npx ${PKG}@latest update\`) to regenerate the rules to the latest version, then review the diff before committing. Do not update without the user's confirmation."
-  jq -nc --arg ctx "$ctx" '{
-    hookSpecificOutput: {
-      hookEventName: "SessionStart",
-      additionalContext: $ctx
-    }
-  }'
+  node -e '
+    console.log(JSON.stringify({
+      hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: process.argv[1] },
+    }));
+  ' "$ctx"
   exit 0
 fi
 
