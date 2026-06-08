@@ -188,115 +188,18 @@ Use strict types.
             expect(content).toContain('Never use stubs or TODOs');
         });
 
-        it('should project to Cursor as .mdc with frontmatter', async () => {
-            const result = await projectRules(testDir, { cursor: true });
-            expect(result.cursor).toHaveLength(2);
-
-            const content = readFileSync(
-                join(testDir, '.cursor', 'rules', 'no-shortcuts.mdc'),
-                'utf-8'
-            );
-            expect(content).toContain('alwaysApply: true');
-            expect(content).toContain('Never use stubs or TODOs');
-
-            const tsContent = readFileSync(
-                join(testDir, '.cursor', 'rules', 'ts-only.mdc'),
-                'utf-8'
-            );
-            expect(tsContent).toContain('globs:');
-            expect(tsContent).toContain('*.ts');
-        });
-
-        it('should project to Gemini as sections in GEMINI.md', async () => {
-            const result = await projectRules(testDir, { gemini: true });
-            expect(result.gemini).toHaveLength(1);
-
-            const content = readFileSync(join(testDir, 'GEMINI.md'), 'utf-8');
-            expect(content).toContain('<!-- RULEBOOK:START -->');
-            expect(content).toContain('Highest Precedence Rules');
-            expect(content).toContain('Never use stubs or TODOs');
-            expect(content).toContain('<!-- RULEBOOK:END -->');
-        });
-
-        it('should project to Copilot as sections', async () => {
-            const result = await projectRules(testDir, { copilot: true });
-            expect(result.copilot).toHaveLength(1);
-
-            const content = readFileSync(
-                join(testDir, '.github', 'copilot-instructions.md'),
-                'utf-8'
-            );
-            expect(content).toContain('<!-- RULEBOOK:START -->');
-            expect(content).toContain('Never use stubs or TODOs');
-        });
-
-        it('should project to Windsurf as individual files', async () => {
-            const result = await projectRules(testDir, { windsurf: true });
-            // ts-only targets claude-code+cursor only, so windsurf gets 1 rule (no-shortcuts)
-            expect(result.windsurf).toHaveLength(1);
-            expect(existsSync(join(testDir, '.windsurf', 'rules', 'no-shortcuts.md'))).toBe(true);
-        });
-
-        it('should project to Continue.dev as individual files', async () => {
-            const result = await projectRules(testDir, { continueDev: true });
-            // ts-only targets claude-code+cursor only, so continue gets 1 rule (no-shortcuts)
-            expect(result.continueDev).toHaveLength(1);
-            expect(existsSync(join(testDir, '.continue', 'rules', 'no-shortcuts.md'))).toBe(true);
-        });
-
-        it('should only project to detected tools', async () => {
-            const result = await projectRules(testDir, { claudeCode: true });
-            expect(result.claudeCode.length).toBeGreaterThan(0);
-            expect(result.cursor).toEqual([]);
-            expect(result.gemini).toEqual([]);
-            expect(result.copilot).toEqual([]);
-            expect(result.windsurf).toEqual([]);
-            expect(result.continueDev).toEqual([]);
-        });
-
         it('should respect tool targeting in rules', async () => {
-            // ts-only targets only claude-code and cursor
-            const result = await projectRules(testDir, { windsurf: true });
-            // no-shortcuts targets "all" → windsurf gets it
-            // ts-only targets "claude-code", "cursor" → windsurf does NOT get it
-            expect(result.windsurf).toHaveLength(1);
+            // no-shortcuts targets "all", ts-only targets "claude-code" → both project
+            const result = await projectRules(testDir, { claudeCode: true });
+            expect(result.claudeCode).toHaveLength(2);
         });
 
         it('should return empty when no rules exist', async () => {
             const emptyDir = join(tmpdir(), `empty-proj-${Date.now()}`);
             mkdirSync(emptyDir, { recursive: true });
-            const result = await projectRules(emptyDir, { claudeCode: true, cursor: true });
+            const result = await projectRules(emptyDir, { claudeCode: true });
             expect(result.claudeCode).toEqual([]);
-            expect(result.cursor).toEqual([]);
             rmSync(emptyDir, { recursive: true, force: true });
-        });
-
-        it('should project to multiple tools simultaneously', async () => {
-            const result = await projectRules(testDir, {
-                claudeCode: true,
-                cursor: true,
-                gemini: true,
-                copilot: true,
-            });
-            expect(result.claudeCode.length).toBeGreaterThan(0);
-            expect(result.cursor.length).toBeGreaterThan(0);
-            expect(result.gemini.length).toBeGreaterThan(0);
-            expect(result.copilot.length).toBeGreaterThan(0);
-        });
-
-        it('should preserve user content in Gemini.md outside markers', async () => {
-            // Create existing file with user content + markers
-            writeFileSync(
-                join(testDir, 'GEMINI.md'),
-                'My custom header\n\n<!-- RULEBOOK:START -->\nold content\n<!-- RULEBOOK:END -->\n\nMy custom footer\n'
-            );
-
-            await projectRules(testDir, { gemini: true });
-            const content = readFileSync(join(testDir, 'GEMINI.md'), 'utf-8');
-            expect(content).toContain('My custom header');
-            expect(content).toContain('My custom footer');
-            expect(content).toContain('Never use stubs or TODOs');
-            expect(content).not.toContain('old content');
         });
     });
 
