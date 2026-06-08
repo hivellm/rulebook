@@ -14,6 +14,22 @@ projects with `.rulebook/`: features with near-zero real adoption are removed so
 the toolkit ships only what people actually use. Delivered in phases; this
 section is appended as each phase lands.
 
+### Removed — persistent-memory & indexer subsystem
+
+- Removed the persistent-memory and background-indexer subsystem. Cross-project
+  usage showed it was effectively dev-repo-only, and it carried an always-on
+  indexing process plus 9 of the 35 MCP tools. Deleted `src/memory/*`
+  (MemoryManager, file store/search, codegraph, legacy migrator),
+  `src/core/indexer/*` (BackgroundIndexer, file parser), the `rulebook memory`
+  CLI commands, and the memory/indexer config blocks. Removed the MCP tools
+  `memory_save/search/get/timeline/stats/cleanup`, `codebase_search`,
+  `codebase_graph`, `indexer_status`, and the memory-backed
+  `rulebook_workspace_search` — the MCP surface drops 35 → **25**.
+  `session_start`/`session_end` keep working on `PLANS.md` (their optional
+  memory branches were removed). The lightweight, file-based **knowledge /
+  learnings / decisions** features are retained. Existing `.rulebook/memory/`
+  data on disk is left untouched.
+
 ### Removed — all IDE/CLI adapters (tool-agnostic via AGENTS.md)
 
 - Rulebook no longer ships per-tool adapters. It generates only the
