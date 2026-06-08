@@ -5,7 +5,7 @@ import type { ToolContext } from './context.js';
 
 /** Register all rulebook_skill_* MCP tools on the given server. */
 export function registerSkillTools(server: McpServer, ctx: ToolContext): void {
-    const { projectIdSchema, getSkillsMgr, getConfigMgr, autoCapture } = ctx;
+    const { projectIdSchema, getSkillsMgr, getConfigMgr } = ctx;
 
     // Register tool: rulebook_skill_list
     server.registerTool(
@@ -194,7 +194,6 @@ export function registerSkillTools(server: McpServer, ctx: ToolContext): void {
                     warnings: validation.warnings,
                     conflicts: validation.conflicts,
                 });
-                autoCapture('rulebook_skill_enable', args, resultText);
                 return { content: [{ type: 'text', text: resultText }] };
             } catch (error) {
                 return {
@@ -251,7 +250,6 @@ export function registerSkillTools(server: McpServer, ctx: ToolContext): void {
                     skillId: args.skillId,
                     message: `Skill ${args.skillId} disabled successfully`,
                 });
-                autoCapture('rulebook_skill_disable', args, resultText);
                 return { content: [{ type: 'text', text: resultText }] };
             } catch (error) {
                 return {

@@ -14,11 +14,9 @@ import {
 import { dirname, join, resolve } from 'path';
 import { z } from 'zod';
 import { ConfigManager } from '../core/state/config-manager.js';
-import { BackgroundIndexer } from '../core/indexer/background-indexer.js';
 import { SkillsManager, getDefaultTemplatesPath } from '../core/skills/skills-manager.js';
 import { TaskManager } from '../core/tasks/task-manager.js';
 import { WorkspaceManager } from '../core/workspace/workspace-manager.js';
-import type { ProjectWorker } from '../core/workspace/project-worker.js';
 import type { ToolContext } from './tools/context.js';
 import { registerTaskTools } from './tools/task-tools.js';
 import { registerSkillTools } from './tools/skill-tools.js';
@@ -317,17 +315,6 @@ export async function startRulebookMcpServer(): Promise<void> {
         return w.getSkillsManager();
     }
 
-    async function getMemMgr(
-        projectId?: string
-    ): Promise<ReturnType<ProjectWorker['getMemoryManager']>> {
-        if (workspaceManager) {
-            const pid = projectId ?? workspaceManager.getDefaultProjectId();
-            const w = await workspaceManager.getWorker(pid);
-            return w.getMemoryManager();
-        }
-        return memoryManager;
-    }
-
     const server = new McpServer({
         name: 'rulebook-task-management',
         version: '5.2.0',
@@ -373,508 +360,10 @@ export async function startRulebookMcpServer(): Promise<void> {
         getTaskMgr,
         getConfigMgr,
         getSkillsMgr,
-        getMemMgr,
-        autoCapture,
     };
 
     registerTaskTools(server, ctx);
     registerSkillTools(server, ctx);
-
-    // ============================================
-    // Memory System Functions (v3.0)
-    // ============================================
-
-    // Conditionally initialize MemoryManager (single-project mode only;
-    // in workspace mode each worker manages its own memory)
-    let memoryManager: Awaited<
-        ReturnType<typeof import('../memory/memory-manager.js').createMemoryManager>
-    > | null = null;
-    let bgIndexer: BackgroundIndexer | null = null;
-    let autoCaptureEnabled = false;
-
-    if (!isWorkspaceMode) {
-        const rulebookConfig = await configManager.loadConfig();
-        if (rulebookConfig.memory?.enabled) {
-            try {
-                const { createMemoryManager } = await import('../memory/memory-manager.js');
-                const memoryDbPath = join(
-                    projectRoot,
-                    rulebookConfig.memory.dbPath ?? '.rulebook/memory/memory.db'
-                );
-                console.error(`[rulebook-mcp] Memory DB: ${memoryDbPath}`);
-                memoryManager = createMemoryManager(projectRoot, rulebookConfig.memory);
-                autoCaptureEnabled = rulebookConfig.memory.autoCapture !== false;
-
-                // Boot Background Indexer only if memory is enabled (opt-in to save resources)
-                const indexerEnabled = rulebookConfig.memory?.enabled === true;
-                if (indexerEnabled) {
-                    bgIndexer = new BackgroundIndexer(memoryManager, projectRoot, {
-                        enabled: true,
-                        ...rulebookConfig.indexer,
-                    });
-                    setTimeout(() => {
-                        try {
-                            bgIndexer?.start();
-                        } catch (e) {
-                            console.error('[rulebook-mcp] BackgroundIndexer start failed:', e);
-                        }
-                    }, 5000);
-                }
-
-                (global as any).__indexerStatus = () => bgIndexer?.getStatus();
-            } catch (e) {
-                console.warn('[rulebook-mcp] Failed to boot Memory/Indexer:', e);
-            }
-        }
-    }
-
-    // --- Graceful shutdown for both modes ---
-    // Handles SIGINT (Ctrl+C), SIGTERM (parent exit), SIGHUP (terminal close),
-    // and stdin close (parent process died without signaling).
-    let isShuttingDown = false;
-
-    async function gracefulShutdown(reason: string): Promise<void> {
-        if (isShuttingDown) return; // Prevent double-shutdown races
-        isShuttingDown = true;
-        console.error(`[rulebook-mcp] Shutting down (${reason})...`);
-        try {
-            if (bgIndexer) bgIndexer.stop();
-            if (workspaceManager) {
-                await workspaceManager.shutdownAll();
-            }
-            if (memoryManager) await memoryManager.close();
-            releasePidLock(pidFilePath);
-        } catch (e) {
-            console.error('[rulebook-mcp] Error during shutdown:', e);
-        }
-        process.exit(0);
-    }
-
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
-
-    // Detect parent process exit: when the MCP client (e.g. Claude Code) dies,
-    // stdin closes. Without this, the server becomes an orphan that leaks memory.
-    process.stdin.on('end', () => gracefulShutdown('stdin closed'));
-    process.stdin.on('close', () => gracefulShutdown('stdin closed'));
-
-    // Safety net: if stdin becomes unreadable but doesn't emit 'end'/'close'
-    // (can happen on Windows), poll stdin.readable every 30s.
-    const STDIN_POLL_INTERVAL_MS = 30_000;
-    const stdinPollTimer = setInterval(() => {
-        if (process.stdin.destroyed || !process.stdin.readable) {
-            clearInterval(stdinPollTimer);
-            gracefulShutdown('stdin unreadable');
-        }
-    }, STDIN_POLL_INTERVAL_MS);
-    stdinPollTimer.unref(); // Don't keep the process alive just for this timer
-
-    /**
-     * Auto-capture: save tool interactions to memory in the background.
-     * Fire-and-forget — never blocks or fails the original tool call.
-     * Has its own 2s timeout to prevent hanging the event loop.
-     *
-     * The dynamic import is cached after the first call to avoid repeated
-     * module loading overhead on every tool invocation.
-     */
-    const AUTO_CAPTURE_TIMEOUT_MS = 2000;
-    let _captureFromToolCall:
-        | typeof import('../memory/memory-hooks.js').captureFromToolCall
-        | null = null;
-
-    async function autoCapture(
-        toolName: string,
-        args: Record<string, unknown>,
-        resultText: string
-    ): Promise<void> {
-        if (!memoryManager || !autoCaptureEnabled) return;
-        try {
-            await withTimeout(
-                (async () => {
-                    if (!_captureFromToolCall) {
-                        const mod = await import('../memory/memory-hooks.js');
-                        _captureFromToolCall = mod.captureFromToolCall;
-                    }
-                    const captured = _captureFromToolCall(toolName, args, resultText);
-                    if (!captured) return;
-                    await memoryManager!.saveMemory({
-                        type: captured.type,
-                        title: captured.title,
-                        content: captured.content,
-                        tags: captured.tags,
-                    });
-                })(),
-                AUTO_CAPTURE_TIMEOUT_MS,
-                `autoCapture(${toolName})`
-            );
-        } catch {
-            // Never fail the original tool call — timeout or error is silently dropped
-        }
-    }
-
-    function memoryNotEnabled() {
-        return {
-            content: [
-                {
-                    type: 'text' as const,
-                    text: JSON.stringify({
-                        success: false,
-                        error: 'Memory system is not enabled. Set memory.enabled=true in .rulebook',
-                    }),
-                },
-            ],
-        };
-    }
-
-    // Register tool: rulebook_memory_search
-    server.registerTool(
-        'rulebook_memory_search',
-        {
-            title: 'Search Memories',
-            description: 'Search persistent memories using hybrid BM25+vector search',
-            inputSchema: {
-                query: z.string().describe('Search query'),
-                limit: z.number().optional().describe('Max results (default 20)'),
-                mode: z.enum(['bm25', 'vector', 'hybrid']).optional().describe('Search mode'),
-                type: z.string().optional().describe('Filter by memory type'),
-                projectId: projectIdSchema,
-            },
-        },
-        async (args) => {
-            const mm = await getMemMgr(args.projectId);
-            if (!mm) return memoryNotEnabled();
-            try {
-                const results = await mm.searchMemories({
-                    query: args.query,
-                    limit: args.limit,
-                    mode: args.mode,
-                    type: args.type as any,
-                });
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({ success: true, results, total: results.length }),
-                        },
-                    ],
-                };
-            } catch (error) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({ success: false, error: String(error) }),
-                        },
-                    ],
-                };
-            }
-        }
-    );
-
-    // Register tool: rulebook_memory_timeline
-    server.registerTool(
-        'rulebook_memory_timeline',
-        {
-            title: 'Memory Timeline',
-            description: 'Get chronological context around a specific memory',
-            inputSchema: {
-                memoryId: z.string().describe('Memory ID to anchor timeline'),
-                window: z
-                    .number()
-                    .optional()
-                    .describe('Number of memories before/after (default 5)'),
-                projectId: projectIdSchema,
-            },
-        },
-        async (args) => {
-            const mm = await getMemMgr(args.projectId);
-            if (!mm) return memoryNotEnabled();
-            try {
-                const timeline = await mm.getTimeline(args.memoryId, args.window);
-                return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: true, timeline }) }],
-                };
-            } catch (error) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({ success: false, error: String(error) }),
-                        },
-                    ],
-                };
-            }
-        }
-    );
-
-    // Register tool: rulebook_memory_get
-    server.registerTool(
-        'rulebook_memory_get',
-        {
-            title: 'Get Memory Details',
-            description: 'Get full details for specific memory IDs',
-            inputSchema: {
-                ids: z.array(z.string()).describe('Memory IDs to fetch'),
-                projectId: projectIdSchema,
-            },
-        },
-        async (args) => {
-            const mm = await getMemMgr(args.projectId);
-            if (!mm) return memoryNotEnabled();
-            try {
-                const memories = await mm.getFullDetails(args.ids);
-                return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: true, memories }) }],
-                };
-            } catch (error) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({ success: false, error: String(error) }),
-                        },
-                    ],
-                };
-            }
-        }
-    );
-
-    // Register tool: rulebook_memory_save
-    server.registerTool(
-        'rulebook_memory_save',
-        {
-            title: 'Save Memory',
-            description: 'Save a new memory manually',
-            inputSchema: {
-                type: z
-                    .string()
-                    .describe(
-                        'Memory type (bugfix, feature, refactor, decision, discovery, change, observation)'
-                    ),
-                title: z.string().describe('Memory title'),
-                content: z.string().describe('Memory content'),
-                tags: z.array(z.string()).optional().describe('Tags'),
-                projectId: projectIdSchema,
-            },
-        },
-        async (args) => {
-            const mm = await getMemMgr(args.projectId);
-            if (!mm) return memoryNotEnabled();
-            try {
-                const memory = await mm.saveMemory({
-                    type: args.type as any,
-                    title: args.title,
-                    content: args.content,
-                    tags: args.tags,
-                });
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({
-                                success: true,
-                                memory: { id: memory.id, type: memory.type, title: memory.title },
-                            }),
-                        },
-                    ],
-                };
-            } catch (error) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({ success: false, error: String(error) }),
-                        },
-                    ],
-                };
-            }
-        }
-    );
-
-    // Register tool: rulebook_memory_stats
-    server.registerTool(
-        'rulebook_memory_stats',
-        {
-            title: 'Memory Statistics',
-            description: 'Get memory database statistics',
-            inputSchema: {
-                projectId: projectIdSchema,
-            },
-        },
-        async (args) => {
-            const mm = await getMemMgr(args.projectId);
-            if (!mm) return memoryNotEnabled();
-            try {
-                const stats = await mm.getStats();
-                return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: true, stats }) }],
-                };
-            } catch (error) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({ success: false, error: String(error) }),
-                        },
-                    ],
-                };
-            }
-        }
-    );
-
-    // Register tool: rulebook_memory_cleanup
-    server.registerTool(
-        'rulebook_memory_cleanup',
-        {
-            title: 'Memory Cleanup',
-            description: 'Force memory eviction and cleanup',
-            inputSchema: {
-                force: z.boolean().optional().describe('Force cleanup regardless of size'),
-                projectId: projectIdSchema,
-            },
-        },
-        async (args) => {
-            const mm = await getMemMgr(args.projectId);
-            if (!mm) return memoryNotEnabled();
-            try {
-                const result = await mm.cleanup(args.force ?? false);
-                return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: true, ...result }) }],
-                };
-            } catch (error) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({ success: false, error: String(error) }),
-                        },
-                    ],
-                };
-            }
-        }
-    );
-
-    // --- Background Indexer Tools ---
-
-    // Register tool: rulebook_codebase_search
-    server.registerTool(
-        'rulebook_codebase_search',
-        {
-            title: 'Codebase Semantic Search',
-            description: 'Search the entire project semantically (via AST chunks and paragraphs)',
-            inputSchema: {
-                query: z.string().describe('The code or concept you are looking for'),
-                limit: z.number().optional().describe('Result limit (default 10)'),
-            },
-        },
-        async (args) => {
-            if (!memoryManager) return memoryNotEnabled();
-            try {
-                const results = await memoryManager.searchMemories({
-                    query: args.query,
-                    limit: args.limit ?? 10,
-                    mode: 'hybrid', // Force hybrid search for best code-chunk matching
-                });
-
-                // Filter out normal memories, keep only code nodes
-                const codeResults = results.filter((r: any) => r.id.startsWith('__code__'));
-
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({ success: true, results: codeResults }),
-                        },
-                    ],
-                };
-            } catch (error) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({ success: false, error: String(error) }),
-                        },
-                    ],
-                };
-            }
-        }
-    );
-
-    // Register tool: rulebook_codebase_graph
-    server.registerTool(
-        'rulebook_codebase_graph',
-        {
-            title: 'Codebase Graph Explorer',
-            description: 'Find relationships (imports, exports) of a specific code node or file',
-            inputSchema: {
-                filePath: z
-                    .string()
-                    .describe('The strict file path to query (e.g. src/core/app.ts)'),
-            },
-        },
-        async (args) => {
-            if (!memoryManager) return memoryNotEnabled();
-            try {
-                // Since V1 has limited Graph search implementation in memory-search,
-                // we'll return a placeholder indicating the edge relations.
-                // In a real implementation we would call a memoryManager.getGraphAdjacent(args.filePath)
-
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({
-                                success: true,
-                                message: `Graph query for ${args.filePath} accepted. (Note: Graph deep-search pending V2 implementation, use codebase_search for now.)`,
-                                filePath: args.filePath,
-                            }),
-                        },
-                    ],
-                };
-            } catch (error) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({ success: false, error: String(error) }),
-                        },
-                    ],
-                };
-            }
-        }
-    );
-
-    // Register tool: rulebook_indexer_status
-    server.registerTool(
-        'rulebook_indexer_status',
-        {
-            title: 'Background Indexer Status',
-            description: 'Get the status of the local autonomous filesystem indexer',
-            inputSchema: {},
-        },
-        async () => {
-            try {
-                // Because the BackgroundIndexer runs asynchronously, we fetch its global state
-                // assuming it was attached to the server context during boot.
-                const status = (global as any).__indexerStatus
-                    ? (global as any).__indexerStatus()
-                    : { running: false, error: 'Indexer not attached to global context' };
-                return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: true, status }) }],
-                };
-            } catch (error) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({ success: false, error: String(error) }),
-                        },
-                    ],
-                };
-            }
-        }
-    );
 
     registerWorkspaceTools(server, ctx);
 
@@ -918,16 +407,6 @@ export async function startRulebookMcpServer(): Promise<void> {
                 const plansPath = join(root, '.rulebook', 'PLANS.md');
                 if (existsSync(plansPath)) {
                     result.plans = await readFile(plansPath, 'utf-8');
-                }
-
-                // Search relevant memories
-                if (args.query && memoryManager) {
-                    const searchResults = await memoryManager.searchMemories({
-                        query: args.query,
-                        mode: 'hybrid',
-                        limit: 5,
-                    });
-                    result.memories = searchResults;
                 }
 
                 return {
@@ -998,16 +477,6 @@ export async function startRulebookMcpServer(): Promise<void> {
                     await writeFile(plansPath, newContent, 'utf-8');
                 }
 
-                // Also save to memory if available
-                if (memoryManager) {
-                    await memoryManager.saveMemory({
-                        type: 'observation',
-                        title: `Session summary ${date}`,
-                        content: args.summary,
-                        tags: ['session', 'summary'],
-                    });
-                }
-
                 return {
                     content: [
                         {
@@ -1036,6 +505,18 @@ export async function startRulebookMcpServer(): Promise<void> {
     );
 
     registerRulesTools(server, ctx);
+
+    // Release the PID lock on shutdown so a restart can re-acquire it.
+    const releaseLock = () => releasePidLock(pidFilePath);
+    process.on('SIGINT', () => {
+        releaseLock();
+        process.exit(0);
+    });
+    process.on('SIGTERM', () => {
+        releaseLock();
+        process.exit(0);
+    });
+    process.on('exit', releaseLock);
 
     const transport = new StdioServerTransport();
     await server.connect(transport);

@@ -4,7 +4,7 @@ import type { ToolContext } from './context.js';
 
 /** Register all rulebook_task_* MCP tools on the given server. */
 export function registerTaskTools(server: McpServer, ctx: ToolContext): void {
-    const { projectIdSchema, getTaskMgr, autoCapture } = ctx;
+    const { projectIdSchema, getTaskMgr } = ctx;
 
     // Register tool: rulebook_task_create
     server.registerTool(
@@ -29,7 +29,6 @@ export function registerTaskTools(server: McpServer, ctx: ToolContext): void {
                 taskId: args.taskId,
                 message: `Task ${args.taskId} created successfully`,
             });
-            autoCapture('rulebook_task_create', args, resultText);
             return { content: [{ type: 'text', text: resultText }] };
         }
     );
@@ -141,7 +140,6 @@ export function registerTaskTools(server: McpServer, ctx: ToolContext): void {
                 taskId: args.taskId,
                 message: `Task ${args.taskId} updated successfully`,
             });
-            autoCapture('rulebook_task_update', args, resultText);
             return { content: [{ type: 'text', text: resultText }] };
         }
     );
@@ -197,7 +195,6 @@ export function registerTaskTools(server: McpServer, ctx: ToolContext): void {
                 taskId: args.taskId,
                 message: `Task ${args.taskId} archived successfully`,
             });
-            autoCapture('rulebook_task_archive', args, resultText);
             return { content: [{ type: 'text', text: resultText }] };
         }
     );
@@ -221,7 +218,6 @@ export function registerTaskTools(server: McpServer, ctx: ToolContext): void {
                 taskId: args.taskId,
                 message: `Task ${args.taskId} deleted successfully`,
             });
-            autoCapture('rulebook_task_delete', args, resultText);
             return { content: [{ type: 'text', text: resultText }] };
         }
     );
