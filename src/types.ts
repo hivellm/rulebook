@@ -107,11 +107,7 @@ export interface ModuleDetection {
         | 'github'
         | 'playwright'
         | 'supabase'
-        | 'notion'
-        | 'atlassian'
         | 'serena'
-        | 'figma'
-        | 'grafana'
         | 'rulebook_mcp'
         | 'sequential_thinking';
     detected: boolean;

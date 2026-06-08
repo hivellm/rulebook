@@ -676,58 +676,10 @@ const AGENT_REGISTRY: AgentEntry[] = [
         when: 'System design, ADRs, scalability decisions',
     },
     {
-        task: 'API Design',
-        agent: 'api-designer',
-        model: 'sonnet',
-        when: 'REST/GraphQL endpoints, OpenAPI specs',
-    },
-    {
-        task: 'Database',
-        agent: 'database-architect',
-        model: 'sonnet',
-        when: 'Schema design, migrations, query optimization',
-    },
-    {
-        task: 'DevOps',
-        agent: 'devops-engineer',
-        model: 'sonnet',
-        when: 'CI/CD, Docker, Kubernetes, infrastructure',
-    },
-    {
         task: 'Performance',
         agent: 'performance-engineer',
         model: 'sonnet',
         when: 'Profiling, benchmarks, optimization',
-    },
-    {
-        task: 'Refactoring',
-        agent: 'refactoring-agent',
-        model: 'sonnet',
-        when: 'Code smells, complexity reduction, cleanup',
-    },
-    {
-        task: 'Migration',
-        agent: 'migration-engineer',
-        model: 'sonnet',
-        when: 'DB migrations, API migrations, upgrades',
-    },
-    {
-        task: 'Accessibility',
-        agent: 'accessibility-reviewer',
-        model: 'haiku',
-        when: 'WCAG compliance, ARIA, screen readers',
-    },
-    {
-        task: 'i18n',
-        agent: 'i18n-engineer',
-        model: 'haiku',
-        when: 'Internationalization, localization, RTL',
-    },
-    {
-        task: 'UX Review',
-        agent: 'ux-reviewer',
-        model: 'haiku',
-        when: 'Usability, interaction patterns, error states',
     },
     // Orchestration
     {
