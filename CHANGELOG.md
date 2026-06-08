@@ -26,6 +26,10 @@ section is appended as each phase lands.
 
 ### Internal — readability
 
+- Rewrote the README for the 6.0.0 direction: removed the multi-IDE matrix, the
+  "23 AI tools" list, persistent-memory, terse-mode and VSCode-extension
+  sections, and trimmed the hook/MCP tables. The framing is now tool-agnostic
+  via `AGENTS.md` + Claude Code.
 - Reformatted the codebase to 4-space indentation (`prettier` `tabWidth: 4`).
 - Split the 2400-line `src/mcp/rulebook-server.ts` into per-domain tool modules
   under `src/mcp/tools/*` (task, skill, workspace, decision, knowledge, learn,
