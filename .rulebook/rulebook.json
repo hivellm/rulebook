@@ -1,21 +1,15 @@
 {
-  "version": "5.7.0",
-  "installedAt": "2026-05-06T10:32:18.404Z",
-  "updatedAt": "2026-05-06T10:32:18.404Z",
+  "version": "6.0.0",
+  "installedAt": "2026-06-09T12:41:11.006Z",
+  "updatedAt": "2026-06-09T12:41:11.006Z",
   "projectId": "Rulebook",
   "mode": "full",
   "features": {
-    "watcher": false,
-    "agent": false,
     "logging": true,
-    "notifications": false,
-    "dryRun": false,
     "gitHooks": true,
-    "repl": false,
     "templates": true,
     "context": true,
     "health": true,
-    "plugins": false,
     "parallel": true,
     "smartContinue": true
   },
@@ -28,13 +22,6 @@
     "taskExecution": 3600000,
     "cliResponse": 180000,
     "testRun": 600000
-  },
-  "memory": {
-    "enabled": true,
-    "dbPath": ".rulebook/memory/memory.db",
-    "maxSizeBytes": 524288000,
-    "autoCapture": true,
-    "vectorDimensions": 256
   },
   "skills": {
     "enabled": [

@@ -82,7 +82,7 @@ If you must defer an item before archiving, you MUST create a follow-up rulebook
 After ANY implementation, execute in order:
 
 1. **Quality checks** (all must pass): type-check → lint (0 warnings) → format → tests (100%) → coverage (≥95%). Stop and fix on any failure.
-2. **Capture to memory**: `rulebook_memory_save` for decisions, patterns, gotchas, bug fixes.
+2. **Capture learnings**: `rulebook_knowledge_add` / `rulebook_learn_capture` for patterns, gotchas, and decisions.
 3. **Security audit**: `npm audit --production` (or language equivalent).
 4. **Update task**: `rulebook_task_update` + mark items `[x]`.
 5. **Update docs**: CHANGELOG (conventional commits), README if public API changed.
@@ -91,15 +91,10 @@ After ANY implementation, execute in order:
 
 **Skip steps only with explicit user permission.**
 
-## Persistent Memory
+## Session continuity
 
-Backed by Rulebook MCP server (BM25 + HNSW hybrid search). Memory persists across sessions.
-
-- **Start of session**: `rulebook_memory_search` for relevant past context.
-- **During work**: `rulebook_memory_save` for decisions, bugs, discoveries, user preferences.
-- **End of session**: `rulebook_session_end` writes a summary.
-
-3-layer search pattern: `rulebook_memory_search` (compact) → `rulebook_memory_timeline` (window) → `rulebook_memory_get` (full details).
+- **Start of session**: read `.rulebook/PLANS.md`; `rulebook_session_start` loads prior context.
+- **End of session**: `rulebook_session_end` writes a summary to `.rulebook/PLANS.md`.
 
 ## Knowledge Base
 
@@ -157,7 +152,6 @@ Avoid: emoji status tables, "Next Steps" sections, repeating the question, markd
 
 - **AGENT_AUTOMATION**: `/.rulebook/specs/AGENT_AUTOMATION.md`
 - **MULTI_AGENT**: `/.rulebook/specs/MULTI_AGENT.md`
-- **RULEBOOK_MCP**: `/.rulebook/specs/RULEBOOK_MCP.md`
 
 ## Multi-Agent Teams
 

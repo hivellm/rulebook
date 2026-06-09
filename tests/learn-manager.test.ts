@@ -5,131 +5,131 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 describe('LearnManager', () => {
-  let testDir: string;
-  let mgr: LearnManager;
+    let testDir: string;
+    let mgr: LearnManager;
 
-  beforeEach(async () => {
-    testDir = join(tmpdir(), `rulebook-test-learn-${Date.now()}`);
-    await fs.mkdir(testDir, { recursive: true });
-    mgr = new LearnManager(testDir);
-  });
-
-  afterEach(async () => {
-    await fs.rm(testDir, { recursive: true, force: true });
-  });
-
-  describe('capture', () => {
-    it('should create a learning entry', async () => {
-      const l = await mgr.capture('JSONB gotcha', 'Empty arrays return null');
-      expect(l.title).toBe('JSONB gotcha');
-      expect(l.content).toBe('Empty arrays return null');
-      expect(l.source).toBe('manual');
-      expect(l.id).toContain('jsonb-gotcha');
+    beforeEach(async () => {
+        testDir = join(tmpdir(), `rulebook-test-learn-${Date.now()}`);
+        await fs.mkdir(testDir, { recursive: true });
+        mgr = new LearnManager(testDir);
     });
 
-    it('should create md and metadata files', async () => {
-      const l = await mgr.capture('Test Learning', 'content');
-      const dir = join(testDir, '.rulebook', 'learnings');
-      const files = await fs.readdir(dir);
-      expect(files.some((f) => f.endsWith('.md') && f.includes('test-learning'))).toBe(true);
-      expect(files.some((f) => f.endsWith('.metadata.json') && f.includes('test-learning'))).toBe(
-        true
-      );
+    afterEach(async () => {
+        await fs.rm(testDir, { recursive: true, force: true });
     });
 
-    it('should store tags and related task', async () => {
-      const l = await mgr.capture('Learn', 'content', {
-        tags: ['db', 'postgres'],
-        relatedTask: 'feature-auth',
-        source: 'task-archive',
-      });
-      expect(l.tags).toEqual(['db', 'postgres']);
-      expect(l.relatedTask).toBe('feature-auth');
-      expect(l.source).toBe('task-archive');
-    });
-  });
+    describe('capture', () => {
+        it('should create a learning entry', async () => {
+            const l = await mgr.capture('JSONB gotcha', 'Empty arrays return null');
+            expect(l.title).toBe('JSONB gotcha');
+            expect(l.content).toBe('Empty arrays return null');
+            expect(l.source).toBe('manual');
+            expect(l.id).toContain('jsonb-gotcha');
+        });
 
-  describe('list', () => {
-    it('should return empty when no learnings', async () => {
-      const list = await mgr.list();
-      expect(list).toEqual([]);
-    });
+        it('should create md and metadata files', async () => {
+            const l = await mgr.capture('Test Learning', 'content');
+            const dir = join(testDir, '.rulebook', 'learnings');
+            const files = await fs.readdir(dir);
+            expect(files.some((f) => f.endsWith('.md') && f.includes('test-learning'))).toBe(true);
+            expect(
+                files.some((f) => f.endsWith('.metadata.json') && f.includes('test-learning'))
+            ).toBe(true);
+        });
 
-    it('should return learnings sorted newest first', async () => {
-      await mgr.capture('First', 'content1');
-      // Small delay to ensure different timestamps
-      await new Promise((r) => setTimeout(r, 10));
-      await mgr.capture('Second', 'content2');
-      const list = await mgr.list();
-      expect(list.length).toBe(2);
-      expect(list[0].title).toBe('Second');
-    });
-
-    it('should respect limit', async () => {
-      await mgr.capture('A', 'a');
-      await mgr.capture('B', 'b');
-      await mgr.capture('C', 'c');
-      const list = await mgr.list(2);
-      expect(list.length).toBe(2);
-    });
-  });
-
-  describe('show', () => {
-    it('should return null for non-existent', async () => {
-      const result = await mgr.show('nonexistent');
-      expect(result).toBeNull();
+        it('should store tags and related task', async () => {
+            const l = await mgr.capture('Learn', 'content', {
+                tags: ['db', 'postgres'],
+                relatedTask: 'feature-auth',
+                source: 'task-archive',
+            });
+            expect(l.tags).toEqual(['db', 'postgres']);
+            expect(l.relatedTask).toBe('feature-auth');
+            expect(l.source).toBe('task-archive');
+        });
     });
 
-    it('should return learning and content', async () => {
-      const l = await mgr.capture('Test Show', 'The content');
-      const result = await mgr.show(l.id);
-      expect(result).not.toBeNull();
-      expect(result!.learning.title).toBe('Test Show');
-      expect(result!.content).toContain('The content');
-    });
-  });
+    describe('list', () => {
+        it('should return empty when no learnings', async () => {
+            const list = await mgr.list();
+            expect(list).toEqual([]);
+        });
 
-  describe('promote', () => {
-    it('should return null for non-existent learning', async () => {
-      const result = await mgr.promote('nonexistent', 'knowledge');
-      expect(result).toBeNull();
-    });
+        it('should return learnings sorted newest first', async () => {
+            await mgr.capture('First', 'content1');
+            // Small delay to ensure different timestamps
+            await new Promise((r) => setTimeout(r, 10));
+            await mgr.capture('Second', 'content2');
+            const list = await mgr.list();
+            expect(list.length).toBe(2);
+            expect(list[0].title).toBe('Second');
+        });
 
-    it('should promote to knowledge entry', async () => {
-      const l = await mgr.capture('Pattern Found', 'Always use repos for DB access');
-      const result = await mgr.promote(l.id, 'knowledge');
-      expect(result).not.toBeNull();
-      expect(result!.type).toBe('knowledge');
-
-      // Check learning marked as promoted
-      const updated = await mgr.show(l.id);
-      expect(updated!.learning.promotedTo).toEqual({
-        type: 'knowledge',
-        id: result!.id,
-      });
+        it('should respect limit', async () => {
+            await mgr.capture('A', 'a');
+            await mgr.capture('B', 'b');
+            await mgr.capture('C', 'c');
+            const list = await mgr.list(2);
+            expect(list.length).toBe(2);
+        });
     });
 
-    it('should promote to decision', async () => {
-      const l = await mgr.capture('Should use Redis', 'Redis is faster for caching');
-      const result = await mgr.promote(l.id, 'decision');
-      expect(result).not.toBeNull();
-      expect(result!.type).toBe('decision');
+    describe('show', () => {
+        it('should return null for non-existent', async () => {
+            const result = await mgr.show('nonexistent');
+            expect(result).toBeNull();
+        });
 
-      // Check learning marked as promoted
-      const updated = await mgr.show(l.id);
-      expect(updated!.learning.promotedTo!.type).toBe('decision');
+        it('should return learning and content', async () => {
+            const l = await mgr.capture('Test Show', 'The content');
+            const result = await mgr.show(l.id);
+            expect(result).not.toBeNull();
+            expect(result!.learning.title).toBe('Test Show');
+            expect(result!.content).toContain('The content');
+        });
     });
 
-    it('should use custom title when provided', async () => {
-      const l = await mgr.capture('Raw learning', 'Content here');
-      const result = await mgr.promote(l.id, 'knowledge', { title: 'Polished Pattern' });
-      expect(result).not.toBeNull();
+    describe('promote', () => {
+        it('should return null for non-existent learning', async () => {
+            const result = await mgr.promote('nonexistent', 'knowledge');
+            expect(result).toBeNull();
+        });
 
-      // Verify knowledge entry has custom title
-      const { KnowledgeManager } = await import('../src/core/tasks/knowledge-manager.js');
-      const km = new KnowledgeManager(testDir);
-      const entry = await km.show(result!.id);
-      expect(entry!.entry.title).toBe('Polished Pattern');
+        it('should promote to knowledge entry', async () => {
+            const l = await mgr.capture('Pattern Found', 'Always use repos for DB access');
+            const result = await mgr.promote(l.id, 'knowledge');
+            expect(result).not.toBeNull();
+            expect(result!.type).toBe('knowledge');
+
+            // Check learning marked as promoted
+            const updated = await mgr.show(l.id);
+            expect(updated!.learning.promotedTo).toEqual({
+                type: 'knowledge',
+                id: result!.id,
+            });
+        });
+
+        it('should promote to decision', async () => {
+            const l = await mgr.capture('Should use Redis', 'Redis is faster for caching');
+            const result = await mgr.promote(l.id, 'decision');
+            expect(result).not.toBeNull();
+            expect(result!.type).toBe('decision');
+
+            // Check learning marked as promoted
+            const updated = await mgr.show(l.id);
+            expect(updated!.learning.promotedTo!.type).toBe('decision');
+        });
+
+        it('should use custom title when provided', async () => {
+            const l = await mgr.capture('Raw learning', 'Content here');
+            const result = await mgr.promote(l.id, 'knowledge', { title: 'Polished Pattern' });
+            expect(result).not.toBeNull();
+
+            // Verify knowledge entry has custom title
+            const { KnowledgeManager } = await import('../src/core/tasks/knowledge-manager.js');
+            const km = new KnowledgeManager(testDir);
+            const entry = await km.show(result!.id);
+            expect(entry!.entry.title).toBe('Polished Pattern');
+        });
     });
-  });
 });

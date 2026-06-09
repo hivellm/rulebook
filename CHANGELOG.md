@@ -7,6 +7,115 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.0.0] - 2026-06-08
+
+Scope reduction (breaking). Driven by a cross-project usage analysis of 8
+projects with `.rulebook/`: features with near-zero real adoption are removed so
+the toolkit ships only what people actually use. Delivered in phases; this
+section is appended as each phase lands.
+
+### Removed — over-provisioned agents & niche MCP modules
+
+- Pruned the agent template library from 21 flat agents + 5 project-type subdirs
+  to the 11 actually used (delegation core + `performance-engineer`,
+  `quality-gatekeeper`, `team-lead`). The 10 never-dispatched role agents and
+  their delegation-table entries were removed, along with the orphaned
+  `compiler`/`game-engine`/`generic`/`mobile`/`web-app` agent subdirs (the
+  installer only ever copied the flat `*.md`).
+- Removed the niche, never-detected MCP module docs/skills `figma`, `grafana`,
+  `notion`, `atlassian` (and their `ModuleId`/init-prompt entries). The
+  remaining modules (vectorizer, synap, context7, github, playwright, supabase,
+  serena, rulebook-mcp, sequential-thinking) and the language/dev/core skill
+  library are retained — they are detected and heavily used.
+
+### Removed — persistent-memory & indexer subsystem
+
+- Removed the persistent-memory and background-indexer subsystem. Cross-project
+  usage showed it was effectively dev-repo-only, and it carried an always-on
+  indexing process plus 9 of the 35 MCP tools. Deleted `src/memory/*`
+  (MemoryManager, file store/search, codegraph, legacy migrator),
+  `src/core/indexer/*` (BackgroundIndexer, file parser), the `rulebook memory`
+  CLI commands, and the memory/indexer config blocks. Removed the MCP tools
+  `memory_save/search/get/timeline/stats/cleanup`, `codebase_search`,
+  `codebase_graph`, `indexer_status`, and the memory-backed
+  `rulebook_workspace_search` — the MCP surface drops 35 → **25**.
+  `session_start`/`session_end` keep working on `PLANS.md` (their optional
+  memory branches were removed). The lightweight, file-based **knowledge /
+  learnings / decisions** features are retained. Existing `.rulebook/memory/`
+  data on disk is left untouched.
+
+### Removed — all IDE/CLI adapters (tool-agnostic via AGENTS.md)
+
+- Rulebook no longer ships per-tool adapters. It generates only the
+  tool-agnostic `AGENTS.md` (+ `AGENTS.override.md`, `CLAUDE.md`, and `.claude/`
+  for Claude Code) — every other agent reads `AGENTS.md` natively, so coverage
+  is unchanged with far less surface. Removed:
+  - **OpenCode** integration (generator + templates).
+  - **multi-tool generator** (Gemini/Windsurf/Copilot/Continue config files) +
+    `templates/ides/`.
+  - **IDE/CLI rule generators** in `workflow-generator.ts` (cursor/windsurf/
+    vscode/copilot rules, cursor commands, CODEX/GEMINI CLI files) and the
+    non-Claude `templates/cli/*`.
+  - **IDE detection** (`detectCursor/GeminiCli/ContinueDev/Windsurf/
+    GithubCopilot/Opencode`) and the detection types.
+  - **`ProjectConfig.ides`** and the "Select IDEs/tools" init prompt.
+  - **rule-engine IDE projection** (`projectToCursor/Gemini/Copilot/Windsurf/
+    ContinueDev`); `projectRules` now targets Claude Code only.
+  - The **IDE/CLI skill matrix**: `templates/skills/ides/*` and the non-Claude
+    `templates/skills/cli/*`.
+- **`rulebook agent`** removed: the external-CLI runner (`cli-bridge.ts` + the
+  cursor/gemini/claude stream parsers in `src/agents/`) was orphaned dead code
+  with no CLI command wiring it up.
+
+### Removed — Claude Code plugin distribution
+
+- Dropped the Claude Code plugin/marketplace distribution. Rulebook is used via
+  its MCP server, not as a Claude plugin, so the plugin payload and installer
+  were dead weight. Removed the root `commands/` and `skills/` plugin payload,
+  `.claude-plugin/` (plugin.json + marketplace.json), the root `marketplace.json`
+  duplicate, the `setup:plugin` CLI command and its `setupClaudeCodePlugin`
+  installer (which wrote into `~/.claude/plugins`), and the plugin test suite.
+  `package.json` `files` now ships only `dist` + `templates`.
+
+### Build
+
+- Pinned `@modelcontextprotocol/sdk` to `1.22.0`. SDK ≥1.26 (the first
+  security-patched line) regressed `registerTool`'s generic types into a
+  `TS2589` "type instantiation excessively deep" error in the per-domain tool
+  modules. The advisory the newer line fixes (GHSA-345p-7cg4-v4c7 — cross-client
+  data leak via a shared server/transport instance) does not apply to rulebook's
+  per-process stdio MCP server (one client per process). Tracked for an upgrade
+  once the SDK type regression is resolved.
+
+### Internal — readability
+
+- Rewrote the README for the 6.0.0 direction: removed the multi-IDE matrix, the
+  "23 AI tools" list, persistent-memory, terse-mode and VSCode-extension
+  sections, and trimmed the hook/MCP tables. The framing is now tool-agnostic
+  via `AGENTS.md` + Claude Code.
+- Reformatted the codebase to 4-space indentation (`prettier` `tabWidth: 4`).
+- Split the 2400-line `src/mcp/rulebook-server.ts` into per-domain tool modules
+  under `src/mcp/tools/*` (task, skill, workspace, decision, knowledge, learn,
+  rules), each exporting `registerXxxTools(server, ctx)`. No file exceeds 1500
+  lines. Pure structural refactor — no behavior change.
+
+### Removed — dead feature flags (phase 1)
+
+- Removed six `features` flags that were OFF in every sampled project and gated
+  no behavior: `watcher`, `agent`, `notifications`, `dryRun`, `repl`, `plugins`.
+  The `RulebookFeatures` type now exposes only `logging`, `gitHooks`,
+  `templates`, `context`, `health`, `parallel`, `smartContinue`. Legacy
+  `rulebook.json` files carrying the removed keys are normalized (the keys are
+  dropped) on load/migrate — no error.
+
+### Changed — Ralph cleanup (phase 1)
+
+- The legacy-Ralph purge that `rulebook update` runs is now an exported,
+  unit-tested function (`purgeLegacyRalphArtifacts`). The Ralph subsystem was
+  already removed; this finishes the cleanup and guards it with a regression
+  test. Archived task records under `.rulebook/archive/` are retained as project
+  history.
+
 ## [5.9.0] - 2026-06-08
 
 ### Changed — default install ships exactly one hook (perf)

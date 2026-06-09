@@ -9,340 +9,346 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export interface HookGenerationOptions {
-  languages: LanguageDetection[];
-  cwd: string;
+    languages: LanguageDetection[];
+    cwd: string;
 }
 
 const LANGUAGE_HOOK_MAP: Record<string, string> = {
-  typescript: 'typescript',
-  javascript: 'typescript',
-  rust: 'rust',
-  python: 'python',
-  go: 'go',
-  java: 'java',
-  csharp: 'csharp',
-  php: 'php',
-  ruby: 'ruby',
-  elixir: 'elixir',
-  kotlin: 'kotlin',
-  swift: 'swift',
-  scala: 'scala',
-  dart: 'dart',
-  erlang: 'erlang',
-  haskell: 'haskell',
+    typescript: 'typescript',
+    javascript: 'typescript',
+    rust: 'rust',
+    python: 'python',
+    go: 'go',
+    java: 'java',
+    csharp: 'csharp',
+    php: 'php',
+    ruby: 'ruby',
+    elixir: 'elixir',
+    kotlin: 'kotlin',
+    swift: 'swift',
+    scala: 'scala',
+    dart: 'dart',
+    erlang: 'erlang',
+    haskell: 'haskell',
 };
 
 async function loadHookTemplate(
-  language: string,
-  hookType: 'pre-commit' | 'pre-push'
+    language: string,
+    hookType: 'pre-commit' | 'pre-push'
 ): Promise<string | null> {
-  try {
-    const templatePath = path.join(
-      __dirname,
-      '../../templates/hooks',
-      `${language}-${hookType}.sh`
-    );
-    return await readFile(templatePath, 'utf-8');
-  } catch {
-    return null;
-  }
+    try {
+        const templatePath = path.join(
+            __dirname,
+            '../../templates/hooks',
+            `${language}-${hookType}.sh`
+        );
+        return await readFile(templatePath, 'utf-8');
+    } catch {
+        return null;
+    }
 }
 
 function parseShellHookToNode(hookContent: string): string[] {
-  const commands: string[] = [];
-  const lines = hookContent.split('\n');
-  let insideConditional = false;
+    const commands: string[] = [];
+    const lines = hookContent.split('\n');
+    let insideConditional = false;
 
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
+    for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
 
-    // Skip comments and empty lines
-    if (!trimmed || trimmed.startsWith('#')) {
-      continue;
-    }
-
-    // Track conditional blocks
-    if (trimmed.startsWith('if ') || trimmed.startsWith('elif ')) {
-      insideConditional = true;
-      continue;
-    }
-    if (trimmed === 'fi') {
-      insideConditional = false;
-      continue;
-    }
-
-    // Skip echo and exit statements
-    if (trimmed.startsWith('echo') || trimmed.startsWith('exit')) {
-      continue;
-    }
-
-    // Extract command before || exit 1 or similar
-    const mainCommand = trimmed.split('||')[0].trim().split('{')[0].trim();
-    const options = insideConditional ? ', { allowFailure: true }' : '';
-
-    // Skip shell-specific commands and conditionals, but try to extract commands from them
-    if (mainCommand.startsWith('if ') || mainCommand.startsWith('$(')) {
-      // Try to extract commands from complex conditionals (e.g., "if [ "$(gofmt -l . | wc -l)" -gt 0 ]")
-      if (mainCommand.includes('gofmt')) {
-        // Extract gofmt command from conditional
-        const gofmtMatch = mainCommand.match(/gofmt\s+(-l|-w)?\s*\.?/);
-        if (gofmtMatch) {
-          commands.push(`await runCommand('gofmt', ['-l', '.']${options});`);
+        // Skip comments and empty lines
+        if (!trimmed || trimmed.startsWith('#')) {
+            continue;
         }
-      }
-      continue;
-    }
-    if (mainCommand.startsWith('[') && !mainCommand.includes('gofmt')) {
-      continue;
-    }
 
-    // Parse npm/npx commands
-    if (mainCommand.startsWith('npm run ')) {
-      const script = mainCommand.replace('npm run ', '').trim();
-      commands.push(`await runCommand('npm', ['run', '${script}']${options});`);
-    } else if (mainCommand.startsWith('npx ')) {
-      const parts = mainCommand.replace('npx ', '').trim();
-      const partsArray = parts.split(/\s+/).filter((p) => p && !p.startsWith('2>'));
-      const cmd = partsArray[0];
-      const args = partsArray.slice(1).filter((arg) => arg && !arg.match(/^["'].*["']$/));
-      if (args.length > 0) {
-        commands.push(`await runCommand('npx', ['${cmd}', ...${JSON.stringify(args)}]${options});`);
-      } else {
-        commands.push(`await runCommand('npx', ['${cmd}']${options});`);
-      }
-    } else if (mainCommand === 'npm test' || mainCommand.startsWith('npm test ')) {
-      commands.push(`await runCommand('npm', ['test']${options});`);
-    } else if (mainCommand === 'npm run build' || mainCommand.startsWith('npm run build ')) {
-      commands.push(`await runCommand('npm', ['run', 'build']${options});`);
-    } else {
-      // Parse other commands (cargo, go, python tools, etc.)
-      // Split command and arguments
-      const parts = mainCommand.split(/\s+/).filter((p) => p && !p.startsWith('2>'));
-      if (parts.length > 0) {
-        const cmd = parts[0];
-        const args = parts.slice(1).filter((arg) => {
-          // Filter out shell-specific syntax
-          return (
-            arg &&
-            !arg.match(/^["'].*["']$/) &&
-            !arg.startsWith('$') &&
-            !arg.includes('|') &&
-            !arg.includes('&&')
-          );
-        });
-
-        // Only add if it's a recognized command (not a shell builtin)
-        const recognizedCommands = [
-          'cargo',
-          'go',
-          'gofmt',
-          'black',
-          'ruff',
-          'flake8',
-          'mypy',
-          'pytest',
-          'python',
-          'python3',
-          'golangci-lint',
-          'make',
-        ];
-        if (recognizedCommands.includes(cmd) || cmd.startsWith('./')) {
-          if (args.length > 0) {
-            commands.push(`await runCommand('${cmd}', ${JSON.stringify(args)}${options});`);
-          } else {
-            commands.push(`await runCommand('${cmd}', []${options});`);
-          }
+        // Track conditional blocks
+        if (trimmed.startsWith('if ') || trimmed.startsWith('elif ')) {
+            insideConditional = true;
+            continue;
         }
-      }
-    }
-  }
+        if (trimmed === 'fi') {
+            insideConditional = false;
+            continue;
+        }
 
-  return commands;
+        // Skip echo and exit statements
+        if (trimmed.startsWith('echo') || trimmed.startsWith('exit')) {
+            continue;
+        }
+
+        // Extract command before || exit 1 or similar
+        const mainCommand = trimmed.split('||')[0].trim().split('{')[0].trim();
+        const options = insideConditional ? ', { allowFailure: true }' : '';
+
+        // Skip shell-specific commands and conditionals, but try to extract commands from them
+        if (mainCommand.startsWith('if ') || mainCommand.startsWith('$(')) {
+            // Try to extract commands from complex conditionals (e.g., "if [ "$(gofmt -l . | wc -l)" -gt 0 ]")
+            if (mainCommand.includes('gofmt')) {
+                // Extract gofmt command from conditional
+                const gofmtMatch = mainCommand.match(/gofmt\s+(-l|-w)?\s*\.?/);
+                if (gofmtMatch) {
+                    commands.push(`await runCommand('gofmt', ['-l', '.']${options});`);
+                }
+            }
+            continue;
+        }
+        if (mainCommand.startsWith('[') && !mainCommand.includes('gofmt')) {
+            continue;
+        }
+
+        // Parse npm/npx commands
+        if (mainCommand.startsWith('npm run ')) {
+            const script = mainCommand.replace('npm run ', '').trim();
+            commands.push(`await runCommand('npm', ['run', '${script}']${options});`);
+        } else if (mainCommand.startsWith('npx ')) {
+            const parts = mainCommand.replace('npx ', '').trim();
+            const partsArray = parts.split(/\s+/).filter((p) => p && !p.startsWith('2>'));
+            const cmd = partsArray[0];
+            const args = partsArray.slice(1).filter((arg) => arg && !arg.match(/^["'].*["']$/));
+            if (args.length > 0) {
+                commands.push(
+                    `await runCommand('npx', ['${cmd}', ...${JSON.stringify(args)}]${options});`
+                );
+            } else {
+                commands.push(`await runCommand('npx', ['${cmd}']${options});`);
+            }
+        } else if (mainCommand === 'npm test' || mainCommand.startsWith('npm test ')) {
+            commands.push(`await runCommand('npm', ['test']${options});`);
+        } else if (mainCommand === 'npm run build' || mainCommand.startsWith('npm run build ')) {
+            commands.push(`await runCommand('npm', ['run', 'build']${options});`);
+        } else {
+            // Parse other commands (cargo, go, python tools, etc.)
+            // Split command and arguments
+            const parts = mainCommand.split(/\s+/).filter((p) => p && !p.startsWith('2>'));
+            if (parts.length > 0) {
+                const cmd = parts[0];
+                const args = parts.slice(1).filter((arg) => {
+                    // Filter out shell-specific syntax
+                    return (
+                        arg &&
+                        !arg.match(/^["'].*["']$/) &&
+                        !arg.startsWith('$') &&
+                        !arg.includes('|') &&
+                        !arg.includes('&&')
+                    );
+                });
+
+                // Only add if it's a recognized command (not a shell builtin)
+                const recognizedCommands = [
+                    'cargo',
+                    'go',
+                    'gofmt',
+                    'black',
+                    'ruff',
+                    'flake8',
+                    'mypy',
+                    'pytest',
+                    'python',
+                    'python3',
+                    'golangci-lint',
+                    'make',
+                ];
+                if (recognizedCommands.includes(cmd) || cmd.startsWith('./')) {
+                    if (args.length > 0) {
+                        commands.push(
+                            `await runCommand('${cmd}', ${JSON.stringify(args)}${options});`
+                        );
+                    } else {
+                        commands.push(`await runCommand('${cmd}', []${options});`);
+                    }
+                }
+            }
+        }
+    }
+
+    return commands;
 }
 
 export async function installGitHooks(options: HookGenerationOptions): Promise<void> {
-  const { languages, cwd } = options;
+    const { languages, cwd } = options;
 
-  const gitDir = path.join(cwd, '.git');
-  try {
-    await access(gitDir);
-  } catch {
-    throw new Error('Git repository not initialized. Run "git init" before installing hooks.');
-  }
-
-  const hooksDir = path.join(gitDir, 'hooks');
-
-  // Ensure hooks directory exists
-  await mkdir(hooksDir, { recursive: true });
-
-  // Clean up old hook files that might cause conflicts
-  const oldHookFiles = [
-    'pre-commit-internal',
-    'pre-push-internal',
-    'pre-commit-internal.sh',
-    'pre-push-internal.sh',
-  ];
-  for (const oldFile of oldHookFiles) {
+    const gitDir = path.join(cwd, '.git');
     try {
-      await unlink(path.join(hooksDir, oldFile));
+        await access(gitDir);
     } catch {
-      // Ignore if file doesn't exist
+        throw new Error('Git repository not initialized. Run "git init" before installing hooks.');
     }
-  }
 
-  // Generate and install pre-commit hook
-  const { shellScript, nodeScript } = await generatePreCommitHook(languages, cwd);
-  const preCommitShellPath = path.join(hooksDir, 'pre-commit');
-  const preCommitNodePath = path.join(hooksDir, 'pre-commit.js');
-  await writeFile(preCommitShellPath, normalizeLineEndings(shellScript), { mode: 0o755 });
-  await writeFile(preCommitNodePath, nodeScript, { mode: 0o644 });
+    const hooksDir = path.join(gitDir, 'hooks');
 
-  // Generate and install pre-push hook
-  const { shellScript: prePushShell, nodeScript: prePushNode } = await generatePrePushHook(
-    languages,
-    cwd
-  );
-  const prePushShellPath = path.join(hooksDir, 'pre-push');
-  const prePushNodePath = path.join(hooksDir, 'pre-push.js');
-  await writeFile(prePushShellPath, normalizeLineEndings(prePushShell), { mode: 0o755 });
-  await writeFile(prePushNodePath, prePushNode, { mode: 0o644 });
+    // Ensure hooks directory exists
+    await mkdir(hooksDir, { recursive: true });
+
+    // Clean up old hook files that might cause conflicts
+    const oldHookFiles = [
+        'pre-commit-internal',
+        'pre-push-internal',
+        'pre-commit-internal.sh',
+        'pre-push-internal.sh',
+    ];
+    for (const oldFile of oldHookFiles) {
+        try {
+            await unlink(path.join(hooksDir, oldFile));
+        } catch {
+            // Ignore if file doesn't exist
+        }
+    }
+
+    // Generate and install pre-commit hook
+    const { shellScript, nodeScript } = await generatePreCommitHook(languages, cwd);
+    const preCommitShellPath = path.join(hooksDir, 'pre-commit');
+    const preCommitNodePath = path.join(hooksDir, 'pre-commit.js');
+    await writeFile(preCommitShellPath, normalizeLineEndings(shellScript), { mode: 0o755 });
+    await writeFile(preCommitNodePath, nodeScript, { mode: 0o644 });
+
+    // Generate and install pre-push hook
+    const { shellScript: prePushShell, nodeScript: prePushNode } = await generatePrePushHook(
+        languages,
+        cwd
+    );
+    const prePushShellPath = path.join(hooksDir, 'pre-push');
+    const prePushNodePath = path.join(hooksDir, 'pre-push.js');
+    await writeFile(prePushShellPath, normalizeLineEndings(prePushShell), { mode: 0o755 });
+    await writeFile(prePushNodePath, prePushNode, { mode: 0o644 });
 }
 
 async function generatePreCommitHook(
-  languages: LanguageDetection[],
-  cwd: string
+    languages: LanguageDetection[],
+    cwd: string
 ): Promise<{ shellScript: string; nodeScript: string }> {
-  const commands: string[] = [];
-  const packageJsonPath = path.join(cwd, 'package.json');
-  const hasTypeScript = languages.some(
-    (l) => l.language === 'typescript' || l.language === 'javascript'
-  );
+    const commands: string[] = [];
+    const packageJsonPath = path.join(cwd, 'package.json');
+    const hasTypeScript = languages.some(
+        (l) => l.language === 'typescript' || l.language === 'javascript'
+    );
 
-  // Check if package.json exists and read scripts
-  let hasPackageJson = false;
-  let packageJson: any = {};
+    // Check if package.json exists and read scripts
+    let hasPackageJson = false;
+    let packageJson: any = {};
 
-  try {
-    if (
-      await access(packageJsonPath)
-        .then(() => true)
-        .catch(() => false)
-    ) {
-      hasPackageJson = true;
-      packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+    try {
+        if (
+            await access(packageJsonPath)
+                .then(() => true)
+                .catch(() => false)
+        ) {
+            hasPackageJson = true;
+            packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+        }
+    } catch {
+        // Ignore
     }
-  } catch {
-    // Ignore
-  }
 
-  // Try to load template for each language
-  for (const lang of languages) {
-    const mappedLang = LANGUAGE_HOOK_MAP[lang.language];
-    if (!mappedLang) continue;
+    // Try to load template for each language
+    for (const lang of languages) {
+        const mappedLang = LANGUAGE_HOOK_MAP[lang.language];
+        if (!mappedLang) continue;
 
-    const template = await loadHookTemplate(mappedLang, 'pre-commit');
-    if (template) {
-      const parsedCommands = parseShellHookToNode(template);
-      if (parsedCommands.length > 0) {
-        commands.push(...parsedCommands);
-      }
+        const template = await loadHookTemplate(mappedLang, 'pre-commit');
+        if (template) {
+            const parsedCommands = parseShellHookToNode(template);
+            if (parsedCommands.length > 0) {
+                commands.push(...parsedCommands);
+            }
+        }
     }
-  }
 
-  // TypeScript/JavaScript specific checks - add common commands if TypeScript detected
-  // Templates may not parse perfectly, so we add fallback commands
-  if (hasTypeScript) {
-    // Always add lint command for TypeScript projects
-    if (!commands.some((c) => c.includes("'lint'"))) {
-      commands.push(`await runCommand('npm', ['run', 'lint'], { allowFailure: true });`);
+    // TypeScript/JavaScript specific checks - add common commands if TypeScript detected
+    // Templates may not parse perfectly, so we add fallback commands
+    if (hasTypeScript) {
+        // Always add lint command for TypeScript projects
+        if (!commands.some((c) => c.includes("'lint'"))) {
+            commands.push(`await runCommand('npm', ['run', 'lint'], { allowFailure: true });`);
+        }
+        // Add type-check if not already present
+        if (!commands.some((c) => c.includes("'type-check'"))) {
+            commands.push(
+                `await runCommand('npm', ['run', 'type-check'], { allowFailure: true });`
+            );
+        }
     }
-    // Add type-check if not already present
-    if (!commands.some((c) => c.includes("'type-check'"))) {
-      commands.push(`await runCommand('npm', ['run', 'type-check'], { allowFailure: true });`);
-    }
-  }
 
-  // Generic fallback
-  if (commands.length === 0) {
-    if (hasPackageJson && packageJson.scripts?.test) {
-      commands.push(`await runCommand('npm', ['test']);`);
+    // Generic fallback
+    if (commands.length === 0) {
+        if (hasPackageJson && packageJson.scripts?.test) {
+            commands.push(`await runCommand('npm', ['test']);`);
+        }
     }
-  }
 
-  const nodeScript = generateNodeScript('pre-commit', commands);
-  const shellScript = generateShellWrapper('pre-commit');
-  return { shellScript, nodeScript };
+    const nodeScript = generateNodeScript('pre-commit', commands);
+    const shellScript = generateShellWrapper('pre-commit');
+    return { shellScript, nodeScript };
 }
 
 async function generatePrePushHook(
-  languages: LanguageDetection[],
-  cwd: string
+    languages: LanguageDetection[],
+    cwd: string
 ): Promise<{ shellScript: string; nodeScript: string }> {
-  const commands: string[] = [];
-  const packageJsonPath = path.join(cwd, 'package.json');
-  const hasTypeScript = languages.some(
-    (l) => l.language === 'typescript' || l.language === 'javascript'
-  );
+    const commands: string[] = [];
+    const packageJsonPath = path.join(cwd, 'package.json');
+    const hasTypeScript = languages.some(
+        (l) => l.language === 'typescript' || l.language === 'javascript'
+    );
 
-  // Check if package.json exists and read scripts
-  let hasPackageJson = false;
-  let packageJson: any = {};
+    // Check if package.json exists and read scripts
+    let hasPackageJson = false;
+    let packageJson: any = {};
 
-  try {
-    if (
-      await access(packageJsonPath)
-        .then(() => true)
-        .catch(() => false)
-    ) {
-      hasPackageJson = true;
-      packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+    try {
+        if (
+            await access(packageJsonPath)
+                .then(() => true)
+                .catch(() => false)
+        ) {
+            hasPackageJson = true;
+            packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+        }
+    } catch {
+        // Ignore
     }
-  } catch {
-    // Ignore
-  }
 
-  // Try to load template for each language
-  for (const lang of languages) {
-    const mappedLang = LANGUAGE_HOOK_MAP[lang.language];
-    if (!mappedLang) continue;
+    // Try to load template for each language
+    for (const lang of languages) {
+        const mappedLang = LANGUAGE_HOOK_MAP[lang.language];
+        if (!mappedLang) continue;
 
-    const template = await loadHookTemplate(mappedLang, 'pre-push');
-    if (template) {
-      const parsedCommands = parseShellHookToNode(template);
-      if (parsedCommands.length > 0) {
-        commands.push(...parsedCommands);
-      }
+        const template = await loadHookTemplate(mappedLang, 'pre-push');
+        if (template) {
+            const parsedCommands = parseShellHookToNode(template);
+            if (parsedCommands.length > 0) {
+                commands.push(...parsedCommands);
+            }
+        }
     }
-  }
 
-  // TypeScript/JavaScript specific checks - add common commands if TypeScript detected
-  if (hasTypeScript) {
-    // Always add build command for TypeScript projects
-    if (!commands.some((c) => c.includes("'build'"))) {
-      commands.push(`await runCommand('npm', ['run', 'build'], { allowFailure: true });`);
+    // TypeScript/JavaScript specific checks - add common commands if TypeScript detected
+    if (hasTypeScript) {
+        // Always add build command for TypeScript projects
+        if (!commands.some((c) => c.includes("'build'"))) {
+            commands.push(`await runCommand('npm', ['run', 'build'], { allowFailure: true });`);
+        }
+        // Add test if not already present
+        if (!commands.some((c) => c.includes("'test'") && !c.includes("'test:coverage'"))) {
+            commands.push(`await runCommand('npm', ['test'], { allowFailure: true });`);
+        }
     }
-    // Add test if not already present
-    if (!commands.some((c) => c.includes("'test'") && !c.includes("'test:coverage'"))) {
-      commands.push(`await runCommand('npm', ['test'], { allowFailure: true });`);
-    }
-  }
 
-  // Generic fallback
-  if (commands.length === 0) {
-    if (hasPackageJson && packageJson.scripts?.build) {
-      commands.push(`await runCommand('npm', ['run', 'build']);`);
+    // Generic fallback
+    if (commands.length === 0) {
+        if (hasPackageJson && packageJson.scripts?.build) {
+            commands.push(`await runCommand('npm', ['run', 'build']);`);
+        }
     }
-  }
 
-  const nodeScript = generateNodeScript('pre-push', commands);
-  const shellScript = generateShellWrapper('pre-push');
-  return { shellScript, nodeScript };
+    const nodeScript = generateNodeScript('pre-push', commands);
+    const shellScript = generateShellWrapper('pre-push');
+    return { shellScript, nodeScript };
 }
 
 function generateShellWrapper(hookType: 'pre-commit' | 'pre-push'): string {
-  // Cross-platform shell wrapper that works on both Windows (Git Bash) and Linux
-  // Using explicit file descriptor handling to avoid "Bad fd number" errors
-  return `#!/bin/sh
+    // Cross-platform shell wrapper that works on both Windows (Git Bash) and Linux
+    // Using explicit file descriptor handling to avoid "Bad fd number" errors
+    return `#!/bin/sh
 # Git ${hookType === 'pre-commit' ? 'Pre-Commit' : 'Pre-Push'} Hook Wrapper
 # Generated by @hivehub/rulebook
 # Cross-platform wrapper that works on Windows and Linux
@@ -385,19 +391,19 @@ exec "$NODE_CMD" "$NODE_SCRIPT"
 }
 
 function generateNodeScript(hookType: 'pre-commit' | 'pre-push', commands: string[]): string {
-  const hookName = hookType === 'pre-commit' ? 'Pre-Commit' : 'Pre-Push';
-  const emoji = hookType === 'pre-commit' ? '🔍' : '🚀';
+    const hookName = hookType === 'pre-commit' ? 'Pre-Commit' : 'Pre-Push';
+    const emoji = hookType === 'pre-commit' ? '🔍' : '🚀';
 
-  if (commands.length === 0) {
-    return `// Git ${hookName} Hook
+    if (commands.length === 0) {
+        return `// Git ${hookName} Hook
 // Generated by @hivehub/rulebook
 // Cross-platform hook that works on Windows and Linux
 
 process.exit(0);
 `;
-  }
+    }
 
-  return `// Git ${hookName} Hook
+    return `// Git ${hookName} Hook
 // Generated by @hivehub/rulebook
 // Cross-platform hook that works on Windows and Linux
 
@@ -470,31 +476,31 @@ main().catch((error) => {
 }
 
 export async function uninstallGitHooks(cwd: string): Promise<void> {
-  const hooksDir = path.join(cwd, '.git', 'hooks');
+    const hooksDir = path.join(cwd, '.git', 'hooks');
 
-  // Remove shell wrappers
-  try {
-    await unlink(path.join(hooksDir, 'pre-commit'));
-  } catch {
-    // Ignore if file doesn't exist
-  }
+    // Remove shell wrappers
+    try {
+        await unlink(path.join(hooksDir, 'pre-commit'));
+    } catch {
+        // Ignore if file doesn't exist
+    }
 
-  try {
-    await unlink(path.join(hooksDir, 'pre-push'));
-  } catch {
-    // Ignore if file doesn't exist
-  }
+    try {
+        await unlink(path.join(hooksDir, 'pre-push'));
+    } catch {
+        // Ignore if file doesn't exist
+    }
 
-  // Remove Node.js scripts
-  try {
-    await unlink(path.join(hooksDir, 'pre-commit.js'));
-  } catch {
-    // Ignore if file doesn't exist
-  }
+    // Remove Node.js scripts
+    try {
+        await unlink(path.join(hooksDir, 'pre-commit.js'));
+    } catch {
+        // Ignore if file doesn't exist
+    }
 
-  try {
-    await unlink(path.join(hooksDir, 'pre-push.js'));
-  } catch {
-    // Ignore if file doesn't exist
-  }
+    try {
+        await unlink(path.join(hooksDir, 'pre-push.js'));
+    } catch {
+        // Ignore if file doesn't exist
+    }
 }

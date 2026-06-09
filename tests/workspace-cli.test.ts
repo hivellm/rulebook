@@ -9,245 +9,251 @@ import { tmpdir } from 'os';
 // We use a real temp directory to avoid complex mocking of fs globals.
 
 describe('Workspace CLI Commands', () => {
-  let testDir: string;
-  let originalCwd: () => string;
-  let consoleSpy: ReturnType<typeof vi.spyOn>;
-  let consoleErrSpy: ReturnType<typeof vi.spyOn>;
+    let testDir: string;
+    let originalCwd: () => string;
+    let consoleSpy: ReturnType<typeof vi.spyOn>;
+    let consoleErrSpy: ReturnType<typeof vi.spyOn>;
 
-  beforeEach(async () => {
-    testDir = join(
-      tmpdir(),
-      `rulebook-ws-cli-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    );
-    await fs.mkdir(join(testDir, '.rulebook'), { recursive: true });
+    beforeEach(async () => {
+        testDir = join(
+            tmpdir(),
+            `rulebook-ws-cli-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        );
+        await fs.mkdir(join(testDir, '.rulebook'), { recursive: true });
 
-    // Mock process.cwd to return our test directory
-    originalCwd = process.cwd;
-    process.cwd = () => testDir;
+        // Mock process.cwd to return our test directory
+        originalCwd = process.cwd;
+        process.cwd = () => testDir;
 
-    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    consoleErrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-  });
-
-  afterEach(async () => {
-    process.cwd = originalCwd;
-    consoleSpy.mockRestore();
-    consoleErrSpy.mockRestore();
-
-    if (existsSync(testDir)) {
-      await fs.rm(testDir, { recursive: true, force: true });
-    }
-  });
-
-  describe('workspaceInitCommand', () => {
-    it('should create .rulebook/workspace.json with empty config when no structure detected', async () => {
-      const { workspaceInitCommand } = await import('../src/cli/commands/index.js');
-      await workspaceInitCommand();
-
-      const configPath = join(testDir, '.rulebook/workspace.json');
-      expect(existsSync(configPath)).toBe(true);
-
-      const config = JSON.parse(readFileSync(configPath, 'utf-8'));
-      expect(config.name).toBeTruthy();
-      expect(config.version).toBe('1.0.0');
-      expect(config.projects).toEqual([]);
+        consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        consoleErrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     });
 
-    it('should skip if .rulebook/workspace.json already exists', async () => {
-      writeFileSync(join(testDir, '.rulebook/workspace.json'), '{}');
+    afterEach(async () => {
+        process.cwd = originalCwd;
+        consoleSpy.mockRestore();
+        consoleErrSpy.mockRestore();
 
-      const { workspaceInitCommand } = await import('../src/cli/commands/index.js');
-      await workspaceInitCommand();
-
-      // Should log "already initialized" warning
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('already initialized'));
+        if (existsSync(testDir)) {
+            await fs.rm(testDir, { recursive: true, force: true });
+        }
     });
 
-    it('should detect monorepo structure', async () => {
-      // Create a pnpm-workspace.yaml + packages dir
-      writeFileSync(join(testDir, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n');
-      await fs.mkdir(join(testDir, 'packages', 'core'), { recursive: true });
-      writeFileSync(join(testDir, 'packages', 'core', 'package.json'), '{"name":"core"}');
+    describe('workspaceInitCommand', () => {
+        it('should create .rulebook/workspace.json with empty config when no structure detected', async () => {
+            const { workspaceInitCommand } = await import('../src/cli/commands/index.js');
+            await workspaceInitCommand();
 
-      const { workspaceInitCommand } = await import('../src/cli/commands/index.js');
-      await workspaceInitCommand();
+            const configPath = join(testDir, '.rulebook/workspace.json');
+            expect(existsSync(configPath)).toBe(true);
 
-      const configPath = join(testDir, '.rulebook/workspace.json');
-      const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+            const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+            expect(config.name).toBeTruthy();
+            expect(config.version).toBe('1.0.0');
+            expect(config.projects).toEqual([]);
+        });
 
-      expect(config.projects.length).toBeGreaterThan(0);
-      expect(config.projects.some((p: any) => p.name === 'core')).toBe(true);
-    });
-  });
+        it('should skip if .rulebook/workspace.json already exists', async () => {
+            writeFileSync(join(testDir, '.rulebook/workspace.json'), '{}');
 
-  describe('workspaceAddCommand', () => {
-    it('should add a project to existing workspace', async () => {
-      const config = {
-        name: 'test-ws',
-        version: '1.0.0',
-        projects: [],
-      };
-      writeFileSync(
-        join(testDir, '.rulebook/workspace.json'),
-        JSON.stringify(config, null, 2) + '\n'
-      );
+            const { workspaceInitCommand } = await import('../src/cli/commands/index.js');
+            await workspaceInitCommand();
 
-      // Create project dir
-      await fs.mkdir(join(testDir, 'frontend'), { recursive: true });
+            // Should log "already initialized" warning
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('already initialized'));
+        });
 
-      const { workspaceAddCommand } = await import('../src/cli/commands/index.js');
-      await workspaceAddCommand('./frontend');
+        it('should detect monorepo structure', async () => {
+            // Create a pnpm-workspace.yaml + packages dir
+            writeFileSync(join(testDir, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n');
+            await fs.mkdir(join(testDir, 'packages', 'core'), { recursive: true });
+            writeFileSync(join(testDir, 'packages', 'core', 'package.json'), '{"name":"core"}');
 
-      const updated = JSON.parse(readFileSync(join(testDir, '.rulebook/workspace.json'), 'utf-8'));
-      expect(updated.projects).toHaveLength(1);
-      expect(updated.projects[0].name).toBe('frontend');
-      expect(updated.defaultProject).toBe('frontend');
-    });
+            const { workspaceInitCommand } = await import('../src/cli/commands/index.js');
+            await workspaceInitCommand();
 
-    it('should exit if no workspace found', async () => {
-      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
-        throw new Error('process.exit');
-      });
+            const configPath = join(testDir, '.rulebook/workspace.json');
+            const config = JSON.parse(readFileSync(configPath, 'utf-8'));
 
-      const { workspaceAddCommand } = await import('../src/cli/commands/index.js');
-      await expect(workspaceAddCommand('./some-dir')).rejects.toThrow('process.exit');
-
-      expect(consoleErrSpy).toHaveBeenCalledWith(expect.stringContaining('No workspace found'));
-
-      mockExit.mockRestore();
+            expect(config.projects.length).toBeGreaterThan(0);
+            expect(config.projects.some((p: any) => p.name === 'core')).toBe(true);
+        });
     });
 
-    it('should reject duplicate project names', async () => {
-      const config = {
-        name: 'test-ws',
-        version: '1.0.0',
-        projects: [{ name: 'frontend', path: './frontend' }],
-      };
-      writeFileSync(join(testDir, '.rulebook/workspace.json'), JSON.stringify(config) + '\n');
+    describe('workspaceAddCommand', () => {
+        it('should add a project to existing workspace', async () => {
+            const config = {
+                name: 'test-ws',
+                version: '1.0.0',
+                projects: [],
+            };
+            writeFileSync(
+                join(testDir, '.rulebook/workspace.json'),
+                JSON.stringify(config, null, 2) + '\n'
+            );
 
-      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
-        throw new Error('process.exit');
-      });
+            // Create project dir
+            await fs.mkdir(join(testDir, 'frontend'), { recursive: true });
 
-      const { workspaceAddCommand } = await import('../src/cli/commands/index.js');
-      await expect(workspaceAddCommand('./frontend')).rejects.toThrow('process.exit');
+            const { workspaceAddCommand } = await import('../src/cli/commands/index.js');
+            await workspaceAddCommand('./frontend');
 
-      expect(consoleErrSpy).toHaveBeenCalledWith(expect.stringContaining('already exists'));
+            const updated = JSON.parse(
+                readFileSync(join(testDir, '.rulebook/workspace.json'), 'utf-8')
+            );
+            expect(updated.projects).toHaveLength(1);
+            expect(updated.projects[0].name).toBe('frontend');
+            expect(updated.defaultProject).toBe('frontend');
+        });
 
-      mockExit.mockRestore();
-    });
-  });
+        it('should exit if no workspace found', async () => {
+            const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
+                throw new Error('process.exit');
+            });
 
-  describe('workspaceRemoveCommand', () => {
-    it('should remove a project from workspace', async () => {
-      const config = {
-        name: 'test-ws',
-        version: '1.0.0',
-        projects: [
-          { name: 'frontend', path: './frontend' },
-          { name: 'backend', path: './backend' },
-        ],
-        defaultProject: 'frontend',
-      };
-      writeFileSync(join(testDir, '.rulebook/workspace.json'), JSON.stringify(config) + '\n');
+            const { workspaceAddCommand } = await import('../src/cli/commands/index.js');
+            await expect(workspaceAddCommand('./some-dir')).rejects.toThrow('process.exit');
 
-      const { workspaceRemoveCommand } = await import('../src/cli/commands/index.js');
-      await workspaceRemoveCommand('frontend');
+            expect(consoleErrSpy).toHaveBeenCalledWith(
+                expect.stringContaining('No workspace found')
+            );
 
-      const updated = JSON.parse(readFileSync(join(testDir, '.rulebook/workspace.json'), 'utf-8'));
-      expect(updated.projects).toHaveLength(1);
-      expect(updated.projects[0].name).toBe('backend');
-      // Default should shift to remaining project
-      expect(updated.defaultProject).toBe('backend');
-    });
+            mockExit.mockRestore();
+        });
 
-    it('should exit if no workspace found', async () => {
-      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
-        throw new Error('process.exit');
-      });
+        it('should reject duplicate project names', async () => {
+            const config = {
+                name: 'test-ws',
+                version: '1.0.0',
+                projects: [{ name: 'frontend', path: './frontend' }],
+            };
+            writeFileSync(join(testDir, '.rulebook/workspace.json'), JSON.stringify(config) + '\n');
 
-      const { workspaceRemoveCommand } = await import('../src/cli/commands/index.js');
-      await expect(workspaceRemoveCommand('frontend')).rejects.toThrow('process.exit');
+            const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
+                throw new Error('process.exit');
+            });
 
-      mockExit.mockRestore();
-    });
+            const { workspaceAddCommand } = await import('../src/cli/commands/index.js');
+            await expect(workspaceAddCommand('./frontend')).rejects.toThrow('process.exit');
 
-    it('should exit if project not found', async () => {
-      const config = {
-        name: 'test-ws',
-        version: '1.0.0',
-        projects: [{ name: 'backend', path: './backend' }],
-      };
-      writeFileSync(join(testDir, '.rulebook/workspace.json'), JSON.stringify(config) + '\n');
+            expect(consoleErrSpy).toHaveBeenCalledWith(expect.stringContaining('already exists'));
 
-      const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
-        throw new Error('process.exit');
-      });
-
-      const { workspaceRemoveCommand } = await import('../src/cli/commands/index.js');
-      await expect(workspaceRemoveCommand('nonexistent')).rejects.toThrow('process.exit');
-
-      expect(consoleErrSpy).toHaveBeenCalledWith(expect.stringContaining('not found'));
-
-      mockExit.mockRestore();
-    });
-  });
-
-  describe('workspaceListCommand', () => {
-    it('should display workspace info when config exists', async () => {
-      const config = {
-        name: 'my-workspace',
-        version: '1.0.0',
-        projects: [
-          { name: 'frontend', path: './frontend' },
-          { name: 'backend', path: './backend' },
-        ],
-        defaultProject: 'frontend',
-      };
-      writeFileSync(join(testDir, '.rulebook/workspace.json'), JSON.stringify(config) + '\n');
-
-      const { workspaceListCommand } = await import('../src/cli/commands/index.js');
-      await workspaceListCommand();
-
-      // Should show workspace name, projects, and total count
-      const output = consoleSpy.mock.calls.map((c) => String(c[0])).join('\n');
-      expect(output).toContain('my-workspace');
-      expect(output).toContain('2 project(s) total');
+            mockExit.mockRestore();
+        });
     });
 
-    it('should display message when no workspace found', async () => {
-      const { workspaceListCommand } = await import('../src/cli/commands/index.js');
-      await workspaceListCommand();
+    describe('workspaceRemoveCommand', () => {
+        it('should remove a project from workspace', async () => {
+            const config = {
+                name: 'test-ws',
+                version: '1.0.0',
+                projects: [
+                    { name: 'frontend', path: './frontend' },
+                    { name: 'backend', path: './backend' },
+                ],
+                defaultProject: 'frontend',
+            };
+            writeFileSync(join(testDir, '.rulebook/workspace.json'), JSON.stringify(config) + '\n');
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('No workspace found'));
+            const { workspaceRemoveCommand } = await import('../src/cli/commands/index.js');
+            await workspaceRemoveCommand('frontend');
+
+            const updated = JSON.parse(
+                readFileSync(join(testDir, '.rulebook/workspace.json'), 'utf-8')
+            );
+            expect(updated.projects).toHaveLength(1);
+            expect(updated.projects[0].name).toBe('backend');
+            // Default should shift to remaining project
+            expect(updated.defaultProject).toBe('backend');
+        });
+
+        it('should exit if no workspace found', async () => {
+            const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
+                throw new Error('process.exit');
+            });
+
+            const { workspaceRemoveCommand } = await import('../src/cli/commands/index.js');
+            await expect(workspaceRemoveCommand('frontend')).rejects.toThrow('process.exit');
+
+            mockExit.mockRestore();
+        });
+
+        it('should exit if project not found', async () => {
+            const config = {
+                name: 'test-ws',
+                version: '1.0.0',
+                projects: [{ name: 'backend', path: './backend' }],
+            };
+            writeFileSync(join(testDir, '.rulebook/workspace.json'), JSON.stringify(config) + '\n');
+
+            const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
+                throw new Error('process.exit');
+            });
+
+            const { workspaceRemoveCommand } = await import('../src/cli/commands/index.js');
+            await expect(workspaceRemoveCommand('nonexistent')).rejects.toThrow('process.exit');
+
+            expect(consoleErrSpy).toHaveBeenCalledWith(expect.stringContaining('not found'));
+
+            mockExit.mockRestore();
+        });
     });
-  });
 
-  describe('workspaceStatusCommand', () => {
-    it('should display status when workspace exists', async () => {
-      const config = {
-        name: 'my-workspace',
-        version: '1.0.0',
-        projects: [{ name: 'frontend', path: './frontend' }],
-        defaultProject: 'frontend',
-      };
-      writeFileSync(join(testDir, '.rulebook/workspace.json'), JSON.stringify(config) + '\n');
+    describe('workspaceListCommand', () => {
+        it('should display workspace info when config exists', async () => {
+            const config = {
+                name: 'my-workspace',
+                version: '1.0.0',
+                projects: [
+                    { name: 'frontend', path: './frontend' },
+                    { name: 'backend', path: './backend' },
+                ],
+                defaultProject: 'frontend',
+            };
+            writeFileSync(join(testDir, '.rulebook/workspace.json'), JSON.stringify(config) + '\n');
 
-      // Create the frontend project directory with .rulebook
-      await fs.mkdir(join(testDir, 'frontend'), { recursive: true });
+            const { workspaceListCommand } = await import('../src/cli/commands/index.js');
+            await workspaceListCommand();
 
-      const { workspaceStatusCommand } = await import('../src/cli/commands/index.js');
-      await workspaceStatusCommand();
+            // Should show workspace name, projects, and total count
+            const output = consoleSpy.mock.calls.map((c) => String(c[0])).join('\n');
+            expect(output).toContain('my-workspace');
+            expect(output).toContain('2 project(s) total');
+        });
 
-      const output = consoleSpy.mock.calls.map((c) => String(c[0])).join('\n');
-      expect(output).toContain('my-workspace');
+        it('should display message when no workspace found', async () => {
+            const { workspaceListCommand } = await import('../src/cli/commands/index.js');
+            await workspaceListCommand();
+
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('No workspace found'));
+        });
     });
 
-    it('should display message when no workspace found', async () => {
-      const { workspaceStatusCommand } = await import('../src/cli/commands/index.js');
-      await workspaceStatusCommand();
+    describe('workspaceStatusCommand', () => {
+        it('should display status when workspace exists', async () => {
+            const config = {
+                name: 'my-workspace',
+                version: '1.0.0',
+                projects: [{ name: 'frontend', path: './frontend' }],
+                defaultProject: 'frontend',
+            };
+            writeFileSync(join(testDir, '.rulebook/workspace.json'), JSON.stringify(config) + '\n');
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('No workspace found'));
+            // Create the frontend project directory with .rulebook
+            await fs.mkdir(join(testDir, 'frontend'), { recursive: true });
+
+            const { workspaceStatusCommand } = await import('../src/cli/commands/index.js');
+            await workspaceStatusCommand();
+
+            const output = consoleSpy.mock.calls.map((c) => String(c[0])).join('\n');
+            expect(output).toContain('my-workspace');
+        });
+
+        it('should display message when no workspace found', async () => {
+            const { workspaceStatusCommand } = await import('../src/cli/commands/index.js');
+            await workspaceStatusCommand();
+
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('No workspace found'));
+        });
     });
-  });
 });

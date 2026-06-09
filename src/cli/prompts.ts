@@ -6,305 +6,266 @@ import { LIBRARY_REGISTRY } from '../core/detect/library-registry.js';
 type LanguageId = LanguageDetection['language'];
 
 const LANGUAGE_CHOICES: Array<{ name: string; value: string }> = [
-  { name: 'Ada', value: 'ada' },
-  { name: 'C', value: 'c' },
-  { name: 'C#', value: 'csharp' },
-  { name: 'C++', value: 'cpp' },
-  { name: 'Dart', value: 'dart' },
-  { name: 'Elixir', value: 'elixir' },
-  { name: 'Erlang', value: 'erlang' },
-  { name: 'Go', value: 'go' },
-  { name: 'Haskell', value: 'haskell' },
-  { name: 'Java', value: 'java' },
-  { name: 'JavaScript', value: 'javascript' },
-  { name: 'Julia', value: 'julia' },
-  { name: 'Kotlin', value: 'kotlin' },
-  { name: 'Lisp', value: 'lisp' },
-  { name: 'Lua', value: 'lua' },
-  { name: 'Objective-C', value: 'objectivec' },
-  { name: 'PHP', value: 'php' },
-  { name: 'Python', value: 'python' },
-  { name: 'R', value: 'r' },
-  { name: 'Ruby', value: 'ruby' },
-  { name: 'Rust', value: 'rust' },
-  { name: 'SAS', value: 'sas' },
-  { name: 'Scala', value: 'scala' },
-  { name: 'Solidity', value: 'solidity' },
-  { name: 'SQL', value: 'sql' },
-  { name: 'Swift', value: 'swift' },
-  { name: 'TypeScript', value: 'typescript' },
-  { name: 'Zig', value: 'zig' },
+    { name: 'Ada', value: 'ada' },
+    { name: 'C', value: 'c' },
+    { name: 'C#', value: 'csharp' },
+    { name: 'C++', value: 'cpp' },
+    { name: 'Dart', value: 'dart' },
+    { name: 'Elixir', value: 'elixir' },
+    { name: 'Erlang', value: 'erlang' },
+    { name: 'Go', value: 'go' },
+    { name: 'Haskell', value: 'haskell' },
+    { name: 'Java', value: 'java' },
+    { name: 'JavaScript', value: 'javascript' },
+    { name: 'Julia', value: 'julia' },
+    { name: 'Kotlin', value: 'kotlin' },
+    { name: 'Lisp', value: 'lisp' },
+    { name: 'Lua', value: 'lua' },
+    { name: 'Objective-C', value: 'objectivec' },
+    { name: 'PHP', value: 'php' },
+    { name: 'Python', value: 'python' },
+    { name: 'R', value: 'r' },
+    { name: 'Ruby', value: 'ruby' },
+    { name: 'Rust', value: 'rust' },
+    { name: 'SAS', value: 'sas' },
+    { name: 'Scala', value: 'scala' },
+    { name: 'Solidity', value: 'solidity' },
+    { name: 'SQL', value: 'sql' },
+    { name: 'Swift', value: 'swift' },
+    { name: 'TypeScript', value: 'typescript' },
+    { name: 'Zig', value: 'zig' },
 ];
 
 export async function promptProjectConfig(
-  detection: DetectionResult,
-  overrides?: {
-    defaultMode?: 'minimal' | 'full';
-  }
-): Promise<ProjectConfig> {
-  const questions = [];
-
-  let setupMode: 'minimal' | 'full';
-  if (overrides?.defaultMode) {
-    setupMode = overrides.defaultMode;
-  } else {
-    const { mode } = await inquirer.prompt<{ mode: 'minimal' | 'full' }>([
-      {
-        type: 'list',
-        name: 'mode',
-        message: 'Setup mode:',
-        choices: [
-          {
-            name: 'Minimal – essentials only (README, LICENSE, tests, basic CI)',
-            value: 'minimal',
-          },
-          { name: 'Full – complete setup with all Rulebook features', value: 'full' },
-        ],
-        default: 'full',
-      },
-    ]);
-    setupMode = mode;
-  }
-
-  const isMinimal = setupMode === 'minimal';
-
-  // Language selection
-  if (detection.languages.length > 0) {
-    const primaryLang = detection.languages[0];
-    const confirm = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'useDetected',
-        message: `Detected ${primaryLang.language} project (confidence: ${(primaryLang.confidence * 100).toFixed(0)}%). Is this correct?`,
-        default: true,
-      },
-    ]);
-
-    if (!confirm.useDetected) {
-      questions.push({
-        type: 'checkbox',
-        name: 'languages',
-        message: 'Select the languages used in this project:',
-        choices: LANGUAGE_CHOICES,
-        default: detection.languages.map((l) => l.language),
-        validate: (answer: string[]) => {
-          if (answer.length < 1) {
-            return 'You must select at least one language.';
-          }
-          return true;
-        },
-      });
+    detection: DetectionResult,
+    overrides?: {
+        defaultMode?: 'minimal' | 'full';
     }
-  } else {
-    questions.push({
-      type: 'checkbox',
-      name: 'languages',
-      message: 'Select the languages used in this project:',
-      choices: LANGUAGE_CHOICES,
-      validate: (answer: string[]) => {
-        if (answer.length < 1) {
-          return 'You must select at least one language.';
+): Promise<ProjectConfig> {
+    const questions = [];
+
+    let setupMode: 'minimal' | 'full';
+    if (overrides?.defaultMode) {
+        setupMode = overrides.defaultMode;
+    } else {
+        const { mode } = await inquirer.prompt<{ mode: 'minimal' | 'full' }>([
+            {
+                type: 'list',
+                name: 'mode',
+                message: 'Setup mode:',
+                choices: [
+                    {
+                        name: 'Minimal – essentials only (README, LICENSE, tests, basic CI)',
+                        value: 'minimal',
+                    },
+                    { name: 'Full – complete setup with all Rulebook features', value: 'full' },
+                ],
+                default: 'full',
+            },
+        ]);
+        setupMode = mode;
+    }
+
+    const isMinimal = setupMode === 'minimal';
+
+    // Language selection
+    if (detection.languages.length > 0) {
+        const primaryLang = detection.languages[0];
+        const confirm = await inquirer.prompt([
+            {
+                type: 'confirm',
+                name: 'useDetected',
+                message: `Detected ${primaryLang.language} project (confidence: ${(primaryLang.confidence * 100).toFixed(0)}%). Is this correct?`,
+                default: true,
+            },
+        ]);
+
+        if (!confirm.useDetected) {
+            questions.push({
+                type: 'checkbox',
+                name: 'languages',
+                message: 'Select the languages used in this project:',
+                choices: LANGUAGE_CHOICES,
+                default: detection.languages.map((l) => l.language),
+                validate: (answer: string[]) => {
+                    if (answer.length < 1) {
+                        return 'You must select at least one language.';
+                    }
+                    return true;
+                },
+            });
         }
-        return true;
-      },
-    });
-  }
+    } else {
+        questions.push({
+            type: 'checkbox',
+            name: 'languages',
+            message: 'Select the languages used in this project:',
+            choices: LANGUAGE_CHOICES,
+            validate: (answer: string[]) => {
+                if (answer.length < 1) {
+                    return 'You must select at least one language.';
+                }
+                return true;
+            },
+        });
+    }
 
-  // Project type
-  questions.push({
-    type: 'list',
-    name: 'projectType',
-    message: 'What type of project is this?',
-    choices: [
-      { name: 'Application', value: 'application' },
-      { name: 'Library', value: 'library' },
-      { name: 'CLI Tool', value: 'cli' },
-      { name: 'Monorepo', value: 'monorepo' },
-    ],
-    default: 'application',
-  });
-
-  if (!isMinimal) {
-    const detectedModules = detection.modules.filter((m) => m.detected).map((m) => m.module);
+    // Project type
     questions.push({
-      type: 'checkbox',
-      name: 'modules',
-      message: 'Select MCP modules to include rules for:',
-      choices: [
-        {
-          name: 'Vectorizer (semantic search)',
-          value: 'vectorizer',
-          checked: detectedModules.includes('vectorizer'),
-        },
-        {
-          name: 'Synap (key-value store)',
-          value: 'synap',
-          checked: detectedModules.includes('synap'),
-        },
-        {
-          name: 'Context7 (library docs)',
-          value: 'context7',
-          checked: detectedModules.includes('context7'),
-        },
-        {
-          name: 'GitHub MCP Server (workflow validation & CI/CD monitoring)',
-          value: 'github',
-          checked: detectedModules.includes('github'),
-        },
-        {
-          name: 'Playwright (browser automation & testing)',
-          value: 'playwright',
-          checked: detectedModules.includes('playwright'),
-        },
-        {
-          name: 'Supabase (database, auth, storage)',
-          value: 'supabase',
-          checked: detectedModules.includes('supabase'),
-        },
-        {
-          name: 'Notion (documentation & task management)',
-          value: 'notion',
-          checked: detectedModules.includes('notion'),
-        },
-        {
-          name: 'Atlassian (Jira, Confluence, Bitbucket)',
-          value: 'atlassian',
-          checked: detectedModules.includes('atlassian'),
-        },
-        {
-          name: 'Serena (AI development assistant)',
-          value: 'serena',
-          checked: detectedModules.includes('serena'),
-        },
-        {
-          name: 'Figma (design system integration)',
-          value: 'figma',
-          checked: detectedModules.includes('figma'),
-        },
-        {
-          name: 'Grafana (metrics & dashboards)',
-          value: 'grafana',
-          checked: detectedModules.includes('grafana'),
-        },
-      ],
+        type: 'list',
+        name: 'projectType',
+        message: 'What type of project is this?',
+        choices: [
+            { name: 'Application', value: 'application' },
+            { name: 'Library', value: 'library' },
+            { name: 'CLI Tool', value: 'cli' },
+            { name: 'Monorepo', value: 'monorepo' },
+        ],
+        default: 'application',
     });
-  }
 
-  // IDE selection
-  questions.push({
-    type: 'checkbox',
-    name: 'ides',
-    message: 'Select IDEs/tools to generate rules for:',
-    choices: [
-      { name: 'Cursor', value: 'cursor' },
-      { name: 'Windsurf', value: 'windsurf' },
-      { name: 'VS Code', value: 'vscode' },
-      { name: 'GitHub Copilot', value: 'copilot' },
-      { name: 'Tabnine', value: 'tabnine' },
-      { name: 'Replit', value: 'replit' },
-      { name: 'JetBrains AI', value: 'jetbrains' },
-      { name: 'Zed', value: 'zed' },
-      { name: 'OpenCode', value: 'opencode' },
-    ],
-    default: ['cursor'],
-  });
+    if (!isMinimal) {
+        const detectedModules = detection.modules.filter((m) => m.detected).map((m) => m.module);
+        questions.push({
+            type: 'checkbox',
+            name: 'modules',
+            message: 'Select MCP modules to include rules for:',
+            choices: [
+                {
+                    name: 'Vectorizer (semantic search)',
+                    value: 'vectorizer',
+                    checked: detectedModules.includes('vectorizer'),
+                },
+                {
+                    name: 'Synap (key-value store)',
+                    value: 'synap',
+                    checked: detectedModules.includes('synap'),
+                },
+                {
+                    name: 'Context7 (library docs)',
+                    value: 'context7',
+                    checked: detectedModules.includes('context7'),
+                },
+                {
+                    name: 'GitHub MCP Server (workflow validation & CI/CD monitoring)',
+                    value: 'github',
+                    checked: detectedModules.includes('github'),
+                },
+                {
+                    name: 'Playwright (browser automation & testing)',
+                    value: 'playwright',
+                    checked: detectedModules.includes('playwright'),
+                },
+                {
+                    name: 'Supabase (database, auth, storage)',
+                    value: 'supabase',
+                    checked: detectedModules.includes('supabase'),
+                },
+                {
+                    name: 'Serena (AI development assistant)',
+                    value: 'serena',
+                    checked: detectedModules.includes('serena'),
+                },
+            ],
+        });
+    }
 
-  // Coverage threshold
-  questions.push({
-    type: 'number',
-    name: 'coverageThreshold',
-    message: 'Minimum test coverage percentage:',
-    default: 95,
-    validate: (value: number) => {
-      if (value < 0 || value > 100) {
-        return 'Coverage must be between 0 and 100.';
-      }
-      return true;
-    },
-  });
-
-  // Documentation strictness
-  questions.push({
-    type: 'confirm',
-    name: 'strictDocs',
-    message: 'Enforce strict documentation structure (/docs only)?',
-    default: true,
-  });
-
-  // Workflow generation
-  questions.push({
-    type: 'confirm',
-    name: 'generateWorkflows',
-    message: 'Generate GitHub Actions workflows?',
-    default: true,
-  });
-
-  // Git workflow
-  questions.push({
-    type: 'confirm',
-    name: 'includeGitWorkflow',
-    message: 'Include Git workflow guidelines in AGENTS.md?',
-    default: true,
-  });
-
-  // Git push mode (only if git workflow included)
-  const gitWorkflowAnswer = await inquirer.prompt<{ gitPushMode: 'manual' | 'prompt' | 'auto' }>([
-    {
-      type: 'list',
-      name: 'gitPushMode',
-      message: 'Git push behavior for AI assistants:',
-      choices: [
-        {
-          name: 'Manual - Provide push commands for manual execution (recommended for SSH with password)',
-          value: 'manual',
+    // Coverage threshold
+    questions.push({
+        type: 'number',
+        name: 'coverageThreshold',
+        message: 'Minimum test coverage percentage:',
+        default: 95,
+        validate: (value: number) => {
+            if (value < 0 || value > 100) {
+                return 'Coverage must be between 0 and 100.';
+            }
+            return true;
         },
-        {
-          name: 'Prompt - Ask before each push',
-          value: 'prompt',
-        },
-        {
-          name: 'Auto - Automatic push (only for passwordless setups)',
-          value: 'auto',
-        },
-      ],
-      default: 'manual',
-      when: (answers: { includeGitWorkflow?: boolean }) => answers.includeGitWorkflow !== false,
-    },
-  ]);
+    });
 
-  // Git hooks installation prompt (only if hooks don't exist)
-  const hasPreCommit = detection.gitHooks?.preCommitExists ?? false;
-  const hasPrePush = detection.gitHooks?.prePushExists ?? false;
-  const shouldPromptHooks = !hasPreCommit || !hasPrePush;
-
-  let installGitHooks = false;
-  if (shouldPromptHooks) {
-    const hooksAnswer = await inquirer.prompt<{ installHooks: boolean }>([
-      {
+    // Documentation strictness
+    questions.push({
         type: 'confirm',
-        name: 'installHooks',
-        message: `Install Git hooks for automated quality checks? ${!hasPreCommit ? '(pre-commit)' : ''} ${!hasPrePush ? '(pre-push)' : ''}`,
+        name: 'strictDocs',
+        message: 'Enforce strict documentation structure (/docs only)?',
         default: true,
-      },
+    });
+
+    // Workflow generation
+    questions.push({
+        type: 'confirm',
+        name: 'generateWorkflows',
+        message: 'Generate GitHub Actions workflows?',
+        default: true,
+    });
+
+    // Git workflow
+    questions.push({
+        type: 'confirm',
+        name: 'includeGitWorkflow',
+        message: 'Include Git workflow guidelines in AGENTS.md?',
+        default: true,
+    });
+
+    // Git push mode (only if git workflow included)
+    const gitWorkflowAnswer = await inquirer.prompt<{ gitPushMode: 'manual' | 'prompt' | 'auto' }>([
+        {
+            type: 'list',
+            name: 'gitPushMode',
+            message: 'Git push behavior for AI assistants:',
+            choices: [
+                {
+                    name: 'Manual - Provide push commands for manual execution (recommended for SSH with password)',
+                    value: 'manual',
+                },
+                {
+                    name: 'Prompt - Ask before each push',
+                    value: 'prompt',
+                },
+                {
+                    name: 'Auto - Automatic push (only for passwordless setups)',
+                    value: 'auto',
+                },
+            ],
+            default: 'manual',
+            when: (answers: { includeGitWorkflow?: boolean }) =>
+                answers.includeGitWorkflow !== false,
+        },
     ]);
-    installGitHooks = hooksAnswer.installHooks;
-  }
 
-  const answers = await inquirer.prompt(questions);
+    // Git hooks installation prompt (only if hooks don't exist)
+    const hasPreCommit = detection.gitHooks?.preCommitExists ?? false;
+    const hasPrePush = detection.gitHooks?.prePushExists ?? false;
+    const shouldPromptHooks = !hasPreCommit || !hasPrePush;
 
-  return {
-    languages: answers.languages || detection.languages.map((l) => l.language),
-    modules: isMinimal ? [] : answers.modules || [],
-    ides: answers.ides || ['cursor'],
-    projectType: answers.projectType,
-    coverageThreshold: answers.coverageThreshold,
-    strictDocs: answers.strictDocs,
-    generateWorkflows: answers.generateWorkflows,
-    includeGitWorkflow: answers.includeGitWorkflow,
-    gitPushMode: gitWorkflowAnswer.gitPushMode || 'manual',
-    installGitHooks,
-    minimal: isMinimal,
-  };
+    let installGitHooks = false;
+    if (shouldPromptHooks) {
+        const hooksAnswer = await inquirer.prompt<{ installHooks: boolean }>([
+            {
+                type: 'confirm',
+                name: 'installHooks',
+                message: `Install Git hooks for automated quality checks? ${!hasPreCommit ? '(pre-commit)' : ''} ${!hasPrePush ? '(pre-push)' : ''}`,
+                default: true,
+            },
+        ]);
+        installGitHooks = hooksAnswer.installHooks;
+    }
+
+    const answers = await inquirer.prompt(questions);
+
+    return {
+        languages: answers.languages || detection.languages.map((l) => l.language),
+        modules: isMinimal ? [] : answers.modules || [],
+        projectType: answers.projectType,
+        coverageThreshold: answers.coverageThreshold,
+        strictDocs: answers.strictDocs,
+        generateWorkflows: answers.generateWorkflows,
+        includeGitWorkflow: answers.includeGitWorkflow,
+        gitPushMode: gitWorkflowAnswer.gitPushMode || 'manual',
+        installGitHooks,
+        minimal: isMinimal,
+    };
 }
 
 /**
@@ -315,118 +276,121 @@ export async function promptProjectConfig(
  * - Git hooks installation (optional)
  */
 export async function promptSimplifiedConfig(detection: DetectionResult): Promise<ProjectConfig> {
-  console.log(chalk.bold.cyan('\n📦 Quick Setup\n'));
+    console.log(chalk.bold.cyan('\n📦 Quick Setup\n'));
 
-  // 1. Confirm languages (single prompt if detection succeeded)
-  let languages: LanguageId[] = detection.languages.map((l) => l.language);
+    // 1. Confirm languages (single prompt if detection succeeded)
+    let languages: LanguageId[] = detection.languages.map((l) => l.language);
 
-  if (detection.languages.length > 0) {
-    const { confirmLanguages } = await inquirer.prompt<{ confirmLanguages: boolean }>([
-      {
-        type: 'confirm',
-        name: 'confirmLanguages',
-        message: `Detected: ${detection.languages.map((l) => l.language).join(', ')}. Use these languages?`,
-        default: true,
-      },
-    ]);
+    if (detection.languages.length > 0) {
+        const { confirmLanguages } = await inquirer.prompt<{ confirmLanguages: boolean }>([
+            {
+                type: 'confirm',
+                name: 'confirmLanguages',
+                message: `Detected: ${detection.languages.map((l) => l.language).join(', ')}. Use these languages?`,
+                default: true,
+            },
+        ]);
 
-    if (!confirmLanguages) {
-      const { selectedLanguages } = await inquirer.prompt<{ selectedLanguages: LanguageId[] }>([
-        {
-          type: 'checkbox',
-          name: 'selectedLanguages',
-          message: 'Select languages:',
-          choices: LANGUAGE_CHOICES,
-          default: languages,
-          validate: (answer: string[]) => answer.length >= 1 || 'Select at least one language.',
-        },
-      ]);
-      languages = selectedLanguages;
+        if (!confirmLanguages) {
+            const { selectedLanguages } = await inquirer.prompt<{
+                selectedLanguages: LanguageId[];
+            }>([
+                {
+                    type: 'checkbox',
+                    name: 'selectedLanguages',
+                    message: 'Select languages:',
+                    choices: LANGUAGE_CHOICES,
+                    default: languages,
+                    validate: (answer: string[]) =>
+                        answer.length >= 1 || 'Select at least one language.',
+                },
+            ]);
+            languages = selectedLanguages;
+        }
+    } else {
+        const { selectedLanguages } = await inquirer.prompt<{ selectedLanguages: LanguageId[] }>([
+            {
+                type: 'checkbox',
+                name: 'selectedLanguages',
+                message: 'Select project languages:',
+                choices: LANGUAGE_CHOICES,
+                validate: (answer: string[]) =>
+                    answer.length >= 1 || 'Select at least one language.',
+            },
+        ]);
+        languages = selectedLanguages;
     }
-  } else {
-    const { selectedLanguages } = await inquirer.prompt<{ selectedLanguages: LanguageId[] }>([
-      {
-        type: 'checkbox',
-        name: 'selectedLanguages',
-        message: 'Select project languages:',
-        choices: LANGUAGE_CHOICES,
-        validate: (answer: string[]) => answer.length >= 1 || 'Select at least one language.',
-      },
-    ]);
-    languages = selectedLanguages;
-  }
 
-  // 2. MCP activation (only if modules detected or available)
-  let modules: string[] = [];
-  const detectedModules = detection.modules.filter((m) => m.detected).map((m) => m.module);
+    // 2. MCP activation (only if modules detected or available)
+    let modules: string[] = [];
+    const detectedModules = detection.modules.filter((m) => m.detected).map((m) => m.module);
 
-  if (detectedModules.length > 0) {
-    const { activateMcp } = await inquirer.prompt<{ activateMcp: boolean }>([
-      {
-        type: 'confirm',
-        name: 'activateMcp',
-        message: `Activate MCP modules? (${detectedModules.join(', ')})`,
-        default: true,
-      },
-    ]);
-    if (activateMcp) {
-      modules = detectedModules;
+    if (detectedModules.length > 0) {
+        const { activateMcp } = await inquirer.prompt<{ activateMcp: boolean }>([
+            {
+                type: 'confirm',
+                name: 'activateMcp',
+                message: `Activate MCP modules? (${detectedModules.join(', ')})`,
+                default: true,
+            },
+        ]);
+        if (activateMcp) {
+            modules = detectedModules;
+        }
     }
-  }
 
-  // 3. Git hooks (optional)
-  const hasHooks = detection.gitHooks?.preCommitExists && detection.gitHooks?.prePushExists;
-  let installGitHooks = false;
+    // 3. Git hooks (optional)
+    const hasHooks = detection.gitHooks?.preCommitExists && detection.gitHooks?.prePushExists;
+    let installGitHooks = false;
 
-  if (!hasHooks) {
-    const { installHooks } = await inquirer.prompt<{ installHooks: boolean }>([
-      {
-        type: 'confirm',
-        name: 'installHooks',
-        message: 'Install Git hooks for quality checks?',
-        default: false, // Default to false to be less intrusive
-      },
-    ]);
-    installGitHooks = installHooks;
-  }
+    if (!hasHooks) {
+        const { installHooks } = await inquirer.prompt<{ installHooks: boolean }>([
+            {
+                type: 'confirm',
+                name: 'installHooks',
+                message: 'Install Git hooks for quality checks?',
+                default: false, // Default to false to be less intrusive
+            },
+        ]);
+        installGitHooks = installHooks;
+    }
 
-  return {
-    languages,
-    modules,
-    ides: ['cursor'], // Default to Cursor
-    projectType: 'application',
-    coverageThreshold: 95,
-    strictDocs: true,
-    generateWorkflows: true,
-    includeGitWorkflow: true,
-    gitPushMode: 'manual',
-    installGitHooks,
-    minimal: false,
-    modular: true,
-  };
+    return {
+        languages,
+        modules,
+        projectType: 'application',
+        coverageThreshold: 95,
+        strictDocs: true,
+        generateWorkflows: true,
+        includeGitWorkflow: true,
+        gitPushMode: 'manual',
+        installGitHooks,
+        minimal: false,
+        modular: true,
+    };
 }
 
 export async function promptMergeStrategy(): Promise<'merge' | 'replace'> {
-  const answer = await inquirer.prompt([
-    {
-      type: 'list',
-      name: 'strategy',
-      message: 'AGENTS.md already exists. How would you like to proceed?',
-      choices: [
+    const answer = await inquirer.prompt([
         {
-          name: 'Merge - Add/update RULEBOOK block only (preserves existing content)',
-          value: 'merge',
+            type: 'list',
+            name: 'strategy',
+            message: 'AGENTS.md already exists. How would you like to proceed?',
+            choices: [
+                {
+                    name: 'Merge - Add/update RULEBOOK block only (preserves existing content)',
+                    value: 'merge',
+                },
+                {
+                    name: 'Replace - Completely replace with new AGENTS.md (backup will be created)',
+                    value: 'replace',
+                },
+            ],
+            default: 'merge',
         },
-        {
-          name: 'Replace - Completely replace with new AGENTS.md (backup will be created)',
-          value: 'replace',
-        },
-      ],
-      default: 'merge',
-    },
-  ]);
+    ]);
 
-  return answer.strategy;
+    return answer.strategy;
 }
 
 /**
@@ -434,12 +398,12 @@ export async function promptMergeStrategy(): Promise<'merge' | 'replace'> {
  * as grouped (e.g. "typescript · React").
  */
 function buildLibraryChoices(): Array<{ name: string; value: string }> {
-  const order = ['typescript', 'python', 'rust', 'go'];
-  const sorted = [...LIBRARY_REGISTRY].sort((a, b) => {
-    const byLang = order.indexOf(a.language) - order.indexOf(b.language);
-    return byLang !== 0 ? byLang : a.label.localeCompare(b.label);
-  });
-  return sorted.map((def) => ({ name: `${def.language} · ${def.label}`, value: def.id }));
+    const order = ['typescript', 'python', 'rust', 'go'];
+    const sorted = [...LIBRARY_REGISTRY].sort((a, b) => {
+        const byLang = order.indexOf(a.language) - order.indexOf(b.language);
+        return byLang !== 0 ? byLang : a.label.localeCompare(b.label);
+    });
+    return sorted.map((def) => ({ name: `${def.language} · ${def.label}`, value: def.id }));
 }
 
 /**
@@ -452,92 +416,92 @@ function buildLibraryChoices(): Array<{ name: string; value: string }> {
  *   library checklist when none are detected. Libraries are optional.
  */
 export async function promptLanguagesAndLibraries(
-  detection: DetectionResult
+    detection: DetectionResult
 ): Promise<{ languages: string[]; libraries: string[] }> {
-  let languages: string[] = detection.languages.map((l) => l.language);
+    let languages: string[] = detection.languages.map((l) => l.language);
 
-  if (languages.length > 0) {
-    const { confirmLanguages } = await inquirer.prompt<{ confirmLanguages: boolean }>([
-      {
-        type: 'confirm',
-        name: 'confirmLanguages',
-        message: `Detected languages: ${languages.join(', ')}. Use these?`,
-        default: true,
-      },
-    ]);
-    if (!confirmLanguages) {
-      const { selected } = await inquirer.prompt<{ selected: string[] }>([
-        {
-          type: 'checkbox',
-          name: 'selected',
-          message: 'Select the languages used in this project:',
-          choices: LANGUAGE_CHOICES,
-          default: languages,
-          validate: (answer: string[]) =>
-            answer.length >= 1 || 'You must select at least one language.',
-        },
-      ]);
-      languages = selected;
+    if (languages.length > 0) {
+        const { confirmLanguages } = await inquirer.prompt<{ confirmLanguages: boolean }>([
+            {
+                type: 'confirm',
+                name: 'confirmLanguages',
+                message: `Detected languages: ${languages.join(', ')}. Use these?`,
+                default: true,
+            },
+        ]);
+        if (!confirmLanguages) {
+            const { selected } = await inquirer.prompt<{ selected: string[] }>([
+                {
+                    type: 'checkbox',
+                    name: 'selected',
+                    message: 'Select the languages used in this project:',
+                    choices: LANGUAGE_CHOICES,
+                    default: languages,
+                    validate: (answer: string[]) =>
+                        answer.length >= 1 || 'You must select at least one language.',
+                },
+            ]);
+            languages = selected;
+        }
+    } else {
+        const { selected } = await inquirer.prompt<{ selected: string[] }>([
+            {
+                type: 'checkbox',
+                name: 'selected',
+                message: 'No language detected — select the languages used in this project:',
+                choices: LANGUAGE_CHOICES,
+                validate: (answer: string[]) =>
+                    answer.length >= 1 || 'You must select at least one language.',
+            },
+        ]);
+        languages = selected;
     }
-  } else {
-    const { selected } = await inquirer.prompt<{ selected: string[] }>([
-      {
-        type: 'checkbox',
-        name: 'selected',
-        message: 'No language detected — select the languages used in this project:',
-        choices: LANGUAGE_CHOICES,
-        validate: (answer: string[]) =>
-          answer.length >= 1 || 'You must select at least one language.',
-      },
-    ]);
-    languages = selected;
-  }
 
-  const detectedLibraries = detection.libraries.map((l) => l.library);
-  let libraries: string[] = detectedLibraries;
+    const detectedLibraries = detection.libraries.map((l) => l.library);
+    let libraries: string[] = detectedLibraries;
 
-  if (detectedLibraries.length > 0) {
-    const { confirmLibraries } = await inquirer.prompt<{ confirmLibraries: boolean }>([
-      {
-        type: 'confirm',
-        name: 'confirmLibraries',
-        message: `Detected libraries: ${detectedLibraries.join(', ')}. Use these?`,
-        default: true,
-      },
-    ]);
-    if (!confirmLibraries) {
-      const { selected } = await inquirer.prompt<{ selected: string[] }>([
-        {
-          type: 'checkbox',
-          name: 'selected',
-          message: 'Select the libraries used in this project:',
-          choices: buildLibraryChoices(),
-          default: detectedLibraries,
-        },
-      ]);
-      libraries = selected;
+    if (detectedLibraries.length > 0) {
+        const { confirmLibraries } = await inquirer.prompt<{ confirmLibraries: boolean }>([
+            {
+                type: 'confirm',
+                name: 'confirmLibraries',
+                message: `Detected libraries: ${detectedLibraries.join(', ')}. Use these?`,
+                default: true,
+            },
+        ]);
+        if (!confirmLibraries) {
+            const { selected } = await inquirer.prompt<{ selected: string[] }>([
+                {
+                    type: 'checkbox',
+                    name: 'selected',
+                    message: 'Select the libraries used in this project:',
+                    choices: buildLibraryChoices(),
+                    default: detectedLibraries,
+                },
+            ]);
+            libraries = selected;
+        }
+    } else {
+        const { wantLibraries } = await inquirer.prompt<{ wantLibraries: boolean }>([
+            {
+                type: 'confirm',
+                name: 'wantLibraries',
+                message: 'No library detected. Select libraries manually?',
+                default: false,
+            },
+        ]);
+        if (wantLibraries) {
+            const { selected } = await inquirer.prompt<{ selected: string[] }>([
+                {
+                    type: 'checkbox',
+                    name: 'selected',
+                    message: 'Select the libraries used in this project:',
+                    choices: buildLibraryChoices(),
+                },
+            ]);
+            libraries = selected;
+        }
     }
-  } else {
-    const { wantLibraries } = await inquirer.prompt<{ wantLibraries: boolean }>([
-      {
-        type: 'confirm',
-        name: 'wantLibraries',
-        message: 'No library detected. Select libraries manually?',
-        default: false,
-      },
-    ]);
-    if (wantLibraries) {
-      const { selected } = await inquirer.prompt<{ selected: string[] }>([
-        {
-          type: 'checkbox',
-          name: 'selected',
-          message: 'Select the libraries used in this project:',
-          choices: buildLibraryChoices(),
-        },
-      ]);
-      libraries = selected;
-    }
-  }
 
-  return { languages, libraries };
+    return { languages, libraries };
 }

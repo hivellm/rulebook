@@ -50,15 +50,10 @@ Behavioral guidelines that reduce common LLM coding mistakes. Adapted from [forr
 3. **Surgical changes.** Touch only what you must. Don't "improve" adjacent code, comments, or formatting. Don't refactor things that aren't broken. Match existing style. If you notice unrelated dead code, mention it — don't delete it. Every changed line must trace directly to the user's request.
 4. **Goal-driven execution.** Define verifiable success criteria upfront. "Add validation" → "write tests for invalid inputs, then make them pass." For multi-step tasks, state a brief plan: `[step] → verify: [check]`. Strong criteria let you loop independently; weak criteria require constant clarification.
 
-## Persistent memory
+## Session continuity
 
-This project uses the Rulebook MCP server for persistent memory across sessions.
-
-- **Start of session**: `rulebook_memory_search` for relevant prior context.
-- **During work**: `rulebook_memory_save` for decisions, bugs, discoveries, user preferences.
-- **End of session**: `rulebook_session_end` to write a session summary.
-
-Memory is auto-captured for tool interactions (task create/update/archive, skill enable/disable). Manual saves are required for everything else worth remembering.
+- **Start of session**: read `.rulebook/PLANS.md` and call `rulebook_session_start` to load prior context.
+- **End of session**: `rulebook_session_end` writes a summary to `.rulebook/PLANS.md`.
 
 ## Knowledge base
 

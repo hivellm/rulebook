@@ -21,8 +21,7 @@ When calling ANY Rulebook MCP tool, you MUST pass the `projectId` parameter to t
 
 rulebook_task_create({ taskId: "add-auth", projectId: "frontend" })
 rulebook_task_list({ projectId: "frontend" })
-rulebook_memory_save({ ..., projectId: "frontend" })
-rulebook_memory_search({ query: "auth", projectId: "frontend" })
+rulebook_knowledge_add({ ..., projectId: "frontend" })
 ```
 
 ### Cross-project operations
@@ -31,7 +30,6 @@ Use these dedicated workspace tools for operations across ALL projects:
 
 - `rulebook_workspace_list` — List all projects in the workspace
 - `rulebook_workspace_status` — Status of each project (active workers, task count)
-- `rulebook_workspace_search` — Search memory across ALL projects at once
 - `rulebook_workspace_tasks` — List tasks from ALL projects at once
 
 ### Default project
@@ -45,11 +43,9 @@ Only omit `projectId` when you are certain the operation targets the default pro
 
 ## Rules
 
-1. **NEVER save memory to the wrong project** — always verify `projectId` before calling `rulebook_memory_save`
-2. **NEVER create tasks in the wrong project** — check which project the feature belongs to
-3. **When working across projects** (e.g., shared types), save memory to BOTH relevant projects
-4. **Use `rulebook_workspace_search`** to find related context across all projects before starting work
-5. **Each project has its own `.rulebook/`** directory — configs, tasks, and memory are fully isolated
+1. **NEVER create tasks in the wrong project** — check which project the feature belongs to, and pass `projectId` explicitly
+2. **When working across projects** (e.g., shared types), capture knowledge in BOTH relevant projects
+3. **Each project has its own `.rulebook/`** directory — configs, tasks, knowledge, and decisions are fully isolated
 
 ## CLI Commands
 

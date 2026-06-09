@@ -26,33 +26,33 @@ export const CLAUDE_MD_TEMPLATE_NAME = 'CLAUDE_MD_v2.md';
  * depending on file presence in the project root.
  */
 const CONDITIONAL_IMPORTS: Array<{ marker: string; targets: string[] }> = [
-  { marker: '@AGENTS.override.md', targets: ['AGENTS.override.md'] },
-  { marker: '@.rulebook/STATE.md', targets: ['.rulebook/STATE.md'] },
-  { marker: '@.rulebook/PLANS.md', targets: ['.rulebook/PLANS.md'] },
+    { marker: '@AGENTS.override.md', targets: ['AGENTS.override.md'] },
+    { marker: '@.rulebook/STATE.md', targets: ['.rulebook/STATE.md'] },
+    { marker: '@.rulebook/PLANS.md', targets: ['.rulebook/PLANS.md'] },
 ];
 
 export interface ClaudeMdGenerationOptions {
-  /**
-   * If true, every `@import` line in the template is kept regardless of
-   * whether the target file exists. Default false: missing imports are
-   * commented out so Claude Code does not warn about broken `@imports`.
-   */
-  keepAllImports?: boolean;
+    /**
+     * If true, every `@import` line in the template is kept regardless of
+     * whether the target file exists. Default false: missing imports are
+     * commented out so Claude Code does not warn about broken `@imports`.
+     */
+    keepAllImports?: boolean;
 }
 
 export function getClaudeMdPath(projectRoot: string): string {
-  return path.join(projectRoot, CLAUDE_MD_FILE);
+    return path.join(projectRoot, CLAUDE_MD_FILE);
 }
 
 /**
  * Read the v5.3.0 CLAUDE.md template from the package's templates directory.
  */
 export async function readClaudeMdTemplate(): Promise<string> {
-  const templatePath = path.join(getTemplatesDir(), 'core', CLAUDE_MD_TEMPLATE_NAME);
-  if (!(await fileExists(templatePath))) {
-    throw new Error(`CLAUDE.md template not found at ${templatePath}`);
-  }
-  return await readFile(templatePath);
+    const templatePath = path.join(getTemplatesDir(), 'core', CLAUDE_MD_TEMPLATE_NAME);
+    if (!(await fileExists(templatePath))) {
+        throw new Error(`CLAUDE.md template not found at ${templatePath}`);
+    }
+    return await readFile(templatePath);
 }
 
 /**
@@ -62,11 +62,11 @@ export async function readClaudeMdTemplate(): Promise<string> {
  * use {@link mergeIntoExisting} via `merger.ts`.
  */
 export async function generateClaudeMd(
-  projectRoot: string,
-  options: ClaudeMdGenerationOptions = {}
+    projectRoot: string,
+    options: ClaudeMdGenerationOptions = {}
 ): Promise<string> {
-  const template = await readClaudeMdTemplate();
-  return resolveImports(template, projectRoot, options);
+    const template = await readClaudeMdTemplate();
+    return resolveImports(template, projectRoot, options);
 }
 
 /**
@@ -77,25 +77,25 @@ export async function generateClaudeMd(
  * always required) untouched.
  */
 function resolveImports(
-  template: string,
-  projectRoot: string,
-  options: ClaudeMdGenerationOptions
+    template: string,
+    projectRoot: string,
+    options: ClaudeMdGenerationOptions
 ): string {
-  if (options.keepAllImports) return template;
+    if (options.keepAllImports) return template;
 
-  const lines = template.split('\n');
-  return lines
-    .map((line) => {
-      const trimmed = line.trim();
-      const match = CONDITIONAL_IMPORTS.find((c) => trimmed === c.marker);
-      if (!match) return line;
+    const lines = template.split('\n');
+    return lines
+        .map((line) => {
+            const trimmed = line.trim();
+            const match = CONDITIONAL_IMPORTS.find((c) => trimmed === c.marker);
+            if (!match) return line;
 
-      const allExist = match.targets.every((rel) => existsSync(path.join(projectRoot, rel)));
-      if (allExist) return line;
+            const allExist = match.targets.every((rel) => existsSync(path.join(projectRoot, rel)));
+            if (allExist) return line;
 
-      return `<!-- ${trimmed} (skipped — target file not present) -->`;
-    })
-    .join('\n');
+            return `<!-- ${trimmed} (skipped — target file not present) -->`;
+        })
+        .join('\n');
 }
 
 /**
@@ -104,21 +104,21 @@ function resolveImports(
  * to the written file and the backup (if created).
  */
 export async function writeClaudeMd(
-  projectRoot: string,
-  content: string
+    projectRoot: string,
+    content: string
 ): Promise<{ path: string; backupPath: string | null }> {
-  const target = getClaudeMdPath(projectRoot);
-  let backupPath: string | null = null;
-  if (await fileExists(target)) {
-    const backupDir = path.join(projectRoot, '.rulebook', 'backup');
-    await ensureDir(backupDir);
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    backupPath = path.join(backupDir, `CLAUDE.md.backup-${timestamp}`);
-    const { promises: fs } = await import('fs');
-    await fs.copyFile(target, backupPath);
-  }
-  await writeFile(target, content);
-  return { path: target, backupPath };
+    const target = getClaudeMdPath(projectRoot);
+    let backupPath: string | null = null;
+    if (await fileExists(target)) {
+        const backupDir = path.join(projectRoot, '.rulebook', 'backup');
+        await ensureDir(backupDir);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        backupPath = path.join(backupDir, `CLAUDE.md.backup-${timestamp}`);
+        const { promises: fs } = await import('fs');
+        await fs.copyFile(target, backupPath);
+    }
+    await writeFile(target, content);
+    return { path: target, backupPath };
 }
 
 /**
@@ -127,5 +127,5 @@ export async function writeClaudeMd(
  * and full-file overwrite.
  */
 export function hasV2Sentinels(content: string): boolean {
-  return content.includes(CLAUDE_MD_SENTINEL_START) && content.includes(CLAUDE_MD_SENTINEL_END);
+    return content.includes(CLAUDE_MD_SENTINEL_START) && content.includes(CLAUDE_MD_SENTINEL_END);
 }

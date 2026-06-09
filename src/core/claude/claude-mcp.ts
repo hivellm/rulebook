@@ -16,21 +16,21 @@ import { resolveAgentPlaceholders, substituteAgentPlaceholders } from '../genera
 import { detectProject } from '../detect/detector.js';
 
 export interface ClaudeCodeSetupResult {
-  detected: boolean;
-  mcpConfigured: boolean;
-  skillsInstalled: string[];
-  devSkillsInstalled: string[];
-  agentTeamsEnabled: boolean;
-  agentDefinitionsInstalled: string[];
-  workflowDefinitionsInstalled: string[];
+    detected: boolean;
+    mcpConfigured: boolean;
+    skillsInstalled: string[];
+    devSkillsInstalled: string[];
+    agentTeamsEnabled: boolean;
+    agentDefinitionsInstalled: string[];
+    workflowDefinitionsInstalled: string[];
 }
 
 /**
  * Detect if Claude Code is installed by checking for ~/.claude directory
  */
 export async function isClaudeCodeInstalled(homeDir?: string): Promise<boolean> {
-  const claudeDir = join(homeDir ?? homedir(), '.claude');
-  return fileExists(claudeDir);
+    const claudeDir = join(homeDir ?? homedir(), '.claude');
+    return fileExists(claudeDir);
 }
 
 /**
@@ -40,9 +40,9 @@ export async function isClaudeCodeInstalled(homeDir?: string): Promise<boolean> 
  * across machines and OS.
  */
 function buildMcpServerArgs(workspace?: boolean): string[] {
-  const args = ['-y', '@hivehub/rulebook@latest', 'mcp-server'];
-  if (workspace) args.push('--workspace');
-  return args;
+    const args = ['-y', '@hivehub/rulebook@latest', 'mcp-server'];
+    if (workspace) args.push('--workspace');
+    return args;
 }
 
 /**
@@ -55,45 +55,45 @@ function buildMcpServerArgs(workspace?: boolean): string[] {
  * When `workspace` is true, adds --workspace flag to the args.
  */
 export async function configureMcpJson(projectRoot: string, workspace?: boolean): Promise<boolean> {
-  const mcpJsonPath = join(projectRoot, '.mcp.json');
+    const mcpJsonPath = join(projectRoot, '.mcp.json');
 
-  let mcpConfig: { mcpServers?: Record<string, unknown> } = { mcpServers: {} };
+    let mcpConfig: { mcpServers?: Record<string, unknown> } = { mcpServers: {} };
 
-  if (await fileExists(mcpJsonPath)) {
-    try {
-      const raw = await readFile(mcpJsonPath);
-      mcpConfig = JSON.parse(raw);
-    } catch {
-      // If JSON is invalid, start fresh
-      mcpConfig = { mcpServers: {} };
-    }
-  }
-
-  mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
-
-  const expectedArgs = buildMcpServerArgs(workspace);
-
-  if (mcpConfig.mcpServers.rulebook) {
-    const existing = mcpConfig.mcpServers.rulebook as { args?: string[] };
-    const hasLegacyProjectRoot = existing.args?.includes('--project-root');
-    // Upgrade: add --workspace if now in workspace mode but entry lacks it
-    const needsWorkspaceFlag = workspace && !existing.args?.includes('--workspace');
-
-    if (hasLegacyProjectRoot || needsWorkspaceFlag) {
-      existing.args = expectedArgs;
-      await writeFile(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+    if (await fileExists(mcpJsonPath)) {
+        try {
+            const raw = await readFile(mcpJsonPath);
+            mcpConfig = JSON.parse(raw);
+        } catch {
+            // If JSON is invalid, start fresh
+            mcpConfig = { mcpServers: {} };
+        }
     }
 
-    return false; // Entry already existed (possibly upgraded)
-  }
+    mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
 
-  mcpConfig.mcpServers.rulebook = {
-    command: 'npx',
-    args: expectedArgs,
-  };
+    const expectedArgs = buildMcpServerArgs(workspace);
 
-  await writeFile(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
-  return true;
+    if (mcpConfig.mcpServers.rulebook) {
+        const existing = mcpConfig.mcpServers.rulebook as { args?: string[] };
+        const hasLegacyProjectRoot = existing.args?.includes('--project-root');
+        // Upgrade: add --workspace if now in workspace mode but entry lacks it
+        const needsWorkspaceFlag = workspace && !existing.args?.includes('--workspace');
+
+        if (hasLegacyProjectRoot || needsWorkspaceFlag) {
+            existing.args = expectedArgs;
+            await writeFile(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+        }
+
+        return false; // Entry already existed (possibly upgraded)
+    }
+
+    mcpConfig.mcpServers.rulebook = {
+        command: 'npx',
+        args: expectedArgs,
+    };
+
+    await writeFile(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+    return true;
 }
 
 /**
@@ -101,33 +101,33 @@ export async function configureMcpJson(projectRoot: string, workspace?: boolean)
  * Copies templates/commands/*.md to .claude/commands/ in the project.
  */
 export async function installClaudeCodeSkills(
-  projectRoot: string,
-  templatesPath: string
+    projectRoot: string,
+    templatesPath: string
 ): Promise<string[]> {
-  const commandsSourceDir = join(templatesPath, 'commands');
-  const commandsTargetDir = join(projectRoot, '.claude', 'commands');
+    const commandsSourceDir = join(templatesPath, 'commands');
+    const commandsTargetDir = join(projectRoot, '.claude', 'commands');
 
-  if (!(await fileExists(commandsSourceDir))) {
-    return [];
-  }
+    if (!(await fileExists(commandsSourceDir))) {
+        return [];
+    }
 
-  await ensureDir(commandsTargetDir);
+    await ensureDir(commandsTargetDir);
 
-  const entries = await readdir(commandsSourceDir);
-  const installed: string[] = [];
+    const entries = await readdir(commandsSourceDir);
+    const installed: string[] = [];
 
-  for (const entry of entries) {
-    if (!entry.endsWith('.md')) continue;
+    for (const entry of entries) {
+        if (!entry.endsWith('.md')) continue;
 
-    const sourcePath = join(commandsSourceDir, entry);
-    const targetPath = join(commandsTargetDir, entry);
+        const sourcePath = join(commandsSourceDir, entry);
+        const targetPath = join(commandsTargetDir, entry);
 
-    const content = await readFile(sourcePath);
-    await writeFile(targetPath, content);
-    installed.push(entry);
-  }
+        const content = await readFile(sourcePath);
+        await writeFile(targetPath, content);
+        installed.push(entry);
+    }
 
-  return installed;
+    return installed;
 }
 
 /**
@@ -136,36 +136,36 @@ export async function installClaudeCodeSkills(
  * Copies templates/dev-skills/<name>/SKILL.md to .claude/skills/<name>/SKILL.md.
  */
 export async function installDevSkills(
-  projectRoot: string,
-  templatesPath: string
+    projectRoot: string,
+    templatesPath: string
 ): Promise<string[]> {
-  const skillsSourceDir = join(templatesPath, 'skills', 'dev');
-  const skillsTargetDir = join(projectRoot, '.claude', 'skills');
+    const skillsSourceDir = join(templatesPath, 'skills', 'dev');
+    const skillsTargetDir = join(projectRoot, '.claude', 'skills');
 
-  if (!(await fileExists(skillsSourceDir))) {
-    return [];
-  }
+    if (!(await fileExists(skillsSourceDir))) {
+        return [];
+    }
 
-  await ensureDir(skillsTargetDir);
+    await ensureDir(skillsTargetDir);
 
-  const entries = await readdir(skillsSourceDir, { withFileTypes: true });
-  const installed: string[] = [];
+    const entries = await readdir(skillsSourceDir, { withFileTypes: true });
+    const installed: string[] = [];
 
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+    for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
 
-    const skillFile = join(skillsSourceDir, entry.name, 'SKILL.md');
-    if (!(await fileExists(skillFile))) continue;
+        const skillFile = join(skillsSourceDir, entry.name, 'SKILL.md');
+        if (!(await fileExists(skillFile))) continue;
 
-    const targetSkillDir = join(skillsTargetDir, entry.name);
-    await ensureDir(targetSkillDir);
+        const targetSkillDir = join(skillsTargetDir, entry.name);
+        await ensureDir(targetSkillDir);
 
-    const content = await readFile(skillFile);
-    await writeFile(join(targetSkillDir, 'SKILL.md'), content);
-    installed.push(entry.name);
-  }
+        const content = await readFile(skillFile);
+        await writeFile(join(targetSkillDir, 'SKILL.md'), content);
+        installed.push(entry.name);
+    }
 
-  return installed;
+    return installed;
 }
 
 /**
@@ -174,30 +174,30 @@ export async function installDevSkills(
  * Returns true if the settings were modified, false if already configured.
  */
 export async function configureClaudeSettings(projectRoot: string): Promise<boolean> {
-  const settingsPath = join(projectRoot, '.claude', 'settings.json');
+    const settingsPath = join(projectRoot, '.claude', 'settings.json');
 
-  let settings: Record<string, unknown> = {};
+    let settings: Record<string, unknown> = {};
 
-  if (await fileExists(settingsPath)) {
-    try {
-      const raw = await readFile(settingsPath);
-      settings = JSON.parse(raw);
-    } catch {
-      settings = {};
+    if (await fileExists(settingsPath)) {
+        try {
+            const raw = await readFile(settingsPath);
+            settings = JSON.parse(raw);
+        } catch {
+            settings = {};
+        }
     }
-  }
 
-  const env = (settings.env as Record<string, string> | undefined) ?? {};
+    const env = (settings.env as Record<string, string> | undefined) ?? {};
 
-  if (env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS === '1') {
-    return false;
-  }
+    if (env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS === '1') {
+        return false;
+    }
 
-  settings.env = { ...env, CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1' };
+    settings.env = { ...env, CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1' };
 
-  await ensureDir(join(projectRoot, '.claude'));
-  await writeFile(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-  return true;
+    await ensureDir(join(projectRoot, '.claude'));
+    await writeFile(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+    return true;
 }
 
 /**
@@ -207,40 +207,40 @@ export async function configureClaudeSettings(projectRoot: string): Promise<bool
  * Returns the list of installed file names.
  */
 export async function installAgentDefinitions(
-  projectRoot: string,
-  templatesPath: string,
-  language?: string
+    projectRoot: string,
+    templatesPath: string,
+    language?: string
 ): Promise<string[]> {
-  const agentsSourceDir = join(templatesPath, 'agents');
-  const agentsTargetDir = join(projectRoot, '.claude', 'agents');
+    const agentsSourceDir = join(templatesPath, 'agents');
+    const agentsTargetDir = join(projectRoot, '.claude', 'agents');
 
-  await ensureDir(agentsTargetDir);
+    await ensureDir(agentsTargetDir);
 
-  if (!(await fileExists(agentsSourceDir))) {
-    return [];
-  }
+    if (!(await fileExists(agentsSourceDir))) {
+        return [];
+    }
 
-  // Agent templates carry {{language}}/{{file_naming}}/{{test_framework}}
-  // placeholders. Resolve them from the project's primary language so the
-  // installed agents are stack-correct (e.g. TypeScript/kebab-case/vitest)
-  // instead of leaking raw placeholders to the consumer.
-  const placeholders = resolveAgentPlaceholders(language);
+    // Agent templates carry {{language}}/{{file_naming}}/{{test_framework}}
+    // placeholders. Resolve them from the project's primary language so the
+    // installed agents are stack-correct (e.g. TypeScript/kebab-case/vitest)
+    // instead of leaking raw placeholders to the consumer.
+    const placeholders = resolveAgentPlaceholders(language);
 
-  const entries = await readdir(agentsSourceDir);
-  const installed: string[] = [];
+    const entries = await readdir(agentsSourceDir);
+    const installed: string[] = [];
 
-  for (const entry of entries) {
-    if (!entry.endsWith('.md')) continue;
+    for (const entry of entries) {
+        if (!entry.endsWith('.md')) continue;
 
-    const sourcePath = join(agentsSourceDir, entry);
-    const targetPath = join(agentsTargetDir, entry);
+        const sourcePath = join(agentsSourceDir, entry);
+        const targetPath = join(agentsTargetDir, entry);
 
-    const content = await readFile(sourcePath);
-    await writeFile(targetPath, substituteAgentPlaceholders(content, placeholders));
-    installed.push(entry);
-  }
+        const content = await readFile(sourcePath);
+        await writeFile(targetPath, substituteAgentPlaceholders(content, placeholders));
+        installed.push(entry);
+    }
 
-  return installed;
+    return installed;
 }
 
 /**
@@ -251,42 +251,42 @@ export async function installAgentDefinitions(
  * Returns the list of installed file names.
  */
 export async function installWorkflowDefinitions(
-  projectRoot: string,
-  templatesPath: string
+    projectRoot: string,
+    templatesPath: string
 ): Promise<string[]> {
-  const workflowsSourceDir = join(templatesPath, 'claude-workflows');
-  const workflowsTargetDir = join(projectRoot, '.claude', 'workflows');
+    const workflowsSourceDir = join(templatesPath, 'claude-workflows');
+    const workflowsTargetDir = join(projectRoot, '.claude', 'workflows');
 
-  if (!(await fileExists(workflowsSourceDir))) {
-    return [];
-  }
+    if (!(await fileExists(workflowsSourceDir))) {
+        return [];
+    }
 
-  await ensureDir(workflowsTargetDir);
+    await ensureDir(workflowsTargetDir);
 
-  const entries = await readdir(workflowsSourceDir);
-  const installed: string[] = [];
+    const entries = await readdir(workflowsSourceDir);
+    const installed: string[] = [];
 
-  for (const entry of entries) {
-    if (!entry.endsWith('.js')) continue;
+    for (const entry of entries) {
+        if (!entry.endsWith('.js')) continue;
 
-    const sourcePath = join(workflowsSourceDir, entry);
-    const targetPath = join(workflowsTargetDir, entry);
+        const sourcePath = join(workflowsSourceDir, entry);
+        const targetPath = join(workflowsTargetDir, entry);
 
-    const content = await readFile(sourcePath);
-    await writeFile(targetPath, content);
-    installed.push(entry);
-  }
+        const content = await readFile(sourcePath);
+        await writeFile(targetPath, content);
+        installed.push(entry);
+    }
 
-  return installed;
+    return installed;
 }
 
 /**
  * Get the templates path (same logic as generator.ts getTemplatesDir)
  */
 function getTemplatesPath(): string {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-  return join(__dirname, '..', '..', '..', 'templates');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    return join(__dirname, '..', '..', '..', 'templates');
 }
 
 /**
@@ -294,59 +294,59 @@ function getTemplatesPath(): string {
  * Non-blocking: returns silently if Claude Code is not detected.
  */
 export async function setupClaudeCodeIntegration(
-  projectRoot: string,
-  templatesPath?: string,
-  homeDir?: string
+    projectRoot: string,
+    templatesPath?: string,
+    homeDir?: string
 ): Promise<ClaudeCodeSetupResult> {
-  const detected = await isClaudeCodeInstalled(homeDir);
+    const detected = await isClaudeCodeInstalled(homeDir);
 
-  if (!detected) {
+    if (!detected) {
+        return {
+            detected: false,
+            mcpConfigured: false,
+            skillsInstalled: [],
+            devSkillsInstalled: [],
+            agentTeamsEnabled: false,
+            agentDefinitionsInstalled: [],
+            workflowDefinitionsInstalled: [],
+        };
+    }
+
+    const resolvedTemplatesPath = templatesPath ?? getTemplatesPath();
+
+    // Auto-detect workspace mode for .mcp.json configuration
+    const isWorkspace = WorkspaceManager.findWorkspaceConfig(projectRoot) !== null;
+    const mcpConfigured = await configureMcpJson(projectRoot, isWorkspace);
+    const skillsInstalled = await installClaudeCodeSkills(projectRoot, resolvedTemplatesPath);
+    const devSkillsInstalled = await installDevSkills(projectRoot, resolvedTemplatesPath);
+    const agentTeamsEnabled = await configureClaudeSettings(projectRoot);
+
+    // Resolve the project's primary language so agent placeholders render correctly.
+    let primaryLanguage: string | undefined;
+    try {
+        const detection = await detectProject(projectRoot);
+        primaryLanguage = detection.languages[0]?.language;
+    } catch {
+        // Detection failure → installAgentDefinitions falls back to TypeScript defaults.
+    }
+
+    const agentDefinitionsInstalled = await installAgentDefinitions(
+        projectRoot,
+        resolvedTemplatesPath,
+        primaryLanguage
+    );
+    const workflowDefinitionsInstalled = await installWorkflowDefinitions(
+        projectRoot,
+        resolvedTemplatesPath
+    );
+
     return {
-      detected: false,
-      mcpConfigured: false,
-      skillsInstalled: [],
-      devSkillsInstalled: [],
-      agentTeamsEnabled: false,
-      agentDefinitionsInstalled: [],
-      workflowDefinitionsInstalled: [],
+        detected: true,
+        mcpConfigured,
+        skillsInstalled,
+        devSkillsInstalled,
+        agentTeamsEnabled,
+        agentDefinitionsInstalled,
+        workflowDefinitionsInstalled,
     };
-  }
-
-  const resolvedTemplatesPath = templatesPath ?? getTemplatesPath();
-
-  // Auto-detect workspace mode for .mcp.json configuration
-  const isWorkspace = WorkspaceManager.findWorkspaceConfig(projectRoot) !== null;
-  const mcpConfigured = await configureMcpJson(projectRoot, isWorkspace);
-  const skillsInstalled = await installClaudeCodeSkills(projectRoot, resolvedTemplatesPath);
-  const devSkillsInstalled = await installDevSkills(projectRoot, resolvedTemplatesPath);
-  const agentTeamsEnabled = await configureClaudeSettings(projectRoot);
-
-  // Resolve the project's primary language so agent placeholders render correctly.
-  let primaryLanguage: string | undefined;
-  try {
-    const detection = await detectProject(projectRoot);
-    primaryLanguage = detection.languages[0]?.language;
-  } catch {
-    // Detection failure → installAgentDefinitions falls back to TypeScript defaults.
-  }
-
-  const agentDefinitionsInstalled = await installAgentDefinitions(
-    projectRoot,
-    resolvedTemplatesPath,
-    primaryLanguage
-  );
-  const workflowDefinitionsInstalled = await installWorkflowDefinitions(
-    projectRoot,
-    resolvedTemplatesPath
-  );
-
-  return {
-    detected: true,
-    mcpConfigured,
-    skillsInstalled,
-    devSkillsInstalled,
-    agentTeamsEnabled,
-    agentDefinitionsInstalled,
-    workflowDefinitionsInstalled,
-  };
 }

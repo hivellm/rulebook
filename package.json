@@ -1,6 +1,6 @@
 {
   "name": "@hivehub/rulebook",
-  "version": "5.9.0",
+  "version": "6.0.0",
   "description": "Tool-agnostic AI development framework. Standardize projects across Claude Code, Cursor, Gemini, Codex, Windsurf, Copilot with automated templates, quality gates, persistent memory, and framework detection for 28 languages, 17 frameworks, 13 MCP modules, and 20 services",
   "type": "module",
   "main": "dist/index.js",
@@ -9,7 +9,8 @@
     "rulebook-mcp": "./dist/mcp/rulebook-server.js"
   },
   "scripts": {
-    "build": "tsc",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc",
     "dev": "tsx src/index.ts",
     "test": "vitest run --no-watch",
     "test:watch": "vitest",
@@ -55,7 +56,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.22.0",
+    "@modelcontextprotocol/sdk": "1.22.0",
     "@types/blessed": "^0.1.26",
     "ansi-escapes": "^7.2.0",
     "blessed": "^0.1.81",
@@ -96,9 +97,7 @@
   },
   "files": [
     "dist",
-    "templates",
-    ".claude-plugin",
-    ".claude/commands"
+    "templates"
   ],
   "repository": {
     "type": "git",
