@@ -152,7 +152,6 @@ Avoid: emoji status tables, "Next Steps" sections, repeating the question, markd
 
 - **AGENT_AUTOMATION**: `/.rulebook/specs/AGENT_AUTOMATION.md`
 - **MULTI_AGENT**: `/.rulebook/specs/MULTI_AGENT.md`
-- **RULEBOOK_MCP**: `/.rulebook/specs/RULEBOOK_MCP.md`
 
 ## Multi-Agent Teams
 

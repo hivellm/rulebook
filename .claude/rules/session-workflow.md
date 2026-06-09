@@ -4,12 +4,12 @@
 
 ## At Session Start
 1. Read `.rulebook/PLANS.md` for current context and active task
-2. `rulebook_session_start` loads relevant prior context
+2. Search memory for relevant past work: `rulebook_memory_search` or `rulebook_session_start`
 3. Check `.rulebook/tasks/` for pending work
 
 ## During Session
 - Update PLANS.md when making key decisions or discoveries
-- Capture knowledge/learnings as you go (`rulebook_knowledge_add` / `rulebook_learn_capture`)
+- Save important context to memory as you go
 
 ## At Session End
 1. Save session summary to PLANS.md: `rulebook_session_end`
