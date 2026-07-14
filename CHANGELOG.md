@@ -31,6 +31,37 @@ v7.0.0 development — mission: run complementary to modern frontier models
   session cost (static tokens, MCP schemas/init, hooks, installed files)
   against the v7 budgets.
 
+### Changed — Spec diet (−87% on-demand spec load)
+
+- `RULEBOOK.md` spec template rewritten lean (51 KB / ~13k tokens → ~600
+  tokens): task structure, checklist rules, spec-delta format, workflow, CLI
+  reference — no essays. The mandatory pre-task read is now cheap.
+- `GIT_WORKFLOW.md` template rewritten lean (1,192 lines / ~7.5k tokens →
+  ~450 tokens): allow/forbidden table, commit + branch conventions. Push-mode
+  injection unchanged.
+- Language specs for the 8 core languages (typescript, javascript, rust,
+  python, go, cpp, java, csharp) now reuse the lean path-scoped rule template
+  content (~500 tokens) instead of the 16–18 KB language essays; other
+  languages keep their templates until individually reviewed.
+- Dogfooded on this repository: 17 always-on `.claude/rules/` files removed,
+  root `CLAUDE.md`/`AGENTS.md` regenerated from the lean v7 templates,
+  remaining rules (typescript, vitest) converted to path-scoped.
+
+### Removed — Spec diet
+
+- MCP-module spec docs retired: `templates/modules/` deleted (CONTEXT7,
+  GITHUB_MCP, PLAYWRIGHT, RULEBOOK_MCP, SERENA, SUPABASE, SYNAP, VECTORIZER,
+  sequential-thinking) and module-spec emission/references removed from
+  generators. MCP servers are self-describing via their own tool schemas;
+  `.mcp.json` wiring is untouched.
+- Ceremony/tier spec emission retired: `TOKEN_OPTIMIZATION.md`,
+  `AGENT_AUTOMATION.md`, `MULTI_AGENT.md` no longer generated; templates
+  deleted.
+- Dead templates deleted (zero code references): `core/DAG.md`,
+  `core/KNOWLEDGE.md`, `core/DECISIONS.md`, `core/DOCUMENTATION_RULES.md`,
+  `git/CI_CD_PATTERNS.md`, `git/GITHUB_ACTIONS.md`, `git/GITLAB_CI.md`,
+  `git/SECRETS_MANAGEMENT.md`.
+
 ### Removed — Phase 1
 
 - The 16 always-on `.claude/rules/` files (`git-safety`, `no-shortcuts`,

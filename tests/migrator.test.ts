@@ -312,7 +312,7 @@ Vectorizer-specific content here.
 
             expect(result).toContain('<!-- RULEBOOK:START -->');
             expect(result).toContain('/.rulebook/specs/TYPESCRIPT.md');
-            expect(result).toContain('/.rulebook/specs/VECTORIZER.md');
+            expect(result).not.toContain('/.rulebook/specs/VECTORIZER.md');
         });
     });
 

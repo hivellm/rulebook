@@ -40,10 +40,6 @@ Given/When/Then, `####` scenarios).
 
 LANGUAGE_REFS
 
-## Module Rules
-
-MODULE_REFS
-
 ## Specs index (on demand)
 
 - `/.rulebook/specs/RULEBOOK.md` — task management

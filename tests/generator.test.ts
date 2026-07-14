@@ -78,15 +78,15 @@ describe('generator', () => {
             expect(content).toContain('<!-- RULEBOOK:START -->');
             expect(content).toContain('<!-- RULEBOOK:END -->');
 
-            // Lean template uses "Language & Framework Rules" and "Module Rules" headers
+            // Lean template uses the "Language & Framework Rules" header
             expect(content).toContain('Language & Framework Rules');
             expect(content).toContain('/.rulebook/specs/RUST.md');
             expect(content).toContain('/.rulebook/specs/TYPESCRIPT.md');
 
-            // Should include module references
-            expect(content).toContain('Module Rules');
-            expect(content).toContain('/.rulebook/specs/VECTORIZER.md');
-            expect(content).toContain('/.rulebook/specs/SYNAP.md');
+            // v7: module spec docs are retired — no module references
+            expect(content).not.toContain('Module Rules');
+            expect(content).not.toContain('/.rulebook/specs/VECTORIZER.md');
+            expect(content).not.toContain('/.rulebook/specs/SYNAP.md');
         });
 
         it('should generate content for single language (modular mode)', async () => {
@@ -97,7 +97,7 @@ describe('generator', () => {
             expect(content).not.toContain('/.rulebook/specs/TYPESCRIPT.md');
         });
 
-        it('should generate content for multiple modules (modular mode)', async () => {
+        it('does not emit module spec references even when modules are configured (v7)', async () => {
             const config: ProjectConfig = {
                 ...baseConfig,
                 modules: ['vectorizer', 'synap', 'context7'],
@@ -105,9 +105,9 @@ describe('generator', () => {
             };
             const content = await generateFullAgents(config, '/tmp/test');
 
-            expect(content).toContain('/.rulebook/specs/VECTORIZER.md');
-            expect(content).toContain('/.rulebook/specs/SYNAP.md');
-            expect(content).toContain('/.rulebook/specs/CONTEXT7.md');
+            expect(content).not.toContain('/.rulebook/specs/VECTORIZER.md');
+            expect(content).not.toContain('/.rulebook/specs/SYNAP.md');
+            expect(content).not.toContain('/.rulebook/specs/CONTEXT7.md');
         });
 
         it('should always use lean template even when modular is false', async () => {
@@ -127,7 +127,7 @@ describe('generator', () => {
             // Lean template — no embedded blocks, only references
             expect(content).toContain('<!-- RULEBOOK:START -->');
             expect(content).toContain('/.rulebook/specs/RUST.md');
-            expect(content).toContain('/.rulebook/specs/VECTORIZER.md');
+            expect(content).not.toContain('/.rulebook/specs/VECTORIZER.md');
             expect(content).not.toContain('<!-- RUST:START -->');
         });
 
