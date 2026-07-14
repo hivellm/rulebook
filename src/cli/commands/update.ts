@@ -375,41 +375,11 @@ export async function updateSingleProject(
     }
 
     {
-        const { projectRules, installRule, loadCanonicalRules } = await import(
-            '../../core/rule-engine.js'
-        );
-        const existingRules = await loadCanonicalRules(cwd);
-
-        if (existingRules.length === 0) {
-            const { getTemplatesDir } = await import('../../core/generators/generator.js');
-            const templatesDir = getTemplatesDir();
-
-            // Install the full canonical rule set (tier1 + tier2). Users can
-            // disable individual rules later via `.rulebook/rules/` config.
-            const toInstall = [
-                'no-shortcuts',
-                'git-safety',
-                'sequential-editing',
-                'research-first',
-                'follow-task-sequence',
-                'incremental-implementation',
-                'knowledge-base-usage',
-                'task-decomposition',
-                'incremental-tests',
-                'no-deferred',
-                'session-workflow',
-            ];
-
-            let installed = 0;
-            for (const name of toInstall) {
-                const result = await installRule(cwd, name, templatesDir);
-                if (result) installed++;
-            }
-
-            if (installed > 0) {
-                console.log(chalk.gray(`  • Installed ${installed} v5 canonical rules`));
-            }
-        }
+        // v7: the canonical always-on rule set is retired (F-001/F-008) — its
+        // content lives as one-line values in the lean CLAUDE.md/AGENTS.md.
+        // `update` no longer installs it; user-authored rules in
+        // .rulebook/rules/ are still projected.
+        const { projectRules } = await import('../../core/rule-engine.js');
 
         const ruleResult = await projectRules(cwd, {
             claudeCode:

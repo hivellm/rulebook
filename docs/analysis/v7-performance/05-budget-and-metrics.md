@@ -33,6 +33,7 @@ S=SessionStart, St=Stop, U=UserPromptSubmit); files = installed by default init.
 | Date | Commit | Change | Static tok | MCP | Hooks | Files |
 |---|---|---|---:|---|---|---:|
 | 2026-07-14 | a54669f | **v6.0.0 baseline** (default `init --yes`; full desire set wires +6 hook entries, see F-002) | 14,951 | 26/13,965B/280ms | P:1 S:0 St:0 U:0 | 95 |
+| 2026-07-14 | phase1 | **Phase 1 context diet**: lean CLAUDE.md (539 tok) + lean AGENTS.md (666 tok), 16 always-on rules retired, only path-scoped language/library rules remain (863 tok of the total loads only for matching file types) | **6,557 (−56%)** | 26/13,965B/277ms | P:1 S:0 St:0 U:0 | 69 |
 
 ## Acceptance checks (CI)
 

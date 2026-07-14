@@ -39,10 +39,11 @@ export const SUPPORTED_RULE_LANGUAGES = [
 ] as const;
 
 /**
- * Generic (non-language) rules shipped by rulebook v5.3.0.
- * These are always emitted regardless of detection result.
+ * Generic always-on rules retired in v7 (F-001/F-008): their content now lives
+ * as one-line values in the lean CLAUDE.md/AGENTS.md. Kept as an exported list
+ * so `rulebook update` can recognize and clean up files from older installs.
  */
-export const ALWAYS_ON_RULES = [
+export const RETIRED_ALWAYS_ON_RULES = [
     'full-task-no-questions',
     'multi-agent-teams',
     'consult-analysis-before-implementing',
@@ -183,23 +184,9 @@ export async function generateRules(
         result.written.push(targetPath);
     }
 
-    // Always-on rules (not language-scoped) — emit if sentinel-based skip allows
-    for (const ruleName of ALWAYS_ON_RULES) {
-        const targetPath = path.join(rulesDir, `${ruleName}.md`);
-        if (await fileExists(targetPath)) {
-            const existing = await readFile(targetPath);
-            if (!hasGeneratedSentinel(existing)) {
-                result.preserved.push(targetPath);
-                continue;
-            }
-        }
-        const templatePath = path.join(getTemplatesDir(), 'rules', `${ruleName}.md`);
-        if (await fileExists(templatePath)) {
-            const template = await readFile(templatePath);
-            await writeFile(targetPath, template);
-            result.written.push(targetPath);
-        }
-    }
+    // v7: generic always-on rules are no longer emitted (RETIRED_ALWAYS_ON_RULES).
+    // Only path-scoped files (language + library) are generated — they cost zero
+    // context outside their matching file types.
 
     // Library path-scoped rules — only for detected/selected libraries that declare globs.
     const seenLib = new Set<string>();

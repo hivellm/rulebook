@@ -37,38 +37,31 @@ describe('claude-md-generator (v5.3.0)', () => {
             expect(hasV2Sentinels(content)).toBe(true);
         });
 
-        it('always emits the @AGENTS.md import', async () => {
+        it('does not import AGENTS.md or rule essays (v7 context diet)', async () => {
             const content = await generateClaudeMd(projectRoot);
-            expect(content).toContain('@AGENTS.md');
+            expect(content).not.toMatch(/^@AGENTS\.md\s*$/m);
+            expect(content).not.toMatch(/^@\.rulebook\/STATE\.md\s*$/m);
+            expect(content).not.toMatch(/^@\.rulebook\/PLANS\.md\s*$/m);
         });
 
-        it('comments out conditional imports whose targets are absent', async () => {
+        it('comments out the override import when the target is absent', async () => {
             const content = await generateClaudeMd(projectRoot);
-            // None of the conditional files exist in a fresh tmpdir
+            // AGENTS.override.md does not exist in a fresh tmpdir
             expect(content).toContain('@AGENTS.override.md (skipped');
-            expect(content).toContain('@.rulebook/STATE.md (skipped');
-            expect(content).toContain('@.rulebook/PLANS.md (skipped');
         });
 
-        it('keeps conditional imports whose targets exist', async () => {
+        it('keeps the override import when the target exists', async () => {
             await fs.writeFile(path.join(projectRoot, 'AGENTS.override.md'), '# override');
-            await fs.mkdir(path.join(projectRoot, '.rulebook'), { recursive: true });
-            await fs.writeFile(path.join(projectRoot, '.rulebook', 'STATE.md'), '# state');
 
             const content = await generateClaudeMd(projectRoot);
 
-            // These two should remain as live @import lines (no skipped marker)
             expect(content).toMatch(/^@AGENTS\.override\.md\s*$/m);
-            expect(content).toMatch(/^@\.rulebook\/STATE\.md\s*$/m);
-            // PLANS still missing, must be skipped
-            expect(content).toContain('@.rulebook/PLANS.md (skipped');
+            expect(content).not.toContain('@AGENTS.override.md (skipped');
         });
 
         it('keepAllImports option leaves the template untouched', async () => {
             const content = await generateClaudeMd(projectRoot, { keepAllImports: true });
             expect(content).toMatch(/^@AGENTS\.override\.md\s*$/m);
-            expect(content).toMatch(/^@\.rulebook\/STATE\.md\s*$/m);
-            expect(content).toMatch(/^@\.rulebook\/PLANS\.md\s*$/m);
         });
     });
 

@@ -86,22 +86,7 @@ This includes:
 
 ---
 
-## PROHIBITION 5: Sequential File Editing
-
-**ALWAYS** edit files one at a time in sequence: Read file1 → Edit file1 → Read file2 → Edit file2.
-
-**NEVER** batch-read multiple files then batch-edit them. By the time you edit file 3, the context from file 1 may be stale.
-
-When a task touches 3+ files across subsystems:
-1. **STOP** — do not start implementing
-2. **Plan** the changes (list files, dependency order)
-3. **Decompose** into sub-tasks of 1-2 files each
-4. **Execute** sub-tasks in dependency order
-5. **Build/test** after each sub-task
-
----
-
-## PROHIBITION 6: No Deferred Tasks
+## PROHIBITION 5: No Deferred Tasks
 
 If a task is in the checklist, **implement it**. No exceptions.
 
@@ -119,7 +104,7 @@ If you truly cannot implement something, explain WHY in concrete terms and propo
 
 ---
 
-## PROHIBITION 7: Follow Task Sequence — No Reordering, No Cherry-Picking
+## PROHIBITION 6: Follow Task Sequence — No Reordering, No Cherry-Picking
 
 When a `tasks.md` checklist defines a sequence of items, **execute them in EXACTLY that order**.
 

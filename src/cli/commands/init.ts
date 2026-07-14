@@ -322,37 +322,11 @@ export async function initCommand(options: {
         console.log(chalk.green(`\n✅ AGENTS.md written to ${agentsPath}`));
 
         {
-            const { installRule, projectRules } = await import('../../core/rule-engine.js');
-            const { getTemplatesDir } = await import('../../core/generators/generator.js');
-            const templatesDir = getTemplatesDir();
-
-            const rulesToInstall = [
-                'no-shortcuts',
-                'git-safety',
-                'sequential-editing',
-                'research-first',
-                'follow-task-sequence',
-                'incremental-implementation',
-                'task-decomposition',
-                'incremental-tests',
-                'no-deferred',
-                'session-workflow',
-            ];
-
-            let installedCount = 0;
-            for (const name of rulesToInstall) {
-                const result = await installRule(cwd, name, templatesDir);
-                if (result) installedCount++;
-            }
-
-            if (installedCount > 0) {
-                console.log(
-                    chalk.gray(
-                        `  • Installed ${installedCount} canonical rules to .rulebook/rules/`
-                    )
-                );
-            }
-
+            // v7: the canonical always-on rule set is retired (F-001/F-008) — its
+            // content lives as one-line values in the lean CLAUDE.md/AGENTS.md.
+            // Only user-authored rules already present in .rulebook/rules/ are
+            // still projected to the configured assistants.
+            const { projectRules } = await import('../../core/rule-engine.js');
             const ruleResult = await projectRules(cwd, {
                 claudeCode:
                     existsSync(path.join(cwd, '.claude')) ||

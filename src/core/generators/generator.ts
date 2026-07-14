@@ -1287,6 +1287,14 @@ export async function generateLeanAgents(
         .join('\n');
     template = template.replace('MODULE_REFS', moduleRefs || '_None configured_');
 
+    // Git workflow spec is opt-out: drop its index line when explicitly disabled.
+    if (config.includeGitWorkflow === false) {
+        template = template
+            .split('\n')
+            .filter((line) => !line.includes(`/${rulebookDir}/specs/GIT.md`))
+            .join('\n');
+    }
+
     return template;
 }
 
