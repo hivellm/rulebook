@@ -80,8 +80,8 @@ describe('generator', () => {
 
             // Lean template uses the "Language & Framework Rules" header
             expect(content).toContain('Language & Framework Rules');
-            expect(content).toContain('/.rulebook/specs/rust.md');
-            expect(content).toContain('/.rulebook/specs/typescript.md');
+            expect(content).toContain('.claude/rules/rust.md');
+            expect(content).toContain('.claude/rules/typescript.md');
 
             // v7: module spec docs are retired — no module references
             expect(content).not.toContain('Module Rules');
@@ -93,8 +93,8 @@ describe('generator', () => {
             const config = { ...baseConfig, modular: true };
             const content = await generateFullAgents(config, '/tmp/test');
 
-            expect(content).toContain('/.rulebook/specs/rust.md');
-            expect(content).not.toContain('/.rulebook/specs/typescript.md');
+            expect(content).toContain('.claude/rules/rust.md');
+            expect(content).not.toContain('.claude/rules/typescript.md');
         });
 
         it('does not emit module spec references even when modules are configured (v7)', async () => {
@@ -126,7 +126,7 @@ describe('generator', () => {
 
             // Lean template — no embedded blocks, only references
             expect(content).toContain('<!-- RULEBOOK:START -->');
-            expect(content).toContain('/.rulebook/specs/rust.md');
+            expect(content).toContain('.claude/rules/rust.md');
             expect(content).not.toContain('/.rulebook/specs/vectorizer.md');
             expect(content).not.toContain('<!-- RUST:START -->');
         });
@@ -405,7 +405,7 @@ describe('generator', () => {
 
             // Always lean — no embedded blocks
             expect(content).toContain('<!-- RULEBOOK:START -->');
-            expect(content).toContain('/.rulebook/specs/typescript.md');
+            expect(content).toContain('.claude/rules/typescript.md');
             expect(content).not.toContain('<!-- TYPESCRIPT:START -->');
         });
 

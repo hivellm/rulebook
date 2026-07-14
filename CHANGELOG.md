@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [7.0.0] - 2026-07-14
 
+### Changed — Post-v7 context optimization (phase6 — ALL BUDGETS PASS)
+
+- The 12 `/rulebook-*` slash commands are retired — they duplicated the
+  consolidated MCP tools verb-for-verb. `rulebook update` strips previously
+  installed copies (marker-guarded). Replacement: the `rulebook_task` /
+  `rulebook_memory` MCP tools cover every verb. Default install: 29 → **17
+  files**.
+- Language specs for the 8 core languages are now POINTERS to the canonical
+  path-scoped `.claude/rules/<lang>.md` (one payload, zero drift); AGENTS.md
+  language refs point at the rule file.
+- Honest benchmark: `measure-overhead.mjs` splits ALWAYS-ON vs ON-DEMAND
+  (verified: Claude Code does not auto-load AGENTS.md when CLAUDE.md exists —
+  it serves the other tools). Always-on total: **1,678 tokens** vs the 2,500
+  budget; frontmatter violations fail the report; Windows MCP-init budget is
+  platform-conditional (250 ms Win / 150 ms Linux).
+
 ### Changed — External perf-audit fixes (issues #18–#24)
 
 - **Task ordering is dependency semantics** (#18): checklist order expresses

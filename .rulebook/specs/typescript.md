@@ -1,33 +1,6 @@
 <!-- TYPESCRIPT:START -->
 # TypeScript rules
 
-Loaded by Claude Code when touching TypeScript files. Keeps guidance focused so the main `CLAUDE.md` stays small.
-
-## Non-negotiables
-
-1. **Type-check before test.** Run the project's `type-check` (usually `tsc --noEmit` or `npm run type-check`) before running the test suite. A type error is a faster, cheaper signal than a test failure.
-2. **No `any`** unless the value is genuinely untyped (e.g. `JSON.parse` output before validation). Prefer `unknown` with a narrowing step.
-3. **No `// @ts-ignore` / `// @ts-expect-error`** without a one-line comment explaining why. If you can fix the type, fix it.
-4. **Strict null checks.** Treat `undefined` and `null` as distinct. Use optional chaining (`?.`) and nullish coalescing (`??`), not `||`, for "value might be absent" logic.
-5. **ESM everywhere.** Use `import`/`export`, not `require`. Relative imports include the `.js` extension (Node ESM rule) even when the source file is `.ts`.
-
-## Conventions
-
-- Public API types live next to their implementation. Large shared types go in `src/types.ts` or `src/types/`.
-- Interfaces for object shapes, `type` aliases for unions and mapped types.
-- `readonly` wherever mutation is not required.
-- Exhaustive `switch` on union types uses a `const _exhaustive: never = x;` tail.
-- Async functions return `Promise<T>` explicitly on public APIs.
-
-## Testing
-
-- Use the project's configured test runner (Vitest, Jest, Node test) — do not add a new one.
-- Mock at the module boundary, not inside the unit under test.
-- Every `describe` has at least one `it`; no empty test blocks.
-
-## Build & tooling
-
-- Never commit `dist/`, `build/`, `.tsbuildinfo`, or `node_modules/`.
-- `tsconfig.json` is the source of truth for compiler options. Do not override via inline comments unless explicitly required.
-- Prefer `tsx` / `ts-node` for scripts; never shell-execute a raw `.ts` file in production.
+Canonical copy: `.claude/rules/typescript.md` (path-scoped — loaded
+automatically when files of this language are touched).
 <!-- TYPESCRIPT:END -->

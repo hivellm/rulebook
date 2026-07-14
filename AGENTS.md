@@ -39,7 +39,7 @@ Given/When/Then, `####` scenarios).
 
 ## Language & Framework Rules
 
-- **TYPESCRIPT**: `/.rulebook/specs/typescript.md`
+- **TYPESCRIPT**: `.claude/rules/typescript.md`
 
 ## Specs index (on demand)
 

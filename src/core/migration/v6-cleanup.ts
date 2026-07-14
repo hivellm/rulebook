@@ -77,6 +77,28 @@ const RETIRED_SPECS = [
 /** Skills that existed only to serve retired subsystems. */
 const RETIRED_SKILLS = ['rulebook-terse', 'rulebook-terse-commit', 'rulebook-terse-review', 'handoff'];
 
+/**
+ * Slash commands retired in phase6 — they duplicated the consolidated MCP
+ * tools verb-for-verb (F-004/F-008 in docs/analysis/post-v7-context-optimization).
+ */
+const RETIRED_COMMANDS = [
+    'rulebook-task-create.md',
+    'rulebook-task-list.md',
+    'rulebook-task-show.md',
+    'rulebook-task-archive.md',
+    'rulebook-task-apply.md',
+    'rulebook-task-validate.md',
+    'rulebook-knowledge-add.md',
+    'rulebook-knowledge-list.md',
+    'rulebook-learn-capture.md',
+    'rulebook-learn-list.md',
+    'rulebook-decision-create.md',
+    'rulebook-decision-list.md',
+];
+
+/** Markers proving a command doc was shipped by rulebook. */
+const COMMAND_MARKERS = ['<!-- RULEBOOK:START', 'MCP equivalent', 'rulebook_task', 'rulebook_memory'];
+
 /** Loose .rulebook files from retired subsystems. */
 const RETIRED_RULEBOOK_FILES = ['COMPACT_CONTEXT.md', '.terse-mode'];
 
@@ -132,6 +154,19 @@ export async function planV6Cleanup(projectRoot: string): Promise<V6CleanupPlan>
     for (const name of RETIRED_SKILLS) {
         const p = path.join(projectRoot, '.claude', 'skills', name);
         if (await exists(p)) plan.remove.push(rel(p));
+    }
+
+    // .claude/commands — phase6-retired slash commands (rulebook-shipped only).
+    for (const name of RETIRED_COMMANDS) {
+        const p = path.join(projectRoot, '.claude', 'commands', name);
+        if (!(await exists(p))) continue;
+        try {
+            const content = await fs.readFile(p, 'utf-8');
+            if (COMMAND_MARKERS.some((m) => content.includes(m))) plan.remove.push(rel(p));
+            else plan.preserved.push(rel(p));
+        } catch {
+            // unreadable — leave it alone
+        }
     }
 
     // .rulebook/specs — retired docs + uppercase → lowercase normalization.

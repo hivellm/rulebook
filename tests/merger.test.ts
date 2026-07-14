@@ -235,7 +235,7 @@ TypeScript content
             const merged = await mergeFullAgents(existing, config, projectRoot);
 
             // Should generate modular format with references
-            expect(merged).toContain('/.rulebook/specs/typescript.md');
+            expect(merged).toContain('.claude/rules/typescript.md');
             expect(merged).toContain('<!-- RULEBOOK:START -->');
         });
 
@@ -304,7 +304,7 @@ TypeScript content
             const merged = await mergeFullAgents(existing, config, projectRoot);
 
             // Should generate modular format; v7 emits no module spec refs
-            expect(merged).toContain('/.rulebook/specs/typescript.md');
+            expect(merged).toContain('.claude/rules/typescript.md');
             expect(merged).not.toContain('/.rulebook/specs/vectorizer.md');
         });
 
@@ -413,7 +413,7 @@ TypeScript content
 
             // Lean template — references, not embedded blocks
             expect(merged).toContain('<!-- RULEBOOK:START -->');
-            expect(merged).toContain('/.rulebook/specs/typescript.md');
+            expect(merged).toContain('.claude/rules/typescript.md');
             expect(merged).not.toContain('<!-- TYPESCRIPT:START -->');
         });
     });

@@ -70,6 +70,32 @@ describe('v6 → v7 cleanup (migration)', () => {
         await expect(fs.stat(path.join(root, '.rulebook', 'rules'))).rejects.toThrow();
     });
 
+    it('removes phase6-retired slash commands (rulebook-shipped only)', async () => {
+        await fs.mkdir(path.join(root, '.claude', 'commands'), { recursive: true });
+        // rulebook-shipped command (has the MCP-equivalent marker) → remove
+        await fs.writeFile(
+            path.join(root, '.claude', 'commands', 'rulebook-task-create.md'),
+            '# /rulebook-task-create\n\n**MCP equivalent**: rulebook_task\n'
+        );
+        // same retired name, user-authored content → preserve
+        await fs.writeFile(
+            path.join(root, '.claude', 'commands', 'rulebook-decision-list.md'),
+            '# my own command doc\n'
+        );
+
+        const plan = await planV6Cleanup(root);
+        expect(plan.remove).toContain('.claude/commands/rulebook-task-create.md');
+        expect(plan.preserved).toContain('.claude/commands/rulebook-decision-list.md');
+
+        await applyV6Cleanup(root, plan);
+        await expect(
+            fs.stat(path.join(root, '.claude', 'commands', 'rulebook-task-create.md'))
+        ).rejects.toThrow();
+        await expect(
+            fs.stat(path.join(root, '.claude', 'commands', 'rulebook-decision-list.md'))
+        ).resolves.toBeDefined();
+    });
+
     it('renames uppercase spec files to the v7 lowercase convention', async () => {
         await fs.writeFile(path.join(root, '.rulebook', 'specs', 'TYPESCRIPT.md'), '# ts spec');
 
