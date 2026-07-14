@@ -213,16 +213,18 @@ describe('TaskManager', () => {
 
         it('should fail validation for short purpose', async () => {
             await taskManager.createTask('phase1_invalid-task');
+            // Write a genuinely short purpose (the scaffold placeholder is long).
+            const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_invalid-task', 'proposal.md');
+            const content = await fs.readFile(proposalPath, 'utf-8');
+            await fs.writeFile(
+                proposalPath,
+                content.replace('[Explain why this change is needed - minimum 20 characters]', 'too short')
+            );
+
             const validation = await taskManager.validateTask('phase1_invalid-task');
-            // There should always be errors on a freshly created task: the
-            // placeholder purpose and the unchecked mandatory tail.
-            expect(validation.errors.length).toBeGreaterThan(0);
-            // Must mention either the Purpose section OR the mandatory tail.
-            expect(
-                validation.errors.some(
-                    (e) => e.includes('Purpose section') || e.includes('Why') || e.includes('tail')
-                )
-            ).toBe(true);
+            expect(validation.errors.some((e) => e.includes('Purpose section'))).toBe(true);
+            // v7 (#19): the unchecked tail is a WARNING, not an error.
+            expect(validation.warnings.some((w) => w.includes('tail items unchecked'))).toBe(true);
         });
 
         it('should fail validation for non-existent task', async () => {
@@ -915,9 +917,25 @@ Then something occurs
                 )
             );
 
+            // v7 (#19): without a waiver the archive still refuses…
             await expect(taskManager.archiveTask('phase1_tail-blocks-archive')).rejects.toThrow(
-                /Mandatory task tail items are still unchecked/
+                /tail items unchecked[\s\S]*tailWaiver/
             );
+
+            // …but a one-line rationale archives and records the waiver.
+            await taskManager.archiveTask(
+                'phase1_tail-blocks-archive',
+                false,
+                'doc-only change, no runtime behavior'
+            );
+            const archives = await fs.readdir(join(testDir, '.rulebook', 'archive'));
+            const archived = archives.find((a) => a.endsWith('phase1_tail-blocks-archive'));
+            expect(archived).toBeDefined();
+            const archivedTasks = await fs.readFile(
+                join(testDir, '.rulebook', 'archive', archived!, 'tasks.md'),
+                'utf-8'
+            );
+            expect(archivedTasks).toContain('tail-waiver: doc-only change');
         });
 
         it('archiveTask succeeds after the tail is checked', async () => {

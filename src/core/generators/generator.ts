@@ -907,11 +907,7 @@ export async function generateModularAgents(
             sections.push('## Workspace Mode');
             sections.push('');
             sections.push(
-                `**This project is part of a multi-project workspace.** All MCP tool calls MUST include the correct \`projectId\` parameter.`
-            );
-            sections.push('');
-            sections.push(
-                `**📋 ALWAYS read \`/${rulebookDir}/specs/workspace.md\` to understand project routing before using any Rulebook MCP tools.**`
+                `Multi-project workspace — Rulebook MCP calls route by the \`path\` hint (or the default project) unless \`projectId\` is set; see \`/${rulebookDir}/specs/workspace.md\` when working across projects.`
             );
             sections.push('');
         }

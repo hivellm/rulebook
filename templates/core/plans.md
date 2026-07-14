@@ -1,14 +1,11 @@
 <!-- PLANS:START -->
 # Project Plans & Session Context
 
-This file is a **persistent session scratchpad** maintained by AI agents.
-It provides continuity across sessions without relying on conversation history.
-
-## How to Use
-
-At the **start of each session**: Read this file to understand current context.
-During the **session**: Update with decisions, discoveries, and progress.
-At **session end**: Write a summary to the Session History section.
+**Optional scratchpad** for cross-session continuity — no per-session ritual.
+`rulebook_session {action:"start"}` returns the active context and the last few
+history entries; add a summary via `{action:"end"}` when the session produced
+durable state worth carrying forward. History rotates automatically to
+`.rulebook/archive/plans-history.md`.
 
 ## Active Context
 

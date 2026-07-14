@@ -30,8 +30,9 @@ Never create README.md, PROCESS.md, or any other file in a task directory.
   incomplete; independent items may run in any order or in parallel.
 - No deferred items: implement, or explain concretely why impossible. To hand
   work off, create a follow-up task BEFORE archiving — no orphan items.
-- Every task ends with the mandatory tail: update docs → write tests → run
-  tests and confirm they pass. `archive` refuses otherwise.
+- Tasks scaffold a docs + tests tail: check the items, or archive with a
+  one-line `tailWaiver` stating why they don't apply (doc-only, covered
+  refactor, tooling).
 
 ## Spec format
 

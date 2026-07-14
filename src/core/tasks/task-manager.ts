@@ -1,4 +1,11 @@
-import { writeFile as fsWriteFile, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
+import {
+    writeFile as fsWriteFile,
+    existsSync,
+    mkdirSync,
+    readdirSync,
+    readFileSync,
+    statSync,
+} from 'fs';
 import { promisify } from 'util';
 import { join } from 'path';
 import {
@@ -64,7 +71,7 @@ export const MANDATORY_TAIL_ITEMS = [
 
 export function renderMandatoryTail(sectionNumber: number): string {
     return [
-        `## ${sectionNumber}. Tail (mandatory — enforced by rulebook)`,
+        `## ${sectionNumber}. Tail (docs + tests — check or waive with tailWaiver)`,
         `- [ ] ${sectionNumber}.1 Update or create documentation covering the implementation`,
         `- [ ] ${sectionNumber}.2 Write tests covering the new behavior`,
         `- [ ] ${sectionNumber}.3 Run tests and confirm they pass`,
@@ -502,11 +509,14 @@ ${renderMandatoryTail(2)}`;
             : { present: false, missing: MANDATORY_TAIL_ITEMS.map((i) => i.label), unchecked: [] };
         if (!tail.present) {
             errors.push(
-                `Mandatory task tail missing from tasks.md (required in v5.3.0): ${tail.missing.join(', ')}`
+                `Task tail missing from tasks.md (docs + tests scaffold): ${tail.missing.join(', ')}`
             );
         } else if (tail.unchecked.length > 0) {
-            errors.push(
-                `Mandatory task tail items are still unchecked: ${tail.unchecked.join(', ')}`
+            // v7 (#19): unchecked tail items warn instead of blocking — archive
+            // accepts a one-line tailWaiver rationale for tasks where the tail
+            // genuinely does not apply (doc-only, refactors with existing coverage).
+            warnings.push(
+                `Task tail items unchecked: ${tail.unchecked.join(', ')} — check them or archive with a tailWaiver rationale`
             );
         }
 
@@ -559,9 +569,18 @@ ${renderMandatoryTail(2)}`;
     }
 
     /**
-     * Archive a completed task
+     * Archive a completed task.
+     *
+     * v7 (#19): unchecked tail items are validation WARNINGS. Archiving over
+     * them requires an explicit one-line `tailWaiver` rationale, which is
+     * recorded in the archived tasks.md — honest and auditable, unlike the
+     * all-or-nothing `skipValidation` escape hatch (kept for compat).
      */
-    async archiveTask(taskId: string, skipValidation: boolean = false): Promise<void> {
+    async archiveTask(
+        taskId: string,
+        skipValidation: boolean = false,
+        tailWaiver?: string
+    ): Promise<void> {
         const task = await this.loadTask(taskId);
         if (!task) {
             throw new Error(`Task ${taskId} not found`);
@@ -572,6 +591,27 @@ ${renderMandatoryTail(2)}`;
             const validation = await this.validateTask(taskId);
             if (!validation.valid) {
                 throw new Error(`Task validation failed:\n${validation.errors.join('\n')}`);
+            }
+            const tailWarning = validation.warnings.find((w) =>
+                w.startsWith('Task tail items unchecked')
+            );
+            if (tailWarning && !tailWaiver) {
+                throw new Error(
+                    `${tailWarning}\nPass tailWaiver (one line on why the tail does not apply) to archive anyway.`
+                );
+            }
+            if (tailWarning && tailWaiver) {
+                const tasksMdPath = join(this.tasksPath, taskId, 'tasks.md');
+                try {
+                    const current = readFileSync(tasksMdPath, 'utf-8');
+                    await writeFileAsync(
+                        tasksMdPath,
+                        current.trimEnd() +
+                            `\n\n<!-- tail-waiver: ${tailWaiver.replace(/-->/g, '')} -->\n`
+                    );
+                } catch {
+                    // waiver recording is best-effort
+                }
             }
         }
 

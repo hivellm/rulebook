@@ -43,9 +43,33 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
     const { projectRoot, workspaceManager, projectIdSchema, getTaskMgr, getSkillsMgr, getConfigMgr } =
         ctx;
 
-    async function resolveRoot(projectId?: string): Promise<string> {
-        if (projectId && workspaceManager) {
-            return (await workspaceManager.getWorker(projectId)).projectRoot;
+    /**
+     * Workspace routing (#24): projectId is inferred server-side from an
+     * optional path hint via longest-prefix match against project roots —
+     * wrong-project calls become near-impossible instead of rule-policed.
+     * An explicit projectId always wins.
+     */
+    function inferProjectId(pathHint?: string): string | undefined {
+        if (!pathHint || !workspaceManager) return undefined;
+        const norm = pathHint.replace(/\\/g, '/').toLowerCase();
+        let best: { id: string; len: number } | undefined;
+        for (const p of workspaceManager.getProjects()) {
+            const rootNorm = p.path.replace(/\\/g, '/').toLowerCase();
+            if (norm.startsWith(rootNorm) && (!best || rootNorm.length > best.len)) {
+                best = { id: p.name, len: rootNorm.length };
+            }
+        }
+        return best?.id;
+    }
+
+    function routeProjectId(args: { projectId?: string; path?: string }): string | undefined {
+        return args.projectId ?? inferProjectId(args.path);
+    }
+
+    async function resolveRoot(projectId?: string, pathHint?: string): Promise<string> {
+        const id = projectId ?? inferProjectId(pathHint);
+        if (id && workspaceManager) {
+            return (await workspaceManager.getWorker(id)).projectRoot;
         }
         return projectRoot;
     }
@@ -71,12 +95,17 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 status: z.enum(['pending', 'in-progress', 'completed', 'blocked']).optional(),
                 includeArchived: z.boolean().optional(),
                 skipValidation: z.boolean().optional(),
+                tailWaiver: z
+                    .string()
+                    .optional()
+                    .describe('archive: one-line reason when the docs+tests tail does not apply'),
+                path: z.string().optional().describe('any file path — routes to its workspace project'),
                 projectId: projectIdSchema,
             },
         },
         async (args) => {
             try {
-                const tm = await getTaskMgr(args.projectId);
+                const tm = await getTaskMgr(routeProjectId(args));
                 const needId = ['create', 'show', 'update', 'archive', 'validate', 'delete'];
                 if (needId.includes(args.action) && !args.taskId) {
                     return fail(`action "${args.action}" requires taskId`);
@@ -108,7 +137,11 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                         if (args.status) await tm.updateTaskStatus(args.taskId!, args.status);
                         return ok({ taskId: args.taskId, message: 'updated' });
                     case 'archive':
-                        await tm.archiveTask(args.taskId!, args.skipValidation || false);
+                        await tm.archiveTask(
+                            args.taskId!,
+                            args.skipValidation || false,
+                            args.tailWaiver
+                        );
                         return ok({ taskId: args.taskId, message: 'archived', contextTip: CONTEXT_TIP });
                     case 'validate': {
                         const v = await tm.validateTask(args.taskId!);
@@ -150,12 +183,13 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 alternatives: z.array(z.string()).optional(),
                 consequences: z.string().optional(),
                 limit: z.number().optional(),
+                path: z.string().optional().describe('any file path — routes to its workspace project'),
                 projectId: projectIdSchema,
             },
         },
         async (args) => {
             try {
-                const root = await resolveRoot(args.projectId);
+                const root = await resolveRoot(args.projectId, args.path);
                 if (args.kind === 'knowledge') {
                     const { KnowledgeManager } = await import(
                         '../../core/tasks/knowledge-manager.js'
@@ -282,10 +316,35 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 const plansPath = join(root, '.rulebook', 'PLANS.md');
 
                 if (args.action === 'start') {
-                    // One call returns everything a session needs (F-005).
-                    const plans = existsSync(plansPath)
-                        ? await readFile(plansPath, 'utf-8')
-                        : null;
+                    // One call returns everything a session needs (F-005) —
+                    // BOUNDED (#21): active context + current task + last 3
+                    // history entries, never the whole file.
+                    let plans: string | null = null;
+                    if (existsSync(plansPath)) {
+                        const full = await readFile(plansPath, 'utf-8');
+                        const block = (name: string) => {
+                            const m = full.match(
+                                new RegExp(
+                                    `<!-- PLANS:${name}:START -->([\\s\\S]*?)<!-- PLANS:${name}:END -->`
+                                )
+                            );
+                            return m ? m[1].trim() : '';
+                        };
+                        const history = block('HISTORY');
+                        const lastEntries = history
+                            ? history.split(/^### /m).filter(Boolean).slice(0, 3)
+                            : [];
+                        plans = [
+                            block('CONTEXT') && `## Active Context\n${block('CONTEXT')}`,
+                            block('TASK') && `## Current Task\n${block('TASK')}`,
+                            lastEntries.length &&
+                                `## Recent Sessions\n### ${lastEntries.join('### ')}`,
+                        ]
+                            .filter(Boolean)
+                            .join('\n\n') || null;
+                        // Files without block markers (user-managed): cap at 4 KB.
+                        if (!plans && full.trim()) plans = full.slice(0, 4096);
+                    }
                     let tasks: unknown[] = [];
                     try {
                         const tm = await getTaskMgr(args.projectId);
@@ -310,6 +369,7 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 if (!args.summary) return fail('end requires summary');
                 const date = new Date().toISOString().split('T')[0];
                 const entry = `### ${date}\n${args.summary}\n`;
+                const MAX_HISTORY = 20;
                 if (existsSync(plansPath)) {
                     let content = await readFile(plansPath, 'utf-8');
                     content = content.includes('<!-- PLANS:HISTORY:START -->')
@@ -319,6 +379,34 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                           )
                         : content +
                           `\n## Session History\n\n<!-- PLANS:HISTORY:START -->\n${entry}<!-- PLANS:HISTORY:END -->\n`;
+                    // Rotation (#21): keep the newest MAX_HISTORY entries in
+                    // PLANS.md; older ones move to .rulebook/archive/plans-history.md
+                    // so session-start cost stays constant forever.
+                    const hm = content.match(
+                        /<!-- PLANS:HISTORY:START -->([\s\S]*?)<!-- PLANS:HISTORY:END -->/
+                    );
+                    if (hm) {
+                        const entries = hm[1].split(/^### /m).filter((e) => e.trim());
+                        if (entries.length > MAX_HISTORY) {
+                            const keep = entries.slice(0, MAX_HISTORY);
+                            const overflow = entries.slice(MAX_HISTORY);
+                            content = content.replace(
+                                hm[0],
+                                `<!-- PLANS:HISTORY:START -->\n### ${keep.join('### ')}<!-- PLANS:HISTORY:END -->`
+                            );
+                            const archDir = join(root, '.rulebook', 'archive');
+                            if (!existsSync(archDir)) mkdirSync(archDir, { recursive: true });
+                            const archPath = join(archDir, 'plans-history.md');
+                            const prev = existsSync(archPath)
+                                ? await readFile(archPath, 'utf-8')
+                                : '# Rotated session history\n\n';
+                            await writeFile(
+                                archPath,
+                                prev.trimEnd() + `\n\n### ${overflow.join('### ')}`,
+                                'utf-8'
+                            );
+                        }
+                    }
                     await writeFile(plansPath, content, 'utf-8');
                 } else {
                     const dir = join(root, '.rulebook');

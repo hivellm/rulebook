@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — External perf-audit fixes (issues #18–#24)
+
+- **Task ordering is dependency semantics** (#18): checklist order expresses
+  prerequisites; independent items — same phase included — may run in any
+  order or in parallel via subagents. P0 test forbids total-order mandates.
+- **Git rules split by blast radius** (#20): destructive ops still require
+  authorization; creating/switching/merging agent-created branches,
+  `git worktree` parallelism and PRs via `gh` are autonomous. Default branch
+  changes only via approved PR.
+- **Tail waiver** (#19): unchecked docs+tests tail items are validation
+  warnings; `rulebook_task {action:"archive", tailWaiver:"…"}` archives with
+  a recorded one-line rationale. The tail retro-append on `update` is gone.
+- **Bounded session payload** (#21): session start returns active context +
+  current task + last 3 history entries (never the whole PLANS.md); session
+  end rotates history beyond 20 entries to `.rulebook/archive/plans-history.md`.
+  `plans.md` is an optional scratchpad — no per-session ritual.
+- **Neutral MCP reference** (#22): use the cheapest surface; no
+  MCP-over-shell mandate.
+- **Tiered quality gate** (#23): per commit, type-check + lint + affected
+  tests; per push/PR/archive, the full suite; hooks are the floor.
+- **Workspace auto-routing** (#24): v7 tools accept a `path` hint and infer
+  `projectId` by longest-prefix match server-side; workspace directives
+  reduced to one calm line; cross-project knowledge is captured once, in the
+  owning project.
+
 ### Added — Session hygiene (docs/analysis/session-auto-cleanup/)
 
 - `rulebook_task {action:"archive"}` and `rulebook_session {action:"end"}`
