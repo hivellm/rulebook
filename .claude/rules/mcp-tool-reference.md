@@ -2,9 +2,10 @@
 
 # MCP tool reference
 
-This project has the following MCP servers configured. **Prefer using
-MCP tools directly** instead of spawning sub-agents or running shell
-commands when the equivalent MCP tool exists.
+This project has the following MCP servers configured. When an MCP tool
+covers the operation, prefer it over shell commands — it is faster and
+structured. How you orchestrate (directly, in parallel, or via subagents)
+is entirely your call.
 
 | Server | Source |
 |--------|--------|
