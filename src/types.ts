@@ -204,23 +204,9 @@ export interface RulebookConfig {
         tasksDir?: string; // Relative to project root
         archiveDir?: string; // Relative to project root
     };
-    // Multi-agent / Teams enforcement (v5.3.0)
+    // Multi-agent teams (v7: feature enable only — never enforcement)
     multiAgent?: {
-        enabled?: boolean; // default: false — auto-detected when `.claude/agents/` has ≥3 files
-        enforceTeamForBackgroundAgents?: boolean; // default: true when enabled
-    };
-    // Session handoff & freshness (v5.3.0)
-    handoff?: {
-        enabled?: boolean; // default: true
-        warnThresholdPct?: number; // default: 75
-        forceThresholdPct?: number; // default: 90
-        tokenizer?: 'auto' | 'chars' | 'tiktoken'; // default: 'auto'
-        maxHistoryFiles?: number; // default: 50
-    };
-    // Terse mode — output-verbosity compression (v5.4.0)
-    terse?: {
-        enabled?: boolean; // default: true — installs skills + hooks on init/update
-        defaultMode?: 'off' | 'brief' | 'terse' | 'ultra' | 'commit' | 'review'; // default: 'terse'
+        enabled?: boolean; // sets CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
     };
     // Skills configuration (v2.0)
     skills?: {

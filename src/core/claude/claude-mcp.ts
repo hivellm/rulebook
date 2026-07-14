@@ -135,9 +135,17 @@ export async function installClaudeCodeSkills(
  * Each skill is a directory with a SKILL.md file.
  * Copies templates/dev-skills/<name>/SKILL.md to .claude/skills/<name>/SKILL.md.
  */
+/**
+ * v7: only Rulebook-specific skills ship by default. Generic engineering
+ * skills duplicate native harness capabilities (F-010) and are opt-in via
+ * `rulebook skills` management.
+ */
+const DEFAULT_DEV_SKILLS: readonly string[] = ['analysis', 'spec'];
+
 export async function installDevSkills(
     projectRoot: string,
-    templatesPath: string
+    templatesPath: string,
+    skillNames: readonly string[] = DEFAULT_DEV_SKILLS
 ): Promise<string[]> {
     const skillsSourceDir = join(templatesPath, 'skills', 'dev');
     const skillsTargetDir = join(projectRoot, '.claude', 'skills');
@@ -153,6 +161,7 @@ export async function installDevSkills(
 
     for (const entry of entries) {
         if (!entry.isDirectory()) continue;
+        if (!skillNames.includes(entry.name)) continue;
 
         const skillFile = join(skillsSourceDir, entry.name, 'SKILL.md');
         if (!(await fileExists(skillFile))) continue;
@@ -293,10 +302,18 @@ function getTemplatesPath(): string {
  * Main entry point: detect Claude Code and set up MCP + skills.
  * Non-blocking: returns silently if Claude Code is not detected.
  */
+export interface ClaudeCodeSetupOptions {
+    /** Install agent definitions (v7: opt-in — native harness agents cover the defaults). */
+    includeAgents?: boolean;
+    /** Install orchestration workflows (v7: opt-in). */
+    includeWorkflows?: boolean;
+}
+
 export async function setupClaudeCodeIntegration(
     projectRoot: string,
     templatesPath?: string,
-    homeDir?: string
+    homeDir?: string,
+    options: ClaudeCodeSetupOptions = {}
 ): Promise<ClaudeCodeSetupResult> {
     const detected = await isClaudeCodeInstalled(homeDir);
 
@@ -321,24 +338,28 @@ export async function setupClaudeCodeIntegration(
     const devSkillsInstalled = await installDevSkills(projectRoot, resolvedTemplatesPath);
     const agentTeamsEnabled = await configureClaudeSettings(projectRoot);
 
-    // Resolve the project's primary language so agent placeholders render correctly.
-    let primaryLanguage: string | undefined;
-    try {
-        const detection = await detectProject(projectRoot);
-        primaryLanguage = detection.languages[0]?.language;
-    } catch {
-        // Detection failure → installAgentDefinitions falls back to TypeScript defaults.
+    // v7 (F-010): agents and workflows are opt-in. The native harness ships
+    // general-purpose/exploration/review agents; duplicating them by default
+    // pads every session's context and creates upgrade churn.
+    let agentDefinitionsInstalled: string[] = [];
+    if (options.includeAgents) {
+        let primaryLanguage: string | undefined;
+        try {
+            const detection = await detectProject(projectRoot);
+            primaryLanguage = detection.languages[0]?.language;
+        } catch {
+            // Detection failure → installAgentDefinitions falls back to TypeScript defaults.
+        }
+        agentDefinitionsInstalled = await installAgentDefinitions(
+            projectRoot,
+            resolvedTemplatesPath,
+            primaryLanguage
+        );
     }
 
-    const agentDefinitionsInstalled = await installAgentDefinitions(
-        projectRoot,
-        resolvedTemplatesPath,
-        primaryLanguage
-    );
-    const workflowDefinitionsInstalled = await installWorkflowDefinitions(
-        projectRoot,
-        resolvedTemplatesPath
-    );
+    const workflowDefinitionsInstalled = options.includeWorkflows
+        ? await installWorkflowDefinitions(projectRoot, resolvedTemplatesPath)
+        : [];
 
     return {
         detected: true,

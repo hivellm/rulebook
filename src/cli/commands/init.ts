@@ -399,13 +399,6 @@ export async function initCommand(options: {
             }
 
             try {
-                const { ensureDir: ensureDirUtil } = await import('../../utils/file-system.js');
-                await ensureDirUtil(path.join(cwd, '.rulebook', 'handoff'));
-            } catch {
-                // non-fatal
-            }
-
-            try {
                 const { ensureGitignoreEntries } = await import('../../utils/gitignore.js');
                 const localMdPath = path.join(cwd, 'CLAUDE.local.md');
                 if (!existsSync(localMdPath)) {
@@ -430,8 +423,6 @@ export async function initCommand(options: {
                 await ensureGitignoreEntries(cwd, [
                     'CLAUDE.local.md',
                     '.rulebook/backup/',
-                    '.rulebook/handoff/_pending.md',
-                    '.rulebook/handoff/.urgent',
                 ]);
             } catch {
                 // non-fatal

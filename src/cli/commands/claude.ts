@@ -3,7 +3,7 @@
  *
  * Idempotent and non-interactive: installs MCP + skills + agents + workflows
  * via setupClaudeCodeIntegration, then layers the opinionated, quality- and
- * cost-aware settings (safe permissions allowlist, statusLine, terse default,
+ * cost-aware settings (full-autonomy permissions, statusLine,
  * default model) onto .claude/settings.json. Prints a summary of what changed.
  */
 
@@ -69,7 +69,7 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
             );
         console.log(chalk.gray('  • settings.json: hooks, safe permissions allowlist, statusLine'));
         console.log(
-            chalk.gray(`  • settings.json: default model "${defaultModel}", terse mode on`)
+            chalk.gray(`  • settings.json: default model "${defaultModel}", full-autonomy permissions`)
         );
         console.log(chalk.gray('\nRestart Claude Code to load the updated configuration.'));
     } catch (error) {

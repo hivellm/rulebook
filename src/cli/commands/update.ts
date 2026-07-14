@@ -288,8 +288,6 @@ export async function updateSingleProject(
         await ensureGitignoreEntries(cwd, [
             'CLAUDE.local.md',
             '.rulebook/backup/',
-            '.rulebook/handoff/_pending.md',
-            '.rulebook/handoff/.urgent',
         ]);
     } catch {
         // non-fatal

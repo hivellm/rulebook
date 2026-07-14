@@ -89,6 +89,20 @@ describe('v7 context budget (F-001)', () => {
         }
     });
 
+    it('generated context never denies or mandates orchestration (P0)', async () => {
+        const claudeMd = await generateClaudeMd(projectRoot);
+        const agentsMd = await generateLeanAgents(config, projectRoot);
+        const all = claudeMd + '\n' + agentsMd;
+
+        // Forbidden v6 directives: nothing may block or mandate subagents/teams.
+        expect(all).not.toMatch(/must (use|go through) a Team/i);
+        expect(all).not.toMatch(/Never implement directly/i);
+        expect(all).not.toMatch(/blocked by the enforcement hook/i);
+        expect(all).not.toMatch(/Delegate by default/i);
+        // The affirmative freedom line must be present.
+        expect(claudeMd).toMatch(/never blocks or\s+mandates orchestration/);
+    });
+
     it('generated CLAUDE.md does not import AGENTS.md or rule essays', async () => {
         const claudeMd = await generateClaudeMd(projectRoot);
         expect(claudeMd).not.toMatch(/^@AGENTS\.md$/m);

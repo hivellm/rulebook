@@ -31,6 +31,27 @@ v7.0.0 development — mission: run complementary to modern frontier models
   session cost (static tokens, MCP schemas/init, hooks, installed files)
   against the v7 budgets.
 
+### Changed — Phase 4: asset prune (default install 95 → 29 files)
+
+- Agents and orchestration workflows are opt-in
+  (`setupClaudeCodeIntegration(..., { includeAgents, includeWorkflows })`);
+  nothing installs them by default — native harness agents cover the roles.
+- Default dev skills reduced to the Rulebook-specific set (analysis, spec)
+  plus karpathy-guidelines; the hidden side-effect installer inside
+  `generateModularAgents` (agents + all dev skills on every generation) is
+  removed, as is the generated delegation-table section.
+- `RulebookConfig.handoff`/`.terse` config types removed;
+  `multiAgent.enabled` now only sets the teams feature env var.
+- New P0 test: generated CLAUDE.md/AGENTS.md contain no directive that denies
+  or mandates orchestration, and must contain the affirmative freedom line.
+
+### Removed — Phase 4
+
+- `src/hooks/safe-flag-io.ts` (last terse-subsystem code; `src/hooks/` is
+  gone) and its test.
+- `.rulebook/handoff` directory creation and gitignore entries from init/update.
+- Terse skill IDs from `INVOCABLE_CORE_SKILLS`.
+
 ### Changed — Phase 2: hook teardown + full autonomy (P0/F-002/F-009/F-011)
 
 - `claude-settings-manager` rewritten for v7: rulebook now wires at most ONE

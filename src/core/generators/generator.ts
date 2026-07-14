@@ -804,44 +804,13 @@ export function substituteAgentPlaceholders(
 }
 
 /**
- * Install agent definitions to .claude/agents/ with placeholder substitution.
- */
-async function installAgentsWithPlaceholders(
-    projectRoot: string,
-    config: ProjectConfig
-): Promise<void> {
-    const agentsDir = path.join(getTemplatesDir(), 'agents');
-    const targetDir = path.join(projectRoot, '.claude', 'agents');
-
-    if (!(await fileExists(agentsDir))) return;
-
-    await ensureDir(targetDir);
-
-    const placeholders = resolveAgentPlaceholders(config);
-
-    const { readdirSync } = await import('fs');
-    const files = readdirSync(agentsDir).filter((f: string) => f.endsWith('.md'));
-
-    for (const file of files) {
-        const content = await readFile(path.join(agentsDir, file));
-        const substituted = substituteAgentPlaceholders(content, placeholders);
-        await writeFile(path.join(targetDir, file), substituted);
-    }
-}
-
-/**
  * Names of `core/` skills that are user-invocable (slash-command or
  * natural-language trigger), so their SKILL.md files must land in
  * `.claude/skills/` alongside the `dev/` skills. Non-invocable core
  * skills (agent-automation, dag, documentation-rules, quality-enforcement,
  * rulebook) stay referenced via AGENTS.md only.
  */
-export const INVOCABLE_CORE_SKILLS = [
-    'rulebook-terse',
-    'rulebook-terse-commit',
-    'rulebook-terse-review',
-    'karpathy-guidelines',
-] as const;
+export const INVOCABLE_CORE_SKILLS = ['karpathy-guidelines'] as const;
 
 /**
  * Copy every SKILL.md under a source directory into .claude/skills/.
@@ -876,23 +845,6 @@ export async function installSkillsFromSource(
         const content = await readFile(skillFile);
         await writeFile(path.join(targetSkillDir, 'SKILL.md'), content);
     }
-}
-
-/**
- * Install dev skills + invocable core skills to .claude/skills/ (modern
- * Claude Code skills format). Each skill is a directory with a SKILL.md
- * file. Always installed on init/update — useful for any project.
- */
-async function installDevSkillsFromTemplates(projectRoot: string): Promise<void> {
-    const skillsTargetDir = path.join(projectRoot, '.claude', 'skills');
-    const templatesRoot = getTemplatesDir();
-
-    await installSkillsFromSource(path.join(templatesRoot, 'skills', 'dev'), skillsTargetDir);
-    await installSkillsFromSource(
-        path.join(templatesRoot, 'skills', 'core'),
-        skillsTargetDir,
-        INVOCABLE_CORE_SKILLS
-    );
 }
 
 /**
@@ -1082,16 +1034,8 @@ export async function generateModularAgents(
         // Monorepo detection failed — skip silently
     }
 
-    // Generate agent delegation section
-    sections.push(generateDelegationSection(mergedConfig));
-
-    // Install agent definitions and dev skills to .claude/
-    try {
-        await installAgentsWithPlaceholders(projectRoot, mergedConfig);
-        await installDevSkillsFromTemplates(projectRoot);
-    } catch {
-        // Agent/skill installation failed — skip silently
-    }
+    // v7 (F-010/P0): no delegation table and no side-effect asset installs —
+    // agents/skills are opt-in via the Claude Code setup (claude-mcp.ts).
 
     // Append AGENTS.override.md content if present and non-empty
     try {
