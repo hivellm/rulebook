@@ -15,7 +15,7 @@ rulebook task validate <task-id>   # check format before archiving
 
 **What it does**
 1. Read `proposal.md`, `design.md` (if present), and `tasks.md` to confirm scope and acceptance criteria.
-2. Work through the `tasks.md` checklist sequentially, keeping edits minimal and scoped.
+2. Work through the `tasks.md` checklist respecting dependencies — run independent items in parallel when it helps; keep edits minimal and scoped.
 3. After each item: implement, test, verify coverage (`npm test -- --coverage`), mark `[x]` in `tasks.md` immediately, commit locally.
 4. Before finishing: every item checked, all tests pass, coverage meets threshold, docs updated.
 

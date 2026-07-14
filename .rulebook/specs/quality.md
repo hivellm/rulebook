@@ -22,6 +22,7 @@ Non-negotiable. A violation means the implementation is rejected.
 
 - Fix root causes, not symptoms.
 - Write meaningful tests that verify real behavior.
-- Run the full quality gate (type-check → lint → tests) before every commit.
+- Per commit: type-check + lint + the tests covering the change. Per
+  push/PR/task archive: the full suite (type-check → lint → all tests).
 <!-- QUALITY_ENFORCEMENT:END -->
 <!-- QUALITY:END -->

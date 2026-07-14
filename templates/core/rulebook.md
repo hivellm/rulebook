@@ -26,8 +26,8 @@ Never create README.md, PROCESS.md, or any other file in a task directory.
 ## tasks.md rules
 
 - Checklist items only — no essays. Mark `[x]` as each item completes.
-- Execute items in the listed order: first unchecked item of the
-  lowest-numbered phase. The list is an order, not a menu.
+- Order expresses dependencies: never start an item whose prerequisites are
+  incomplete; independent items may run in any order or in parallel.
 - No deferred items: implement, or explain concretely why impossible. To hand
   work off, create a follow-up task BEFORE archiving — no orphan items.
 - Every task ends with the mandatory tail: update docs → write tests → run

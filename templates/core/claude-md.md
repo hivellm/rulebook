@@ -10,7 +10,10 @@ Managed by [@hivehub/rulebook](https://github.com/hivellm/rulebook) — few rule
 @AGENTS.override.md
 
 ## Commands
-- Quality gate before any commit: the project's type-check, then lint, then tests — all green. Never bypass hooks.
+- Before each commit: type-check + lint + the tests covering what changed.
+- Before push / PR / task archive: the FULL quality gate (type-check → lint →
+  full test suite), all green. Never bypass hooks — what the project wired
+  into pre-commit/pre-push is the floor.
 - Diagnostic-first: run the type-checker before the test suite; it is the faster signal.
 
 ## Values
@@ -18,12 +21,14 @@ Managed by [@hivehub/rulebook](https://github.com/hivellm/rulebook) — few rule
 2. Root causes, not workarounds — diagnose before changing code; never guess at bug causes.
 3. Surgical diffs — touch only what the task needs; match existing style.
 4. Simplicity first — the least code that solves the problem; no unrequested abstractions or features.
-5. Fix forward — never revert or discard uncommitted work.
+5. Fix forward — never discard uncommitted work.
 6. State assumptions — if interpretations diverge, say so instead of picking silently.
 
 ## Git safety (requires explicit user authorization)
-`reset --hard` · `checkout -- .` / `restore .` · `clean -f` · `push --force` · `rebase` ·
-`stash` · `branch -D` · branch switching. Always fine: status, diff, log, blame, add, commit.
+`reset --hard` · `checkout -- .` / `restore .` · `clean -f` · `push --force` ·
+`rebase` on shared branches · `stash` · `branch -D` · switching a shared checkout
+with changes you did not author. Yours autonomously: status/diff/log/add/commit,
+branches you create (create/switch/merge), `git worktree`, PRs via `gh`.
 
 ## Orchestration
 Subagents, parallel dispatch, and teams are your call — fan out freely when work is
@@ -32,7 +37,7 @@ mandates orchestration.
 
 ## Rulebook (on demand — no ceremony for small fixes)
 - Multi-session or multi-phase work: track via the `rulebook` MCP (`rulebook_task`).
-  Task checklists execute in listed order; the docs + tests tail is required to archive.
+  Checklist order = dependencies; independent items may run in parallel.
 - Optional session context: `rulebook_session`. Learned something non-obvious?
   `rulebook_memory`.
 - Project specs live in `.rulebook/specs/` — read a spec when the work touches its area.

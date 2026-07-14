@@ -25,11 +25,11 @@ checks) · `branch`/`tag` (list only)
 | `rebase` | rewrites history |
 | `reset --hard` | destroys uncommitted changes |
 | `checkout -- .` / `restore .` | discards all changes |
-| `revert` / `cherry-pick` / `merge` | unexpected commits/conflicts — human judgment |
+| `merge`/`rebase` into the DEFAULT branch | goes through an approved PR, never directly |
 | `branch -D` | permanent branch deletion |
 | `push --force` | overwrites remote — NEVER on main/master |
 | `clean -f` | permanently deletes untracked files |
-| `checkout <branch>` / `switch` | breaks concurrent AI sessions sharing the worktree |
+| switching a SHARED checkout with foreign changes | breaks concurrent sessions — use `git worktree` |
 
 Multiple AI sessions may share the same working tree — destructive operations
 affect ALL of them. Never commit with `--no-verify`.
@@ -38,7 +38,8 @@ affect ALL of them. Never commit with `--no-verify`.
 
 - Conventional Commits, English only: `<type>(<scope>): <description>` — types:
   `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`.
-- Run the full quality gate (type-check → lint → tests) BEFORE every commit.
+- Per commit: type-check + lint + tests covering the change. Per push/PR:
+  the full quality gate — all green.
 - Commit only what the task touched; review `git status` + `git diff` first.
 - Never commit generated artifacts (dist/, build/, node_modules/, coverage/).
 
@@ -46,5 +47,7 @@ affect ALL of them. Never commit with `--no-verify`.
 
 - Default branch: `main`. Feature work on `feat/<name>`, fixes on
   `fix/<name>`, releases on `release/vX.Y.Z`.
-- Create branches only when the user asks; never switch branches on your own.
+- Branch freely for your own work and open PRs for review. Create/switch/merge
+  YOUR agent-created branches autonomously; prefer `git worktree` for parallel
+  agents. Never switch a shared checkout that has changes you did not author.
 <!-- GIT:END -->

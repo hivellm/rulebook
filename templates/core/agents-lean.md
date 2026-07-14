@@ -7,8 +7,9 @@ overrides in `AGENTS.override.md` (user-owned, wins on conflict). Detail lives i
 
 ## Rules
 
-1. **Quality gate before commit**: type-check → lint → tests, all green. Never bypass
-   hooks. Diagnostic-first: type-check before the test suite.
+1. **Quality gates**: per commit, type-check + lint + tests covering the change;
+   per push/PR/archive, the full suite — all green. Never bypass hooks; the
+   project's pre-commit/pre-push wiring is the floor.
 2. **Complete implementations only** — no stubs, no TODO/FIXME markers, no partial
    work. Finish, or explain concretely why you can't.
 3. **Destructive git ops require explicit user authorization**: `reset --hard`,
@@ -22,8 +23,8 @@ overrides in `AGENTS.override.md` (user-owned, wins on conflict). Detail lives i
    solves the problem; match existing style; state assumptions instead of picking
    silently.
 7. **Multi-session work is tracked as Rulebook tasks** (`.rulebook/tasks/`, managed via
-   the `rulebook` MCP/CLI). Checklists execute in listed order; the docs + tests tail
-   is required to archive. Small fixes need no task ceremony.
+   the `rulebook` MCP/CLI). Checklist order expresses dependencies — independent items
+   may run in parallel. Small fixes need no task ceremony.
 8. **Docs in English.** Root allows only README/CHANGELOG/AGENTS/LICENSE/CONTRIBUTING/
    SECURITY — everything else in `/docs`. Analyses: `docs/analysis/<slug>/`, numbered
    files, one theme per file.

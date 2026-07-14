@@ -99,6 +99,12 @@ describe('v7 context budget (F-001)', () => {
         expect(all).not.toMatch(/Never implement directly/i);
         expect(all).not.toMatch(/blocked by the enforcement hook/i);
         expect(all).not.toMatch(/Delegate by default/i);
+        // No total-order execution mandate (issue #18): order = dependencies.
+        expect(all).not.toMatch(/execute in (the )?(exact )?listed order/i);
+        expect(all).not.toMatch(/order, not a menu/i);
+        expect(all).not.toMatch(/sequentially/i);
+        // No blanket branch-switching ban (issue #20).
+        expect(all).not.toMatch(/never switch branches on your own/i);
         // The affirmative freedom line must be present.
         expect(claudeMd).toMatch(/never blocks or\s+mandates orchestration/);
     });
