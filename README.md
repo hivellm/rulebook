@@ -11,6 +11,16 @@
 
 > Tool-agnostic AI development framework. One `init` generates **`AGENTS.md`** — the universal standard every AI coding agent reads — plus Claude Code integration, quality gates, spec-driven task management, and an MCP server. Auto-detects 28 languages.
 
+**v7 — built to assist frontier models, never to anchor them.** ~3.4k tokens of
+session overhead (was ~15k in v6, −77%), 5 consolidated MCP tools, one
+path-only guard hook, zero permission prompts for routine work, and
+orchestration (subagents/parallelism/teams) that is never blocked or mandated.
+Measured, budgeted in CI, and documented in
+[`docs/analysis/v7-performance/`](docs/analysis/v7-performance/README.md).
+Upgrading from v6? See the
+[migration guide](docs/guides/migration-v6-to-v7.md) — `update --dry-run`
+shows the plan first.
+
 ---
 
 ## Quick Start
@@ -22,7 +32,7 @@ npx @hivehub/rulebook@latest init
 # Update an existing project to the latest rules
 npx @hivehub/rulebook@latest update
 
-# Apply the recommended Claude Code setup (MCP, agents, workflows, settings)
+# Apply the recommended Claude Code setup (MCP, permissions, statusline)
 npx @hivehub/rulebook@latest claude
 ```
 

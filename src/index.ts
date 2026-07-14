@@ -302,6 +302,7 @@ program
     .command('update')
     .description('Update AGENTS.md and .rulebook to latest version')
     .option('-y, --yes', 'Skip confirmation prompt')
+    .option('--dry-run', 'Print the v6->v7 migration plan without changing any file')
     .option('--minimal', 'Regenerate using minimal mode (essentials only)')
     .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
     .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')

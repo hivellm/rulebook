@@ -34,8 +34,38 @@ export async function updateSingleProject(
         minimal?: boolean;
         light?: boolean;
         lean?: boolean;
+        dryRun?: boolean;
     }
 ): Promise<void> {
+    // v7: --dry-run prints the migration plan and exits before ANY write.
+    if (options.dryRun) {
+        const { planV6Cleanup } = await import('../../core/migration/v6-cleanup.js');
+        const plan = await planV6Cleanup(cwd);
+        console.log(chalk.bold.blue('\n🔎 rulebook update --dry-run (no files were changed)\n'));
+        console.log(chalk.bold('Would regenerate (lean v7):'));
+        console.log(chalk.gray('  • CLAUDE.md, AGENTS.md, .rulebook/specs/* (lowercase names)'));
+        console.log(
+            chalk.gray('  • .claude/settings.json — strip retired hooks, apply autonomy profile')
+        );
+        console.log(chalk.gray('  • .mcp.json — slim rulebook-mcp entrypoint'));
+        if (plan.remove.length > 0) {
+            console.log(chalk.bold(`\nWould remove ${plan.remove.length} retired file(s):`));
+            for (const p of plan.remove) console.log(chalk.gray(`  - ${p}`));
+        }
+        if (plan.rename.length > 0) {
+            console.log(chalk.bold(`\nWould rename ${plan.rename.length} spec(s) to lowercase:`));
+            for (const r of plan.rename) console.log(chalk.gray(`  - ${r.from} → ${r.to}`));
+        }
+        if (plan.preserved.length > 0) {
+            console.log(
+                chalk.bold(`\nKept (look user-authored — no rulebook marker):`)
+            );
+            for (const p of plan.preserved) console.log(chalk.gray(`  · ${p}`));
+        }
+        console.log(chalk.gray('\nRun without --dry-run to apply.\n'));
+        return;
+    }
+
     const spinner = ora('Detecting project structure...').start();
     const detection = await detectProject(cwd);
     spinner.succeed('Project detection complete');
@@ -455,6 +485,34 @@ export async function updateSingleProject(
     await configManager.saveConfig(rulebookConfig);
     configSpinner.succeed('.rulebook configuration updated');
 
+    // v6 → v7 cleanup: remove rulebook-owned retired files, normalize spec names.
+    try {
+        const { planV6Cleanup, applyV6Cleanup } = await import(
+            '../../core/migration/v6-cleanup.js'
+        );
+        const plan = await planV6Cleanup(cwd);
+        if (plan.remove.length > 0 || plan.rename.length > 0) {
+            const { removed, renamed } = await applyV6Cleanup(cwd, plan);
+            if (removed.length > 0) {
+                console.log(chalk.gray(`  • v7 cleanup: removed ${removed.length} retired file(s)`));
+            }
+            if (renamed.length > 0) {
+                console.log(
+                    chalk.gray(`  • v7 cleanup: normalized ${renamed.length} spec name(s)`)
+                );
+            }
+            if (plan.preserved.length > 0) {
+                console.log(
+                    chalk.gray(
+                        `  · ${plan.preserved.length} retired-name file(s) kept (user-authored)`
+                    )
+                );
+            }
+        }
+    } catch {
+        // cleanup is best-effort — never block an update
+    }
+
     const claudeSpinner = ora('Checking Claude Code integration...').start();
     try {
         const { setupClaudeCodeIntegration } = await import('../../core/claude/claude-mcp.js');
@@ -618,6 +676,7 @@ export async function updateCommand(options: {
     minimal?: boolean;
     light?: boolean;
     lean?: boolean;
+    dryRun?: boolean;
 }): Promise<void> {
     try {
         const cwd = process.cwd();

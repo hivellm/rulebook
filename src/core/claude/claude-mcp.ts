@@ -76,10 +76,13 @@ export async function configureMcpJson(projectRoot: string, workspace?: boolean)
     if (mcpConfig.mcpServers.rulebook) {
         const existing = mcpConfig.mcpServers.rulebook as { args?: string[] };
         const hasLegacyProjectRoot = existing.args?.includes('--project-root');
+        // v6 entries boot the full CLI ('mcp-server'); v7 uses the slim
+        // standalone rulebook-mcp bin — upgrade in place.
+        const hasLegacyEntrypoint = existing.args?.includes('mcp-server');
         // Upgrade: add --workspace if now in workspace mode but entry lacks it
         const needsWorkspaceFlag = workspace && !existing.args?.includes('--workspace');
 
-        if (hasLegacyProjectRoot || needsWorkspaceFlag) {
+        if (hasLegacyProjectRoot || hasLegacyEntrypoint || needsWorkspaceFlag) {
             existing.args = expectedArgs;
             await writeFile(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
         }

@@ -18,15 +18,32 @@ v7.0.0 inverts the design philosophy — from *babysitting the model* to *assist
 the model*. Mission: run **complementary to Opus and Fable**, never as an anchor.
 Simple, clear rules; only what is important; nothing stuffing the context.
 
-Headline numbers (measured, see [01](01-measured-overhead.md)):
+## Final results (v7.0.0 shipped — full ledger in [05](05-budget-and-metrics.md))
 
-| Metric | v6.0.0 default | v7.0.0 target |
-|---|---:|---:|
-| Static context per session | ~14,900 tok | ≤2,500 tok (−83%) |
-| Model turns of ceremony per small task | 10–14 | 0–2 |
-| Hook spawns on hot paths (per turn) | 2–4 | 0–1 |
-| MCP tools / schema tokens | 26 / ~3,500 | 8 / ≤900 |
-| Rule files | 19 | 1 |
+| Metric | v6.0.0 baseline | v7.0.0 target | **v7.0.0 shipped** |
+|---|---:|---:|---:|
+| Static context per session | 14,951 tok | ≤2,500 tok | **3,397 tok (−77%)** ¹ |
+| MCP tools / schema bytes | 26 / 13,965 B | ≤8 / ≤3,600 B | **5 / 3,592 B ✔** |
+| Hook entries (full desire set) | 7 across 5 events | 0–1 | **1 path-only guard ✔** |
+| Default install | 95 files | ~15 | **29 files** ² |
+| On-demand specs | ~29,900 tok | — | **~2,300 tok (−92%)** |
+| Session-start ceremony | 4–5 calls | 1 | **1 call ✔** |
+| Orchestration denials | every untagged dispatch | never | **never (P0, tested) ✔** |
+| Permission prompts (routine ops) | most mutating ops | ~0 | **0 ✔** |
+
+¹ 3,397 = 1,714 file-based always-loaded + ~550 path-scoped language rules
+(load only for matching files) + ~900 MCP schemas (deferred-capable clients
+pay ~0 until first use). The strict file-based budget (≤1,600) is enforced in
+CI by `tests/context-budget.test.ts`.
+² 12 of the 29 are the `/rulebook-*` command docs; trimming them below ~15
+total is possible but was judged not worth losing the discoverability.
+
+All five phases of [07-execution-plan.md](07-execution-plan.md) plus the
+session-hygiene follow-up (docs/analysis/session-auto-cleanup/) are
+implemented, tested (841 tests) and enforced by CI acceptance checks
+(`tests/context-budget.test.ts`, `tests/claude-settings-manager.test.ts`,
+`tests/v7-budgets.test.ts`). Migration: `rulebook update --dry-run` →
+[docs/guides/migration-v6-to-v7.md](../../guides/migration-v6-to-v7.md).
 
 ## Files
 
