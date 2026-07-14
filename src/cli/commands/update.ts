@@ -247,7 +247,7 @@ export async function updateSingleProject(
     await writeFile(agentsPath, mergedContent);
     mergeSpinner.succeed('AGENTS.md updated');
 
-    const claudeUpdateSpinner = ora('Updating CLAUDE.md (v5.3.0 @import format)...').start();
+    const claudeUpdateSpinner = ora('Updating CLAUDE.md (v7 lean format)...').start();
     try {
         const claudeResult = await mergeClaudeMd(cwd);
         const label =

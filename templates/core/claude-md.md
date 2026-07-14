@@ -1,4 +1,4 @@
-<!-- RULEBOOK:START v5.3.0 — DO NOT EDIT BY HAND. Regenerated on `rulebook update`.
+<!-- RULEBOOK:START v7.0.0 — DO NOT EDIT BY HAND. Regenerated on `rulebook update`.
      Put project-specific content in AGENTS.override.md or CLAUDE.local.md.
      Anything outside the RULEBOOK:START/END sentinels is preserved across updates. -->
 

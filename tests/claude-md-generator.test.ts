@@ -119,8 +119,8 @@ describe('claude-md-generator (v5.3.0)', () => {
             expect(after).toContain('This must survive regeneration.');
             expect(hasV2Sentinels(after)).toBe(true);
 
-            // The sentinels should appear exactly once each
-            const startCount = (after.match(/RULEBOOK:START v5\.3\.0/g) ?? []).length;
+            // The sentinels should appear exactly once each (version-tolerant)
+            const startCount = (after.match(/RULEBOOK:START v/g) ?? []).length;
             const endCount = (after.match(/RULEBOOK:END/g) ?? []).length;
             expect(startCount).toBe(1);
             expect(endCount).toBe(1);

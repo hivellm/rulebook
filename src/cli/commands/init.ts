@@ -362,7 +362,7 @@ export async function initCommand(options: {
         }
 
         if (!minimalMode) {
-            const claudeSpinner = ora('Generating CLAUDE.md (v5.3.0 @import format)...').start();
+            const claudeSpinner = ora('Generating CLAUDE.md (v7 lean format)...').start();
             try {
                 const result = await mergeClaudeMd(cwd);
                 const label =

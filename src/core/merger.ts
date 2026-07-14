@@ -248,13 +248,13 @@ async function migrateLegacyClaudeMdToOverride(
     const timestamp = new Date().toISOString();
     const migrationBlock = [
         '',
-        `${migrationMarker} on ${timestamp} by rulebook v5.3.0 -->`,
+        `${migrationMarker} on ${timestamp} by rulebook v7.0.0 -->`,
         '<!-- The following directives were extracted from your previous CLAUDE.md. -->',
         '<!-- They are now imported by the new CLAUDE.md via @AGENTS.override.md, so -->',
         '<!-- Claude Code re-loads them at session start exactly as before. -->',
         '<!-- Review and prune as needed — rulebook will never touch this section. -->',
         '',
-        '# CLAUDE.md (legacy v5.2 content, preserved by rulebook v5.3.0)',
+        '# CLAUDE.md (legacy v5.2 content, preserved by rulebook v7.0.0)',
         '',
         legacyClaudeMdContent.trim(),
         '',

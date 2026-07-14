@@ -17,7 +17,8 @@ import { getTemplatesDir } from '../generators/generator.js';
  */
 
 export const CLAUDE_MD_FILE = 'CLAUDE.md';
-export const CLAUDE_MD_SENTINEL_START = '<!-- RULEBOOK:START v5.3.0';
+// Version-tolerant prefix: matches v5.3.0/v6 blocks in existing files AND v7+.
+export const CLAUDE_MD_SENTINEL_START = '<!-- RULEBOOK:START v';
 export const CLAUDE_MD_SENTINEL_END = '<!-- RULEBOOK:END -->';
 export const CLAUDE_MD_TEMPLATE_NAME = 'claude-md.md';
 

@@ -64,7 +64,7 @@ export const MANDATORY_TAIL_ITEMS = [
 
 export function renderMandatoryTail(sectionNumber: number): string {
     return [
-        `## ${sectionNumber}. Tail (mandatory — enforced by rulebook v5.3.0)`,
+        `## ${sectionNumber}. Tail (mandatory — enforced by rulebook)`,
         `- [ ] ${sectionNumber}.1 Update or create documentation covering the implementation`,
         `- [ ] ${sectionNumber}.2 Write tests covering the new behavior`,
         `- [ ] ${sectionNumber}.3 Run tests and confirm they pass`,

@@ -18,6 +18,17 @@ interface UpdateCheckCache {
     latest: string;
 }
 
+/** True when `a` is a strictly newer semver than `b` (numeric segments only). */
+function isNewer(a: string, b: string): boolean {
+    const pa = a.split('.').map((n) => parseInt(n, 10) || 0);
+    const pb = b.split('.').map((n) => parseInt(n, 10) || 0);
+    for (let i = 0; i < 3; i++) {
+        if ((pa[i] ?? 0) > (pb[i] ?? 0)) return true;
+        if ((pa[i] ?? 0) < (pb[i] ?? 0)) return false;
+    }
+    return false;
+}
+
 /**
  * Returns an advisory string when a newer version exists, otherwise null.
  * Never throws.
@@ -60,7 +71,7 @@ export async function checkForUpdate(
             }
         }
 
-        if (latest && latest !== currentVersion) {
+        if (latest && isNewer(latest, currentVersion)) {
             return `A newer @hivehub/rulebook is available: ${currentVersion} → ${latest}. Run: npm i -g @hivehub/rulebook`;
         }
         return null;

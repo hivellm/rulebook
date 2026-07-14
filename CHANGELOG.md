@@ -7,9 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-v7.0.0 development — mission: run complementary to modern frontier models
-(Opus/Fable), never as an anchor. Driven by the measured overhead analysis in
+## [7.0.0] - 2026-07-14
+
+**Mission: run complementary to modern frontier models (Opus/Fable), never as
+an anchor.** Driven by the measured overhead analysis in
 `docs/analysis/v7-performance/` (impact ledger in `05-budget-and-metrics.md`).
+
+Headline numbers vs the v6.0.0 baseline (measured with
+`scripts/measure-overhead.mjs` on a fresh default init):
+
+| Metric | v6.0.0 | v7.0.0 |
+|---|---:|---:|
+| Static context per session | 14,951 tok | **3,358 tok (−78%)** |
+| MCP tools / schema bytes | 26 / 13,965 | **5 / 3,592 (−74%)** |
+| Hook entries (full desire set) | 7 across 5 events | **1 path-only guard** |
+| Default install | 95 files | **29 files** |
+| On-demand specs | ~29,900 tok | **~2,300 tok (−92%)** |
+| Session-start ceremony | 4–5 calls | **1 call** |
+| Orchestration denials | on every untagged dispatch | **never (P0)** |
+
+Also in this release: `rulebook update` self-applies v7 to existing projects
+(lean regeneration, legacy-hook stripping via signatures, version-tolerant
+sentinels recognize v5/v6-stamped files) and the npm update advisory moved
+into the CLI with a proper semver comparison.
 
 ### Changed — Phase 1: context diet (−56% static context per session)
 
