@@ -1,7 +1,6 @@
 import path from 'path';
 import { readFile, fileExists, writeFile, ensureDir } from '../../utils/file-system.js';
 import type { ProjectConfig } from '../../types.js';
-import { LIBRARY_REGISTRY } from '../detect/library-registry.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { DecisionManager } from '../tasks/decision-manager.js';
@@ -18,10 +17,11 @@ export function getTemplatesDir(): string {
     return path.join(__dirname, '..', '..', '..', 'templates');
 }
 
-// Helper to read core template files (AGENT_AUTOMATION, DOCUMENTATION_RULES, QUALITY_ENFORCEMENT, RULEBOOK)
+// Helper to read core template files (v7 naming: lowercase kebab-case, e.g.
+// templates/core/rulebook.md, quality.md, prohibitions.md)
 async function generateCoreRules(name: string): Promise<string> {
     const templatesDir = path.join(getTemplatesDir(), 'core');
-    const templatePath = path.join(templatesDir, `${name.toUpperCase()}.md`);
+    const templatePath = path.join(templatesDir, `${name.toLowerCase().replace(/_/g, '-')}.md`);
 
     if (await fileExists(templatePath)) {
         return await readFile(templatePath);
@@ -49,7 +49,7 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
     sections.push('**MANDATORY**: All task creation MUST follow Rulebook task management system.');
     sections.push('');
     sections.push(
-        `**📋 ALWAYS reference \`/${rulebookDir}/specs/RULEBOOK.md\` FIRST before creating any tasks.**`
+        `**📋 ALWAYS reference \`/${rulebookDir}/specs/rulebook.md\` FIRST before creating any tasks.**`
     );
     sections.push('');
     sections.push('**Rules from RULEBOOK.md take precedence over all other rules in this file.**');
@@ -151,7 +151,7 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
     sections.push('- ❌ No README, PROCESS, or other files');
     sections.push('');
     sections.push(
-        `**For complete task management guidelines, see: \`/${rulebookDir}/specs/RULEBOOK.md\`**`
+        `**For complete task management guidelines, see: \`/${rulebookDir}/specs/rulebook.md\`**`
     );
     sections.push('');
     sections.push('---');
@@ -191,30 +191,25 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
 
     // TIER1_PROHIBITIONS is ALWAYS first (absolute highest precedence)
     sections.push(
-        `- \`/${rulebookDir}/specs/TIER1_PROHIBITIONS.md\` - **Absolute prohibitions (HIGHEST PRECEDENCE — read first)**`
+        `- \`/${rulebookDir}/specs/prohibitions.md\` - **Absolute prohibitions (HIGHEST PRECEDENCE — read first)**`
     );
 
     // RULEBOOK.md is second (task management)
-    sections.push(`- \`/${rulebookDir}/specs/RULEBOOK.md\` - **Task management rules**`);
+    sections.push(`- \`/${rulebookDir}/specs/rulebook.md\` - **Task management rules**`);
 
     // Only reference QUALITY_ENFORCEMENT if not in light mode
     if (!config.lightMode) {
         sections.push(
-            `- \`/${rulebookDir}/specs/QUALITY_ENFORCEMENT.md\` - Quality enforcement rules`
+            `- \`/${rulebookDir}/specs/quality.md\` - Quality enforcement rules`
         );
     }
 
     // Only reference GIT if enabled
     if (config.includeGitWorkflow) {
-        sections.push(`- \`/${rulebookDir}/specs/GIT.md\` - Git workflow rules`);
+        sections.push(`- \`/${rulebookDir}/specs/git.md\` - Git workflow rules`);
     }
 
-    // Token optimization reference
-    if (!config.lightMode) {
-        sections.push(
-            `- \`/${rulebookDir}/specs/TOKEN_OPTIMIZATION.md\` - Model tier assignment and output verbosity rules`
-        );
-    }
+    // v7: TOKEN_OPTIMIZATION spec retired (F-010) — no reference emitted.
 
     // Reference PLANS.md for session continuity
     sections.push(
@@ -386,15 +381,63 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
     return sections.join('\n');
 }
 
+/**
+ * Languages whose spec content comes from the lean path-scoped rule template
+ * (templates/rules/<slug>.md) instead of the legacy 16–18 KB language essay.
+ * Mirrors rules-generator's SUPPORTED_RULE_LANGUAGES/aliases (kept local to
+ * avoid a circular import — rules-generator imports getTemplatesDir from here).
+ */
+const LEAN_LANGUAGE_RULE_SLUGS: Record<string, string> = {
+    typescript: 'typescript',
+    ts: 'typescript',
+    javascript: 'javascript',
+    js: 'javascript',
+    rust: 'rust',
+    rs: 'rust',
+    python: 'python',
+    py: 'python',
+    go: 'go',
+    cpp: 'cpp',
+    c: 'cpp',
+    'c++': 'cpp',
+    java: 'java',
+    csharp: 'csharp',
+    cs: 'csharp',
+    'c#': 'csharp',
+};
+
 export async function generateLanguageRules(language: string): Promise<string> {
+    const upper = language.toUpperCase();
+
+    // phase6 (F-006): for languages with a shipped path-scoped rule file, the
+    // spec is a POINTER — `.claude/rules/<lang>.md` is the single canonical
+    // payload (zero always-on budget, no drift between two copies).
+    const leanSlug = LEAN_LANGUAGE_RULE_SLUGS[language.toLowerCase()];
+    if (leanSlug) {
+        const leanPath = path.join(getTemplatesDir(), 'rules', `${leanSlug}.md`);
+        if (await fileExists(leanPath)) {
+            const raw = await readFile(leanPath);
+            const heading =
+                raw.match(/^# .+$/m)?.[0] ??
+                `# ${language.charAt(0).toUpperCase() + language.slice(1)} rules`;
+            return (
+                `<!-- ${upper}:START -->\n` +
+                `${heading}\n\n` +
+                `Canonical copy: \`.claude/rules/${leanSlug}.md\` (path-scoped — loaded\n` +
+                `automatically when files of this language are touched).\n` +
+                `<!-- ${upper}:END -->\n`
+            );
+        }
+    }
+
     const templatesDir = path.join(getTemplatesDir(), 'languages');
-    const templatePath = path.join(templatesDir, `${language.toUpperCase()}.md`);
+    const templatePath = path.join(templatesDir, `${language.toLowerCase()}.md`);
 
     if (await fileExists(templatePath)) {
         return await readFile(templatePath);
     }
 
-    return `<!-- ${language.toUpperCase()}:START -->\n# ${language.charAt(0).toUpperCase() + language.slice(1)} Rules\n\nLanguage-specific rules for ${language}.\n<!-- ${language.toUpperCase()}:END -->\n`;
+    return `<!-- ${upper}:START -->\n# ${language.charAt(0).toUpperCase() + language.slice(1)} Rules\n\nLanguage-specific rules for ${language}.\n<!-- ${upper}:END -->\n`;
 }
 
 export async function generateModuleRules(module: string): Promise<string> {
@@ -414,24 +457,9 @@ export async function generateModuleRules(module: string): Promise<string> {
     return `<!-- ${module.toUpperCase()}:START -->\n# ${module.charAt(0).toUpperCase() + module.slice(1)} Instructions\n\nModule-specific instructions for ${module}.\n<!-- ${module.toUpperCase()}:END -->\n`;
 }
 
-export async function generateLibraryRules(library: string): Promise<string> {
-    const def = LIBRARY_REGISTRY.find((d) => d.id === library);
-    const templatesDir = path.join(getTemplatesDir(), 'libraries');
-    const templatePath = def
-        ? path.join(templatesDir, def.template)
-        : path.join(templatesDir, `${library}.md`);
-
-    if (await fileExists(templatePath)) {
-        return await readFile(templatePath);
-    }
-
-    const label = def?.label ?? library.charAt(0).toUpperCase() + library.slice(1);
-    return `<!-- ${library.toUpperCase()}:START -->\n# ${label} Rules\n\nLibrary-specific rules for ${label}.\n<!-- ${library.toUpperCase()}:END -->\n`;
-}
-
 export async function generateGitRules(pushMode: string): Promise<string> {
     const templatesDir = path.join(getTemplatesDir(), 'git');
-    const templatePath = path.join(templatesDir, 'GIT_WORKFLOW.md');
+    const templatePath = path.join(templatesDir, 'git-workflow.md');
 
     let gitRules = '';
 
@@ -496,11 +524,14 @@ async function writeModularFile(
 ): Promise<void> {
     const specsPath = path.join(projectRoot, rulebookDir, 'specs');
     await ensureDir(specsPath);
-    const filePath = path.join(specsPath, `${fileName}.md`);
+    // v7 naming: spec filenames are normalized lowercase kebab-case; block
+    // markers inside the content stay UPPERCASE for merger compatibility.
+    const base = fileName.toLowerCase().replace(/_/g, '-');
+    const filePath = path.join(specsPath, `${base}.md`);
 
     // Add header comment if not already present
-    const headerComment = `<!-- ${fileName}:START -->\n`;
-    const footerComment = `\n<!-- ${fileName}:END -->`;
+    const headerComment = `<!-- ${fileName.toUpperCase()}:START -->\n`;
+    const footerComment = `\n<!-- ${fileName.toUpperCase()}:END -->`;
 
     let finalContent = content.trim();
 
@@ -530,7 +561,9 @@ function generateReferenceSection(
     const sections: string[] = [];
     sections.push(`### ${name}`);
     sections.push('');
-    sections.push(`For comprehensive ${description}, see \`/${rulebookDir}/specs/${fileName}.md\``);
+    sections.push(
+        `For comprehensive ${description}, see \`/${rulebookDir}/specs/${fileName.toLowerCase().replace(/_/g, '-')}.md\``
+    );
     sections.push('');
     sections.push('Quick reference:');
     for (const item of quickRef) {
@@ -556,34 +589,6 @@ function generateLanguageReference(language: string, rulebookDir: string = '.rul
         `${languageName} Development Rules`,
         language.toUpperCase(),
         `${languageName}-specific guidelines`,
-        quickRef,
-        rulebookDir
-    );
-}
-
-/**
- * Generate module reference for AGENTS.md
- */
-function generateModuleReference(module: string, rulebookDir: string = '.rulebook'): string {
-    const moduleName = module.charAt(0).toUpperCase() + module.slice(1).replace(/_/g, ' ');
-    const quickRef = ['Module-specific instructions', 'Usage guidelines', 'Integration patterns'];
-    return generateReferenceSection(
-        `${moduleName} Instructions`,
-        module.toUpperCase(),
-        `${moduleName}-specific instructions`,
-        quickRef,
-        rulebookDir
-    );
-}
-
-function generateLibraryReference(library: string, rulebookDir: string = '.rulebook'): string {
-    const def = LIBRARY_REGISTRY.find((d) => d.id === library);
-    const libraryName = def?.label ?? library.charAt(0).toUpperCase() + library.slice(1);
-    const quickRef = ['Idiomatic conventions', 'Common pitfalls to avoid'];
-    return generateReferenceSection(
-        `${libraryName} Rules`,
-        library.toUpperCase(),
-        `${libraryName}-specific conventions`,
         quickRef,
         rulebookDir
     );
@@ -806,44 +811,13 @@ export function substituteAgentPlaceholders(
 }
 
 /**
- * Install agent definitions to .claude/agents/ with placeholder substitution.
- */
-async function installAgentsWithPlaceholders(
-    projectRoot: string,
-    config: ProjectConfig
-): Promise<void> {
-    const agentsDir = path.join(getTemplatesDir(), 'agents');
-    const targetDir = path.join(projectRoot, '.claude', 'agents');
-
-    if (!(await fileExists(agentsDir))) return;
-
-    await ensureDir(targetDir);
-
-    const placeholders = resolveAgentPlaceholders(config);
-
-    const { readdirSync } = await import('fs');
-    const files = readdirSync(agentsDir).filter((f: string) => f.endsWith('.md'));
-
-    for (const file of files) {
-        const content = await readFile(path.join(agentsDir, file));
-        const substituted = substituteAgentPlaceholders(content, placeholders);
-        await writeFile(path.join(targetDir, file), substituted);
-    }
-}
-
-/**
  * Names of `core/` skills that are user-invocable (slash-command or
  * natural-language trigger), so their SKILL.md files must land in
  * `.claude/skills/` alongside the `dev/` skills. Non-invocable core
  * skills (agent-automation, dag, documentation-rules, quality-enforcement,
  * rulebook) stay referenced via AGENTS.md only.
  */
-export const INVOCABLE_CORE_SKILLS = [
-    'rulebook-terse',
-    'rulebook-terse-commit',
-    'rulebook-terse-review',
-    'karpathy-guidelines',
-] as const;
+export const INVOCABLE_CORE_SKILLS = ['karpathy-guidelines'] as const;
 
 /**
  * Copy every SKILL.md under a source directory into .claude/skills/.
@@ -881,23 +855,6 @@ export async function installSkillsFromSource(
 }
 
 /**
- * Install dev skills + invocable core skills to .claude/skills/ (modern
- * Claude Code skills format). Each skill is a directory with a SKILL.md
- * file. Always installed on init/update — useful for any project.
- */
-async function installDevSkillsFromTemplates(projectRoot: string): Promise<void> {
-    const skillsTargetDir = path.join(projectRoot, '.claude', 'skills');
-    const templatesRoot = getTemplatesDir();
-
-    await installSkillsFromSource(path.join(templatesRoot, 'skills', 'dev'), skillsTargetDir);
-    await installSkillsFromSource(
-        path.join(templatesRoot, 'skills', 'core'),
-        skillsTargetDir,
-        INVOCABLE_CORE_SKILLS
-    );
-}
-
-/**
  * Generate modular AGENTS.md with references
  */
 export async function generateModularAgents(
@@ -926,40 +883,24 @@ export async function generateModularAgents(
     sections.push('');
 
     // Write RULEBOOK.md to /rulebook/ (ALWAYS included - highest precedence)
-    const rulebookContent = await generateCoreRules('RULEBOOK');
+    const rulebookContent = await generateCoreRules('rulebook');
     await writeModularFile(projectRoot, 'RULEBOOK', rulebookContent.trim(), rulebookDir);
 
     // Write QUALITY_ENFORCEMENT to /rulebook/ (always included unless light mode)
     if (!mergedConfig.lightMode) {
-        const enforcementContent = await generateCoreRules('QUALITY_ENFORCEMENT');
-        await writeModularFile(
-            projectRoot,
-            'QUALITY_ENFORCEMENT',
-            enforcementContent.trim(),
-            rulebookDir
-        );
+        const enforcementContent = await generateCoreRules('quality');
+        await writeModularFile(projectRoot, 'QUALITY', enforcementContent.trim(), rulebookDir);
     }
 
     // Write TIER1_PROHIBITIONS to /rulebook/ (always included — highest precedence directives)
-    const tier1Content = await generateCoreRules('TIER1_PROHIBITIONS');
+    const tier1Content = await generateCoreRules('prohibitions');
     if (tier1Content.trim()) {
-        await writeModularFile(projectRoot, 'TIER1_PROHIBITIONS', tier1Content.trim(), rulebookDir);
+        await writeModularFile(projectRoot, 'PROHIBITIONS', tier1Content.trim(), rulebookDir);
     }
 
-    // Write TOKEN_OPTIMIZATION to /rulebook/ (always included unless light mode)
-    if (!mergedConfig.lightMode) {
-        const tokenOptContent = await generateCoreRules('TOKEN_OPTIMIZATION');
-        if (tokenOptContent.trim()) {
-            await writeModularFile(
-                projectRoot,
-                'TOKEN_OPTIMIZATION',
-                tokenOptContent.trim(),
-                rulebookDir
-            );
-        }
-    }
+    // v7: TOKEN_OPTIMIZATION is retired (F-010) — verbosity is the harness's job.
 
-    // Write Git workflow rules to /.rulebook/specs/GIT.md
+    // Write Git workflow rules to /.rulebook/specs/git.md
     if (mergedConfig.includeGitWorkflow) {
         const gitRules = await generateGitRules(mergedConfig.gitPushMode || 'manual');
         await writeModularFile(projectRoot, 'GIT', gitRules.trim(), rulebookDir);
@@ -968,16 +909,12 @@ export async function generateModularAgents(
     // If WORKSPACE.md spec exists, add reference in AGENTS.md
     {
         const { existsSync } = await import('fs');
-        const wsSpecPath = path.join(projectRoot, rulebookDir, 'specs', 'WORKSPACE.md');
+        const wsSpecPath = path.join(projectRoot, rulebookDir, 'specs', 'workspace.md');
         if (existsSync(wsSpecPath)) {
             sections.push('## Workspace Mode');
             sections.push('');
             sections.push(
-                `**This project is part of a multi-project workspace.** All MCP tool calls MUST include the correct \`projectId\` parameter.`
-            );
-            sections.push('');
-            sections.push(
-                `**📋 ALWAYS read \`/${rulebookDir}/specs/WORKSPACE.md\` to understand project routing before using any Rulebook MCP tools.**`
+                `Multi-project workspace — Rulebook MCP calls route by the \`path\` hint (or the default project) unless \`projectId\` is set; see \`/${rulebookDir}/specs/workspace.md\` when working across projects.`
             );
             sections.push('');
         }
@@ -1009,80 +946,12 @@ export async function generateModularAgents(
         sections.push('');
     }
 
-    // Write library files and add references (lean: only detected/selected libraries)
-    const libraries = mergedConfig.libraries ?? [];
-    if (libraries.length > 0) {
-        sections.push('## Library-Specific Rules');
-        sections.push('');
-        sections.push(
-            `The following libraries are configured for this project. For detailed rules, see the corresponding files in \`/${rulebookDir}/specs/\`:`
-        );
-        sections.push('');
+    // v7: the library-rules subsystem is retired — no library specs or refs.
 
-        for (const library of libraries) {
-            const libRules = await generateLibraryRules(library);
-            await writeModularFile(projectRoot, library.toUpperCase(), libRules, rulebookDir);
-        }
-
-        for (const library of libraries) {
-            sections.push(generateLibraryReference(library, rulebookDir));
-        }
-
-        sections.push(
-            `**Usage**: When working with a library, reference the corresponding \`/${rulebookDir}/specs/[LIBRARY].md\` file for its conventions.`
-        );
-        sections.push('');
-    }
-
-    // Write module files and add references
-    // First, write AGENT_AUTOMATION if not minimal (core file, not module)
-    if (!mergedConfig.minimal) {
-        const agentAutomation = await generateCoreRules('AGENT_AUTOMATION');
-        await writeModularFile(projectRoot, 'AGENT_AUTOMATION', agentAutomation, rulebookDir);
-    }
-
-    // Write MULTI_AGENT directives (after AGENT_AUTOMATION)
-    if (!mergedConfig.minimal) {
-        const multiAgentContent = await generateCoreRules('MULTI_AGENT');
-        await writeModularFile(projectRoot, 'MULTI_AGENT', multiAgentContent, rulebookDir);
-    }
-
-    // Then handle all modules together
-    const allModules: string[] = [];
-    if (!mergedConfig.minimal) {
-        allModules.push('agent_automation');
-        allModules.push('multi_agent');
-    }
-    allModules.push(...mergedConfig.modules);
-
-    if (allModules.length > 0) {
-        sections.push('## Module-Specific Instructions');
-        sections.push('');
-        sections.push(
-            `The following modules are configured for this project. For detailed instructions, see the corresponding files in \`/${rulebookDir}/specs/\`:`
-        );
-        sections.push('');
-
-        // Write all module files first (except AGENT_AUTOMATION which is already written)
-        for (const module of mergedConfig.modules) {
-            const moduleRules = await generateModuleRules(module);
-            await writeModularFile(projectRoot, module.toUpperCase(), moduleRules, rulebookDir);
-        }
-
-        // Then add all references together
-        if (!mergedConfig.minimal) {
-            sections.push(generateModuleReference('agent_automation', rulebookDir));
-            sections.push(generateModuleReference('multi_agent', rulebookDir));
-        }
-        for (const module of mergedConfig.modules) {
-            sections.push(generateModuleReference(module, rulebookDir));
-        }
-
-        sections.push(
-            `**Usage**: When working with module-specific features, reference the corresponding \`/${rulebookDir}/specs/[MODULE].md\` file for detailed instructions.`
-        );
-        sections.push('');
-    }
+    // v7: AGENT_AUTOMATION, MULTI_AGENT, and MCP-module spec docs are retired
+    // (F-005/F-010, P0). Orchestration is the model's choice; MCP servers are
+    // self-describing via their own tool schemas. Module selection still drives
+    // .mcp.json wiring elsewhere — only the spec documents are gone.
 
     // Add enabled skills section (v2.0)
     try {
@@ -1168,16 +1037,8 @@ export async function generateModularAgents(
         // Monorepo detection failed — skip silently
     }
 
-    // Generate agent delegation section
-    sections.push(generateDelegationSection(mergedConfig));
-
-    // Install agent definitions and dev skills to .claude/
-    try {
-        await installAgentsWithPlaceholders(projectRoot, mergedConfig);
-        await installDevSkillsFromTemplates(projectRoot);
-    } catch {
-        // Agent/skill installation failed — skip silently
-    }
+    // v7 (F-010/P0): no delegation table and no side-effect asset installs —
+    // agents/skills are opt-in via the Claude Code setup (claude-mcp.ts).
 
     // Append AGENTS.override.md content if present and non-empty
     try {
@@ -1260,32 +1121,34 @@ export async function generateLeanAgents(
 
     // Load lean template
     const templatesDir = path.join(getTemplatesDir(), 'core');
-    const leanTemplatePath = path.join(templatesDir, 'AGENTS_LEAN.md');
+    const leanTemplatePath = path.join(templatesDir, 'agents-lean.md');
     let template = '';
     if (await fileExists(leanTemplatePath)) {
         template = await readFile(leanTemplatePath);
     } else {
-        template = `<!-- RULEBOOK:START -->\n# Project Agent Directives\n\nSee \`/${rulebookDir}/specs/\` for all rules.\n\n- **Task Management**: \`/${rulebookDir}/specs/RULEBOOK.md\`\n- **Quality Gates**: \`/${rulebookDir}/specs/QUALITY_ENFORCEMENT.md\`\n- **Git Workflow**: \`/${rulebookDir}/specs/GIT.md\`\n<!-- RULEBOOK:END -->\n`;
+        template = `<!-- RULEBOOK:START -->\n# Project Agent Directives\n\nSee \`/${rulebookDir}/specs/\` for all rules.\n\n- **Task Management**: \`/${rulebookDir}/specs/rulebook.md\`\n- **Quality Gates**: \`/${rulebookDir}/specs/quality.md\`\n- **Git Workflow**: \`/${rulebookDir}/specs/git.md\`\n<!-- RULEBOOK:END -->\n`;
     }
 
-    // Build language refs
+    // Build language refs — phase6 (F-006): point at the canonical path-scoped
+    // rule file when one ships; the spec is only a pointer for those languages.
     const langRefs = config.languages
-        .map(
-            (lang) =>
-                `- **${lang.toUpperCase()}**: \`/${rulebookDir}/specs/${lang.toUpperCase()}.md\``
-        )
+        .map((lang) => {
+            const leanSlug = LEAN_LANGUAGE_RULE_SLUGS[lang.toLowerCase()];
+            const target = leanSlug
+                ? `.claude/rules/${leanSlug}.md`
+                : `/${rulebookDir}/specs/${lang.toLowerCase()}.md`;
+            return `- **${lang.toUpperCase()}**: \`${target}\``;
+        })
         .join('\n');
     template = template.replace('LANGUAGE_REFS', langRefs || '_None configured_');
 
-    // Build module refs (core + user modules)
-    const coreModules = config.minimal ? [] : ['agent_automation', 'multi_agent'];
-    const allModules = [...coreModules, ...(config.modules || [])];
-    const moduleRefs = allModules
-        .map(
-            (mod) => `- **${mod.toUpperCase()}**: \`/${rulebookDir}/specs/${mod.toUpperCase()}.md\``
-        )
-        .join('\n');
-    template = template.replace('MODULE_REFS', moduleRefs || '_None configured_');
+    // Git workflow spec is opt-out: drop its index line when explicitly disabled.
+    if (config.includeGitWorkflow === false) {
+        template = template
+            .split('\n')
+            .filter((line) => !line.includes(`/${rulebookDir}/specs/git.md`))
+            .join('\n');
+    }
 
     return template;
 }

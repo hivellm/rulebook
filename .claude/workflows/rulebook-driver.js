@@ -104,7 +104,7 @@ const COMMIT_SCHEMA = {
 async function gitHead() {
   const r = await agent(
     'Run `git rev-parse HEAD` and return the full commit sha as { sha }.',
-    { label: 'git-head', phase: 'Discover', agentType: 'researcher', model: 'haiku', schema: HEAD_SCHEMA }
+    { label: 'git-head', phase: 'Discover', model: 'haiku', schema: HEAD_SCHEMA }
   )
   return r && r.sha ? r.sha : 'HEAD'
 }
@@ -125,7 +125,7 @@ Steps:
 3. Commit with a Conventional Commits message — \`type(scope): subject\` (subject ≤72 chars), optional body. Choose the type from the actual change (feat/fix/docs/test/refactor/chore).
 4. The pre-commit hooks (type-check, lint, tests) MUST pass. NEVER pass --no-verify. If a hook fails, do NOT bypass it: return committed=false with the hook output in error.
 Return committed, the new commit sha, and the message used.`,
-    { label, phase: 'Commit', agentType: 'build-engineer', model: 'sonnet', schema: COMMIT_SCHEMA }
+    { label, phase: 'Commit', model: 'sonnet', schema: COMMIT_SCHEMA }
   )
 }
 
@@ -159,7 +159,6 @@ Do NOT commit. Re-run the type-checker and tests (both must pass). Report which 
     const dev = await agent(devPrompt, {
       label: `dev:item${itemIndex}:r${round}`,
       phase: 'Implement',
-      agentType: 'typescript-implementer',
       model: 'sonnet',
     })
 
@@ -186,7 +185,6 @@ Set pass=true ONLY when SDD and TDD are both fully satisfied and the code is cor
       {
         label: `review:item${itemIndex}:r${round}`,
         phase: 'Review',
-        agentType: 'code-reviewer',
         model: 'opus',
         schema: VERDICT_SCHEMA,
       }
@@ -217,7 +215,7 @@ Update the application documentation to reflect what shipped (do NOT commit — 
 3. Update README.md only if public/user-facing behavior changed.
 Keep all docs in English. Do not document behavior that is not present in the diff.
 Report which documentation files you updated.`,
-    { label: `document:item${itemIndex}`, phase: 'Document', agentType: 'docs-writer', model: 'haiku' }
+    { label: `document:item${itemIndex}`, phase: 'Document', model: 'haiku' }
   )
 
   // Commit the approved item BEFORE the next item starts. Pre-commit hooks gate it; a hook
@@ -277,7 +275,7 @@ ${issues}
 
 Specs that still must hold: ${(specPaths || []).join(', ') || '(see task directory)'}
 Re-run the type-checker and the relevant tests (both must pass). Report which files you changed.`,
-      { label: `fanout-fix:${taskId}:r${fround}`, phase: 'Fanout', agentType: 'typescript-implementer', model: 'sonnet' }
+      { label: `fanout-fix:${taskId}:r${fround}`, phase: 'Fanout', model: 'sonnet' }
     )
   }
   return { passed: true, rounds: MAX_FANOUT_ROUNDS, blocking: [] }
@@ -324,7 +322,7 @@ Steps:
 4. Collect that task's spec material: proposal.md, tasks.md, and every specs/**/spec.md under the task directory.
 
 Set found=false (and leave the other string fields empty) if every item in every task is already checked.`,
-    { label: `discover:${i}`, phase: 'Discover', agentType: 'researcher', model: 'haiku', schema: TASK_SCHEMA }
+    { label: `discover:${i}`, phase: 'Discover', model: 'haiku', schema: TASK_SCHEMA }
   )
 
   if (!task || !task.found) {

@@ -11,6 +11,16 @@
 
 > Tool-agnostic AI development framework. One `init` generates **`AGENTS.md`** — the universal standard every AI coding agent reads — plus Claude Code integration, quality gates, spec-driven task management, and an MCP server. Auto-detects 28 languages.
 
+**v7 — built to assist frontier models, never to anchor them.** ~3.4k tokens of
+session overhead (was ~15k in v6, −77%), 5 consolidated MCP tools, one
+path-only guard hook, zero permission prompts for routine work, and
+orchestration (subagents/parallelism/teams) that is never blocked or mandated.
+Measured, budgeted in CI, and documented in
+[`docs/analysis/v7-performance/`](docs/analysis/v7-performance/README.md).
+Upgrading from v6? See the
+[migration guide](docs/guides/migration-v6-to-v7.md) — `update --dry-run`
+shows the plan first.
+
 ---
 
 ## Quick Start
@@ -22,11 +32,12 @@ npx @hivehub/rulebook@latest init
 # Update an existing project to the latest rules
 npx @hivehub/rulebook@latest update
 
-# Apply the recommended Claude Code setup (MCP, agents, workflows, settings)
+# Apply the recommended Claude Code setup (MCP, permissions, statusline)
 npx @hivehub/rulebook@latest claude
 ```
 
-Then, inside Claude Code, spec a feature and let the backlog implement itself:
+Then, inside Claude Code, spec a feature and let the backlog implement itself
+(workflows are opt-in — `rulebook claude --workflows` installs them):
 
 ```
 /spec rate-limit the public REST API   # asks questions, creates rulebook tasks
@@ -45,9 +56,9 @@ AI coding agents produce inconsistent, error-prone code without clear guidelines
 |------|-----|
 | **Universal rules** | `AGENTS.md` + `CLAUDE.md` generated from one source — read natively by any AGENTS.md-aware agent |
 | **Quality gates** | Pre-commit (lint, type-check, format) + pre-push (build, tests) hooks — language-aware, cross-platform |
-| **Spec-driven tasks** | OpenSpec-compatible tasks with mandatory docs + tests + verify tail, driven by an opus review gate |
-| **MCP tools** | Task management, skills, decisions, knowledge, learnings, workspace — over Model Context Protocol |
-| **Structural enforcement** | A `PreToolUse` hook blocks stubs/TODOs/deferred tasks before edits reach disk |
+| **Spec-driven tasks** | OpenSpec-compatible tasks with a docs + tests tail — check it or archive with a one-line waiver |
+| **6 MCP tools** | `rulebook_task` / `_memory` / `_session` / `_skill` / `_rules` / `_workspace` — action-parameterized, ~3.6 KB of schemas total |
+| **Lean by design** | One path-only guard hook, full-autonomy permissions, no content regexes, no ceremony for small fixes |
 | **28 languages** | Auto-detected with confidence scores; language-specific templates and CI/CD workflows |
 
 ---
@@ -111,7 +122,7 @@ Auto-discovers from `pnpm-workspace.yaml`, `turbo.json`, `nx.json`, `lerna.json`
 
 ## Multi-Agent Workflows
 
-`rulebook init`/`update` installs orchestrated [Claude Code Workflow](https://code.claude.com/docs/en/workflows) scripts into `.claude/workflows/`. Each fans work across bundled agents with cost-tiered models — `haiku` for read-only steps, `sonnet` for implementation, `opus` for the final review gate.
+Orchestrated [Claude Code Workflow](https://code.claude.com/docs/en/workflows) scripts are **opt-in** (agents and workflows no longer install by default — native harness agents cover the roles). When installed into `.claude/workflows/`, each fans work across bundled agents with cost-tiered models — `haiku` for read-only steps, `sonnet` for implementation, `opus` for the final review gate.
 
 | Workflow | What it does |
 |----------|--------------|
@@ -142,14 +153,14 @@ rulebook claude                 # apply the recommended setup
 rulebook claude --model opus    # same, but set the default model (default: sonnet)
 ```
 
-It installs the MCP server entry, skills, agent definitions, and workflows, then layers an opinionated, cost-aware `.claude/settings.json`:
+It installs the MCP server entry and the Rulebook-specific skills, then layers the v7 `.claude/settings.json` (agents/workflows are opt-in):
 
 | Applied | Detail |
 |---------|--------|
-| Hook | a single `PreToolUse` quality-enforcement hook (no per-turn or per-session hooks by default) |
-| Permissions allowlist | auto-approves safe read-only Bash (`ls`/`cat`/`grep`/`rg`/`find`/`git status\|diff\|log\|blame`/`npm run type-check`/`npm test`) + `mcp__rulebook` |
-| `statusLine` | shows project dir + git branch |
-| `model` | cost-aware default (`sonnet`; `opus` stays reserved for the workflow review gates) |
+| Hook | ONE path-only `PreToolUse` guard protecting task scaffolding — nothing on Stop/UserPromptSubmit/SessionStart, no content regexes |
+| Full-autonomy permissions | `defaultMode: acceptEdits` + broad allow list (Bash/Edit/Write/Agent/WebFetch/…) — ~0 permission prompts for routine work |
+| `statusLine` | project dir + git branch + context meter (`ctx NN%`) |
+| `model` | cost-aware default (`sonnet`) |
 
 All settings are **additive and non-clobbering** — existing `permissions.allow`, a user-authored `statusLine`, and an explicit `model` are preserved. Requires Claude Code installed (`~/.claude`); otherwise it no-ops with a notice.
 
@@ -163,17 +174,17 @@ MCP tools over stdio transport. Zero configuration after `rulebook mcp init`.
 rulebook mcp init    # One-time setup — configures .mcp.json automatically
 ```
 
-| Category | Tools |
-|----------|-------|
-| Tasks | create, list, show, update, validate, archive, delete |
-| Skills | list, show, enable, disable, search, validate |
-| Knowledge | add, list, show |
-| Decisions | create, list, show, update |
-| Learnings | capture, list, promote |
-| Workspace | list, status, search, tasks |
-| Other | rules list, session start/end |
+| Tool | Actions |
+|------|---------|
+| `rulebook_task` | create · list · show · update · archive (`tailWaiver`) · validate · delete |
+| `rulebook_memory` | knowledge / learnings / decisions × add · list · show · update · promote |
+| `rulebook_session` | start (plans + tasks + learnings in ONE call) · end (rotating history) |
+| `rulebook_skill` | list · show · search · enable · disable · validate |
+| `rulebook_rules` | list project rules |
+| `rulebook_workspace` | list · status · tasks (workspace mode only) |
 
-All tools accept an optional `projectId` for workspace routing.
+Workspace routing is automatic: pass any file `path` and the server resolves
+the owning project (explicit `projectId` overrides).
 
 ---
 

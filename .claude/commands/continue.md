@@ -29,5 +29,5 @@ description: Update tasks.md, archive completed tasks, and continue implementati
    - Follow priority order: tests → coverage → update tasks.md → commit
 
 **Reference**
-- See `/.rulebook/specs/RULEBOOK.md` for complete task management guidelines
+- See `/.rulebook/specs/rulebook.md` for complete task management guidelines
 <!-- RULEBOOK:END -->

@@ -39,7 +39,7 @@ phase('Research')
 const research = await agent(
   `Research the codebase to inform building this feature: "${feature}".
 Identify the relevant files, existing patterns/conventions, reusable utilities, and risks. Read-only — do not modify anything. Report a concise, actionable map.`,
-  { label: 'research', phase: 'Research', agentType: 'researcher', model: 'haiku' }
+  { label: 'research', phase: 'Research', model: 'haiku' }
 )
 
 phase('Design')
@@ -50,7 +50,7 @@ Use this codebase research as ground truth:
 ${research}
 """
 Produce a concrete implementation blueprint: files to create/modify, component/data design, and the build sequence. Follow existing conventions; flag trade-offs. Do not write production code yet.`,
-  { label: 'design', phase: 'Design', agentType: 'architect', model: 'opus' }
+  { label: 'design', phase: 'Design', model: 'opus' }
 )
 
 phase('Implement')
@@ -62,13 +62,13 @@ Blueprint:
 ${design}
 """
 Run the type-checker before finishing. Report the files you created/changed.`,
-  { label: 'implement', phase: 'Implement', agentType: 'typescript-implementer', model: 'sonnet' }
+  { label: 'implement', phase: 'Implement', model: 'sonnet' }
 )
 
 phase('Test')
 const tests = await agent(
   `Write/extend tests for the feature just implemented ("${feature}"). Cover the new behavior and its edge cases with meaningful assertions (no boilerplate). Run \`git --no-pager diff\` to see what was implemented, write the tests, and run them until green. Report coverage of the new code.`,
-  { label: 'test', phase: 'Test', agentType: 'tester', model: 'sonnet' }
+  { label: 'test', phase: 'Test', model: 'sonnet' }
 )
 
 phase('Review')
@@ -76,13 +76,13 @@ const review = await agent(
   `Independently review the full diff for feature "${feature}". Run \`git --no-pager diff\`. Judge correctness, adherence to the design, edge cases, and test adequacy. Run type-check and tests to confirm green. Return pass=true only if it is genuinely ready to merge.
 Implementation report: """${impl}"""
 Test report: """${tests}"""`,
-  { label: 'review', phase: 'Review', agentType: 'code-reviewer', model: 'opus', schema: VERDICT_SCHEMA }
+  { label: 'review', phase: 'Review', model: 'opus', schema: VERDICT_SCHEMA }
 )
 
 phase('Document')
 const docs = await agent(
   `Document the feature "${feature}". Run \`git --no-pager diff\` to see what shipped. Update README.md (if user-facing) and add a conventional-commit CHANGELOG.md entry under the unreleased section. English only; document only what exists in the diff.`,
-  { label: 'document', phase: 'Document', agentType: 'docs-writer', model: 'haiku' }
+  { label: 'document', phase: 'Document', model: 'haiku' }
 )
 
 return { feature, design, review, passed: !!(review && review.pass), docs }

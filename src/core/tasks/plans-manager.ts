@@ -153,7 +153,7 @@ async function loadTemplate(): Promise<string> {
     try {
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = dirname(__filename);
-        const templatePath = join(__dirname, '..', '..', '..', 'templates', 'core', 'PLANS.md');
+        const templatePath = join(__dirname, '..', '..', '..', 'templates', 'core', 'plans.md');
         if (existsSync(templatePath)) {
             return readFile(templatePath, 'utf-8');
         }

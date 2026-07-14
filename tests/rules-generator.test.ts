@@ -11,12 +11,9 @@ import {
     hasGeneratedSentinel,
     readRuleTemplate,
     SUPPORTED_RULE_LANGUAGES,
-    ALWAYS_ON_RULES,
+    RETIRED_ALWAYS_ON_RULES,
     GENERATED_SENTINEL,
 } from '../src/core/generators/rules-generator';
-
-/** Number of always-on (non-language) rules emitted by generateRules. */
-const ALWAYS_ON_COUNT = ALWAYS_ON_RULES.length;
 
 describe('rules-generator (v5.3.0 F2)', () => {
     let projectRoot: string;
@@ -108,7 +105,7 @@ describe('rules-generator (v5.3.0 F2)', () => {
                 ],
             });
 
-            expect(result.written).toHaveLength(2 + ALWAYS_ON_COUNT);
+            expect(result.written).toHaveLength(2);
             expect(result.written.some((p) => p.endsWith('typescript.md'))).toBe(true);
             expect(result.written.some((p) => p.endsWith('rust.md'))).toBe(true);
 
@@ -126,7 +123,7 @@ describe('rules-generator (v5.3.0 F2)', () => {
                 ],
             });
 
-            expect(result.written).toHaveLength(1 + ALWAYS_ON_COUNT);
+            expect(result.written).toHaveLength(1);
             expect(result.unsupported).toEqual(['haskell', 'lua']);
         });
 
@@ -138,8 +135,8 @@ describe('rules-generator (v5.3.0 F2)', () => {
                 ],
             });
 
-            // Both cpp and c map to cpp.md → should only write once (+ always-on)
-            expect(result.written).toHaveLength(1 + ALWAYS_ON_COUNT);
+            // Both cpp and c map to cpp.md → should only write once
+            expect(result.written).toHaveLength(1);
             expect(result.written.some((p) => p.endsWith('cpp.md'))).toBe(true);
         });
 
@@ -153,8 +150,8 @@ describe('rules-generator (v5.3.0 F2)', () => {
                 languages: [{ language: 'typescript', confidence: 1.0, indicators: [] }],
             });
 
-            // typescript.md preserved, but always-on rules still written
-            expect(result.written).toHaveLength(ALWAYS_ON_COUNT);
+            // typescript.md preserved; nothing else to write (v7: no always-on rules)
+            expect(result.written).toHaveLength(0);
             expect(result.preserved).toHaveLength(1);
             expect(result.preserved[0]).toMatch(/typescript\.md$/);
 
@@ -183,6 +180,23 @@ describe('rules-generator (v5.3.0 F2)', () => {
             expect(result.written.some((p) => p.endsWith('typescript.md'))).toBe(true);
             const second = await fs.readFile(target, 'utf-8');
             expect(second).not.toContain('Extra user note (oops)');
+        });
+
+        it('does not emit any retired always-on rule (v7 context diet)', async () => {
+            const result = await generateRules(projectRoot, {
+                languages: [{ language: 'typescript', confidence: 1.0, indicators: [] }],
+            });
+
+            for (const retired of RETIRED_ALWAYS_ON_RULES) {
+                expect(result.written.some((p) => p.endsWith(`${retired}.md`))).toBe(false);
+                const exists = await fs
+                    .stat(path.join(getRulesDir(projectRoot), `${retired}.md`))
+                    .then(() => true)
+                    .catch(() => false);
+                expect(exists).toBe(false);
+            }
+            // Only the path-scoped language rule is written.
+            expect(result.written).toHaveLength(1);
         });
 
         it('is idempotent: running twice on the same project produces identical output', async () => {
@@ -230,7 +244,7 @@ describe('rules-generator (v5.3.0 F2)', () => {
             });
 
             const listed = await listRulesWithSource(projectRoot);
-            // 1 user rule + 1 language rule + always-on rules
+            // 1 user rule + 1 language rule
             expect(listed.length).toBeGreaterThanOrEqual(2);
 
             const ts = listed.find((r) => r.name === 'typescript');

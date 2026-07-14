@@ -34,8 +34,38 @@ export async function updateSingleProject(
         minimal?: boolean;
         light?: boolean;
         lean?: boolean;
+        dryRun?: boolean;
     }
 ): Promise<void> {
+    // v7: --dry-run prints the migration plan and exits before ANY write.
+    if (options.dryRun) {
+        const { planV6Cleanup } = await import('../../core/migration/v6-cleanup.js');
+        const plan = await planV6Cleanup(cwd);
+        console.log(chalk.bold.blue('\n🔎 rulebook update --dry-run (no files were changed)\n'));
+        console.log(chalk.bold('Would regenerate (lean v7):'));
+        console.log(chalk.gray('  • CLAUDE.md, AGENTS.md, .rulebook/specs/* (lowercase names)'));
+        console.log(
+            chalk.gray('  • .claude/settings.json — strip retired hooks, apply autonomy profile')
+        );
+        console.log(chalk.gray('  • .mcp.json — slim rulebook-mcp entrypoint'));
+        if (plan.remove.length > 0) {
+            console.log(chalk.bold(`\nWould remove ${plan.remove.length} retired file(s):`));
+            for (const p of plan.remove) console.log(chalk.gray(`  - ${p}`));
+        }
+        if (plan.rename.length > 0) {
+            console.log(chalk.bold(`\nWould rename ${plan.rename.length} spec(s) to lowercase:`));
+            for (const r of plan.rename) console.log(chalk.gray(`  - ${r.from} → ${r.to}`));
+        }
+        if (plan.preserved.length > 0) {
+            console.log(
+                chalk.bold(`\nKept (look user-authored — no rulebook marker):`)
+            );
+            for (const p of plan.preserved) console.log(chalk.gray(`  · ${p}`));
+        }
+        console.log(chalk.gray('\nRun without --dry-run to apply.\n'));
+        return;
+    }
+
     const spinner = ora('Detecting project structure...').start();
     const detection = await detectProject(cwd);
     spinner.succeed('Project detection complete');
@@ -247,7 +277,7 @@ export async function updateSingleProject(
     await writeFile(agentsPath, mergedContent);
     mergeSpinner.succeed('AGENTS.md updated');
 
-    const claudeUpdateSpinner = ora('Updating CLAUDE.md (v5.3.0 @import format)...').start();
+    const claudeUpdateSpinner = ora('Updating CLAUDE.md (v7 lean format)...').start();
     try {
         const claudeResult = await mergeClaudeMd(cwd);
         const label =
@@ -288,8 +318,6 @@ export async function updateSingleProject(
         await ensureGitignoreEntries(cwd, [
             'CLAUDE.local.md',
             '.rulebook/backup/',
-            '.rulebook/handoff/_pending.md',
-            '.rulebook/handoff/.urgent',
         ]);
     } catch {
         // non-fatal
@@ -321,22 +349,19 @@ export async function updateSingleProject(
         const { applyClaudeSettings } = await import(
             '../../core/claude/claude-settings-manager.js'
         );
-        // v5.9.0: a default install ships exactly one hook (quality enforcement).
-        // handoff/terse/compact default OFF (opt-in via rulebook.json); the
-        // manager's else branch removes any stale entries from older versions.
+        // v7: one optional path-only guard + full-autonomy permissions; every
+        // retired v5/v6 hook entry is stripped on sync (LEGACY_SIGNATURES).
         const rulebookCfg = await configManager.loadConfig();
         const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
-        const handoffEnabled = rulebookCfg?.handoff?.enabled ?? false;
-        const terseEnabled = rulebookCfg?.terse?.enabled ?? false;
         const settingsResult = await applyClaudeSettings(cwd, {
-            teamEnforcement: multiAgentEnabled,
-            sessionHandoff: handoffEnabled,
-            compactContextReinject: false,
-            qualityEnforcement: true,
-            terseMode: terseEnabled,
+            taskScaffoldingGuard: true,
+            fullAutonomyPermissions: true,
+            teamsEnv: multiAgentEnabled,
         });
         if (settingsResult.changed) {
-            console.log(chalk.gray(`  • .claude/settings.json refreshed (hooks wired)`));
+            console.log(
+                chalk.gray(`  • .claude/settings.json refreshed (v7 lean hooks + permissions)`)
+            );
         }
     } catch (err) {
         console.log(
@@ -351,9 +376,7 @@ export async function updateSingleProject(
     ).start();
     try {
         const { generateRules } = await import('../../core/generators/rules-generator.js');
-        const rulesResult = await generateRules(cwd, { languages: detection.languages }, [
-            ...new Set(detection.libraries.map((d) => d.library)),
-        ]);
+        const rulesResult = await generateRules(cwd, { languages: detection.languages });
         if (rulesResult.written.length > 0) {
             rulesUpdateSpinner.succeed(
                 `Refreshed ${rulesResult.written.length} language rule file(s) in .claude/rules/`
@@ -375,41 +398,11 @@ export async function updateSingleProject(
     }
 
     {
-        const { projectRules, installRule, loadCanonicalRules } = await import(
-            '../../core/rule-engine.js'
-        );
-        const existingRules = await loadCanonicalRules(cwd);
-
-        if (existingRules.length === 0) {
-            const { getTemplatesDir } = await import('../../core/generators/generator.js');
-            const templatesDir = getTemplatesDir();
-
-            // Install the full canonical rule set (tier1 + tier2). Users can
-            // disable individual rules later via `.rulebook/rules/` config.
-            const toInstall = [
-                'no-shortcuts',
-                'git-safety',
-                'sequential-editing',
-                'research-first',
-                'follow-task-sequence',
-                'incremental-implementation',
-                'knowledge-base-usage',
-                'task-decomposition',
-                'incremental-tests',
-                'no-deferred',
-                'session-workflow',
-            ];
-
-            let installed = 0;
-            for (const name of toInstall) {
-                const result = await installRule(cwd, name, templatesDir);
-                if (result) installed++;
-            }
-
-            if (installed > 0) {
-                console.log(chalk.gray(`  • Installed ${installed} v5 canonical rules`));
-            }
-        }
+        // v7: the canonical always-on rule set is retired (F-001/F-008) — its
+        // content lives as one-line values in the lean CLAUDE.md/AGENTS.md.
+        // `update` no longer installs it; user-authored rules in
+        // .rulebook/rules/ are still projected.
+        const { projectRules } = await import('../../core/rule-engine.js');
 
         const ruleResult = await projectRules(cwd, {
             claudeCode:
@@ -491,6 +484,34 @@ export async function updateSingleProject(
 
     await configManager.saveConfig(rulebookConfig);
     configSpinner.succeed('.rulebook configuration updated');
+
+    // v6 → v7 cleanup: remove rulebook-owned retired files, normalize spec names.
+    try {
+        const { planV6Cleanup, applyV6Cleanup } = await import(
+            '../../core/migration/v6-cleanup.js'
+        );
+        const plan = await planV6Cleanup(cwd);
+        if (plan.remove.length > 0 || plan.rename.length > 0) {
+            const { removed, renamed } = await applyV6Cleanup(cwd, plan);
+            if (removed.length > 0) {
+                console.log(chalk.gray(`  • v7 cleanup: removed ${removed.length} retired file(s)`));
+            }
+            if (renamed.length > 0) {
+                console.log(
+                    chalk.gray(`  • v7 cleanup: normalized ${renamed.length} spec name(s)`)
+                );
+            }
+            if (plan.preserved.length > 0) {
+                console.log(
+                    chalk.gray(
+                        `  · ${plan.preserved.length} retired-name file(s) kept (user-authored)`
+                    )
+                );
+            }
+        }
+    } catch {
+        // cleanup is best-effort — never block an update
+    }
 
     const claudeSpinner = ora('Checking Claude Code integration...').start();
     try {
@@ -574,47 +595,20 @@ export async function updateSingleProject(
     }
 
     // F-NEW-3: scan active tasks for missing mandatory tail and offer to append
-    try {
-        const { checkMandatoryTail, renderMandatoryTail } = await import(
-            '../../core/tasks/task-manager.js'
-        );
-        const { promises: fsP } = await import('fs');
-        const tasksDir = path.join(cwd, '.rulebook', 'tasks');
-        if (existsSync(tasksDir)) {
-            const taskDirs = (await fsP.readdir(tasksDir, { withFileTypes: true })).filter(
-                (d) => d.isDirectory() && d.name.startsWith('phase')
-            );
-            let appendedCount = 0;
-            for (const dir of taskDirs) {
-                const tasksPath = path.join(tasksDir, dir.name, 'tasks.md');
-                if (!existsSync(tasksPath)) continue;
-                const content = await fsP.readFile(tasksPath, 'utf-8');
-                const tail = checkMandatoryTail(content);
-                if (!tail.present && tail.missing.length > 0) {
-                    // Count existing sections to pick the right number
-                    const sectionMatches = content.match(/^## \d+\./gm);
-                    const nextSection = (sectionMatches?.length ?? 0) + 1;
-                    const appendix = '\n' + renderMandatoryTail(nextSection);
-                    await fsP.writeFile(tasksPath, content.trimEnd() + '\n' + appendix);
-                    appendedCount++;
-                }
-            }
-            if (appendedCount > 0) {
-                console.log(
-                    chalk.yellow(
-                        `  • Appended mandatory tail (docs+tests+verify) to ${appendedCount} task(s) missing it`
-                    )
-                );
-            }
-        }
-    } catch {
-        // non-fatal
-    }
+    // v7 (#19): the tail retro-append was removed — pre-existing tasks defined
+    // their own scope; new tasks still get the tail scaffold from createTask().
 
     console.log(chalk.bold.green('\n✅ Update complete!\n'));
     console.log(chalk.white('Updated components:'));
     console.log(chalk.green('  ✓ AGENTS.md - Merged with latest templates'));
     console.log(chalk.green(`  ✓ .rulebook - Updated to v${getRulebookVersion()}`));
+
+    // v7: npm update advisory lives in the CLI (replaces the SessionStart hook).
+    {
+        const { checkForUpdate } = await import('../../utils/update-check.js');
+        const advisory = await checkForUpdate(cwd, getRulebookVersion());
+        if (advisory) console.log(chalk.yellow(`\n⬆ ${advisory}`));
+    }
 
     console.log(chalk.white('\nWhat was updated:'));
     console.log(chalk.gray(`  - ${detection.languages.length} language templates`));
@@ -648,6 +642,7 @@ export async function updateCommand(options: {
     minimal?: boolean;
     light?: boolean;
     lean?: boolean;
+    dryRun?: boolean;
 }): Promise<void> {
     try {
         const cwd = process.cwd();
@@ -677,7 +672,7 @@ export async function updateCommand(options: {
             );
             let workspaceTplContent = '';
             try {
-                const tplPath = join(getTemplatesPath(), 'core', 'WORKSPACE.md');
+                const tplPath = join(getTemplatesPath(), 'core', 'workspace.md');
                 workspaceTplContent = await fsPromises.readFile(tplPath, 'utf-8');
             } catch {
                 // Template not available — skip
@@ -702,7 +697,7 @@ export async function updateCommand(options: {
                             )
                             .replace('{{WORKSPACE_PROJECTS}}', projectListMd);
                         await fsPromises.writeFile(
-                            join(specsDir, 'WORKSPACE.md'),
+                            join(specsDir, 'workspace.md'),
                             rendered,
                             'utf-8'
                         );

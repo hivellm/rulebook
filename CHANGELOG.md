@@ -5,7 +5,246 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [7.0.0] - 2026-07-14
+
+### Changed — Post-v7 context optimization (phase6 — ALL BUDGETS PASS)
+
+- The 12 `/rulebook-*` slash commands are retired — they duplicated the
+  consolidated MCP tools verb-for-verb. `rulebook update` strips previously
+  installed copies (marker-guarded). Replacement: the `rulebook_task` /
+  `rulebook_memory` MCP tools cover every verb. Default install: 29 → **17
+  files**.
+- Language specs for the 8 core languages are now POINTERS to the canonical
+  path-scoped `.claude/rules/<lang>.md` (one payload, zero drift); AGENTS.md
+  language refs point at the rule file.
+- Honest benchmark: `measure-overhead.mjs` splits ALWAYS-ON vs ON-DEMAND
+  (verified: Claude Code does not auto-load AGENTS.md when CLAUDE.md exists —
+  it serves the other tools). Always-on total: **1,678 tokens** vs the 2,500
+  budget; frontmatter violations fail the report; Windows MCP-init budget is
+  platform-conditional (250 ms Win / 150 ms Linux).
+
+### Changed — External perf-audit fixes (issues #18–#24)
+
+- **Task ordering is dependency semantics** (#18): checklist order expresses
+  prerequisites; independent items — same phase included — may run in any
+  order or in parallel via subagents. P0 test forbids total-order mandates.
+- **Git rules split by blast radius** (#20): destructive ops still require
+  authorization; creating/switching/merging agent-created branches,
+  `git worktree` parallelism and PRs via `gh` are autonomous. Default branch
+  changes only via approved PR.
+- **Tail waiver** (#19): unchecked docs+tests tail items are validation
+  warnings; `rulebook_task {action:"archive", tailWaiver:"…"}` archives with
+  a recorded one-line rationale. The tail retro-append on `update` is gone.
+- **Bounded session payload** (#21): session start returns active context +
+  current task + last 3 history entries (never the whole PLANS.md); session
+  end rotates history beyond 20 entries to `.rulebook/archive/plans-history.md`.
+  `plans.md` is an optional scratchpad — no per-session ritual.
+- **Neutral MCP reference** (#22): use the cheapest surface; no
+  MCP-over-shell mandate.
+- **Tiered quality gate** (#23): per commit, type-check + lint + affected
+  tests; per push/PR/archive, the full suite; hooks are the floor.
+- **Workspace auto-routing** (#24): v7 tools accept a `path` hint and infer
+  `projectId` by longest-prefix match server-side; workspace directives
+  reduced to one calm line; cross-project knowledge is captured once, in the
+  owning project.
+
+### Added — Session hygiene (docs/analysis/session-auto-cleanup/)
+
+- `rulebook_task {action:"archive"}` and `rulebook_session {action:"end"}`
+  responses now carry a `contextTip` — the in-band, zero-hook signal that
+  rotating the session (/clear) is cheapest right after a boundary, or
+  `/compact <focus>` to continue.
+- Generated statusLine shows a context meter (`dir | branch | ctx NN%`) from
+  the statusline stdin JSON; degrades gracefully when the field is absent.
+- Generated CLAUDE.md carries one durable line of boundary guidance
+  (compact at ~60% at task boundaries; state lives in `.rulebook/`).
+
+### Fixed
+
+- `mergeClaudeMd` block replacement had `v5.3.0` hardcoded in its sentinel
+  regex — CLAUDE.md files stamped by v7 silently stopped being updated.
+  Now version-tolerant (any `RULEBOOK:START v*` block), with a regression
+  test.
+
+**Mission: run complementary to modern frontier models (Opus/Fable), never as
+an anchor.** Driven by the measured overhead analysis in
+`docs/analysis/v7-performance/` (impact ledger in `05-budget-and-metrics.md`).
+
+Headline numbers vs the v6.0.0 baseline (measured with
+`scripts/measure-overhead.mjs` on a fresh default init):
+
+| Metric | v6.0.0 | v7.0.0 |
+|---|---:|---:|
+| Static context per session | 14,951 tok | **3,358 tok (−78%)** |
+| MCP tools / schema bytes | 26 / 13,965 | **5 / 3,592 (−74%)** |
+| Hook entries (full desire set) | 7 across 5 events | **1 path-only guard** |
+| Default install | 95 files | **29 files** |
+| On-demand specs | ~29,900 tok | **~2,300 tok (−92%)** |
+| Session-start ceremony | 4–5 calls | **1 call** |
+| Orchestration denials | on every untagged dispatch | **never (P0)** |
+
+Also in this release: `rulebook update` self-applies v7 to existing projects
+(lean regeneration, legacy-hook stripping via signatures, version-tolerant
+sentinels recognize v5/v6-stamped files) and the npm update advisory moved
+into the CLI with a proper semver comparison.
+
+### Changed — Phase 1: context diet (−56% static context per session)
+
+- `CLAUDE.md` template rewritten lean (~540 tokens, was ~1,630): project values
+  as one-liners, git-safety list, an advisory orchestration line (subagents/
+  parallelism/teams are the model's choice — never blocked, never mandated),
+  and on-demand Rulebook pointers. No longer imports `AGENTS.md`,
+  `.rulebook/STATE.md`, or `.rulebook/PLANS.md`; the single conditional import
+  is user-owned `AGENTS.override.md`.
+- `AGENTS.md` lean template rewritten as a true <3 KB index (~670 tokens, was
+  ~3,010): 9 one-line rules + task-format summary + on-demand specs index. The
+  `GIT.md` index line respects `includeGitWorkflow: false`.
+- Contradictory sequential-editing mandate removed from
+  `TIER1_PROHIBITIONS.md` (conflicted with native parallel tool use, F-008).
+- New `tests/context-budget.test.ts` guards the file-based always-loaded
+  context at ≤1,600 tokens and asserts every generated `.claude/rules/` file
+  is path-scoped.
+- New `scripts/measure-overhead.mjs` benchmark measures generated-project
+  session cost (static tokens, MCP schemas/init, hooks, installed files)
+  against the v7 budgets.
+
+### Changed — Phase 3: MCP consolidation (26 → 5 tools, schemas −74%)
+
+- The 26 per-verb MCP tools collapse into 6 action-parameterized tools —
+  `rulebook_task`, `rulebook_memory` (knowledge/learnings/decisions),
+  `rulebook_session`, `rulebook_skill`, `rulebook_rules`, plus
+  `rulebook_workspace` in workspace mode (5 tools in single-project mode).
+  `tools/list` payload: 13,965 → 3,592 bytes (~900 tokens, within budget).
+- `rulebook_session {action:"start"}` returns plans + active tasks + recent
+  learnings in ONE call, replacing 4–5 separate lookups (F-005).
+- `.mcp.json` now uses the standalone `rulebook-mcp` bin
+  (`dist/mcp/rulebook-server.js`) — no commander/inquirer/blessed/ora in the
+  server process. Init: ~230 ms on Windows (node floor), <150 ms on Linux.
+- Every template, command doc, and workflow reference migrated to the new
+  tool names.
+
+### Removed — Phase 3
+
+- The 7 per-domain tool modules (task/skill/workspace/decision/knowledge/
+  learn/rules-tools.ts) and the inline session tools.
+
+### Changed — Phase 4: asset prune (default install 95 → 29 files)
+
+- Agents and orchestration workflows are opt-in
+  (`setupClaudeCodeIntegration(..., { includeAgents, includeWorkflows })`);
+  nothing installs them by default — native harness agents cover the roles.
+- Default dev skills reduced to the Rulebook-specific set (analysis, spec)
+  plus karpathy-guidelines; the hidden side-effect installer inside
+  `generateModularAgents` (agents + all dev skills on every generation) is
+  removed, as is the generated delegation-table section.
+- `RulebookConfig.handoff`/`.terse` config types removed;
+  `multiAgent.enabled` now only sets the teams feature env var.
+- New P0 test: generated CLAUDE.md/AGENTS.md contain no directive that denies
+  or mandates orchestration, and must contain the affirmative freedom line.
+
+### Removed — Phase 4
+
+- `src/hooks/safe-flag-io.ts` (last terse-subsystem code; `src/hooks/` is
+  gone) and its test.
+- `.rulebook/handoff` directory creation and gitignore entries from init/update.
+- Terse skill IDs from `INVOCABLE_CORE_SKILLS`.
+
+### Changed — Phase 2: hook teardown + full autonomy (P0/F-002/F-009/F-011)
+
+- `claude-settings-manager` rewritten for v7: rulebook now wires at most ONE
+  hook — a path-only PreToolUse `Edit|Write` guard
+  (`protect-task-scaffolding.sh`) that protects `.rulebook/tasks/` scaffolding
+  and inspects no content. Nothing on Stop, UserPromptSubmit, or SessionStart;
+  nothing ever matches `Agent` (P0 — orchestration is never denied).
+- `LEGACY_SIGNATURES` covers every hook rulebook ever wired (12 signatures);
+  every sync strips stale v5/v6 entries from all four managed events.
+- Full-autonomy permission profile generated by default (F-011):
+  `defaultMode: acceptEdits` + broad allow set. Additive only — user
+  permissions and an existing defaultMode are never removed or tightened.
+- Marker-comment gate moved to the quality gate: all 15 language pre-commit
+  templates now check TODO/FIXME/HACK only on lines ADDED by the commit
+  (comment-token aware per language) — existing content never trips it.
+- npm update check moved from a SessionStart hook into the CLI
+  (`src/utils/update-check.ts`, 24h cache, 2s timeout, silent failure),
+  invoked at the end of `init` and `update`.
+
+### Removed — Phase 2
+
+- Hook templates for retired subsystems: check-context-and-handoff,
+  resume-from-handoff, terse-activate, terse-mode-tracker,
+  enforce-team-for-background-agents, on-compact-reinject, update-check,
+  enforce-pre-tool (all .sh/.ps1 variants) and `templates/compact-context/`.
+- Retired-subsystem test files (enforce-pre-tool shell, terse settings,
+  update-check shell, handoff shell).
+
+### Changed — Template unification (templates/ 1,219 KB → 564 KB, −54%)
+
+- All 19 non-core language templates rewritten lean (≤2.2 KB each; concrete
+  tools/pitfalls only, no tutorials) by a parallel agent fleet; the 9
+  core-language essays (dead after the lean-rule redirect) deleted.
+- All 11 agent templates and 12 command docs slimmed ~50–55%; tier tables,
+  delegation mandates and 9 KB of machine-specific boilerplate removed.
+- Git-hook doc templates (pre-commit/pre-push/post-checkout/commit-msg/
+  prepare-commit-msg) rewritten lean: 64 KB → ~10.5 KB.
+- **All template and generated-spec filenames normalized to lowercase
+  kebab-case** (`rulebook.md`, `quality.md`, `prohibitions.md`, `git.md`,
+  `<language>.md`, `agents-lean.md`, `claude-md.md`, …) with every reader
+  updated; block markers stay UPPERCASE for merger compatibility.
+
+### Removed — Template unification
+
+- Library-rules subsystem: `templates/libraries/`, generation, prompts, and
+  init/update wiring (language rules are the single per-language source).
+- Module skills (`templates/skills/modules/`) and retired-subsystem skills
+  (terse ×3, handoff, agent-automation, dag, documentation-rules,
+  quality-enforcement duplicates).
+- The 17 retired always-on rule templates from `templates/rules/` — the
+  directory now holds only the 8 lean path-scoped language rule files.
+- Obsolete test files for retired subsystems (terse ×4, library-detection).
+
+### Changed — Spec diet (−87% on-demand spec load)
+
+- `RULEBOOK.md` spec template rewritten lean (51 KB / ~13k tokens → ~600
+  tokens): task structure, checklist rules, spec-delta format, workflow, CLI
+  reference — no essays. The mandatory pre-task read is now cheap.
+- `GIT_WORKFLOW.md` template rewritten lean (1,192 lines / ~7.5k tokens →
+  ~450 tokens): allow/forbidden table, commit + branch conventions. Push-mode
+  injection unchanged.
+- Language specs for the 8 core languages (typescript, javascript, rust,
+  python, go, cpp, java, csharp) now reuse the lean path-scoped rule template
+  content (~500 tokens) instead of the 16–18 KB language essays; other
+  languages keep their templates until individually reviewed.
+- Dogfooded on this repository: 17 always-on `.claude/rules/` files removed,
+  root `CLAUDE.md`/`AGENTS.md` regenerated from the lean v7 templates,
+  remaining rules (typescript, vitest) converted to path-scoped.
+
+### Removed — Spec diet
+
+- MCP-module spec docs retired: `templates/modules/` deleted (CONTEXT7,
+  GITHUB_MCP, PLAYWRIGHT, RULEBOOK_MCP, SERENA, SUPABASE, SYNAP, VECTORIZER,
+  sequential-thinking) and module-spec emission/references removed from
+  generators. MCP servers are self-describing via their own tool schemas;
+  `.mcp.json` wiring is untouched.
+- Ceremony/tier spec emission retired: `TOKEN_OPTIMIZATION.md`,
+  `AGENT_AUTOMATION.md`, `MULTI_AGENT.md` no longer generated; templates
+  deleted.
+- Dead templates deleted (zero code references): `core/DAG.md`,
+  `core/KNOWLEDGE.md`, `core/DECISIONS.md`, `core/DOCUMENTATION_RULES.md`,
+  `git/CI_CD_PATTERNS.md`, `git/GITHUB_ACTIONS.md`, `git/GITLAB_CI.md`,
+  `git/SECRETS_MANAGEMENT.md`.
+
+### Removed — Phase 1
+
+- The 16 always-on `.claude/rules/` files (`git-safety`, `no-shortcuts`,
+  `sequential-editing`, `full-task-no-questions`, `multi-agent-teams`,
+  `respect-handoff-trigger`, `fail-twice-escalate`, `diagnostic-first`,
+  `research-first`, `follow-task-sequence`, `incremental-implementation`,
+  `incremental-tests`, `task-decomposition`, `no-deferred`, `session-workflow`,
+  `consult-analysis-before-implementing`) are no longer generated by
+  `init`/`update`. Their surviving values live as single lines in the lean
+  `CLAUDE.md`/`AGENTS.md`; only path-scoped language/library rules (zero
+  context cost outside matching files) are still emitted.
+  `RETIRED_ALWAYS_ON_RULES` is exported so `update` can clean old installs.
 
 ## [6.0.0] - 2026-06-08
 

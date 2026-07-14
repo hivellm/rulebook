@@ -1,7 +1,7 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import type { DetectionResult, ProjectConfig, LanguageDetection } from '../types.js';
-import { LIBRARY_REGISTRY } from '../core/detect/library-registry.js';
+
 
 type LanguageId = LanguageDetection['language'];
 
@@ -394,19 +394,6 @@ export async function promptMergeStrategy(): Promise<'merge' | 'replace'> {
 }
 
 /**
- * Library checklist choices, ordered and labelled by language so the list reads
- * as grouped (e.g. "typescript · React").
- */
-function buildLibraryChoices(): Array<{ name: string; value: string }> {
-    const order = ['typescript', 'python', 'rust', 'go'];
-    const sorted = [...LIBRARY_REGISTRY].sort((a, b) => {
-        const byLang = order.indexOf(a.language) - order.indexOf(b.language);
-        return byLang !== 0 ? byLang : a.label.localeCompare(b.label);
-    });
-    return sorted.map((def) => ({ name: `${def.language} · ${def.label}`, value: def.id }));
-}
-
-/**
  * Interactive language + library selection for `init`.
  *
  * - Languages: confirm detected ones (with the option to edit), or — when none are
@@ -457,51 +444,6 @@ export async function promptLanguagesAndLibraries(
         languages = selected;
     }
 
-    const detectedLibraries = detection.libraries.map((l) => l.library);
-    let libraries: string[] = detectedLibraries;
-
-    if (detectedLibraries.length > 0) {
-        const { confirmLibraries } = await inquirer.prompt<{ confirmLibraries: boolean }>([
-            {
-                type: 'confirm',
-                name: 'confirmLibraries',
-                message: `Detected libraries: ${detectedLibraries.join(', ')}. Use these?`,
-                default: true,
-            },
-        ]);
-        if (!confirmLibraries) {
-            const { selected } = await inquirer.prompt<{ selected: string[] }>([
-                {
-                    type: 'checkbox',
-                    name: 'selected',
-                    message: 'Select the libraries used in this project:',
-                    choices: buildLibraryChoices(),
-                    default: detectedLibraries,
-                },
-            ]);
-            libraries = selected;
-        }
-    } else {
-        const { wantLibraries } = await inquirer.prompt<{ wantLibraries: boolean }>([
-            {
-                type: 'confirm',
-                name: 'wantLibraries',
-                message: 'No library detected. Select libraries manually?',
-                default: false,
-            },
-        ]);
-        if (wantLibraries) {
-            const { selected } = await inquirer.prompt<{ selected: string[] }>([
-                {
-                    type: 'checkbox',
-                    name: 'selected',
-                    message: 'Select the libraries used in this project:',
-                    choices: buildLibraryChoices(),
-                },
-            ]);
-            libraries = selected;
-        }
-    }
-
-    return { languages, libraries };
+    // v7: the library-rules subsystem is retired — no library selection prompt.
+    return { languages, libraries: [] };
 }

@@ -3,7 +3,7 @@
  *
  * Idempotent and non-interactive: installs MCP + skills + agents + workflows
  * via setupClaudeCodeIntegration, then layers the opinionated, quality- and
- * cost-aware settings (safe permissions allowlist, statusLine, terse default,
+ * cost-aware settings (full-autonomy permissions, statusLine,
  * default model) onto .claude/settings.json. Prints a summary of what changed.
  */
 
@@ -34,21 +34,15 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
             return;
         }
 
-        // v5.9.0: only the consolidated quality-enforcement PreToolUse hook is
-        // wired by default. The per-turn (Stop), per-prompt (UserPromptSubmit)
-        // and SessionStart hooks added measurable latency for marginal value;
-        // they were removed so a default install ships exactly one hook. They
-        // remain available via explicit rulebook.json opt-in (handled by the
-        // manager's desire flags), and stale entries self-heal on next sync.
+        // v7: exactly one optional path-only guard + the full-autonomy
+        // permission profile. No hooks on Stop/UserPromptSubmit/SessionStart,
+        // no orchestration enforcement (P0). Stale v5/v6 entries self-heal on
+        // sync via LEGACY_SIGNATURES.
         await applyClaudeSettings(cwd, {
-            teamEnforcement: false,
-            sessionHandoff: false,
-            qualityEnforcement: true,
-            terseMode: false,
-            permissionsAllowlist: true,
+            taskScaffoldingGuard: true,
+            fullAutonomyPermissions: true,
             statusLine: true,
             defaultModel,
-            updateCheck: false,
         });
 
         console.log(chalk.green('\n✅ Claude Code setup applied'));
@@ -75,7 +69,7 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
             );
         console.log(chalk.gray('  • settings.json: hooks, safe permissions allowlist, statusLine'));
         console.log(
-            chalk.gray(`  • settings.json: default model "${defaultModel}", terse mode on`)
+            chalk.gray(`  • settings.json: default model "${defaultModel}", full-autonomy permissions`)
         );
         console.log(chalk.gray('\nRestart Claude Code to load the updated configuration.'));
     } catch (error) {

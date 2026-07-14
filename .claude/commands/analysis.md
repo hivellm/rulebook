@@ -1,6 +1,7 @@
 # /analysis — Structured analysis workflow
 
-Create a structured analysis for a topic. Scaffolds `docs/analysis/<slug>/` with skeleton files (README.md, findings.md, execution-plan.md, manifest.json).
+Create a structured analysis for a topic in `docs/analysis/<slug>/`, **always
+split into numbered files, one theme per file**.
 
 ## Usage
 
@@ -8,28 +9,31 @@ Create a structured analysis for a topic. Scaffolds `docs/analysis/<slug>/` with
 /analysis <topic>
 ```
 
+## Structure (mandatory)
+
+```
+docs/analysis/<slug>/
+├── README.md            # index + executive summary; links every numbered file
+├── 01-<theme>.md        # one theme per file (e.g. 01-measurements.md)
+├── 02-<theme>.md        # (e.g. 02-root-causes.md)
+├── ...
+└── NN-execution-plan.md # last file, only when the analysis proposes work
+```
+
+Never put the whole analysis in a single file. Findings are numbered
+F-001..F-NNN **globally across the analysis** (numbering continues from one
+file to the next), each with: title, evidence (file:line), impact, confidence.
+
 ## What it does
 
 1. Slugifies the topic (e.g. "Auth Refactor v2" → `auth-refactor-v2`)
-2. Creates `docs/analysis/<slug>/` with:
-   - **README.md** — executive summary, methodology, conclusion
-   - **findings.md** — numbered findings F-001..F-NNN (title, evidence, impact, confidence)
-   - **execution-plan.md** — phased implementation plan
-   - **manifest.json** — metadata (agents, timestamps, version)
-3. Idempotent: re-running updates manifest but preserves user-edited content files
+2. Creates `docs/analysis/<slug>/` following the structure above
+3. Investigates the topic and writes one numbered file per theme
+4. Consolidates the executive summary + index in `README.md`
 
-## After scaffolding
+## After the analysis
 
-1. Fill `findings.md` with investigation results
-2. Design the phases in `execution-plan.md`
-3. Create implementation tasks from the plan: `rulebook task create phase1_<slug>-<name>`
-4. Each task should reference the analysis: `Source: docs/analysis/<slug>/README.md#F-NNN`
-5. Before implementing, consult the knowledge base: `rulebook_knowledge_list` filtered by `analysis:<slug>`
-
-## MCP equivalent
-
-```
-rulebook_analysis_create({ topic: "<topic>" })
-rulebook_analysis_list()
-rulebook_analysis_show({ slug: "<slug>" })
-```
+1. Create implementation tasks from the plan: `rulebook task create phase1_<slug>-<name>`
+2. Each task should reference the analysis: `Source: docs/analysis/<slug>/`
+3. Capture key findings: `rulebook_memory {action:"add"}` tagged `analysis:<slug>`
+4. Before implementing, consult prior context: `rulebook_memory {action:"list"}`

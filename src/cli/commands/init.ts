@@ -138,18 +138,15 @@ export async function initCommand(options: {
         // confirm/edit prompt — which also lets an empty project select manually.
         // Non-interactive runs (--yes, CI, piped stdin) fall back to detection results.
         let selectedLanguages: string[] = detection.languages.map((l) => l.language);
-        let selectedLibraries: string[] = detection.libraries.map((l) => l.library);
         const interactive = !options.yes && Boolean(process.stdin.isTTY);
         if (interactive) {
             const { promptLanguagesAndLibraries } = await import('../prompts.js');
             const picked = await promptLanguagesAndLibraries(detection);
             selectedLanguages = picked.languages;
-            selectedLibraries = picked.libraries;
         }
 
         const config: ProjectConfig = {
             languages: selectedLanguages,
-            libraries: selectedLibraries,
             modules: cliMinimal
                 ? []
                 : detection.modules.filter((m) => m.detected).map((m) => m.module),
@@ -322,37 +319,11 @@ export async function initCommand(options: {
         console.log(chalk.green(`\n✅ AGENTS.md written to ${agentsPath}`));
 
         {
-            const { installRule, projectRules } = await import('../../core/rule-engine.js');
-            const { getTemplatesDir } = await import('../../core/generators/generator.js');
-            const templatesDir = getTemplatesDir();
-
-            const rulesToInstall = [
-                'no-shortcuts',
-                'git-safety',
-                'sequential-editing',
-                'research-first',
-                'follow-task-sequence',
-                'incremental-implementation',
-                'task-decomposition',
-                'incremental-tests',
-                'no-deferred',
-                'session-workflow',
-            ];
-
-            let installedCount = 0;
-            for (const name of rulesToInstall) {
-                const result = await installRule(cwd, name, templatesDir);
-                if (result) installedCount++;
-            }
-
-            if (installedCount > 0) {
-                console.log(
-                    chalk.gray(
-                        `  • Installed ${installedCount} canonical rules to .rulebook/rules/`
-                    )
-                );
-            }
-
+            // v7: the canonical always-on rule set is retired (F-001/F-008) — its
+            // content lives as one-line values in the lean CLAUDE.md/AGENTS.md.
+            // Only user-authored rules already present in .rulebook/rules/ are
+            // still projected to the configured assistants.
+            const { projectRules } = await import('../../core/rule-engine.js');
             const ruleResult = await projectRules(cwd, {
                 claudeCode:
                     existsSync(path.join(cwd, '.claude')) ||
@@ -391,7 +362,7 @@ export async function initCommand(options: {
         }
 
         if (!minimalMode) {
-            const claudeSpinner = ora('Generating CLAUDE.md (v5.3.0 @import format)...').start();
+            const claudeSpinner = ora('Generating CLAUDE.md (v7 lean format)...').start();
             try {
                 const result = await mergeClaudeMd(cwd);
                 const label =
@@ -428,13 +399,6 @@ export async function initCommand(options: {
             }
 
             try {
-                const { ensureDir: ensureDirUtil } = await import('../../utils/file-system.js');
-                await ensureDirUtil(path.join(cwd, '.rulebook', 'handoff'));
-            } catch {
-                // non-fatal
-            }
-
-            try {
                 const { ensureGitignoreEntries } = await import('../../utils/gitignore.js');
                 const localMdPath = path.join(cwd, 'CLAUDE.local.md');
                 if (!existsSync(localMdPath)) {
@@ -459,8 +423,6 @@ export async function initCommand(options: {
                 await ensureGitignoreEntries(cwd, [
                     'CLAUDE.local.md',
                     '.rulebook/backup/',
-                    '.rulebook/handoff/_pending.md',
-                    '.rulebook/handoff/.urgent',
                 ]);
             } catch {
                 // non-fatal
@@ -470,21 +432,15 @@ export async function initCommand(options: {
                 const { applyClaudeSettings } = await import(
                     '../../core/claude/claude-settings-manager.js'
                 );
-                // v5.9.0: a default install ships exactly one hook (quality
-                // enforcement). The handoff/terse/compact hooks added per-turn,
-                // per-prompt and per-session latency for marginal value, so they
-                // now default OFF and are opt-in via rulebook.json. Their `else`
-                // branch in the manager strips stale entries on the next sync.
+                // v7: one optional path-only guard + full-autonomy permissions.
+                // No Stop/UserPromptSubmit/SessionStart hooks, no orchestration
+                // enforcement (P0). Stale v5/v6 entries are stripped on sync.
                 const rulebookCfg = await configManager.loadConfig();
                 const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
-                const handoffEnabled = rulebookCfg?.handoff?.enabled ?? false;
-                const terseEnabled = rulebookCfg?.terse?.enabled ?? false;
                 await applyClaudeSettings(cwd, {
-                    teamEnforcement: multiAgentEnabled,
-                    sessionHandoff: handoffEnabled,
-                    compactContextReinject: false,
-                    qualityEnforcement: true,
-                    terseMode: terseEnabled,
+                    taskScaffoldingGuard: true,
+                    fullAutonomyPermissions: true,
+                    teamsEnv: multiAgentEnabled,
                 });
             } catch (err) {
                 console.log(
@@ -511,11 +467,7 @@ export async function initCommand(options: {
             ).start();
             try {
                 const { generateRules } = await import('../../core/generators/rules-generator.js');
-                const rulesResult = await generateRules(
-                    cwd,
-                    { languages: detection.languages },
-                    config.libraries ?? []
-                );
+                const rulesResult = await generateRules(cwd, { languages: detection.languages });
                 if (rulesResult.written.length > 0) {
                     rulesSpinner.succeed(
                         `Generated ${rulesResult.written.length} language rule file(s) in .claude/rules/`
@@ -654,6 +606,26 @@ export async function initCommand(options: {
                     '  Then run `rulebook init` inside each sub-project individually for best results.\n'
                 )
             );
+        }
+
+        // v7: npm update advisory lives in the CLI (replaces the SessionStart hook).
+        try {
+            const { checkForUpdate } = await import('../../utils/update-check.js');
+            const { readFileSync } = await import('fs');
+            const { fileURLToPath } = await import('url');
+            const pkgPath = path.join(
+                path.dirname(fileURLToPath(import.meta.url)),
+                '..',
+                '..',
+                '..',
+                'package.json'
+            );
+            const version = (JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version: string })
+                .version;
+            const advisory = await checkForUpdate(cwd, version);
+            if (advisory) console.log(chalk.yellow(`\n⬆ ${advisory}`));
+        } catch {
+            // advisory only — never block init
         }
 
         console.log(chalk.bold.green('\n✨ Rulebook initialization complete!\n'));

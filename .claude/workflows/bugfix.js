@@ -37,7 +37,7 @@ phase('Diagnose')
 const diagnosis = await agent(
   `Root-cause this bug. Research-first: do not guess. Read the relevant code, reproduce mentally, and cite the exact file:line where the defect lives and why it produces the symptom. Read-only.
 Bug report: "${bug}"`,
-  { label: 'diagnose', phase: 'Diagnose', agentType: 'researcher', model: 'haiku' }
+  { label: 'diagnose', phase: 'Diagnose', model: 'haiku' }
 )
 
 const MAX_ROUNDS = 2
@@ -61,7 +61,6 @@ Re-run type-check + tests. Report what you changed.`
   const fix = await agent(fixPrompt, {
     label: `fix:round-${round}`,
     phase: 'Fix',
-    agentType: 'implementer',
     model: 'sonnet',
   })
 
@@ -74,7 +73,7 @@ Re-run type-check + tests. Report what you changed.`
 Bug: "${bug}"
 Developer report (verify, don't trust): """${fix}"""
 Set pass=true only if the root cause is fixed and covered by a passing regression test.`,
-    { label: `verify:round-${round}`, phase: 'Verify', agentType: 'quality-gatekeeper', model: 'opus', schema: VERDICT_SCHEMA }
+    { label: `verify:round-${round}`, phase: 'Verify', model: 'opus', schema: VERDICT_SCHEMA }
   )
 
   if (verdict && verdict.pass) {

@@ -4,6 +4,16 @@
 
 echo "🔍 Running Elixir pre-commit checks..."
 
+# Marker-comment gate (v7 — replaces the old PreToolUse content regex).
+# Only lines ADDED by this commit are checked, so existing occurrences
+# and legitimate strings elsewhere never trip it.
+markers=$(git diff --cached --unified=0 -- '*.ex' '*.exs' 2>/dev/null | grep "^+" | grep -cE "#[[:space:]]*(TODO|FIXME|HACK)\\b" || true)
+if [ "${markers:-0}" -gt 0 ]; then
+  echo "❌ Staged changes add $markers TODO/FIXME/HACK marker comment(s). Implement or remove them before committing."
+  exit 1
+fi
+
+
 # Format check
 echo "  → Format checking..."
 mix format --check-formatted || {

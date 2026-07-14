@@ -41,31 +41,31 @@ describe('generateLeanAgents', () => {
         }
     });
 
-    it('includes RULEBOOK.md reference', async () => {
+    it('includes rulebook.md reference', async () => {
         const dir = await setup();
         try {
             const content = await generateLeanAgents(baseConfig, dir);
-            expect(content).toContain('RULEBOOK.md');
+            expect(content).toContain('rulebook.md');
         } finally {
             await teardown();
         }
     });
 
-    it('includes QUALITY_ENFORCEMENT.md reference', async () => {
+    it('includes quality.md reference', async () => {
         const dir = await setup();
         try {
             const content = await generateLeanAgents(baseConfig, dir);
-            expect(content).toContain('QUALITY_ENFORCEMENT.md');
+            expect(content).toContain('quality.md');
         } finally {
             await teardown();
         }
     });
 
-    it('includes GIT.md reference', async () => {
+    it('includes git.md reference', async () => {
         const dir = await setup();
         try {
             const content = await generateLeanAgents(baseConfig, dir);
-            expect(content).toContain('GIT.md');
+            expect(content).toContain('git.md');
         } finally {
             await teardown();
         }
@@ -78,8 +78,8 @@ describe('generateLeanAgents', () => {
                 { ...baseConfig, languages: ['typescript', 'python'] },
                 dir
             );
-            expect(content).toContain('TYPESCRIPT.md');
-            expect(content).toContain('PYTHON.md');
+            expect(content).toContain('typescript.md');
+            expect(content).toContain('python.md');
         } finally {
             await teardown();
         }
@@ -115,7 +115,7 @@ describe('generateLeanAgents', () => {
             await generateLeanAgents(baseConfig, dir);
             const { existsSync } = await import('fs');
             // Modular generation still runs, so spec files exist
-            expect(existsSync(join(dir, '.rulebook', 'specs', 'RULEBOOK.md'))).toBe(true);
+            expect(existsSync(join(dir, '.rulebook', 'specs', 'rulebook.md'))).toBe(true);
         } finally {
             await teardown();
         }

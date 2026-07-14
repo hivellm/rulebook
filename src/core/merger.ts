@@ -199,8 +199,10 @@ export async function mergeClaudeMd(projectRoot: string): Promise<MergeClaudeMdR
 
     if (hasV2Sentinels(existing)) {
         // In-place block replacement: keep everything outside the sentinels.
+        // Version-tolerant (matches blocks stamped by any v5/v6/v7 release) —
+        // must stay aligned with CLAUDE_MD_SENTINEL_START's prefix semantics.
         const generated = await generateClaudeMd(projectRoot);
-        const blockRegex = /<!--\s*RULEBOOK:START v5\.3\.0[\s\S]*?<!--\s*RULEBOOK:END\s*-->/;
+        const blockRegex = /<!--\s*RULEBOOK:START v[\s\S]*?<!--\s*RULEBOOK:END\s*-->/;
         const merged = existing.replace(blockRegex, extractGeneratedBlock(generated));
         const written = await writeClaudeMd(projectRoot, merged);
         return { ...written, mode: 'replace', overridePath: null };
@@ -248,13 +250,13 @@ async function migrateLegacyClaudeMdToOverride(
     const timestamp = new Date().toISOString();
     const migrationBlock = [
         '',
-        `${migrationMarker} on ${timestamp} by rulebook v5.3.0 -->`,
+        `${migrationMarker} on ${timestamp} by rulebook v7.0.0 -->`,
         '<!-- The following directives were extracted from your previous CLAUDE.md. -->',
         '<!-- They are now imported by the new CLAUDE.md via @AGENTS.override.md, so -->',
         '<!-- Claude Code re-loads them at session start exactly as before. -->',
         '<!-- Review and prune as needed — rulebook will never touch this section. -->',
         '',
-        '# CLAUDE.md (legacy v5.2 content, preserved by rulebook v5.3.0)',
+        '# CLAUDE.md (legacy v5.2 content, preserved by rulebook v7.0.0)',
         '',
         legacyClaudeMdContent.trim(),
         '',

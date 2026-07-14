@@ -1,7 +1,7 @@
 {
-  "version": "6.0.0",
-  "installedAt": "2026-06-09T12:41:11.006Z",
-  "updatedAt": "2026-06-09T12:41:11.006Z",
+  "version": "7.0.0",
+  "installedAt": "2026-07-14T07:40:33.042Z",
+  "updatedAt": "2026-07-14T07:40:33.042Z",
   "projectId": "Rulebook",
   "mode": "full",
   "features": {
@@ -26,18 +26,9 @@
   "skills": {
     "enabled": [
       "languages/typescript",
-      "core/agent-automation",
-      "core/dag-workflow",
-      "core/documentation-rules",
-      "core/quality-enforcement",
-      "core/rulebook-task-management",
-      "core/dag",
-      "core/ralph",
       "core/rulebook"
     ],
-    "disabled": [
-      "core/analysis"
-    ],
+    "disabled": [],
     "order": []
   },
   "agentsMode": "lean"

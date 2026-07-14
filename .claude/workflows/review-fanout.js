@@ -40,25 +40,21 @@ const VERDICT_SCHEMA = {
 const DIMENSIONS = [
   {
     key: 'correctness',
-    agentType: 'code-reviewer',
     model: 'sonnet',
     focus: 'logic errors, broken edge cases, incorrect error handling, and regressions',
   },
   {
     key: 'security',
-    agentType: 'security-reviewer',
     model: 'haiku',
     focus: 'injection, secret leakage, unsafe deserialization, missing authz/validation, vulnerable patterns',
   },
   {
     key: 'performance',
-    agentType: 'performance-engineer',
     model: 'sonnet',
     focus: 'N+1 patterns, accidental quadratic work, unnecessary allocations, blocking I/O on hot paths',
   },
   {
     key: 'tests',
-    agentType: 'tester',
     model: 'sonnet',
     focus: 'missing test coverage for changed behavior, weak assertions, and untested edge cases',
   },
@@ -91,7 +87,7 @@ const results = await pipeline(
       `Review the current git diff for ${d.key} issues. Focus on: ${d.focus}.
 ${scopeNote}
 Run \`${diffCmd}\` to see the changes. Report only issues introduced or exposed by this diff — not pre-existing debt.`,
-      { label: `review:${d.key}`, phase: 'Review', agentType: d.agentType, model: d.model, schema: FINDINGS_SCHEMA }
+      { label: `review:${d.key}`, phase: 'Review', model: d.model, schema: FINDINGS_SCHEMA }
     ),
   (review, d) =>
     parallel(

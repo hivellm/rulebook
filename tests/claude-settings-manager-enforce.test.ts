@@ -1,190 +1,101 @@
+import { describe, it, expect } from 'vitest';
+import { execFileSync } from 'child_process';
+import path from 'path';
+
 /**
- * Integration tests for the consolidated `qualityEnforcement` PreToolUse
- * hook (v5.6.0).
- *
- * Verifies that enabling qualityEnforcement registers a single
- * `enforce-pre-tool.sh` entry with the `Edit|Write|Bash` matcher (so the
- * hook is not spawned for Read/Glob/Grep/Agent/MCP tool calls), and that
- * stale legacy signatures from older rulebook versions are stripped on
- * every sync.
+ * Shell-level tests for the v7 path-only guard
+ * (templates/hooks/protect-task-scaffolding.sh). The guard must:
+ *  - allow everything that does not target task scaffolding paths
+ *  - deny creation of proposal.md/.metadata.json under .rulebook/tasks/
+ *    when the file does not exist
+ *  - never inspect content (no TODO/stub/placeholder denials — F-009)
  */
+const SCRIPT = path.join(process.cwd(), 'templates', 'hooks', 'protect-task-scaffolding.sh');
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { applyClaudeSettings } from '../src/core/claude/claude-settings-manager.js';
-
-let projectRoot: string;
-
-beforeEach(() => {
-    projectRoot = join(tmpdir(), `rulebook-enforce-settings-${Date.now()}-${process.pid}`);
-    mkdirSync(projectRoot, { recursive: true });
-});
-
-afterEach(() => {
-    try {
-        rmSync(projectRoot, { recursive: true, force: true });
-    } catch {
-        /* ignore */
-    }
-});
-
-function readSettings(root: string) {
-    return JSON.parse(readFileSync(join(root, '.claude', 'settings.json'), 'utf8'));
+function runGuard(payload: object): { decision: string; raw: string } {
+    const raw = execFileSync('bash', [SCRIPT], {
+        input: JSON.stringify(payload),
+        encoding: 'utf-8',
+    });
+    const parsed = JSON.parse(raw);
+    return { decision: parsed.hookSpecificOutput.permissionDecision, raw };
 }
 
-describe('claude-settings-manager — qualityEnforcement enabled', () => {
-    it('registers a single enforce-pre-tool.sh entry under PreToolUse', async () => {
-        await applyClaudeSettings(projectRoot, { qualityEnforcement: true });
-        const settings = readSettings(projectRoot);
-        const entries = settings.hooks?.PreToolUse ?? [];
-        const matches = entries.filter((e: { hooks: { command: string }[] }) =>
-            e.hooks.some((h) => h.command.includes('enforce-pre-tool.sh'))
-        );
-        expect(matches.length).toBe(1);
+describe('protect-task-scaffolding.sh (v7 path-only guard)', () => {
+    it('allows ordinary source writes', () => {
+        const { decision } = runGuard({
+            tool_name: 'Write',
+            tool_input: { file_path: 'src/index.ts', content: 'export const x = 1;' },
+        });
+        expect(decision).toBe('allow');
     });
 
-    it('uses matcher "Edit|Write" so Bash/Read/Glob/Grep never spawn the hook', async () => {
-        await applyClaudeSettings(projectRoot, { qualityEnforcement: true });
-        const settings = readSettings(projectRoot);
-        const entry = (settings.hooks?.PreToolUse ?? []).find(
-            (e: { hooks: { command: string }[] }) =>
-                e.hooks.some((h) => h.command.includes('enforce-pre-tool.sh'))
-        );
-        expect(entry).toBeDefined();
-        expect(entry.matcher).toBe('Edit|Write');
-    });
-
-    it('does NOT register the three legacy enforce scripts', async () => {
-        await applyClaudeSettings(projectRoot, { qualityEnforcement: true });
-        const settings = readSettings(projectRoot);
-        const commands = (settings.hooks?.PreToolUse ?? [])
-            .flatMap((e: { hooks: { command: string }[] }) => e.hooks)
-            .map((h: { command: string }) => h.command);
-        for (const legacy of [
-            'enforce-no-deferred',
-            'enforce-no-shortcuts',
-            'enforce-mcp-for-tasks',
-        ]) {
-            expect(commands.some((c: string) => c.includes(legacy))).toBe(false);
-        }
-    });
-
-    it('copies enforce-pre-tool.sh into .claude/hooks/', async () => {
-        await applyClaudeSettings(projectRoot, { qualityEnforcement: true });
-        const installed = join(projectRoot, '.claude', 'hooks', 'enforce-pre-tool.sh');
-        const content = readFileSync(installed, 'utf8');
-        // Sanity-check the consolidated script has the three deny tags
-        // (no need to match the filename — that's already asserted by readFileSync).
-        expect(content).toMatch(/DENY_DEFERRED/);
-        expect(content).toMatch(/DENY_TODO/);
-        expect(content).toMatch(/DENY_MCP/);
-    });
-
-    it('is idempotent — re-applying produces the same settings', async () => {
-        await applyClaudeSettings(projectRoot, { qualityEnforcement: true });
-        const first = readFileSync(join(projectRoot, '.claude', 'settings.json'), 'utf8');
-        await applyClaudeSettings(projectRoot, { qualityEnforcement: true });
-        const second = readFileSync(join(projectRoot, '.claude', 'settings.json'), 'utf8');
-        expect(second).toBe(first);
-    });
-});
-
-describe('claude-settings-manager — legacy migration', () => {
-    it('strips enforce-no-deferred / no-shortcuts / mcp-for-tasks entries on sync', async () => {
-        // Seed a settings.json with all three legacy entries already present,
-        // simulating a user upgrading from v5.5.x.
-        mkdirSync(join(projectRoot, '.claude'), { recursive: true });
-        const legacy = {
-            hooks: {
-                PreToolUse: [
-                    {
-                        hooks: [
-                            {
-                                type: 'command',
-                                command: 'bash /old/.claude/hooks/enforce-no-deferred.sh',
-                            },
-                        ],
-                    },
-                    {
-                        hooks: [
-                            {
-                                type: 'command',
-                                command: 'bash /old/.claude/hooks/enforce-no-shortcuts.sh',
-                            },
-                        ],
-                    },
-                    {
-                        hooks: [
-                            {
-                                type: 'command',
-                                command: 'bash /old/.claude/hooks/enforce-mcp-for-tasks.sh',
-                            },
-                        ],
-                    },
-                ],
+    it('allows content containing TODO/stub/placeholder words (no content inspection)', () => {
+        const { decision } = runGuard({
+            tool_name: 'Write',
+            tool_input: {
+                file_path: 'src/ui/input.tsx',
+                content: '<input placeholder="Search" /> // TODO handled by lint, stub here',
             },
-        };
-        writeFileSync(
-            join(projectRoot, '.claude', 'settings.json'),
-            JSON.stringify(legacy, null, 2) + '\n'
-        );
-
-        await applyClaudeSettings(projectRoot, { qualityEnforcement: true });
-        const settings = readSettings(projectRoot);
-        const commands = (settings.hooks?.PreToolUse ?? [])
-            .flatMap((e: { hooks: { command: string }[] }) => e.hooks)
-            .map((h: { command: string }) => h.command);
-        for (const legacyName of [
-            'enforce-no-deferred',
-            'enforce-no-shortcuts',
-            'enforce-mcp-for-tasks',
-        ]) {
-            expect(commands.some((c: string) => c.includes(legacyName))).toBe(false);
-        }
-        expect(commands.some((c: string) => c.includes('enforce-pre-tool.sh'))).toBe(true);
+        });
+        expect(decision).toBe('allow');
     });
 
-    it('strips legacy entries even when qualityEnforcement is disabled', async () => {
-        mkdirSync(join(projectRoot, '.claude'), { recursive: true });
-        const legacy = {
-            hooks: {
-                PreToolUse: [
-                    {
-                        hooks: [
-                            {
-                                type: 'command',
-                                command: 'bash /old/.claude/hooks/enforce-no-deferred.sh',
-                            },
-                        ],
-                    },
-                ],
+    it('denies creating a proposal.md that does not exist', () => {
+        const { decision, raw } = runGuard({
+            tool_name: 'Write',
+            tool_input: {
+                file_path: '/definitely/missing/.rulebook/tasks/phase1_x/proposal.md',
+                content: '# Proposal',
             },
-        };
-        writeFileSync(
-            join(projectRoot, '.claude', 'settings.json'),
-            JSON.stringify(legacy, null, 2) + '\n'
-        );
-
-        await applyClaudeSettings(projectRoot, { qualityEnforcement: false });
-        const settings = readSettings(projectRoot);
-        const commands = (settings.hooks?.PreToolUse ?? [])
-            .flatMap((e: { hooks: { command: string }[] }) => e.hooks)
-            .map((h: { command: string }) => h.command);
-        expect(commands.some((c: string) => c.includes('enforce-no-deferred'))).toBe(false);
+        });
+        expect(decision).toBe('deny');
+        expect(raw).toContain('rulebook_task');
     });
-});
 
-describe('claude-settings-manager — qualityEnforcement disabled', () => {
-    it('removes the enforce-pre-tool.sh entry after disable', async () => {
-        await applyClaudeSettings(projectRoot, { qualityEnforcement: true });
-        await applyClaudeSettings(projectRoot, { qualityEnforcement: false });
+    it('denies creating a .metadata.json that does not exist', () => {
+        const { decision } = runGuard({
+            tool_name: 'Write',
+            tool_input: {
+                file_path: '/missing/.rulebook/tasks/phase2_y/.metadata.json',
+                content: '{}',
+            },
+        });
+        expect(decision).toBe('deny');
+    });
 
-        const settings = readSettings(projectRoot);
-        const commands = (settings.hooks?.PreToolUse ?? [])
-            .flatMap((e: { hooks: { command: string }[] }) => e.hooks)
-            .map((h: { command: string }) => h.command);
-        expect(commands.some((c: string) => c.includes('enforce-pre-tool.sh'))).toBe(false);
+    it('allows tasks.md writes even with deferral-ish words (only scaffolding names are protected)', () => {
+        const { decision } = runGuard({
+            tool_name: 'Write',
+            tool_input: {
+                file_path: '/missing/.rulebook/tasks/phase3_z/tasks.md',
+                content: '- [ ] one item',
+            },
+        });
+        expect(decision).toBe('allow');
+    });
+
+    it('allows editing an existing proposal.md', () => {
+        // Create a real scaffolding file inside the repo tmp area for the check.
+        const fs = require('fs') as typeof import('fs');
+        const os = require('os') as typeof import('os');
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'guard-'));
+        const taskDir = path.join(dir, '.rulebook', 'tasks', 'phase1_t');
+        fs.mkdirSync(taskDir, { recursive: true });
+        const file = path.join(taskDir, 'proposal.md');
+        fs.writeFileSync(file, '# Proposal: exists');
+        try {
+            const { decision } = runGuard({
+                tool_name: 'Edit',
+                tool_input: {
+                    file_path: file.replace(/\\/g, '/'),
+                    old_string: 'exists',
+                    new_string: 'still exists',
+                },
+            });
+            expect(decision).toBe('allow');
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
     });
 });

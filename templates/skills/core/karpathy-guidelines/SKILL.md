@@ -79,15 +79,4 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
-## Interaction with Rulebook
-
-This skill complements existing Rulebook rules:
-
-- `no-shortcuts.md` forbids stubs/TODOs; **Simplicity First** forbids the opposite — bloat.
-- `research-first.md` requires investigating unknowns; **Think Before Coding** adds *surfacing* what was investigated.
-- `incremental-implementation.md` tests each step; **Goal-Driven Execution** adds defining the test up front.
-- **Surgical Changes** has no Rulebook counterpart and fills a real gap: no rule today forbids opportunistic refactor of adjacent code.
-
-Skill body is deliberately small (≤80 lines) so it adds < 1KB to the context budget per session.
-
 <!-- KARPATHY_GUIDELINES:END -->

@@ -195,7 +195,7 @@ Old Rust rules
 
             expect(merged).toContain('<!-- RUST:START -->');
             expect(merged).toContain('<!-- RUST:END -->');
-            expect(merged).toContain('# Rust Project Rules');
+            expect(merged).toContain('# Rust rules');
             expect(merged).not.toContain('Old Rust rules');
         });
 
@@ -235,7 +235,7 @@ TypeScript content
             const merged = await mergeFullAgents(existing, config, projectRoot);
 
             // Should generate modular format with references
-            expect(merged).toContain('/.rulebook/specs/TYPESCRIPT.md');
+            expect(merged).toContain('.claude/rules/typescript.md');
             expect(merged).toContain('<!-- RULEBOOK:START -->');
         });
 
@@ -303,9 +303,9 @@ TypeScript content
             const projectRoot = '/tmp/test-modular';
             const merged = await mergeFullAgents(existing, config, projectRoot);
 
-            // Should generate modular format
-            expect(merged).toContain('/.rulebook/specs/TYPESCRIPT.md');
-            expect(merged).toContain('/.rulebook/specs/VECTORIZER.md');
+            // Should generate modular format; v7 emits no module spec refs
+            expect(merged).toContain('.claude/rules/typescript.md');
+            expect(merged).not.toContain('/.rulebook/specs/vectorizer.md');
         });
 
         it('should use legacy merge when modular enabled but no projectRoot', async () => {
@@ -413,7 +413,7 @@ TypeScript content
 
             // Lean template — references, not embedded blocks
             expect(merged).toContain('<!-- RULEBOOK:START -->');
-            expect(merged).toContain('/.rulebook/specs/TYPESCRIPT.md');
+            expect(merged).toContain('.claude/rules/typescript.md');
             expect(merged).not.toContain('<!-- TYPESCRIPT:START -->');
         });
     });
@@ -456,7 +456,7 @@ Other content
             const merged = await mergeLanguageRules(existing, 'rust');
 
             expect(merged).toContain('<!-- RUST:START -->');
-            expect(merged).toContain('# Rust Project Rules');
+            expect(merged).toContain('# Rust rules');
             expect(merged).not.toContain('Old Rust rules');
             expect(merged).toContain('<!-- OTHER:START -->');
             expect(merged).toContain('Other content');
@@ -481,7 +481,7 @@ Other content
             const merged = await mergeLanguageRules(existing, 'typescript');
 
             expect(merged).toContain('<!-- TYPESCRIPT:START -->');
-            expect(merged).toContain('# TypeScript Project Rules');
+            expect(merged).toContain('# TypeScript rules');
             expect(merged).toContain('<!-- RULEBOOK:START -->');
         });
     });

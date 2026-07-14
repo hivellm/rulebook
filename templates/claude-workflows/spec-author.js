@@ -75,9 +75,9 @@ const research = await agent(
 Read-only. Gather:
 1. Existing specs under .rulebook/specs/ and any related task specs in .rulebook/tasks/*/specs/ that overlap this topic.
 2. The relevant source code, types, and conventions this spec will govern.
-3. The required rulebook spec format (read .rulebook/specs/RULEBOOK.md if present): ## ADDED/MODIFIED/REMOVED headers, "### Requirement: <name>" with SHALL/MUST, "#### Scenario:" with Given/When/Then.
+3. The required rulebook spec format (read .rulebook/specs/rulebook.md if present): ## ADDED/MODIFIED/REMOVED headers, "### Requirement: <name>" with SHALL/MUST, "#### Scenario:" with Given/When/Then.
 Report a concise map: what already exists, what this spec must cover, conventions to follow, and obvious risks.`,
-  { label: 'research', phase: 'Research', agentType: 'researcher', model: 'haiku' }
+  { label: 'research', phase: 'Research', model: 'haiku' }
 )
 
 phase('Draft')
@@ -96,7 +96,7 @@ Produce two artifacts as markdown:
    "#### Scenario: <Name>" blocks with Given / When / Then lines (4 hashtags for scenarios).
 
 Be specific and testable. Do NOT invent requirements the topic/research/answers don't support — mark anything uncertain so the critic can turn it into a question. Do NOT write production code.`,
-  { label: 'draft', phase: 'Draft', agentType: 'architect', model: 'opus' }
+  { label: 'draft', phase: 'Draft', model: 'opus' }
 )
 
 phase('Critique')
@@ -119,7 +119,7 @@ Identify:
 - GAPS: requirements, constraints, error paths, or edge cases the draft omits.
 - MISSING SCENARIOS: Given/When/Then cases that should exist but are absent.
 Set ready=true ONLY if there are genuinely no open questions and the spec is implementation-ready.`,
-  { label: 'critique', phase: 'Critique', agentType: 'architect', model: 'opus', schema: CRITIQUE_SCHEMA }
+  { label: 'critique', phase: 'Critique', model: 'opus', schema: CRITIQUE_SCHEMA }
 )
 
 return {

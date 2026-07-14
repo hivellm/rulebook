@@ -48,7 +48,7 @@ describe('claude-mcp', () => {
             expect(content.mcpServers).toBeDefined();
             expect(content.mcpServers.rulebook).toEqual({
                 command: 'npx',
-                args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
+                args: ['-y', '--package=@hivehub/rulebook@latest', 'rulebook-mcp'],
             });
         });
 
@@ -77,7 +77,7 @@ describe('claude-mcp', () => {
             // Should add rulebook entry without --project-root
             expect(content.mcpServers.rulebook).toEqual({
                 command: 'npx',
-                args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
+                args: ['-y', '--package=@hivehub/rulebook@latest', 'rulebook-mcp'],
             });
         });
 
@@ -89,8 +89,8 @@ describe('claude-mcp', () => {
                         command: 'npx',
                         args: [
                             '-y',
-                            '@hivehub/rulebook@latest',
-                            'mcp-server',
+                            '--package=@hivehub/rulebook@latest',
+                            'rulebook-mcp',
                             '--project-root',
                             testDir,
                         ],
@@ -106,8 +106,8 @@ describe('claude-mcp', () => {
             // Args should now be simplified (no --project-root)
             expect(content.mcpServers.rulebook.args).toEqual([
                 '-y',
-                '@hivehub/rulebook@latest',
-                'mcp-server',
+                '--package=@hivehub/rulebook@latest',
+                'rulebook-mcp',
             ]);
         });
 
@@ -117,7 +117,7 @@ describe('claude-mcp', () => {
                 mcpServers: {
                     rulebook: {
                         command: 'npx',
-                        args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
+                        args: ['-y', '--package=@hivehub/rulebook@latest', 'rulebook-mcp'],
                     },
                 },
             };
@@ -130,8 +130,8 @@ describe('claude-mcp', () => {
             // Should remain unchanged
             expect(content.mcpServers.rulebook.args).toEqual([
                 '-y',
-                '@hivehub/rulebook@latest',
-                'mcp-server',
+                '--package=@hivehub/rulebook@latest',
+                'rulebook-mcp',
             ]);
         });
 
@@ -510,7 +510,10 @@ describe('claude-mcp', () => {
                 '---\nname: team-lead\n---\nLead agent'
             );
 
-            const result = await setupClaudeCodeIntegration(projectDir, templatesDir, testDir);
+            // v7: agents are opt-in — pass includeAgents to exercise the install path.
+            const result = await setupClaudeCodeIntegration(projectDir, templatesDir, testDir, {
+                includeAgents: true,
+            });
 
             expect(result.detected).toBe(true);
             expect(result.mcpConfigured).toBe(true);
@@ -545,6 +548,28 @@ describe('claude-mcp', () => {
                 .then(() => true)
                 .catch(() => false);
             expect(agentExists).toBe(true);
+        });
+
+        it('installs no agents or workflows by default (v7 opt-in, F-010)', async () => {
+            await fs.mkdir(path.join(testDir, '.claude'), { recursive: true });
+            const agentsSourceDir = path.join(templatesDir, 'agents');
+            await fs.mkdir(agentsSourceDir, { recursive: true });
+            await fs.writeFile(
+                path.join(agentsSourceDir, 'team-lead.md'),
+                '---\nname: team-lead\n---\nLead agent'
+            );
+
+            const result = await setupClaudeCodeIntegration(projectDir, templatesDir, testDir);
+
+            expect(result.detected).toBe(true);
+            expect(result.agentDefinitionsInstalled).toEqual([]);
+            expect(result.workflowDefinitionsInstalled).toEqual([]);
+
+            const agentsDirExists = await fs
+                .access(path.join(projectDir, '.claude', 'agents'))
+                .then(() => true)
+                .catch(() => false);
+            expect(agentsDirExists).toBe(false);
         });
 
         it('should return not detected when Claude Code is not installed', async () => {
