@@ -60,13 +60,13 @@ export async function migrateEmbeddedTemplates(
 
         if (languageBlock && languageBlock.content) {
             // Write extracted content to /rulebook/[LANG].md
-            const filePath = path.join(specsPath, `${blockName}.md`);
+            const filePath = path.join(specsPath, `${blockName.toLowerCase()}.md`);
             await writeFile(filePath, languageBlock.content);
             extractedLanguages.push(language);
         } else {
             // Generate new template if not found
             const langRules = await generateLanguageRules(language);
-            const filePath = path.join(specsPath, `${blockName}.md`);
+            const filePath = path.join(specsPath, `${blockName.toLowerCase()}.md`);
             await writeFile(filePath, langRules);
             extractedLanguages.push(language);
         }
@@ -79,13 +79,13 @@ export async function migrateEmbeddedTemplates(
 
         if (moduleBlock && moduleBlock.content) {
             // Write extracted content to /rulebook/[MODULE].md
-            const filePath = path.join(specsPath, `${blockName}.md`);
+            const filePath = path.join(specsPath, `${blockName.toLowerCase()}.md`);
             await writeFile(filePath, moduleBlock.content);
             extractedModules.push(module);
         } else {
             // Generate new template if not found
             const moduleRules = await generateModuleRules(module);
-            const filePath = path.join(specsPath, `${blockName}.md`);
+            const filePath = path.join(specsPath, `${blockName.toLowerCase()}.md`);
             await writeFile(filePath, moduleRules);
             extractedModules.push(module);
         }

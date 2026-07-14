@@ -15,7 +15,7 @@ solid, confirms, then creates the rulebook tasks and hands off to
 ## Steps
 
 1. **Pre-flight.** If `$ARGUMENTS` is empty, ask the user what they want to spec.
-   Read `.rulebook/specs/RULEBOOK.md` for the required spec format
+   Read `.rulebook/specs/rulebook.md` for the required spec format
    (## ADDED/MODIFIED, "### Requirement: <name>" with SHALL/MUST, "#### Scenario:"
    with Given/When/Then).
 

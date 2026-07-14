@@ -5,37 +5,23 @@ category: Rulebook
 description: Add a pattern or anti-pattern to the project knowledge base.
 ---
 <!-- RULEBOOK:START -->
-**Guardrails**
-- Knowledge entries are auto-injected into AGENTS.md on `rulebook update`, making them visible to all AI assistants.
-- Patterns go to `.rulebook/knowledge/patterns/`, anti-patterns to `.rulebook/knowledge/anti-patterns/`.
+Add a pattern or anti-pattern entry to `.rulebook/knowledge/`.
 
-**Steps**
-1. **Determine Type**: Ask if this is a `pattern` (good practice to follow) or `anti-pattern` (bad practice to avoid).
+**Usage**
+```bash
+rulebook knowledge add <pattern|anti-pattern> "<title>" --category <category> --description "<desc>"
+```
+Categories: `architecture` | `code` | `testing` | `security` | `performance` | `devops`
 
-2. **Gather Details**:
-   - **Title**: Short, descriptive name (e.g., "Repository Pattern", "God Object")
-   - **Category**: `architecture` | `code` | `testing` | `security` | `performance` | `devops`
-   - **Description**: What the pattern/anti-pattern is
-   - **Example**: Code showing correct (or incorrect) usage
-   - **When to Use**: Situations where this applies
-   - **When NOT to Use**: Exceptions and edge cases
-   - **Tags**: For searchability
-
-3. **Create Entry**:
-   ```bash
-   rulebook knowledge add <type> "<title>" --category <category> --description "<desc>"
-   ```
-
-4. **Enrich the Entry**: Open `.rulebook/knowledge/<type>s/<slug>.md` and fill in Example, When to Use, and When NOT to Use sections with concrete code examples.
-
-5. **Verify**:
-   ```bash
-   rulebook knowledge show <slug>
-   ```
+**What it does**
+1. Creates the entry under `.rulebook/knowledge/patterns/` or `.rulebook/knowledge/anti-patterns/`.
+2. You then enrich `.rulebook/knowledge/<type>s/<slug>.md` with Example, When to Use, and When NOT to Use sections.
+3. Verify with `rulebook knowledge show <slug>`.
+4. Entries are auto-injected into AGENTS.md on `rulebook update`.
 
 **Reference**
-- Use `rulebook knowledge list` to see all entries
-- Use `rulebook knowledge list --type pattern --category architecture` to filter
-- Use `rulebook knowledge remove <slug>` to delete an entry
-- Entries appear in AGENTS.md "Project Knowledge" section after `rulebook update`
+- List: `rulebook knowledge list [--type pattern] [--category architecture]`
+- Remove: `rulebook knowledge remove <slug>`
+
+**MCP equivalent**: `rulebook_knowledge_add`
 <!-- RULEBOOK:END -->

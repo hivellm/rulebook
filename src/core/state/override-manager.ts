@@ -58,7 +58,7 @@ export async function initOverride(projectRoot: string): Promise<boolean> {
         path.dirname(path.dirname(new URL(import.meta.url).pathname)),
         'templates',
         'core',
-        'AGENTS_OVERRIDE.md'
+        'agents-override.md'
     );
 
     let templateContent = '';

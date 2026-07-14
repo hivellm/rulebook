@@ -5,11 +5,18 @@ category: Rulebook
 description: List project knowledge entries (patterns and anti-patterns).
 ---
 <!-- RULEBOOK:START -->
-**Steps**
-1. Run `rulebook knowledge list` to see all entries.
-2. Optionally filter:
-   - By type: `rulebook knowledge list --type pattern`
-   - By category: `rulebook knowledge list --category architecture`
-3. Present results with type badge, title, and category.
-4. If the user wants details, run `rulebook knowledge show <slug>`.
+List knowledge base entries with type, title, and category.
+
+**Usage**
+```bash
+rulebook knowledge list
+rulebook knowledge list --type pattern
+rulebook knowledge list --category architecture
+```
+
+**What it does**
+1. Lists all entries; filter by `--type` or `--category`.
+2. For details on one entry: `rulebook knowledge show <slug>`.
+
+**MCP equivalent**: `rulebook_knowledge_list`
 <!-- RULEBOOK:END -->

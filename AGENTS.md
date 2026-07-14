@@ -30,7 +30,7 @@ overrides in `AGENTS.override.md` (user-owned, wins on conflict). Detail lives i
 9. **Orchestration is the model's choice** — subagents, parallelism, and teams are
    never blocked and never mandated.
 
-## Task format (full spec: `/.rulebook/specs/RULEBOOK.md`)
+## Task format (full spec: `/.rulebook/specs/rulebook.md`)
 
 `.rulebook/tasks/<task-id>/` → `proposal.md` (Why + What Changes), `tasks.md`
 (checklist only), optional `design.md`, `specs/<module>/spec.md` (SHALL/MUST +
@@ -38,11 +38,12 @@ Given/When/Then, `####` scenarios).
 
 ## Language & Framework Rules
 
-- **TYPESCRIPT**: `/.rulebook/specs/TYPESCRIPT.md`
+- **TYPESCRIPT**: `/.rulebook/specs/typescript.md`
 
 ## Specs index (on demand)
 
-- `/.rulebook/specs/RULEBOOK.md` — task management
-- `/.rulebook/specs/QUALITY_ENFORCEMENT.md` — quality gates
-- `/.rulebook/specs/GIT.md` — git workflow
+- `/.rulebook/specs/rulebook.md` — task management
+- `/.rulebook/specs/quality.md` — quality gates
+- `/.rulebook/specs/prohibitions.md` — absolute prohibitions
+- `/.rulebook/specs/git.md` — git workflow
 <!-- RULEBOOK:END -->

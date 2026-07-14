@@ -22,17 +22,5 @@
   "enabledMcpjsonServers": [
     "rulebook"
   ],
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/enforce-pre-tool.sh"
-          }
-        ]
-      }
-    ]
-  }
+  "hooks": {}
 }

@@ -351,9 +351,7 @@ export async function updateSingleProject(
     ).start();
     try {
         const { generateRules } = await import('../../core/generators/rules-generator.js');
-        const rulesResult = await generateRules(cwd, { languages: detection.languages }, [
-            ...new Set(detection.libraries.map((d) => d.library)),
-        ]);
+        const rulesResult = await generateRules(cwd, { languages: detection.languages });
         if (rulesResult.written.length > 0) {
             rulesUpdateSpinner.succeed(
                 `Refreshed ${rulesResult.written.length} language rule file(s) in .claude/rules/`
@@ -647,7 +645,7 @@ export async function updateCommand(options: {
             );
             let workspaceTplContent = '';
             try {
-                const tplPath = join(getTemplatesPath(), 'core', 'WORKSPACE.md');
+                const tplPath = join(getTemplatesPath(), 'core', 'workspace.md');
                 workspaceTplContent = await fsPromises.readFile(tplPath, 'utf-8');
             } catch {
                 // Template not available — skip
@@ -672,7 +670,7 @@ export async function updateCommand(options: {
                             )
                             .replace('{{WORKSPACE_PROJECTS}}', projectListMd);
                         await fsPromises.writeFile(
-                            join(specsDir, 'WORKSPACE.md'),
+                            join(specsDir, 'workspace.md'),
                             rendered,
                             'utf-8'
                         );

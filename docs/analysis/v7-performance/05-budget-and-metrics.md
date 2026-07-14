@@ -34,6 +34,7 @@ S=SessionStart, St=Stop, U=UserPromptSubmit); files = installed by default init.
 |---|---|---|---:|---|---|---:|
 | 2026-07-14 | a54669f | **v6.0.0 baseline** (default `init --yes`; full desire set wires +6 hook entries, see F-002) | 14,951 | 26/13,965B/280ms | P:1 S:0 St:0 U:0 | 95 |
 | 2026-07-14 | phase1 | **Phase 1 context diet**: lean CLAUDE.md (539 tok) + lean AGENTS.md (666 tok), 16 always-on rules retired, only path-scoped language/library rules remain (863 tok of the total loads only for matching file types) | **6,557 (−56%)** | 26/13,965B/277ms | P:1 S:0 St:0 U:0 | 69 |
+| 2026-07-14 | phase1b | **Template unification** (parallel agent fleet ×7): 19 language templates lean (208→37 KB), 11 agents + 12 commands slimmed (~52 KB→~22 KB), hook docs 64→10.5 KB, libraries + module-skills + retired-subsystem skills eliminated, 17 retired rule templates removed, ALL filenames lowercase kebab-case, this repo's .claude/.rulebook cleaned. templates/ total **1,219 KB → 564 KB (−54%)** | 6,786 | 26/13,965B/~420ms | P:1 S:0 St:0 U:0 | 60 |
 | 2026-07-14 | phase1a | **Spec diet**: on-demand `.rulebook/specs/` **29,942 → 3,787 tok (−87%)** — RULEBOOK.md 51 KB→~600 tok, GIT.md 7,546→~450 tok, TOKEN_OPT/AGENT_AUTOMATION/MULTI_AGENT + all 9 MCP-module specs retired, language specs unified with lean rule templates (16–18 KB→~500 tok for the 8 core languages), 8 dead templates deleted. Dogfooded on this repo (17 always-on rules deleted, CLAUDE.md/AGENTS.md regenerated lean) | 6,515 | 26/13,965B/~290ms | P:1 S:0 St:0 U:0 | 66 |
 
 ## Acceptance checks (CI)

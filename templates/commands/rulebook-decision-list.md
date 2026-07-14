@@ -5,11 +5,17 @@ category: Rulebook
 description: List all Architecture Decision Records with optional status filter.
 ---
 <!-- RULEBOOK:START -->
-**Steps**
-1. Run `rulebook decision list` to see all decisions.
-2. Optionally filter: `rulebook decision list --status accepted`
-3. Present results to the user with ID, title, and status.
-4. If the user wants details on a specific decision, run `rulebook decision show <id>`.
+List ADRs with ID, title, and status.
 
-**Status Values**: proposed, accepted, superseded, deprecated
+**Usage**
+```bash
+rulebook decision list
+rulebook decision list --status accepted
+```
+
+**What it does**
+1. Lists all decisions; filter with `--status` (proposed, accepted, superseded, deprecated).
+2. For details on one decision: `rulebook decision show <id>`.
+
+**MCP equivalent**: `rulebook_decision_list`
 <!-- RULEBOOK:END -->

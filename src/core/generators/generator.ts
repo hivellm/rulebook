@@ -1,7 +1,6 @@
 import path from 'path';
 import { readFile, fileExists, writeFile, ensureDir } from '../../utils/file-system.js';
 import type { ProjectConfig } from '../../types.js';
-import { LIBRARY_REGISTRY } from '../detect/library-registry.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { DecisionManager } from '../tasks/decision-manager.js';
@@ -18,10 +17,11 @@ export function getTemplatesDir(): string {
     return path.join(__dirname, '..', '..', '..', 'templates');
 }
 
-// Helper to read core template files (AGENT_AUTOMATION, DOCUMENTATION_RULES, QUALITY_ENFORCEMENT, RULEBOOK)
+// Helper to read core template files (v7 naming: lowercase kebab-case, e.g.
+// templates/core/rulebook.md, quality.md, prohibitions.md)
 async function generateCoreRules(name: string): Promise<string> {
     const templatesDir = path.join(getTemplatesDir(), 'core');
-    const templatePath = path.join(templatesDir, `${name.toUpperCase()}.md`);
+    const templatePath = path.join(templatesDir, `${name.toLowerCase().replace(/_/g, '-')}.md`);
 
     if (await fileExists(templatePath)) {
         return await readFile(templatePath);
@@ -49,7 +49,7 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
     sections.push('**MANDATORY**: All task creation MUST follow Rulebook task management system.');
     sections.push('');
     sections.push(
-        `**📋 ALWAYS reference \`/${rulebookDir}/specs/RULEBOOK.md\` FIRST before creating any tasks.**`
+        `**📋 ALWAYS reference \`/${rulebookDir}/specs/rulebook.md\` FIRST before creating any tasks.**`
     );
     sections.push('');
     sections.push('**Rules from RULEBOOK.md take precedence over all other rules in this file.**');
@@ -151,7 +151,7 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
     sections.push('- ❌ No README, PROCESS, or other files');
     sections.push('');
     sections.push(
-        `**For complete task management guidelines, see: \`/${rulebookDir}/specs/RULEBOOK.md\`**`
+        `**For complete task management guidelines, see: \`/${rulebookDir}/specs/rulebook.md\`**`
     );
     sections.push('');
     sections.push('---');
@@ -191,30 +191,25 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
 
     // TIER1_PROHIBITIONS is ALWAYS first (absolute highest precedence)
     sections.push(
-        `- \`/${rulebookDir}/specs/TIER1_PROHIBITIONS.md\` - **Absolute prohibitions (HIGHEST PRECEDENCE — read first)**`
+        `- \`/${rulebookDir}/specs/prohibitions.md\` - **Absolute prohibitions (HIGHEST PRECEDENCE — read first)**`
     );
 
     // RULEBOOK.md is second (task management)
-    sections.push(`- \`/${rulebookDir}/specs/RULEBOOK.md\` - **Task management rules**`);
+    sections.push(`- \`/${rulebookDir}/specs/rulebook.md\` - **Task management rules**`);
 
     // Only reference QUALITY_ENFORCEMENT if not in light mode
     if (!config.lightMode) {
         sections.push(
-            `- \`/${rulebookDir}/specs/QUALITY_ENFORCEMENT.md\` - Quality enforcement rules`
+            `- \`/${rulebookDir}/specs/quality.md\` - Quality enforcement rules`
         );
     }
 
     // Only reference GIT if enabled
     if (config.includeGitWorkflow) {
-        sections.push(`- \`/${rulebookDir}/specs/GIT.md\` - Git workflow rules`);
+        sections.push(`- \`/${rulebookDir}/specs/git.md\` - Git workflow rules`);
     }
 
-    // Token optimization reference
-    if (!config.lightMode) {
-        sections.push(
-            `- \`/${rulebookDir}/specs/TOKEN_OPTIMIZATION.md\` - Model tier assignment and output verbosity rules`
-        );
-    }
+    // v7: TOKEN_OPTIMIZATION spec retired (F-010) — no reference emitted.
 
     // Reference PLANS.md for session continuity
     sections.push(
@@ -429,7 +424,7 @@ export async function generateLanguageRules(language: string): Promise<string> {
     }
 
     const templatesDir = path.join(getTemplatesDir(), 'languages');
-    const templatePath = path.join(templatesDir, `${upper}.md`);
+    const templatePath = path.join(templatesDir, `${language.toLowerCase()}.md`);
 
     if (await fileExists(templatePath)) {
         return await readFile(templatePath);
@@ -455,24 +450,9 @@ export async function generateModuleRules(module: string): Promise<string> {
     return `<!-- ${module.toUpperCase()}:START -->\n# ${module.charAt(0).toUpperCase() + module.slice(1)} Instructions\n\nModule-specific instructions for ${module}.\n<!-- ${module.toUpperCase()}:END -->\n`;
 }
 
-export async function generateLibraryRules(library: string): Promise<string> {
-    const def = LIBRARY_REGISTRY.find((d) => d.id === library);
-    const templatesDir = path.join(getTemplatesDir(), 'libraries');
-    const templatePath = def
-        ? path.join(templatesDir, def.template)
-        : path.join(templatesDir, `${library}.md`);
-
-    if (await fileExists(templatePath)) {
-        return await readFile(templatePath);
-    }
-
-    const label = def?.label ?? library.charAt(0).toUpperCase() + library.slice(1);
-    return `<!-- ${library.toUpperCase()}:START -->\n# ${label} Rules\n\nLibrary-specific rules for ${label}.\n<!-- ${library.toUpperCase()}:END -->\n`;
-}
-
 export async function generateGitRules(pushMode: string): Promise<string> {
     const templatesDir = path.join(getTemplatesDir(), 'git');
-    const templatePath = path.join(templatesDir, 'GIT_WORKFLOW.md');
+    const templatePath = path.join(templatesDir, 'git-workflow.md');
 
     let gitRules = '';
 
@@ -537,11 +517,14 @@ async function writeModularFile(
 ): Promise<void> {
     const specsPath = path.join(projectRoot, rulebookDir, 'specs');
     await ensureDir(specsPath);
-    const filePath = path.join(specsPath, `${fileName}.md`);
+    // v7 naming: spec filenames are normalized lowercase kebab-case; block
+    // markers inside the content stay UPPERCASE for merger compatibility.
+    const base = fileName.toLowerCase().replace(/_/g, '-');
+    const filePath = path.join(specsPath, `${base}.md`);
 
     // Add header comment if not already present
-    const headerComment = `<!-- ${fileName}:START -->\n`;
-    const footerComment = `\n<!-- ${fileName}:END -->`;
+    const headerComment = `<!-- ${fileName.toUpperCase()}:START -->\n`;
+    const footerComment = `\n<!-- ${fileName.toUpperCase()}:END -->`;
 
     let finalContent = content.trim();
 
@@ -571,7 +554,9 @@ function generateReferenceSection(
     const sections: string[] = [];
     sections.push(`### ${name}`);
     sections.push('');
-    sections.push(`For comprehensive ${description}, see \`/${rulebookDir}/specs/${fileName}.md\``);
+    sections.push(
+        `For comprehensive ${description}, see \`/${rulebookDir}/specs/${fileName.toLowerCase().replace(/_/g, '-')}.md\``
+    );
     sections.push('');
     sections.push('Quick reference:');
     for (const item of quickRef) {
@@ -597,19 +582,6 @@ function generateLanguageReference(language: string, rulebookDir: string = '.rul
         `${languageName} Development Rules`,
         language.toUpperCase(),
         `${languageName}-specific guidelines`,
-        quickRef,
-        rulebookDir
-    );
-}
-
-function generateLibraryReference(library: string, rulebookDir: string = '.rulebook'): string {
-    const def = LIBRARY_REGISTRY.find((d) => d.id === library);
-    const libraryName = def?.label ?? library.charAt(0).toUpperCase() + library.slice(1);
-    const quickRef = ['Idiomatic conventions', 'Common pitfalls to avoid'];
-    return generateReferenceSection(
-        `${libraryName} Rules`,
-        library.toUpperCase(),
-        `${libraryName}-specific conventions`,
         quickRef,
         rulebookDir
     );
@@ -952,29 +924,24 @@ export async function generateModularAgents(
     sections.push('');
 
     // Write RULEBOOK.md to /rulebook/ (ALWAYS included - highest precedence)
-    const rulebookContent = await generateCoreRules('RULEBOOK');
+    const rulebookContent = await generateCoreRules('rulebook');
     await writeModularFile(projectRoot, 'RULEBOOK', rulebookContent.trim(), rulebookDir);
 
     // Write QUALITY_ENFORCEMENT to /rulebook/ (always included unless light mode)
     if (!mergedConfig.lightMode) {
-        const enforcementContent = await generateCoreRules('QUALITY_ENFORCEMENT');
-        await writeModularFile(
-            projectRoot,
-            'QUALITY_ENFORCEMENT',
-            enforcementContent.trim(),
-            rulebookDir
-        );
+        const enforcementContent = await generateCoreRules('quality');
+        await writeModularFile(projectRoot, 'QUALITY', enforcementContent.trim(), rulebookDir);
     }
 
     // Write TIER1_PROHIBITIONS to /rulebook/ (always included — highest precedence directives)
-    const tier1Content = await generateCoreRules('TIER1_PROHIBITIONS');
+    const tier1Content = await generateCoreRules('prohibitions');
     if (tier1Content.trim()) {
-        await writeModularFile(projectRoot, 'TIER1_PROHIBITIONS', tier1Content.trim(), rulebookDir);
+        await writeModularFile(projectRoot, 'PROHIBITIONS', tier1Content.trim(), rulebookDir);
     }
 
     // v7: TOKEN_OPTIMIZATION is retired (F-010) — verbosity is the harness's job.
 
-    // Write Git workflow rules to /.rulebook/specs/GIT.md
+    // Write Git workflow rules to /.rulebook/specs/git.md
     if (mergedConfig.includeGitWorkflow) {
         const gitRules = await generateGitRules(mergedConfig.gitPushMode || 'manual');
         await writeModularFile(projectRoot, 'GIT', gitRules.trim(), rulebookDir);
@@ -983,7 +950,7 @@ export async function generateModularAgents(
     // If WORKSPACE.md spec exists, add reference in AGENTS.md
     {
         const { existsSync } = await import('fs');
-        const wsSpecPath = path.join(projectRoot, rulebookDir, 'specs', 'WORKSPACE.md');
+        const wsSpecPath = path.join(projectRoot, rulebookDir, 'specs', 'workspace.md');
         if (existsSync(wsSpecPath)) {
             sections.push('## Workspace Mode');
             sections.push('');
@@ -992,7 +959,7 @@ export async function generateModularAgents(
             );
             sections.push('');
             sections.push(
-                `**📋 ALWAYS read \`/${rulebookDir}/specs/WORKSPACE.md\` to understand project routing before using any Rulebook MCP tools.**`
+                `**📋 ALWAYS read \`/${rulebookDir}/specs/workspace.md\` to understand project routing before using any Rulebook MCP tools.**`
             );
             sections.push('');
         }
@@ -1024,30 +991,7 @@ export async function generateModularAgents(
         sections.push('');
     }
 
-    // Write library files and add references (lean: only detected/selected libraries)
-    const libraries = mergedConfig.libraries ?? [];
-    if (libraries.length > 0) {
-        sections.push('## Library-Specific Rules');
-        sections.push('');
-        sections.push(
-            `The following libraries are configured for this project. For detailed rules, see the corresponding files in \`/${rulebookDir}/specs/\`:`
-        );
-        sections.push('');
-
-        for (const library of libraries) {
-            const libRules = await generateLibraryRules(library);
-            await writeModularFile(projectRoot, library.toUpperCase(), libRules, rulebookDir);
-        }
-
-        for (const library of libraries) {
-            sections.push(generateLibraryReference(library, rulebookDir));
-        }
-
-        sections.push(
-            `**Usage**: When working with a library, reference the corresponding \`/${rulebookDir}/specs/[LIBRARY].md\` file for its conventions.`
-        );
-        sections.push('');
-    }
+    // v7: the library-rules subsystem is retired — no library specs or refs.
 
     // v7: AGENT_AUTOMATION, MULTI_AGENT, and MCP-module spec docs are retired
     // (F-005/F-010, P0). Orchestration is the model's choice; MCP servers are
@@ -1230,19 +1174,19 @@ export async function generateLeanAgents(
 
     // Load lean template
     const templatesDir = path.join(getTemplatesDir(), 'core');
-    const leanTemplatePath = path.join(templatesDir, 'AGENTS_LEAN.md');
+    const leanTemplatePath = path.join(templatesDir, 'agents-lean.md');
     let template = '';
     if (await fileExists(leanTemplatePath)) {
         template = await readFile(leanTemplatePath);
     } else {
-        template = `<!-- RULEBOOK:START -->\n# Project Agent Directives\n\nSee \`/${rulebookDir}/specs/\` for all rules.\n\n- **Task Management**: \`/${rulebookDir}/specs/RULEBOOK.md\`\n- **Quality Gates**: \`/${rulebookDir}/specs/QUALITY_ENFORCEMENT.md\`\n- **Git Workflow**: \`/${rulebookDir}/specs/GIT.md\`\n<!-- RULEBOOK:END -->\n`;
+        template = `<!-- RULEBOOK:START -->\n# Project Agent Directives\n\nSee \`/${rulebookDir}/specs/\` for all rules.\n\n- **Task Management**: \`/${rulebookDir}/specs/rulebook.md\`\n- **Quality Gates**: \`/${rulebookDir}/specs/quality.md\`\n- **Git Workflow**: \`/${rulebookDir}/specs/git.md\`\n<!-- RULEBOOK:END -->\n`;
     }
 
     // Build language refs
     const langRefs = config.languages
         .map(
             (lang) =>
-                `- **${lang.toUpperCase()}**: \`/${rulebookDir}/specs/${lang.toUpperCase()}.md\``
+                `- **${lang.toUpperCase()}**: \`/${rulebookDir}/specs/${lang.toLowerCase()}.md\``
         )
         .join('\n');
     template = template.replace('LANGUAGE_REFS', langRefs || '_None configured_');
@@ -1251,7 +1195,7 @@ export async function generateLeanAgents(
     if (config.includeGitWorkflow === false) {
         template = template
             .split('\n')
-            .filter((line) => !line.includes(`/${rulebookDir}/specs/GIT.md`))
+            .filter((line) => !line.includes(`/${rulebookDir}/specs/git.md`))
             .join('\n');
     }
 

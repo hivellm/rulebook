@@ -5,38 +5,20 @@ category: Rulebook
 description: List all Rulebook tasks (active and optionally archived).
 ---
 <!-- RULEBOOK:START -->
-**Guardrails**
-- Favor straightforward, minimal implementations first and add complexity only when it is requested or clearly required.
-- Keep changes tightly scoped to the requested outcome.
-- Refer to `/.rulebook/specs/RULEBOOK.md` for complete task management guidelines.
+List tasks with their status (pending, in-progress, completed, blocked).
 
-**Steps**
-1. **List Active Tasks**:
-   ```bash
-   rulebook task list
-   ```
-   Shows all active tasks with their status (pending, in-progress, completed, blocked).
+**Usage**
+```bash
+rulebook task list
+rulebook task list --archived   # include archived tasks
+```
 
-2. **List Including Archived**:
-   ```bash
-   rulebook task list --archived
-   ```
-   Shows both active and archived tasks.
-
-3. **Review Task Status**:
-   - **pending**: Task not started
-   - **in-progress**: Task being worked on
-   - **completed**: Task finished (ready for archive)
-   - **blocked**: Task blocked by dependency
-
-4. **Select Task to Work On**:
-   - Choose task with highest priority
-   - Check task status before starting
-   - Verify task is not blocked
+**What it does**
+1. Lists active tasks with status; `--archived` includes archived ones.
+2. For details on one task: `rulebook task show <task-id>`.
 
 **Reference**
-- Use `rulebook task show <task-id>` to view task details
-- Use `rulebook task validate <task-id>` to check task format
-- See `/.rulebook/specs/RULEBOOK.md` for complete task management guidelines
-<!-- RULEBOOK:END -->
+- Task management guidelines: `/.rulebook/specs/rulebook.md`
 
+**MCP equivalent**: `rulebook_task_list`
+<!-- RULEBOOK:END -->

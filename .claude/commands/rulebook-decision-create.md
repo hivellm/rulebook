@@ -51,5 +51,5 @@ description: Create a new Architecture Decision Record (ADR) with auto-numbering
 - Decisions use 4 statuses: `proposed` → `accepted` → `superseded` | `deprecated`
 - Use `rulebook decision supersede <oldId> <newId>` to replace a decision
 - Decisions are auto-injected into AGENTS.md on `rulebook update`
-- See `/.rulebook/specs/DECISIONS.md` for format documentation
+- See `/.rulebook/specs/rulebook.md` for format documentation
 <!-- RULEBOOK:END -->

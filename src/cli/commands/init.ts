@@ -138,18 +138,15 @@ export async function initCommand(options: {
         // confirm/edit prompt — which also lets an empty project select manually.
         // Non-interactive runs (--yes, CI, piped stdin) fall back to detection results.
         let selectedLanguages: string[] = detection.languages.map((l) => l.language);
-        let selectedLibraries: string[] = detection.libraries.map((l) => l.library);
         const interactive = !options.yes && Boolean(process.stdin.isTTY);
         if (interactive) {
             const { promptLanguagesAndLibraries } = await import('../prompts.js');
             const picked = await promptLanguagesAndLibraries(detection);
             selectedLanguages = picked.languages;
-            selectedLibraries = picked.libraries;
         }
 
         const config: ProjectConfig = {
             languages: selectedLanguages,
-            libraries: selectedLibraries,
             modules: cliMinimal
                 ? []
                 : detection.modules.filter((m) => m.detected).map((m) => m.module),
@@ -485,11 +482,7 @@ export async function initCommand(options: {
             ).start();
             try {
                 const { generateRules } = await import('../../core/generators/rules-generator.js');
-                const rulesResult = await generateRules(
-                    cwd,
-                    { languages: detection.languages },
-                    config.libraries ?? []
-                );
+                const rulesResult = await generateRules(cwd, { languages: detection.languages });
                 if (rulesResult.written.length > 0) {
                     rulesSpinner.succeed(
                         `Generated ${rulesResult.written.length} language rule file(s) in .claude/rules/`

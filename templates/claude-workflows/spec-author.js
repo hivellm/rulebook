@@ -75,7 +75,7 @@ const research = await agent(
 Read-only. Gather:
 1. Existing specs under .rulebook/specs/ and any related task specs in .rulebook/tasks/*/specs/ that overlap this topic.
 2. The relevant source code, types, and conventions this spec will govern.
-3. The required rulebook spec format (read .rulebook/specs/RULEBOOK.md if present): ## ADDED/MODIFIED/REMOVED headers, "### Requirement: <name>" with SHALL/MUST, "#### Scenario:" with Given/When/Then.
+3. The required rulebook spec format (read .rulebook/specs/rulebook.md if present): ## ADDED/MODIFIED/REMOVED headers, "### Requirement: <name>" with SHALL/MUST, "#### Scenario:" with Given/When/Then.
 Report a concise map: what already exists, what this spec must cover, conventions to follow, and obvious risks.`,
   { label: 'research', phase: 'Research', agentType: 'researcher', model: 'haiku' }
 )

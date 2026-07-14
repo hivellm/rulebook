@@ -120,7 +120,7 @@ Vectorizer-specific content here.
                 exists: true,
                 path: '',
                 content:
-                    '<!-- RULEBOOK:START -->\n# Project Rules\n<!-- RULEBOOK:END -->\n\nSee /rulebook/TYPESCRIPT.md',
+                    '<!-- RULEBOOK:START -->\n# Project Rules\n<!-- RULEBOOK:END -->\n\nSee /rulebook/typescript.md',
                 blocks: [
                     {
                         name: 'RULEBOOK',
@@ -152,8 +152,8 @@ Vectorizer-specific content here.
             expect(result.extractedModules).toContain('vectorizer');
 
             // Verify files were created
-            const typescriptPath = path.join(testDir, '.rulebook', 'specs', 'TYPESCRIPT.md');
-            const vectorizerPath = path.join(testDir, '.rulebook', 'specs', 'VECTORIZER.md');
+            const typescriptPath = path.join(testDir, '.rulebook', 'specs', 'typescript.md');
+            const vectorizerPath = path.join(testDir, '.rulebook', 'specs', 'vectorizer.md');
 
             expect(await fileExists(typescriptPath)).toBe(true);
             expect(await fileExists(vectorizerPath)).toBe(true);
@@ -203,8 +203,8 @@ Vectorizer-specific content here.
             expect(result.extractedModules).toContain('vectorizer');
 
             // Verify files were created (generated, not extracted)
-            const typescriptPath = path.join(testDir, '.rulebook', 'specs', 'TYPESCRIPT.md');
-            const vectorizerPath = path.join(testDir, '.rulebook', 'specs', 'VECTORIZER.md');
+            const typescriptPath = path.join(testDir, '.rulebook', 'specs', 'typescript.md');
+            const vectorizerPath = path.join(testDir, '.rulebook', 'specs', 'vectorizer.md');
 
             expect(await fileExists(typescriptPath)).toBe(true);
             expect(await fileExists(vectorizerPath)).toBe(true);
@@ -235,7 +235,7 @@ Vectorizer-specific content here.
 
             // Should generate new template when block has no content
             expect(result.extractedLanguages).toContain('typescript');
-            const typescriptPath = path.join(testDir, '.rulebook', 'specs', 'TYPESCRIPT.md');
+            const typescriptPath = path.join(testDir, '.rulebook', 'specs', 'typescript.md');
             expect(await fileExists(typescriptPath)).toBe(true);
         });
 
@@ -311,8 +311,8 @@ Vectorizer-specific content here.
             const result = await replaceEmbeddedWithReferences(config, testDir);
 
             expect(result).toContain('<!-- RULEBOOK:START -->');
-            expect(result).toContain('/.rulebook/specs/TYPESCRIPT.md');
-            expect(result).not.toContain('/.rulebook/specs/VECTORIZER.md');
+            expect(result).toContain('/.rulebook/specs/typescript.md');
+            expect(result).not.toContain('/.rulebook/specs/vectorizer.md');
         });
     });
 
@@ -321,7 +321,7 @@ Vectorizer-specific content here.
             const rulebookRoot = path.join(testDir, '.rulebook');
             await fs.mkdir(rulebookRoot, { recursive: true });
             // Write a known spec file directly in rulebook root (flat layout)
-            await fs.writeFile(path.join(rulebookRoot, 'RULEBOOK.md'), '# Rulebook');
+            await fs.writeFile(path.join(rulebookRoot, 'rulebook.md'), '# Rulebook');
 
             const result = await hasFlatLayout(testDir);
             expect(result).toBe(true);
@@ -332,8 +332,8 @@ Vectorizer-specific content here.
             const specsDir = path.join(rulebookRoot, 'specs');
             await fs.mkdir(specsDir, { recursive: true });
             // Write the file in BOTH locations — specs/ takes precedence
-            await fs.writeFile(path.join(rulebookRoot, 'RULEBOOK.md'), '# Rulebook');
-            await fs.writeFile(path.join(specsDir, 'RULEBOOK.md'), '# Rulebook');
+            await fs.writeFile(path.join(rulebookRoot, 'rulebook.md'), '# Rulebook');
+            await fs.writeFile(path.join(specsDir, 'rulebook.md'), '# Rulebook');
 
             const result = await hasFlatLayout(testDir);
             expect(result).toBe(false);
@@ -353,34 +353,34 @@ Vectorizer-specific content here.
         it('should move .md files from rulebook root to specs/ subdirectory', async () => {
             const rulebookRoot = path.join(testDir, '.rulebook');
             await fs.mkdir(rulebookRoot, { recursive: true });
-            await fs.writeFile(path.join(rulebookRoot, 'TYPESCRIPT.md'), '# TypeScript rules');
-            await fs.writeFile(path.join(rulebookRoot, 'RULEBOOK.md'), '# Rulebook rules');
+            await fs.writeFile(path.join(rulebookRoot, 'typescript.md'), '# TypeScript rules');
+            await fs.writeFile(path.join(rulebookRoot, 'rulebook.md'), '# Rulebook rules');
 
             const result = await migrateFlatToSpecs(testDir);
 
-            expect(result.migratedFiles).toContain('TYPESCRIPT.md');
-            expect(result.migratedFiles).toContain('RULEBOOK.md');
+            expect(result.migratedFiles).toContain('typescript.md');
+            expect(result.migratedFiles).toContain('rulebook.md');
 
             // Files should now be in specs/
-            const tsSpec = path.join(rulebookRoot, 'specs', 'TYPESCRIPT.md');
-            const rbSpec = path.join(rulebookRoot, 'specs', 'RULEBOOK.md');
+            const tsSpec = path.join(rulebookRoot, 'specs', 'typescript.md');
+            const rbSpec = path.join(rulebookRoot, 'specs', 'rulebook.md');
             expect(await fileExists(tsSpec)).toBe(true);
             expect(await fileExists(rbSpec)).toBe(true);
 
             // Original files should be gone
-            expect(await fileExists(path.join(rulebookRoot, 'TYPESCRIPT.md'))).toBe(false);
-            expect(await fileExists(path.join(rulebookRoot, 'RULEBOOK.md'))).toBe(false);
+            expect(await fileExists(path.join(rulebookRoot, 'typescript.md'))).toBe(false);
+            expect(await fileExists(path.join(rulebookRoot, 'rulebook.md'))).toBe(false);
         });
 
         it('should not move non-.md files', async () => {
             const rulebookRoot = path.join(testDir, '.rulebook');
             await fs.mkdir(rulebookRoot, { recursive: true });
             await fs.writeFile(path.join(rulebookRoot, 'config.json'), '{}');
-            await fs.writeFile(path.join(rulebookRoot, 'TYPESCRIPT.md'), '# TS');
+            await fs.writeFile(path.join(rulebookRoot, 'typescript.md'), '# TS');
 
             const result = await migrateFlatToSpecs(testDir);
 
-            expect(result.migratedFiles).toContain('TYPESCRIPT.md');
+            expect(result.migratedFiles).toContain('typescript.md');
             expect(result.migratedFiles).not.toContain('config.json');
 
             // config.json should still be in root
@@ -398,11 +398,11 @@ Vectorizer-specific content here.
             const rulebookRoot = path.join(testDir, '.rulebook');
             const tasksDir = path.join(rulebookRoot, 'tasks');
             await fs.mkdir(tasksDir, { recursive: true });
-            await fs.writeFile(path.join(rulebookRoot, 'QUALITY_ENFORCEMENT.md'), '# QE');
+            await fs.writeFile(path.join(rulebookRoot, 'quality.md'), '# QE');
 
             const result = await migrateFlatToSpecs(testDir);
 
-            expect(result.migratedFiles).toContain('QUALITY_ENFORCEMENT.md');
+            expect(result.migratedFiles).toContain('quality.md');
             // tasks directory should still exist
             const tasksDirExists = await fileExists(tasksDir);
             expect(tasksDirExists).toBe(true);

@@ -31,8 +31,8 @@ describe('generator', () => {
             expect(content).toContain('# Project Rules');
             expect(content).toContain('Core Rules');
             expect(content).toContain('Detailed Rules');
-            expect(content).toContain('/.rulebook/specs/QUALITY_ENFORCEMENT.md');
-            expect(content).toContain('/.rulebook/specs/GIT.md');
+            expect(content).toContain('/.rulebook/specs/quality.md');
+            expect(content).toContain('/.rulebook/specs/git.md');
         });
 
         it('should include coverage threshold', async () => {
@@ -80,21 +80,21 @@ describe('generator', () => {
 
             // Lean template uses the "Language & Framework Rules" header
             expect(content).toContain('Language & Framework Rules');
-            expect(content).toContain('/.rulebook/specs/RUST.md');
-            expect(content).toContain('/.rulebook/specs/TYPESCRIPT.md');
+            expect(content).toContain('/.rulebook/specs/rust.md');
+            expect(content).toContain('/.rulebook/specs/typescript.md');
 
             // v7: module spec docs are retired — no module references
             expect(content).not.toContain('Module Rules');
-            expect(content).not.toContain('/.rulebook/specs/VECTORIZER.md');
-            expect(content).not.toContain('/.rulebook/specs/SYNAP.md');
+            expect(content).not.toContain('/.rulebook/specs/vectorizer.md');
+            expect(content).not.toContain('/.rulebook/specs/synap.md');
         });
 
         it('should generate content for single language (modular mode)', async () => {
             const config = { ...baseConfig, modular: true };
             const content = await generateFullAgents(config, '/tmp/test');
 
-            expect(content).toContain('/.rulebook/specs/RUST.md');
-            expect(content).not.toContain('/.rulebook/specs/TYPESCRIPT.md');
+            expect(content).toContain('/.rulebook/specs/rust.md');
+            expect(content).not.toContain('/.rulebook/specs/typescript.md');
         });
 
         it('does not emit module spec references even when modules are configured (v7)', async () => {
@@ -105,9 +105,9 @@ describe('generator', () => {
             };
             const content = await generateFullAgents(config, '/tmp/test');
 
-            expect(content).not.toContain('/.rulebook/specs/VECTORIZER.md');
-            expect(content).not.toContain('/.rulebook/specs/SYNAP.md');
-            expect(content).not.toContain('/.rulebook/specs/CONTEXT7.md');
+            expect(content).not.toContain('/.rulebook/specs/vectorizer.md');
+            expect(content).not.toContain('/.rulebook/specs/synap.md');
+            expect(content).not.toContain('/.rulebook/specs/context7.md');
         });
 
         it('should always use lean template even when modular is false', async () => {
@@ -126,8 +126,8 @@ describe('generator', () => {
 
             // Lean template — no embedded blocks, only references
             expect(content).toContain('<!-- RULEBOOK:START -->');
-            expect(content).toContain('/.rulebook/specs/RUST.md');
-            expect(content).not.toContain('/.rulebook/specs/VECTORIZER.md');
+            expect(content).toContain('/.rulebook/specs/rust.md');
+            expect(content).not.toContain('/.rulebook/specs/vectorizer.md');
             expect(content).not.toContain('<!-- RUST:START -->');
         });
 
@@ -140,8 +140,8 @@ describe('generator', () => {
             };
             const content = await generateFullAgents(config, '/tmp/test');
 
-            // Lean template mentions GIT.md in the Detailed Specs section
-            expect(content).toContain('GIT.md');
+            // Lean template mentions git.md in the Detailed Specs section
+            expect(content).toContain('git.md');
         });
 
         it('should produce lean output regardless of git workflow flag', async () => {
@@ -194,7 +194,7 @@ describe('generator', () => {
             const content = await generateAgentsContent(config);
 
             // QUALITY_ENFORCEMENT should not be referenced in light mode
-            expect(content).not.toContain('/.rulebook/specs/QUALITY_ENFORCEMENT.md');
+            expect(content).not.toContain('/.rulebook/specs/quality.md');
         });
 
         it('should reference quality enforcement when not in light mode', async () => {
@@ -205,7 +205,7 @@ describe('generator', () => {
             const content = await generateAgentsContent(config);
 
             // Should reference QUALITY_ENFORCEMENT in /.rulebook/
-            expect(content).toContain('/.rulebook/specs/QUALITY_ENFORCEMENT.md');
+            expect(content).toContain('/.rulebook/specs/quality.md');
         });
     });
 
@@ -265,7 +265,7 @@ describe('generator', () => {
             expect(content.length).toBeGreaterThan(0);
         });
 
-        it('should always include GIT.md reference in lean template', async () => {
+        it('should always include git.md reference in lean template', async () => {
             const config: ProjectConfig = {
                 ...baseConfig,
                 includeGitWorkflow: true,
@@ -287,7 +287,7 @@ describe('generator', () => {
             const content = await generateFullAgents(config, '/tmp/test');
 
             // Git workflow should not be referenced
-            expect(content).not.toContain('/.rulebook/specs/GIT.md');
+            expect(content).not.toContain('/.rulebook/specs/git.md');
         });
 
         it('should produce lean output regardless of gitPushMode', async () => {
@@ -376,7 +376,7 @@ describe('generator', () => {
             };
             const content = await generateModularAgents(config, '/tmp/test');
 
-            expect(content).toContain('/.rulebook/specs/GIT.md');
+            expect(content).toContain('/.rulebook/specs/git.md');
         });
 
         it('should not reference Git workflow when includeGitWorkflow is false', async () => {
@@ -388,7 +388,7 @@ describe('generator', () => {
             const content = await generateModularAgents(config, '/tmp/test');
 
             expect(content).toContain('<!-- RULEBOOK:START -->');
-            expect(content).not.toContain('/.rulebook/specs/GIT.md');
+            expect(content).not.toContain('/.rulebook/specs/git.md');
         });
     });
 
@@ -405,7 +405,7 @@ describe('generator', () => {
 
             // Always lean — no embedded blocks
             expect(content).toContain('<!-- RULEBOOK:START -->');
-            expect(content).toContain('/.rulebook/specs/TYPESCRIPT.md');
+            expect(content).toContain('/.rulebook/specs/typescript.md');
             expect(content).not.toContain('<!-- TYPESCRIPT:START -->');
         });
 

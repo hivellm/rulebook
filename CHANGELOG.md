@@ -31,6 +31,31 @@ v7.0.0 development — mission: run complementary to modern frontier models
   session cost (static tokens, MCP schemas/init, hooks, installed files)
   against the v7 budgets.
 
+### Changed — Template unification (templates/ 1,219 KB → 564 KB, −54%)
+
+- All 19 non-core language templates rewritten lean (≤2.2 KB each; concrete
+  tools/pitfalls only, no tutorials) by a parallel agent fleet; the 9
+  core-language essays (dead after the lean-rule redirect) deleted.
+- All 11 agent templates and 12 command docs slimmed ~50–55%; tier tables,
+  delegation mandates and 9 KB of machine-specific boilerplate removed.
+- Git-hook doc templates (pre-commit/pre-push/post-checkout/commit-msg/
+  prepare-commit-msg) rewritten lean: 64 KB → ~10.5 KB.
+- **All template and generated-spec filenames normalized to lowercase
+  kebab-case** (`rulebook.md`, `quality.md`, `prohibitions.md`, `git.md`,
+  `<language>.md`, `agents-lean.md`, `claude-md.md`, …) with every reader
+  updated; block markers stay UPPERCASE for merger compatibility.
+
+### Removed — Template unification
+
+- Library-rules subsystem: `templates/libraries/`, generation, prompts, and
+  init/update wiring (language rules are the single per-language source).
+- Module skills (`templates/skills/modules/`) and retired-subsystem skills
+  (terse ×3, handoff, agent-automation, dag, documentation-rules,
+  quality-enforcement duplicates).
+- The 17 retired always-on rule templates from `templates/rules/` — the
+  directory now holds only the 8 lean path-scoped language rule files.
+- Obsolete test files for retired subsystems (terse ×4, library-detection).
+
 ### Changed — Spec diet (−87% on-demand spec load)
 
 - `RULEBOOK.md` spec template rewritten lean (51 KB / ~13k tokens → ~600
