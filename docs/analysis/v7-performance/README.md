@@ -36,7 +36,7 @@ Headline numbers (measured, see [01](01-measured-overhead.md)):
 | [02-behavioral-conflicts.md](02-behavioral-conflicts.md) | How v6 fights modern models (the dominant cost) | F-005..F-010 |
 | [03-design-principles.md](03-design-principles.md) | v7 design principles (P0: never block orchestration) | — |
 | [04-v7-specification.md](04-v7-specification.md) | Concrete v7 spec: context, hooks, MCP, process, assets, migration | — |
-| [05-budget-and-metrics.md](05-budget-and-metrics.md) | Before/after budgets and acceptance metrics | — |
+| [05-budget-and-metrics.md](05-budget-and-metrics.md) | Budgets, acceptance metrics + **live impact ledger** (one row per change) | — |
 | [06-draft-directives.md](06-draft-directives.md) | Draft v7 CLAUDE.md + single rules file (concrete text) | — |
 | [07-execution-plan.md](07-execution-plan.md) | Phased execution plan (rulebook tasks) | — |
 

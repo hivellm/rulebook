@@ -18,6 +18,21 @@ ceilings, verified by the benchmark harness (see acceptance checks below).
 | Orchestration denials (background agents) | on every untagged dispatch | **0 — never** | P0 |
 | MCP server init | ~370 ms | <150 ms | −60% |
 
+## Impact ledger (live — one row per change)
+
+**Protocol**: every change that alters generated output MUST run
+`node scripts/measure-overhead.mjs` (after `npm run build`) and append the
+emitted row here **before its task item is checked off**. The row captures the
+cost a Fable/Opus session pays for a freshly generated project at that commit.
+The v7.0.0 release consolidates this ledger into the final performance report
+(phase5). Numbers: static tok = always-loaded tokens/session; MCP =
+tools/schema bytes/init; hooks = entries by event (P=PreToolUse,
+S=SessionStart, St=Stop, U=UserPromptSubmit); files = installed by default init.
+
+| Date | Commit | Change | Static tok | MCP | Hooks | Files |
+|---|---|---|---:|---|---|---:|
+| 2026-07-14 | a54669f | **v6.0.0 baseline** (default `init --yes`; full desire set wires +6 hook entries, see F-002) | 14,951 | 26/13,965B/280ms | P:1 S:0 St:0 U:0 | 95 |
+
 ## Acceptance checks (CI)
 
 1. **Token budget check**: tiktoken count over generated CLAUDE.md + AGENTS.md +

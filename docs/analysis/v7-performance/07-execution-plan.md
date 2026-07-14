@@ -1,8 +1,15 @@
 # 07 — Execution Plan
 
 Five phases, independently shippable, each measured against the budgets in
-[05-budget-and-metrics.md](05-budget-and-metrics.md). Materialize as rulebook
-tasks referencing `Source: docs/analysis/v7-performance/`.
+[05-budget-and-metrics.md](05-budget-and-metrics.md). Materialized as rulebook
+tasks `phase1_v7-context-diet` … `phase5_v7-migration-benchmarks`, all
+referencing `Source: docs/analysis/v7-performance/`.
+
+**Measurement protocol (mandatory for every change)**: any change that alters
+generated output runs `node scripts/measure-overhead.mjs` and appends its row to
+the impact ledger in 05 before the task item is checked off. The final v7
+performance report (phase 5, item 1.8) consolidates the ledger with per-change
+deltas vs the v6.0.0 baseline.
 
 ## Phase 1 — Context diet
 

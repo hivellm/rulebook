@@ -6,6 +6,7 @@
 - [ ] 1.5 Add CI acceptance checks: token budget, hook audit, MCP schema budget, orchestration-freedom fixture (P0), startup benchmark
 - [ ] 1.6 Write the v6→v7 migration guide in /docs with measured before/after numbers
 - [ ] 1.7 Update README and CHANGELOG for the 7.0.0 release
+- [ ] 1.8 Consolidate the impact ledger (05-budget-and-metrics.md) into the final v7 performance report with per-change deltas vs the v6 baseline
 
 ## 2. Tail (mandatory — enforced by rulebook v5.3.0)
 - [ ] 2.1 Update or create documentation covering the implementation
