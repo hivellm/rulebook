@@ -24,5 +24,5 @@ rulebook decision create "<title>" --context "<context>" --related-task <task-id
 - Replace a decision with `rulebook decision supersede <oldId> <newId>`
 - Format documentation: `/.rulebook/specs/rulebook.md`
 
-**MCP equivalent**: `rulebook_decision_create`
+**MCP equivalent**: `rulebook_memory`
 <!-- RULEBOOK:END -->

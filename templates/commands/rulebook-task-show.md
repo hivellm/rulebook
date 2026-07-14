@@ -21,5 +21,5 @@ rulebook task show <task-id>
 **Reference**
 - Task management guidelines: `/.rulebook/specs/rulebook.md`
 
-**MCP equivalent**: `rulebook_task_show`
+**MCP equivalent**: `rulebook_task`
 <!-- RULEBOOK:END -->

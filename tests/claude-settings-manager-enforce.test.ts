@@ -50,7 +50,7 @@ describe('protect-task-scaffolding.sh (v7 path-only guard)', () => {
             },
         });
         expect(decision).toBe('deny');
-        expect(raw).toContain('rulebook_task_create');
+        expect(raw).toContain('rulebook_task');
     });
 
     it('denies creating a .metadata.json that does not exist', () => {

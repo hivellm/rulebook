@@ -29,5 +29,5 @@ rulebook task validate <task-id>
 **Reference**
 - Task management guidelines: `/.rulebook/specs/rulebook.md`
 
-**MCP equivalent**: `rulebook_task_create`
+**MCP equivalent**: `rulebook_task`
 <!-- RULEBOOK:END -->

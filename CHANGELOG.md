@@ -31,6 +31,26 @@ v7.0.0 development — mission: run complementary to modern frontier models
   session cost (static tokens, MCP schemas/init, hooks, installed files)
   against the v7 budgets.
 
+### Changed — Phase 3: MCP consolidation (26 → 5 tools, schemas −74%)
+
+- The 26 per-verb MCP tools collapse into 6 action-parameterized tools —
+  `rulebook_task`, `rulebook_memory` (knowledge/learnings/decisions),
+  `rulebook_session`, `rulebook_skill`, `rulebook_rules`, plus
+  `rulebook_workspace` in workspace mode (5 tools in single-project mode).
+  `tools/list` payload: 13,965 → 3,592 bytes (~900 tokens, within budget).
+- `rulebook_session {action:"start"}` returns plans + active tasks + recent
+  learnings in ONE call, replacing 4–5 separate lookups (F-005).
+- `.mcp.json` now uses the standalone `rulebook-mcp` bin
+  (`dist/mcp/rulebook-server.js`) — no commander/inquirer/blessed/ora in the
+  server process. Init: ~230 ms on Windows (node floor), <150 ms on Linux.
+- Every template, command doc, and workflow reference migrated to the new
+  tool names.
+
+### Removed — Phase 3
+
+- The 7 per-domain tool modules (task/skill/workspace/decision/knowledge/
+  learn/rules-tools.ts) and the inline session tools.
+
 ### Changed — Phase 4: asset prune (default install 95 → 29 files)
 
 - Agents and orchestration workflows are opt-in

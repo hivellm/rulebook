@@ -20,5 +20,5 @@ rulebook task list --archived   # include archived tasks
 **Reference**
 - Task management guidelines: `/.rulebook/specs/rulebook.md`
 
-**MCP equivalent**: `rulebook_task_list`
+**MCP equivalent**: `rulebook_task`
 <!-- RULEBOOK:END -->

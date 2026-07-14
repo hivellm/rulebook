@@ -15,13 +15,13 @@ Use Rulebook's task system for spec-driven development. Create a task BEFORE imp
 
 ## Workflow
 
-1. Create the task: `rulebook task create <task-id>` (or `rulebook_task_create` via MCP)
+1. Create the task: `rulebook task create <task-id>` (or `rulebook_task` via MCP)
 2. Write `proposal.md`, `tasks.md`, and spec deltas
 3. Validate: `rulebook task validate <task-id>`
 4. Implement, checking off `tasks.md` items in order
 5. Archive when done: `rulebook task archive <task-id>`
 
-Prefer the MCP tools (`rulebook_task_create/list/show/validate/archive`) when the MCP server is enabled. Never create task directories by hand.
+Prefer the MCP tools (`rulebook_task/list/show/validate/archive`) when the MCP server is enabled. Never create task directories by hand.
 
 ## Structure
 

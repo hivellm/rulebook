@@ -48,7 +48,7 @@ describe('claude-mcp', () => {
             expect(content.mcpServers).toBeDefined();
             expect(content.mcpServers.rulebook).toEqual({
                 command: 'npx',
-                args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
+                args: ['-y', '--package=@hivehub/rulebook@latest', 'rulebook-mcp'],
             });
         });
 
@@ -77,7 +77,7 @@ describe('claude-mcp', () => {
             // Should add rulebook entry without --project-root
             expect(content.mcpServers.rulebook).toEqual({
                 command: 'npx',
-                args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
+                args: ['-y', '--package=@hivehub/rulebook@latest', 'rulebook-mcp'],
             });
         });
 
@@ -89,8 +89,8 @@ describe('claude-mcp', () => {
                         command: 'npx',
                         args: [
                             '-y',
-                            '@hivehub/rulebook@latest',
-                            'mcp-server',
+                            '--package=@hivehub/rulebook@latest',
+                            'rulebook-mcp',
                             '--project-root',
                             testDir,
                         ],
@@ -106,8 +106,8 @@ describe('claude-mcp', () => {
             // Args should now be simplified (no --project-root)
             expect(content.mcpServers.rulebook.args).toEqual([
                 '-y',
-                '@hivehub/rulebook@latest',
-                'mcp-server',
+                '--package=@hivehub/rulebook@latest',
+                'rulebook-mcp',
             ]);
         });
 
@@ -117,7 +117,7 @@ describe('claude-mcp', () => {
                 mcpServers: {
                     rulebook: {
                         command: 'npx',
-                        args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
+                        args: ['-y', '--package=@hivehub/rulebook@latest', 'rulebook-mcp'],
                     },
                 },
             };
@@ -130,8 +130,8 @@ describe('claude-mcp', () => {
             // Should remain unchanged
             expect(content.mcpServers.rulebook.args).toEqual([
                 '-y',
-                '@hivehub/rulebook@latest',
-                'mcp-server',
+                '--package=@hivehub/rulebook@latest',
+                'rulebook-mcp',
             ]);
         });
 

@@ -22,5 +22,5 @@ rulebook task validate <task-id>   # check format before archiving
 **Reference**
 - Task management guidelines: `/.rulebook/specs/rulebook.md`
 
-**MCP equivalent**: `rulebook_task_show`, `rulebook_task_update`, `rulebook_task_validate`
+**MCP equivalent**: `rulebook_task`, `rulebook_task`, `rulebook_task`
 <!-- RULEBOOK:END -->

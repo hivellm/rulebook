@@ -27,11 +27,11 @@ file to the next), each with: title, evidence (file:line), impact, confidence.
 
 Steps:
 1. Slugify the topic and create `docs/analysis/<slug>/` following the structure above
-2. Check existing knowledge: `rulebook_knowledge_list` and `rulebook_learn_list` for prior context
+2. Check existing knowledge: `rulebook_memory` and `rulebook_memory` for prior context
 3. Investigate the topic — read relevant files, search codebase, fetch docs as needed
 4. Write one numbered file per theme with its findings (F-001..F-NNN)
 5. When the analysis proposes work, design the phased plan in the final `NN-execution-plan.md`
 6. Consolidate the executive summary + index of numbered files in `README.md`
-7. Capture each key finding to the knowledge base: `rulebook_knowledge_add` for patterns/anti-patterns
-8. Capture analysis learnings: `rulebook_knowledge_add` / `rulebook_learn_capture` tagged `analysis:<slug>`
-9. Offer to materialize implementation tasks from the execution plan via `rulebook_task_create`
+7. Capture each key finding to the knowledge base: `rulebook_memory` for patterns/anti-patterns
+8. Capture analysis learnings: `rulebook_memory` / `rulebook_memory` tagged `analysis:<slug>`
+9. Offer to materialize implementation tasks from the execution plan via `rulebook_task`

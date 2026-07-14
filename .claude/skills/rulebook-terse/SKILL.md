@@ -80,7 +80,7 @@ Default intensity resolves from: `RULEBOOK_TERSE_MODE` env → `.rulebook/rulebo
 Compression is suspended — for the affected turn only — when ANY of the following applies. Full prose is restored. Compression resumes on the next turn.
 
 1. **Security warnings** — CVE-class findings, credential exposure, permission-elevation warnings.
-2. **Destructive-op confirmations** — `rm -rf`, `git reset --hard`, `DROP TABLE`, `rulebook_task_delete`, irreversible file deletion.
+2. **Destructive-op confirmations** — `rm -rf`, `git reset --hard`, `DROP TABLE`, `rulebook_task`, irreversible file deletion.
 3. **Quality-gate failures** — type-check errors, lint failures, failing tests, coverage below threshold, hook-emitted deny messages from `enforce-no-deferred` / `enforce-no-shortcuts` / `enforce-mcp-for-tasks`.
 4. **Multi-step sequences** where fragment ambiguity risks misread (migration steps, ordered deploys, multi-service restarts).
 5. **User confusion** — explicit "I don't understand", "explain again", or repeat of the same question.

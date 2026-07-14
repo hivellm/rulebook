@@ -3,8 +3,7 @@
     "rulebook": {
       "command": "node",
       "args": [
-        "./dist/index.js",
-        "mcp-server"
+        "./dist/mcp/rulebook-server.js"
       ]
     }
   }

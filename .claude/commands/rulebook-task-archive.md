@@ -72,9 +72,9 @@ description: Archive a completed Rulebook task and apply spec deltas to main spe
 
    ✅ CORRECT — defer with tracking:
    1. Add "- [ ] D1. feature X — deferred Phase 4" to tasks.md
-   2. Call rulebook_task_create("phase4-feature-x")
+   2. Call rulebook_task("phase4-feature-x")
    3. Write tasks.md for the new task with full context
-   4. THEN call rulebook_task_archive
+   4. THEN call rulebook_task
    ```
 
    **Archive Checklist (ALL must be done before archiving):**
@@ -83,7 +83,7 @@ description: Archive a completed Rulebook task and apply spec deltas to main spe
    □ 2. Each deferred item has a "Phase N" target
    □ 3. A rulebook task exists for EVERY deferred item or group
    □ 4. The new deferred tasks have tasks.md with full context
-   □ 5. THEN call rulebook_task_archive
+   □ 5. THEN call rulebook_task
    ```
 
 **Reference**

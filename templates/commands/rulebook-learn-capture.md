@@ -21,5 +21,5 @@ rulebook learn capture --title "<title>" --content "<content>" --tags "tag1,tag2
    rulebook learn promote <id> decision     # → creates an ADR
    ```
 
-**MCP equivalent**: `rulebook_learn_capture`
+**MCP equivalent**: `rulebook_memory`
 <!-- RULEBOOK:END -->

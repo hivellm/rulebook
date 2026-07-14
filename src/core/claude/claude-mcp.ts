@@ -40,7 +40,7 @@ export async function isClaudeCodeInstalled(homeDir?: string): Promise<boolean> 
  * across machines and OS.
  */
 function buildMcpServerArgs(workspace?: boolean): string[] {
-    const args = ['-y', '@hivehub/rulebook@latest', 'mcp-server'];
+    const args = ['-y', '--package=@hivehub/rulebook@latest', 'rulebook-mcp'];
     if (workspace) args.push('--workspace');
     return args;
 }

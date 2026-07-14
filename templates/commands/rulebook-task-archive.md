@@ -21,10 +21,10 @@ rulebook task archive <task-id> --skip-validation   # only if certain the task i
 4. Verify with `rulebook task list --archived`; then update CHANGELOG.md and document breaking changes.
 
 **Deferred items rule**
-Before archiving a task with deferred items, create a Rulebook task (`rulebook_task_create`) for every deferred item or group, with its own `tasks.md` and full context. Never archive with untracked deferred work.
+Before archiving a task with deferred items, create a Rulebook task (`rulebook_task`) for every deferred item or group, with its own `tasks.md` and full context. Never archive with untracked deferred work.
 
 **Reference**
 - Task management guidelines: `/.rulebook/specs/rulebook.md`
 
-**MCP equivalent**: `rulebook_task_archive`
+**MCP equivalent**: `rulebook_task`
 <!-- RULEBOOK:END -->

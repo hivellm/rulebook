@@ -17,5 +17,5 @@ rulebook decision list --status accepted
 1. Lists all decisions; filter with `--status` (proposed, accepted, superseded, deprecated).
 2. For details on one decision: `rulebook decision show <id>`.
 
-**MCP equivalent**: `rulebook_decision_list`
+**MCP equivalent**: `rulebook_memory`
 <!-- RULEBOOK:END -->

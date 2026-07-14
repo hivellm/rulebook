@@ -17,5 +17,5 @@ rulebook learn list --limit 10
 1. Lists learnings; limit output with `--limit`.
 2. Promote significant learnings with `rulebook learn promote <id> knowledge|decision`.
 
-**MCP equivalent**: `rulebook_learn_list`
+**MCP equivalent**: `rulebook_memory`
 <!-- RULEBOOK:END -->

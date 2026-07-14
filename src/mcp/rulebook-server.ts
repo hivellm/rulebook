@@ -18,13 +18,7 @@ import { SkillsManager, getDefaultTemplatesPath } from '../core/skills/skills-ma
 import { TaskManager } from '../core/tasks/task-manager.js';
 import { WorkspaceManager } from '../core/workspace/workspace-manager.js';
 import type { ToolContext } from './tools/context.js';
-import { registerTaskTools } from './tools/task-tools.js';
-import { registerSkillTools } from './tools/skill-tools.js';
-import { registerWorkspaceTools } from './tools/workspace-tools.js';
-import { registerDecisionTools } from './tools/decision-tools.js';
-import { registerKnowledgeTools } from './tools/knowledge-tools.js';
-import { registerLearnTools } from './tools/learn-tools.js';
-import { registerRulesTools } from './tools/rules-tools.js';
+import { registerV7Tools } from './tools/v7-tools.js';
 
 // --- Timeout guard for MCP tool handlers ---
 // Prevents the MCP server from hanging when a tool handler blocks (SQLite, WASM, fs).
@@ -316,8 +310,8 @@ export async function startRulebookMcpServer(): Promise<void> {
     }
 
     const server = new McpServer({
-        name: 'rulebook-task-management',
-        version: '5.2.0',
+        name: 'rulebook',
+        version: '7.0.0',
     });
 
     // --- Wrap all tool handlers with a timeout guard ---
@@ -362,149 +356,7 @@ export async function startRulebookMcpServer(): Promise<void> {
         getSkillsMgr,
     };
 
-    registerTaskTools(server, ctx);
-    registerSkillTools(server, ctx);
-
-    registerWorkspaceTools(server, ctx);
-
-    registerDecisionTools(server, ctx);
-    registerKnowledgeTools(server, ctx);
-    registerLearnTools(server, ctx);
-
-    // ── v5.0 Tools: Session Management, Rules, Blockers ──────────────────
-
-    // Register tool: rulebook_session_start
-    server.registerTool(
-        'rulebook_session_start',
-        {
-            title: 'Start Session',
-            description:
-                'Load session context: reads PLANS.md and searches relevant memories. Call at the start of every session.',
-            inputSchema: {
-                query: z
-                    .string()
-                    .optional()
-                    .describe('Optional search query to find relevant past memories'),
-                projectId: projectIdSchema,
-            },
-        },
-        async (args) => {
-            try {
-                const root =
-                    args.projectId && workspaceManager
-                        ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-                        : projectRoot;
-                const { join } = await import('path');
-                const { existsSync } = await import('fs');
-                const { readFile } = await import('fs/promises');
-
-                const result: {
-                    plans: string | null;
-                    memories: unknown[];
-                } = { plans: null, memories: [] };
-
-                // Read PLANS.md
-                const plansPath = join(root, '.rulebook', 'PLANS.md');
-                if (existsSync(plansPath)) {
-                    result.plans = await readFile(plansPath, 'utf-8');
-                }
-
-                return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: true, ...result }) }],
-                };
-            } catch (error) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({
-                                success: false,
-                                error: error instanceof Error ? error.message : String(error),
-                            }),
-                        },
-                    ],
-                };
-            }
-        }
-    );
-
-    // Register tool: rulebook_session_end
-    server.registerTool(
-        'rulebook_session_end',
-        {
-            title: 'End Session',
-            description:
-                'Save session summary to PLANS.md history section. Call at the end of every session.',
-            inputSchema: {
-                summary: z
-                    .string()
-                    .describe('Session summary: what was accomplished, key decisions, next steps'),
-                projectId: projectIdSchema,
-            },
-        },
-        async (args) => {
-            try {
-                const root =
-                    args.projectId && workspaceManager
-                        ? (await workspaceManager.getWorker(args.projectId)).projectRoot
-                        : projectRoot;
-                const { join } = await import('path');
-                const { existsSync } = await import('fs');
-                const { readFile, writeFile } = await import('fs/promises');
-
-                const plansPath = join(root, '.rulebook', 'PLANS.md');
-                const date = new Date().toISOString().split('T')[0];
-                const entry = `### ${date}\n${args.summary}\n`;
-
-                if (existsSync(plansPath)) {
-                    let content = await readFile(plansPath, 'utf-8');
-                    // Insert after <!-- PLANS:HISTORY:START -->
-                    if (content.includes('<!-- PLANS:HISTORY:START -->')) {
-                        content = content.replace(
-                            '<!-- PLANS:HISTORY:START -->',
-                            `<!-- PLANS:HISTORY:START -->\n${entry}`
-                        );
-                    } else {
-                        content += `\n## Session History\n\n<!-- PLANS:HISTORY:START -->\n${entry}<!-- PLANS:HISTORY:END -->\n`;
-                    }
-                    await writeFile(plansPath, content, 'utf-8');
-                } else {
-                    // Create PLANS.md from scratch
-                    const newContent = `# Project Plans & Session Context\n\n<!-- PLANS:CONTEXT:START -->\n_No active context._\n<!-- PLANS:CONTEXT:END -->\n\n<!-- PLANS:TASK:START -->\n_No task in progress._\n<!-- PLANS:TASK:END -->\n\n## Session History\n\n<!-- PLANS:HISTORY:START -->\n${entry}<!-- PLANS:HISTORY:END -->\n`;
-                    const { mkdirSync } = await import('fs');
-                    const dir = join(root, '.rulebook');
-                    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-                    await writeFile(plansPath, newContent, 'utf-8');
-                }
-
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({
-                                success: true,
-                                message: 'Session summary saved to PLANS.md',
-                            }),
-                        },
-                    ],
-                };
-            } catch (error) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: JSON.stringify({
-                                success: false,
-                                error: error instanceof Error ? error.message : String(error),
-                            }),
-                        },
-                    ],
-                };
-            }
-        }
-    );
-
-    registerRulesTools(server, ctx);
+    registerV7Tools(server, ctx);
 
     // Release the PID lock on shutdown so a restart can re-acquire it.
     const releaseLock = () => releasePidLock(pidFilePath);

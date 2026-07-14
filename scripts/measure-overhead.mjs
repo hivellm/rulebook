@@ -96,7 +96,9 @@ function countStaticTokens(dir, enc) {
 function measureMcp() {
   return new Promise((resolve) => {
     const t0 = Date.now();
-    const p = spawn('node', [path.join(repoRoot, 'dist', 'index.js'), 'mcp-server'], { cwd: repoRoot });
+    const p = spawn('node', [path.join(repoRoot, 'dist', 'mcp', 'rulebook-server.js')], {
+      cwd: repoRoot,
+    });
     let buf = '';
     let initMs = null;
     const done = (result) => {

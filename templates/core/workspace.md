@@ -10,7 +10,7 @@ When calling ANY Rulebook MCP tool, you MUST pass the `projectId` parameter to t
 ### How to determine the current project
 
 1. **Check which files you are editing** — the file path tells you which project you are in
-2. **Use `rulebook_workspace_list`** to see all available projects and their paths
+2. **Use `rulebook_workspace`** to see all available projects and their paths
 3. **Match the file path to a project path** to determine the `projectId`
 
 ### Examples
@@ -19,18 +19,18 @@ When calling ANY Rulebook MCP tool, you MUST pass the `projectId` parameter to t
 # You are editing files in /path/to/frontend/src/App.tsx
 # → projectId = "frontend"
 
-rulebook_task_create({ taskId: "add-auth", projectId: "frontend" })
-rulebook_task_list({ projectId: "frontend" })
-rulebook_knowledge_add({ ..., projectId: "frontend" })
+rulebook_task({ taskId: "add-auth", projectId: "frontend" })
+rulebook_task({ projectId: "frontend" })
+rulebook_memory({ ..., projectId: "frontend" })
 ```
 
 ### Cross-project operations
 
 Use these dedicated workspace tools for operations across ALL projects:
 
-- `rulebook_workspace_list` — List all projects in the workspace
-- `rulebook_workspace_status` — Status of each project (active workers, task count)
-- `rulebook_workspace_tasks` — List tasks from ALL projects at once
+- `rulebook_workspace` — List all projects in the workspace
+- `rulebook_workspace` — Status of each project (active workers, task count)
+- `rulebook_workspace` — List tasks from ALL projects at once
 
 ### Default project
 

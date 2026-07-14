@@ -43,10 +43,10 @@ solid, confirms, then creates the rulebook tasks and hands off to
 
 6. **Create the tasks.** ONLY after explicit confirmation, create the task(s) in
    rulebook using the MCP tools — never `mkdir`/`Write` by hand:
-   - `rulebook_task_create` for each task (phase-prefixed id, e.g.
+   - `rulebook_task` for each task (phase-prefixed id, e.g.
      `phase1_<slug>`), writing the confirmed proposal.md, tasks.md checklist,
      and specs/<module>/spec.md from the draft.
-   - `rulebook_task_validate` each created task; fix format issues and re-validate
+   - `rulebook_task` each created task; fix format issues and re-validate
      until clean.
 
 7. **Hand off to the driver.** Report the created task ids and tell the user the

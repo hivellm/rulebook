@@ -2,7 +2,7 @@
 # Rulebook Task Management
 
 Spec-driven task tracking for multi-session work. Managed via the `rulebook` MCP
-tools (`rulebook_task_*`) or the CLI (`rulebook task <cmd>`) — never create task
+tools (`rulebook_task`) or the CLI (`rulebook task <cmd>`) — never create task
 directories by hand.
 
 ## When to use
@@ -48,13 +48,13 @@ Then <outcome>
 
 ## Workflow
 
-1. `rulebook_task_create` (or `rulebook task create <task-id>`) BEFORE coding
+1. `rulebook_task {action:"create"}` (or `rulebook task create <task-id>`) BEFORE coding
 2. Fill proposal.md, tasks.md, and spec deltas
-3. `rulebook_task_validate` — fix format errors before starting
+3. `rulebook_task {action:"validate"}` — fix format errors before starting
 4. Implement item by item; run type-check + lint after each significant change
-5. `rulebook_task_update` to move status: pending → in-progress → completed
-6. `rulebook_task_archive` — applies spec deltas to `/.rulebook/specs/` and
-   moves the task to `.rulebook/archive/YYYY-MM-DD-<task-id>/`
+5. `rulebook_task {action:"update"}` to move status: pending → in-progress → completed
+6. `rulebook_task {action:"archive"}` — applies spec deltas to `/.rulebook/specs/`
+   and moves the task to `.rulebook/archive/YYYY-MM-DD-<task-id>/`
 
 ## CLI quick reference
 

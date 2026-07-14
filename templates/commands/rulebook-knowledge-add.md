@@ -23,5 +23,5 @@ Categories: `architecture` | `code` | `testing` | `security` | `performance` | `
 - List: `rulebook knowledge list [--type pattern] [--category architecture]`
 - Remove: `rulebook knowledge remove <slug>`
 
-**MCP equivalent**: `rulebook_knowledge_add`
+**MCP equivalent**: `rulebook_memory`
 <!-- RULEBOOK:END -->

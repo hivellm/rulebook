@@ -44,8 +44,8 @@ rulebook decision list
 ### Capture Implementation Insights
 After completing implementation, record key learnings (committed with the repo):
 
-- `rulebook_knowledge_add` — reusable patterns and anti-patterns.
-- `rulebook_learn_capture` — gotchas, edge cases, and performance insights.
-- `rulebook_decision_create` — architectural decisions and their tradeoffs.
+- `rulebook_memory` — reusable patterns and anti-patterns.
+- `rulebook_memory` — gotchas, edge cases, and performance insights.
+- `rulebook_memory` — architectural decisions and their tradeoffs.
 
 <!-- CLAUDE:END -->

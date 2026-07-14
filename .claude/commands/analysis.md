@@ -35,5 +35,5 @@ file to the next), each with: title, evidence (file:line), impact, confidence.
 
 1. Create implementation tasks from the plan: `rulebook task create phase1_<slug>-<name>`
 2. Each task should reference the analysis: `Source: docs/analysis/<slug>/`
-3. Capture key findings: `rulebook_knowledge_add` / `rulebook_learn_capture` tagged `analysis:<slug>`
-4. Before implementing, consult the knowledge base: `rulebook_knowledge_list` filtered by `analysis:<slug>`
+3. Capture key findings: `rulebook_memory {action:"add"}` tagged `analysis:<slug>`
+4. Before implementing, consult prior context: `rulebook_memory {action:"list"}`

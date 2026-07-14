@@ -18,5 +18,5 @@ rulebook knowledge list --category architecture
 1. Lists all entries; filter by `--type` or `--category`.
 2. For details on one entry: `rulebook knowledge show <slug>`.
 
-**MCP equivalent**: `rulebook_knowledge_list`
+**MCP equivalent**: `rulebook_memory`
 <!-- RULEBOOK:END -->
