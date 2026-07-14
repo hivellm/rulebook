@@ -5,6 +5,14 @@
 
 echo "🔍 Running TypeScript/JavaScript pre-commit checks..."
 
+# v7: skip type-check/lint entirely when no source files are staged
+# (docs-only commits should not pay a 30-60s quality gate).
+if git diff --cached --name-only | grep -qE "\\.(ts|tsx|js|jsx|mjs|cjs)$"; then :; else
+  echo "  · no staged source files — checks not needed"
+  exit 0
+fi
+
+
 # Marker-comment gate (v7 — replaces the old PreToolUse content regex).
 # Only lines ADDED by this commit are checked, so existing occurrences
 # and legitimate strings elsewhere never trip it.

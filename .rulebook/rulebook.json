@@ -26,18 +26,9 @@
   "skills": {
     "enabled": [
       "languages/typescript",
-      "core/agent-automation",
-      "core/dag-workflow",
-      "core/documentation-rules",
-      "core/quality-enforcement",
-      "core/rulebook-task-management",
-      "core/dag",
-      "core/ralph",
       "core/rulebook"
     ],
-    "disabled": [
-      "core/analysis"
-    ],
+    "disabled": [],
     "order": []
   },
   "agentsMode": "lean"
