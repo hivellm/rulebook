@@ -341,10 +341,7 @@ export async function startRulebookMcpServer(): Promise<void> {
     }) as typeof server.registerTool;
 
     // Zod schema reused across tools for workspace project targeting
-    const projectIdSchema = z
-        .string()
-        .optional()
-        .describe('Project ID (workspace mode only, defaults to default project)');
+    const projectIdSchema = z.string().optional().describe('workspace project override');
 
     // Shared context handed to each extracted domain tool module.
     const ctx: ToolContext = {
