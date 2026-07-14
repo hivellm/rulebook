@@ -12,6 +12,15 @@ import type { ToolContext } from './context.js';
 
 type ToolResult = { content: Array<{ type: 'text'; text: string }> };
 
+/**
+ * Session-boundary hygiene (docs/analysis/session-auto-cleanup/ R1): task
+ * archive and session end are the natural cleanup moments — signal, in-band
+ * and at zero hook cost, that rotating the session is cheapest right now.
+ */
+export const CONTEXT_TIP =
+    'Durable state saved to .rulebook/. A fresh session boots in ~1.7k tokens — ' +
+    '/clear now is the cheapest moment, or /compact <focus> to keep going.';
+
 function ok(payload: Record<string, unknown>): ToolResult {
     return { content: [{ type: 'text', text: JSON.stringify({ success: true, ...payload }) }] };
 }
@@ -100,7 +109,7 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                         return ok({ taskId: args.taskId, message: 'updated' });
                     case 'archive':
                         await tm.archiveTask(args.taskId!, args.skipValidation || false);
-                        return ok({ taskId: args.taskId, message: 'archived' });
+                        return ok({ taskId: args.taskId, message: 'archived', contextTip: CONTEXT_TIP });
                     case 'validate': {
                         const v = await tm.validateTask(args.taskId!);
                         return ok({ valid: v.valid, errors: v.errors, warnings: v.warnings });
@@ -320,7 +329,7 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                         'utf-8'
                     );
                 }
-                return ok({ message: 'session summary saved' });
+                return ok({ message: 'session summary saved', contextTip: CONTEXT_TIP });
             } catch (error) {
                 return fail(error);
             }

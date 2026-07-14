@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session hygiene (docs/analysis/session-auto-cleanup/)
+
+- `rulebook_task {action:"archive"}` and `rulebook_session {action:"end"}`
+  responses now carry a `contextTip` — the in-band, zero-hook signal that
+  rotating the session (/clear) is cheapest right after a boundary, or
+  `/compact <focus>` to continue.
+- Generated statusLine shows a context meter (`dir | branch | ctx NN%`) from
+  the statusline stdin JSON; degrades gracefully when the field is absent.
+- Generated CLAUDE.md carries one durable line of boundary guidance
+  (compact at ~60% at task boundaries; state lives in `.rulebook/`).
+
+### Fixed
+
+- `mergeClaudeMd` block replacement had `v5.3.0` hardcoded in its sentinel
+  regex — CLAUDE.md files stamped by v7 silently stopped being updated.
+  Now version-tolerant (any `RULEBOOK:START v*` block), with a regression
+  test.
+
 ## [7.0.0] - 2026-07-14
 
 **Mission: run complementary to modern frontier models (Opus/Fable), never as

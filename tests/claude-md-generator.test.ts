@@ -126,6 +126,21 @@ describe('claude-md-generator (v5.3.0)', () => {
             expect(endCount).toBe(1);
         });
 
+        it('replaces blocks stamped by ANY past version (regression: hardcoded v5.3.0 regex)', async () => {
+            const target = getClaudeMdPath(projectRoot);
+            const oldStamped =
+                '<!-- RULEBOOK:START v6.5.0 — old release -->\n# Old block content\n<!-- RULEBOOK:END -->\n\n## User tail\nkeep me\n';
+            await fs.writeFile(target, oldStamped);
+
+            const result = await mergeClaudeMd(projectRoot);
+            expect(result.mode).toBe('replace');
+
+            const after = await fs.readFile(target, 'utf-8');
+            expect(after).not.toContain('Old block content');
+            expect(after).toContain('few rules, all deliberate');
+            expect(after).toContain('## User tail');
+        });
+
         it('migrates a legacy v5.2 CLAUDE.md into AGENTS.override.md and writes a fresh CLAUDE.md', async () => {
             const target = getClaudeMdPath(projectRoot);
             const legacy =

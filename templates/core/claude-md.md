@@ -37,5 +37,7 @@ mandates orchestration.
   `rulebook_memory`.
 - Project specs live in `.rulebook/specs/` — read a spec when the work touches its area.
 - Analyses live in `docs/analysis/<slug>/` — numbered files, one theme per file.
+- Long session? `/compact <focus>` at a task boundary (~60% context). After
+  `rulebook_task {action:"archive"}`, `/clear` is free — state lives in `.rulebook/`.
 
 <!-- RULEBOOK:END -->

@@ -60,9 +60,17 @@ export const FULL_AUTONOMY_PERMISSIONS: readonly string[] = [
     'mcp__rulebook',
 ];
 
-/** Portable statusLine: "<dir> | <branch>" (branch segment omitted outside a repo). */
-const STATUS_LINE_COMMAND =
-    'echo "$(basename "$(pwd)")$(git branch --show-current 2>/dev/null | sed "s/^/ | /")"';
+/**
+ * Portable statusLine: "<dir> | <branch> | ctx NN%".
+ * Claude Code pipes a JSON payload on stdin; `context_window.used_percentage`
+ * (when present) becomes a context meter — the Cline-style pressure signal at
+ * zero hook cost (docs/analysis/session-auto-cleanup/ R2). Pure sh/sed; every
+ * segment degrades gracefully when its source is absent.
+ */
+export const STATUS_LINE_COMMAND =
+    'input=$(cat 2>/dev/null); ' +
+    'pct=$(printf "%s" "$input" | sed -n "s/.*\\"used_percentage\\":[^0-9]*\\([0-9]*\\).*/\\1/p" | head -1); ' +
+    'echo "$(basename "$(pwd)")$(git branch --show-current 2>/dev/null | sed "s/^/ | /")${pct:+ | ctx ${pct}%}"';
 
 interface HookCommand {
     type: 'command';
