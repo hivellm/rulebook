@@ -75,7 +75,12 @@ const RETIRED_SPECS = [
 ];
 
 /** Skills that existed only to serve retired subsystems. */
-const RETIRED_SKILLS = ['rulebook-terse', 'rulebook-terse-commit', 'rulebook-terse-review', 'handoff'];
+const RETIRED_SKILLS = [
+    'rulebook-terse',
+    'rulebook-terse-commit',
+    'rulebook-terse-review',
+    'handoff',
+];
 
 /**
  * Slash commands retired in phase6 — they duplicated the consolidated MCP
@@ -97,7 +102,12 @@ const RETIRED_COMMANDS = [
 ];
 
 /** Markers proving a command doc was shipped by rulebook. */
-const COMMAND_MARKERS = ['<!-- RULEBOOK:START', 'MCP equivalent', 'rulebook_task', 'rulebook_memory'];
+const COMMAND_MARKERS = [
+    '<!-- RULEBOOK:START',
+    'MCP equivalent',
+    'rulebook_task',
+    'rulebook_memory',
+];
 
 /** Loose .rulebook files from retired subsystems. */
 const RETIRED_RULEBOOK_FILES = ['COMPACT_CONTEXT.md', '.terse-mode'];
@@ -178,7 +188,10 @@ export async function planV6Cleanup(projectRoot: string): Promise<V6CleanupPlan>
             if (retired.has(entry)) {
                 plan.remove.push(rel(p));
             } else if (entry !== entry.toLowerCase() && entry.endsWith('.md')) {
-                plan.rename.push({ from: rel(p), to: rel(path.join(specsDir, entry.toLowerCase())) });
+                plan.rename.push({
+                    from: rel(p),
+                    to: rel(path.join(specsDir, entry.toLowerCase())),
+                });
             }
         }
     }

@@ -191,9 +191,7 @@ describe('claude-settings-manager (v7)', () => {
             expect(after.permissions.defaultMode).toBe('bypassPermissions');
             // User rules preserved, no duplicates, new rules appended
             expect(after.permissions.allow).toContain('mcp__custom');
-            expect(
-                after.permissions.allow.filter((r: string) => r === 'Bash(*)')
-            ).toHaveLength(1);
+            expect(after.permissions.allow.filter((r: string) => r === 'Bash(*)')).toHaveLength(1);
             expect(after.permissions.deny).toContain('WebFetch(domain:evil.com)');
             expect(after.env.MY_CUSTOM).toBe('value');
         });
@@ -238,8 +236,6 @@ describe('claude-settings-manager (v7)', () => {
         await fs.mkdir(path.dirname(target), { recursive: true });
         await fs.writeFile(target, 'this is not json');
 
-        await expect(applyClaudeSettings(projectRoot, V7_DESIRE)).rejects.toThrow(
-            /not valid JSON/
-        );
+        await expect(applyClaudeSettings(projectRoot, V7_DESIRE)).rejects.toThrow(/not valid JSON/);
     });
 });

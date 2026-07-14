@@ -57,9 +57,7 @@ export async function updateSingleProject(
             for (const r of plan.rename) console.log(chalk.gray(`  - ${r.from} → ${r.to}`));
         }
         if (plan.preserved.length > 0) {
-            console.log(
-                chalk.bold(`\nKept (look user-authored — no rulebook marker):`)
-            );
+            console.log(chalk.bold(`\nKept (look user-authored — no rulebook marker):`));
             for (const p of plan.preserved) console.log(chalk.gray(`  · ${p}`));
         }
         console.log(chalk.gray('\nRun without --dry-run to apply.\n'));
@@ -315,10 +313,7 @@ export async function updateSingleProject(
 
     try {
         const { ensureGitignoreEntries } = await import('../../utils/gitignore.js');
-        await ensureGitignoreEntries(cwd, [
-            'CLAUDE.local.md',
-            '.rulebook/backup/',
-        ]);
+        await ensureGitignoreEntries(cwd, ['CLAUDE.local.md', '.rulebook/backup/']);
     } catch {
         // non-fatal
     }
@@ -494,7 +489,9 @@ export async function updateSingleProject(
         if (plan.remove.length > 0 || plan.rename.length > 0) {
             const { removed, renamed } = await applyV6Cleanup(cwd, plan);
             if (removed.length > 0) {
-                console.log(chalk.gray(`  • v7 cleanup: removed ${removed.length} retired file(s)`));
+                console.log(
+                    chalk.gray(`  • v7 cleanup: removed ${removed.length} retired file(s)`)
+                );
             }
             if (renamed.length > 0) {
                 console.log(

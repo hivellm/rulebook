@@ -24,7 +24,7 @@ fi
 
 
 # Format check
-if command -v prettier &> /dev/null; then
+if [ -f node_modules/.bin/prettier ]; then
   echo "  → Format checking..."
   npx prettier --check "src/**/*.{ts,tsx,js,jsx}" "tests/**/*.{ts,tsx,js,jsx}" 2>/dev/null || {
     echo "❌ Format check failed. Run: npm run format"

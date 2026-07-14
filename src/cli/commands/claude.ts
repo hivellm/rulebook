@@ -69,7 +69,9 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
             );
         console.log(chalk.gray('  • settings.json: hooks, safe permissions allowlist, statusLine'));
         console.log(
-            chalk.gray(`  • settings.json: default model "${defaultModel}", full-autonomy permissions`)
+            chalk.gray(
+                `  • settings.json: default model "${defaultModel}", full-autonomy permissions`
+            )
         );
         console.log(chalk.gray('\nRestart Claude Code to load the updated configuration.'));
     } catch (error) {

@@ -199,9 +199,7 @@ export async function generateAgentsContent(config: ProjectConfig): Promise<stri
 
     // Only reference QUALITY_ENFORCEMENT if not in light mode
     if (!config.lightMode) {
-        sections.push(
-            `- \`/${rulebookDir}/specs/quality.md\` - Quality enforcement rules`
-        );
+        sections.push(`- \`/${rulebookDir}/specs/quality.md\` - Quality enforcement rules`);
     }
 
     // Only reference GIT if enabled

@@ -214,11 +214,20 @@ describe('TaskManager', () => {
         it('should fail validation for short purpose', async () => {
             await taskManager.createTask('phase1_invalid-task');
             // Write a genuinely short purpose (the scaffold placeholder is long).
-            const proposalPath = join(testDir, '.rulebook', 'tasks', 'phase1_invalid-task', 'proposal.md');
+            const proposalPath = join(
+                testDir,
+                '.rulebook',
+                'tasks',
+                'phase1_invalid-task',
+                'proposal.md'
+            );
             const content = await fs.readFile(proposalPath, 'utf-8');
             await fs.writeFile(
                 proposalPath,
-                content.replace('[Explain why this change is needed - minimum 20 characters]', 'too short')
+                content.replace(
+                    '[Explain why this change is needed - minimum 20 characters]',
+                    'too short'
+                )
             );
 
             const validation = await taskManager.validateTask('phase1_invalid-task');

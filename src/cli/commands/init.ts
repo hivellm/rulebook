@@ -420,10 +420,7 @@ export async function initCommand(options: {
                         chalk.gray('  • created CLAUDE.local.md (personal overrides, gitignored)')
                     );
                 }
-                await ensureGitignoreEntries(cwd, [
-                    'CLAUDE.local.md',
-                    '.rulebook/backup/',
-                ]);
+                await ensureGitignoreEntries(cwd, ['CLAUDE.local.md', '.rulebook/backup/']);
             } catch {
                 // non-fatal
             }

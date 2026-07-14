@@ -40,8 +40,14 @@ function fail(error: unknown): ToolResult {
 }
 
 export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
-    const { projectRoot, workspaceManager, projectIdSchema, getTaskMgr, getSkillsMgr, getConfigMgr } =
-        ctx;
+    const {
+        projectRoot,
+        workspaceManager,
+        projectIdSchema,
+        getTaskMgr,
+        getSkillsMgr,
+        getConfigMgr,
+    } = ctx;
 
     /**
      * Workspace routing (#24): projectId is inferred server-side from an
@@ -95,10 +101,7 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 status: z.enum(['pending', 'in-progress', 'completed', 'blocked']).optional(),
                 includeArchived: z.boolean().optional(),
                 skipValidation: z.boolean().optional(),
-                tailWaiver: z
-                    .string()
-                    .optional()
-                    .describe('archive: why the tail does not apply'),
+                tailWaiver: z.string().optional().describe('archive: why the tail does not apply'),
                 path: z.string().optional().describe('file path → routes to its project'),
                 projectId: projectIdSchema,
             },
@@ -142,7 +145,11 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                             args.skipValidation || false,
                             args.tailWaiver
                         );
-                        return ok({ taskId: args.taskId, message: 'archived', contextTip: CONTEXT_TIP });
+                        return ok({
+                            taskId: args.taskId,
+                            message: 'archived',
+                            contextTip: CONTEXT_TIP,
+                        });
                     case 'validate': {
                         const v = await tm.validateTask(args.taskId!);
                         return ok({ valid: v.valid, errors: v.errors, warnings: v.warnings });
@@ -198,7 +205,9 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                     switch (args.action) {
                         case 'add': {
                             if (!args.type || !args.title || !args.category || !args.content)
-                                return fail('knowledge add requires type, title, category, content');
+                                return fail(
+                                    'knowledge add requires type, title, category, content'
+                                );
                             const entry = await km.add(args.type as any, args.title, {
                                 category: args.category as any,
                                 description: args.content,
@@ -216,7 +225,9 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                         case 'show': {
                             if (!args.id) return fail('show requires id');
                             const r = await km.show(args.id);
-                            return r ? ok({ entry: r.entry, content: r.content }) : fail('not found');
+                            return r
+                                ? ok({ entry: r.entry, content: r.content })
+                                : fail('not found');
                         }
                         default:
                             return fail(`knowledge does not support action "${args.action}"`);
@@ -334,14 +345,15 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                         const lastEntries = history
                             ? history.split(/^### /m).filter(Boolean).slice(0, 3)
                             : [];
-                        plans = [
-                            block('CONTEXT') && `## Active Context\n${block('CONTEXT')}`,
-                            block('TASK') && `## Current Task\n${block('TASK')}`,
-                            lastEntries.length &&
-                                `## Recent Sessions\n### ${lastEntries.join('### ')}`,
-                        ]
-                            .filter(Boolean)
-                            .join('\n\n') || null;
+                        plans =
+                            [
+                                block('CONTEXT') && `## Active Context\n${block('CONTEXT')}`,
+                                block('TASK') && `## Current Task\n${block('TASK')}`,
+                                lastEntries.length &&
+                                    `## Recent Sessions\n### ${lastEntries.join('### ')}`,
+                            ]
+                                .filter(Boolean)
+                                .join('\n\n') || null;
                         // Files without block markers (user-managed): cap at 4 KB.
                         if (!plans && full.trim()) plans = full.slice(0, 4096);
                     }

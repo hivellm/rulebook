@@ -2,7 +2,6 @@ import inquirer from 'inquirer';
 import chalk from 'chalk';
 import type { DetectionResult, ProjectConfig, LanguageDetection } from '../types.js';
 
-
 type LanguageId = LanguageDetection['language'];
 
 const LANGUAGE_CHOICES: Array<{ name: string; value: string }> = [

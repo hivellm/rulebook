@@ -117,13 +117,19 @@ export async function hasFlatLayout(
 ): Promise<boolean> {
     const rulebookPath = path.join(projectRoot, rulebookDir);
 
-    // Check for known spec files directly in /rulebook/ root
+    // Check for known spec files directly in /rulebook/ root. Legacy (v4/v5)
+    // layouts used UPPERCASE names; v7 uses lowercase — recognize both on
+    // case-SENSITIVE filesystems (Linux CI).
     const knownFiles = [
         'RULEBOOK.md',
         'QUALITY_ENFORCEMENT.md',
         'GIT.md',
         'AGENT_AUTOMATION.md',
         'TYPESCRIPT.md',
+        'rulebook.md',
+        'quality.md',
+        'git.md',
+        'typescript.md',
     ];
 
     for (const file of knownFiles) {
