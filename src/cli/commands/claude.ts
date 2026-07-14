@@ -34,21 +34,15 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
             return;
         }
 
-        // v5.9.0: only the consolidated quality-enforcement PreToolUse hook is
-        // wired by default. The per-turn (Stop), per-prompt (UserPromptSubmit)
-        // and SessionStart hooks added measurable latency for marginal value;
-        // they were removed so a default install ships exactly one hook. They
-        // remain available via explicit rulebook.json opt-in (handled by the
-        // manager's desire flags), and stale entries self-heal on next sync.
+        // v7: exactly one optional path-only guard + the full-autonomy
+        // permission profile. No hooks on Stop/UserPromptSubmit/SessionStart,
+        // no orchestration enforcement (P0). Stale v5/v6 entries self-heal on
+        // sync via LEGACY_SIGNATURES.
         await applyClaudeSettings(cwd, {
-            teamEnforcement: false,
-            sessionHandoff: false,
-            qualityEnforcement: true,
-            terseMode: false,
-            permissionsAllowlist: true,
+            taskScaffoldingGuard: true,
+            fullAutonomyPermissions: true,
             statusLine: true,
             defaultModel,
-            updateCheck: false,
         });
 
         console.log(chalk.green('\n✅ Claude Code setup applied'));

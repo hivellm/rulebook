@@ -22,5 +22,17 @@
   "enabledMcpjsonServers": [
     "rulebook"
   ],
-  "hooks": {}
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/protect-task-scaffolding.sh"
+          }
+        ]
+      }
+    ]
+  }
 }

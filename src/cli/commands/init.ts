@@ -441,21 +441,15 @@ export async function initCommand(options: {
                 const { applyClaudeSettings } = await import(
                     '../../core/claude/claude-settings-manager.js'
                 );
-                // v5.9.0: a default install ships exactly one hook (quality
-                // enforcement). The handoff/terse/compact hooks added per-turn,
-                // per-prompt and per-session latency for marginal value, so they
-                // now default OFF and are opt-in via rulebook.json. Their `else`
-                // branch in the manager strips stale entries on the next sync.
+                // v7: one optional path-only guard + full-autonomy permissions.
+                // No Stop/UserPromptSubmit/SessionStart hooks, no orchestration
+                // enforcement (P0). Stale v5/v6 entries are stripped on sync.
                 const rulebookCfg = await configManager.loadConfig();
                 const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
-                const handoffEnabled = rulebookCfg?.handoff?.enabled ?? false;
-                const terseEnabled = rulebookCfg?.terse?.enabled ?? false;
                 await applyClaudeSettings(cwd, {
-                    teamEnforcement: multiAgentEnabled,
-                    sessionHandoff: handoffEnabled,
-                    compactContextReinject: false,
-                    qualityEnforcement: true,
-                    terseMode: terseEnabled,
+                    taskScaffoldingGuard: true,
+                    fullAutonomyPermissions: true,
+                    teamsEnv: multiAgentEnabled,
                 });
             } catch (err) {
                 console.log(
@@ -621,6 +615,26 @@ export async function initCommand(options: {
                     '  Then run `rulebook init` inside each sub-project individually for best results.\n'
                 )
             );
+        }
+
+        // v7: npm update advisory lives in the CLI (replaces the SessionStart hook).
+        try {
+            const { checkForUpdate } = await import('../../utils/update-check.js');
+            const { readFileSync } = await import('fs');
+            const { fileURLToPath } = await import('url');
+            const pkgPath = path.join(
+                path.dirname(fileURLToPath(import.meta.url)),
+                '..',
+                '..',
+                '..',
+                'package.json'
+            );
+            const version = (JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version: string })
+                .version;
+            const advisory = await checkForUpdate(cwd, version);
+            if (advisory) console.log(chalk.yellow(`\n⬆ ${advisory}`));
+        } catch {
+            // advisory only — never block init
         }
 
         console.log(chalk.bold.green('\n✨ Rulebook initialization complete!\n'));

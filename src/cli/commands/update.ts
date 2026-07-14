@@ -321,22 +321,19 @@ export async function updateSingleProject(
         const { applyClaudeSettings } = await import(
             '../../core/claude/claude-settings-manager.js'
         );
-        // v5.9.0: a default install ships exactly one hook (quality enforcement).
-        // handoff/terse/compact default OFF (opt-in via rulebook.json); the
-        // manager's else branch removes any stale entries from older versions.
+        // v7: one optional path-only guard + full-autonomy permissions; every
+        // retired v5/v6 hook entry is stripped on sync (LEGACY_SIGNATURES).
         const rulebookCfg = await configManager.loadConfig();
         const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
-        const handoffEnabled = rulebookCfg?.handoff?.enabled ?? false;
-        const terseEnabled = rulebookCfg?.terse?.enabled ?? false;
         const settingsResult = await applyClaudeSettings(cwd, {
-            teamEnforcement: multiAgentEnabled,
-            sessionHandoff: handoffEnabled,
-            compactContextReinject: false,
-            qualityEnforcement: true,
-            terseMode: terseEnabled,
+            taskScaffoldingGuard: true,
+            fullAutonomyPermissions: true,
+            teamsEnv: multiAgentEnabled,
         });
         if (settingsResult.changed) {
-            console.log(chalk.gray(`  • .claude/settings.json refreshed (hooks wired)`));
+            console.log(
+                chalk.gray(`  • .claude/settings.json refreshed (v7 lean hooks + permissions)`)
+            );
         }
     } catch (err) {
         console.log(
@@ -583,6 +580,13 @@ export async function updateSingleProject(
     console.log(chalk.white('Updated components:'));
     console.log(chalk.green('  ✓ AGENTS.md - Merged with latest templates'));
     console.log(chalk.green(`  ✓ .rulebook - Updated to v${getRulebookVersion()}`));
+
+    // v7: npm update advisory lives in the CLI (replaces the SessionStart hook).
+    {
+        const { checkForUpdate } = await import('../../utils/update-check.js');
+        const advisory = await checkForUpdate(cwd, getRulebookVersion());
+        if (advisory) console.log(chalk.yellow(`\n⬆ ${advisory}`));
+    }
 
     console.log(chalk.white('\nWhat was updated:'));
     console.log(chalk.gray(`  - ${detection.languages.length} language templates`));
