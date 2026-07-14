@@ -111,3 +111,22 @@ cache and in-context knowledge exactly when the model is most productive, forcin
 a cold restart that re-pays the full ~15k-token boot cost.
 **Impact**: high.
 **Confidence**: high.
+
+## F-011 — v6 demands autonomy in rules but leaves permission prompts on
+
+**Evidence**: AGENTS.override.md / full-task-no-questions.md mandate "execute the
+full task in one turn — the user is busy, stop interrupting them", yet the
+generated permission profile (`SAFE_PERMISSIONS` in
+[claude-settings-manager.ts](../../../src/core/claude/claude-settings-manager.ts))
+allowlists only ~12 read-only commands. Every Write/Edit beyond accepted paths,
+every mutating Bash command, every WebFetch/MCP call outside the list **stops the
+session and waits for a human click**.
+
+A permission prompt is the worst latency class in the whole stack: wall-clock is
+unbounded (minutes to hours if the user stepped away), it breaks the model's
+execution flow mid-task, and it contradicts the framework's own autonomy
+directives. v6 pays the cost of autonomy rules (context weight) without
+delivering autonomy (the harness still interrupts).
+**Impact**: critical — for unattended/agentic use this dominates every other
+latency source combined.
+**Confidence**: high.

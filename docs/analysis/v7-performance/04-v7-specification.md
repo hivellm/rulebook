@@ -73,7 +73,36 @@ actual v7 CLAUDE.md and rules file) lives in
   deleted — they duplicate native harness skills and pad the skills list.
 - **Workflows**: opt-in (`rulebook workflows add`), not default-installed.
 
-## 4.6 Migration
+## 4.6 Permissions layer (full autonomy by default — F-011)
+
+v7 generates a **full-autonomy permission profile** so the model never stalls
+waiting for a human click. Guardrails live in the directive layer (git-safety
+values the model follows) and in the quality gate — not in permission prompts.
+
+Generated `.claude/settings.json` permissions:
+
+```json
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(*)", "Read(*)", "Edit(*)", "Write(*)",
+      "Glob(*)", "Grep(*)", "Agent(*)",
+      "WebFetch(*)", "WebSearch", "TodoWrite",
+      "mcp__rulebook"
+    ]
+  }
+}
+```
+
+- `acceptEdits` + the allow rules above remove prompts for everything the model
+  routinely does (edits, shell, subagents, web, rulebook MCP).
+- Rulebook only ever **adds** rules and only sets `defaultMode` when absent —
+  user-authored permissions and stricter enterprise policies always win.
+- Users who want prompts back tighten `AGENTS.override.md`-style via their own
+  settings; Rulebook never re-tightens on update.
+
+## 4.7 Migration
 
 `rulebook update` on a v6 project:
 

@@ -33,7 +33,7 @@ Headline numbers (measured, see [01](01-measured-overhead.md)):
 | File | Theme | Findings |
 |---|---|---|
 | [01-measured-overhead.md](01-measured-overhead.md) | Measured overhead: context, hooks, MCP, footprint | F-001..F-004 |
-| [02-behavioral-conflicts.md](02-behavioral-conflicts.md) | How v6 fights modern models (the dominant cost) | F-005..F-010 |
+| [02-behavioral-conflicts.md](02-behavioral-conflicts.md) | How v6 fights modern models (the dominant cost) | F-005..F-011 |
 | [03-design-principles.md](03-design-principles.md) | v7 design principles (P0: never block orchestration) | — |
 | [04-v7-specification.md](04-v7-specification.md) | Concrete v7 spec: context, hooks, MCP, process, assets, migration | — |
 | [05-budget-and-metrics.md](05-budget-and-metrics.md) | Budgets, acceptance metrics + **live impact ledger** (one row per change) | — |

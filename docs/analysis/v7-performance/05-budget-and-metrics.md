@@ -16,6 +16,7 @@ ceilings, verified by the benchmark harness (see acceptance checks below).
 | Rule files | 19 | 1 | −95% |
 | Forced subagent round-trips | mandatory | none | wall-clock 2–5× → 1× |
 | Orchestration denials (background agents) | on every untagged dispatch | **0 — never** | P0 |
+| Permission prompts per session (routine ops) | most mutating ops prompt | **~0** (full-autonomy profile) | F-011 |
 | MCP server init | ~370 ms | <150 ms | −60% |
 
 ## Impact ledger (live — one row per change)
@@ -46,3 +47,7 @@ S=SessionStart, St=Stop, U=UserPromptSubmit); files = installed by default init.
    AGENTS.md) contains a directive that denies or mandates subagent/team usage —
    enforced by a fixture-based generator test, not by grep.
 5. **Startup benchmark**: MCP init+tools/list < 150 ms on CI hardware.
+6. **Autonomy profile**: generated settings.json contains
+   `permissions.defaultMode: "acceptEdits"` and the full allow set from draft
+   6.4; generator test asserts user-authored permissions are never removed or
+   tightened.

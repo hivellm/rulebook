@@ -23,6 +23,10 @@ denials on legitimate code (F-009), each costing a full recovery turn.
   no node spawn, no content inspection.
 - Content rules (TODO/stub markers) move to the quality gate (lint/pre-commit)
   where real parsers evaluate code instead of regex payloads.
+- Generated settings ship the full-autonomy permission profile (F-011, spec
+  4.6): `defaultMode: acceptEdits` + broad allow set so the model never stalls
+  on permission prompts; Rulebook only adds rules, never tightens user-authored
+  permissions.
 
 ## Impact
 

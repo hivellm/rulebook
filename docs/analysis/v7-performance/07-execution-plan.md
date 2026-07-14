@@ -29,6 +29,8 @@ deltas vs the v6.0.0 baseline.
   so `rulebook update` strips all retired v6 hooks from existing projects.
 - Rewrite the surviving Edit|Write guard as path-only (no node, no content
   regexes); move content rules (no-TODO/no-stub) to lint/pre-commit.
+- Generate the full-autonomy permission profile (spec 4.6, draft 6.4): no
+  permission prompts for routine operations; never tighten user settings.
 
 ## Phase 3 — MCP consolidation
 
@@ -51,7 +53,7 @@ deltas vs the v6.0.0 baseline.
 
 ## Phase 5 — Migration + docs + benchmarks
 
-- `rulebook update` v6→v7 path with `--dry-run` and diff summary (spec 4.6).
+- `rulebook update` v6→v7 path with `--dry-run` and diff summary (spec 4.7).
 - CI acceptance checks from 05 (token budget, hook audit, MCP schema budget,
   orchestration-freedom test, startup benchmark).
 - README, CHANGELOG, migration guide; before/after numbers published.

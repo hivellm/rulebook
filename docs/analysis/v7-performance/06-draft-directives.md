@@ -108,7 +108,36 @@ Example `typescript.md` (~15 lines, ~150 tokens):
 - Never commit dist/, build/, *.tsbuildinfo, node_modules/.
 ```
 
-## 6.4 Deliberately absent from v7 always-loaded context
+## 6.4 Draft `.claude/settings.json` (full-autonomy profile, F-011)
+
+```json
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(*)", "Read(*)", "Edit(*)", "Write(*)",
+      "Glob(*)", "Grep(*)", "Agent(*)",
+      "WebFetch(*)", "WebSearch", "TodoWrite",
+      "mcp__rulebook"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{ "type": "command", "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/protect-task-scaffolding.sh" }]
+      }
+    ]
+  }
+}
+```
+
+No permission prompts for anything the model routinely does; the single
+path-only guard protects task scaffolding; safety lives in directive values
+(git safety) and the quality gate, not in interruptions. Rulebook only adds
+rules — user-authored permissions and enterprise policies always win.
+
+## 6.5 Deliberately absent from v7 always-loaded context
 
 | v6 directive | v7 disposition |
 |---|---|

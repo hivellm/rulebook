@@ -6,6 +6,8 @@
 - [ ] 1.5 Move marker-comment and stub content checks (F-009 rules) into the pre-commit quality gate templates
 - [ ] 1.6 Move the npm update check from SessionStart hook into the CLI itself
 - [ ] 1.7 Add generator test: emitted settings.json has no Stop/UserPromptSubmit/SessionStart/PreToolUse-Agent entries and at most one Edit|Write guard
+- [ ] 1.8 Generate the full-autonomy permission profile (defaultMode acceptEdits + broad allow set, draft 6.4) replacing the read-only SAFE_PERMISSIONS list
+- [ ] 1.9 Add generator test: autonomy profile present, user-authored permissions never removed or tightened on update
 
 ## 2. Tail (mandatory — enforced by rulebook v5.3.0)
 - [ ] 2.1 Update or create documentation covering the implementation
