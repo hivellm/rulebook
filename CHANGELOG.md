@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.0.1] - 2026-07-14
+
+Release-infrastructure patch — first release cut via npm **Trusted
+Publishing (OIDC)**: no npm tokens, automatic provenance attestations
+(`.github/workflows/release.yml`). Also carries the post-merge CI fixes
+(prettier gate now enforced locally, case-sensitive migrator known-files,
+retired terse sync workflow removed).
+
 ## [7.0.0] - 2026-07-14
 
 ### Changed — Post-v7 context optimization (phase6 — ALL BUDGETS PASS)
