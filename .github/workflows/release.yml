@@ -22,10 +22,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # NOTE: no registry-url here — setup-node would write an .npmrc with a
+      # placeholder _authToken that PREEMPTS the OIDC exchange (npm then sends
+      # the bogus token and gets a 404). With no token config present, npm
+      # >= 11.5.1 performs trusted publishing automatically.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: 'https://registry.npmjs.org'
 
       # Trusted publishing needs npm >= 11.5.1 (node 22 bundles npm 10).
       - name: Upgrade npm for OIDC support
