@@ -1,0 +1,54 @@
+name: Release
+
+# npm Trusted Publisher (OIDC): no NPM_TOKEN secret anywhere. npm mints a
+# short-lived credential from the GitHub Actions OIDC token, and provenance
+# attestations are generated automatically. Requires the package to be
+# configured on npmjs.com: @hivehub/rulebook → Settings → Trusted Publisher →
+# GitHub Actions → repository "hivellm/rulebook", workflow "release.yml".
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write # REQUIRED for npm trusted publishing (OIDC)
+
+jobs:
+  publish:
+    name: Publish to npm (trusted publishing)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      # Trusted publishing needs npm >= 11.5.1 (node 22 bundles npm 10).
+      - name: Upgrade npm for OIDC support
+        run: npm install -g npm@latest && npm --version
+
+      - name: Guard - tag must match package.json version
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag v$TAG_VERSION does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      - name: Install
+        run: npm ci
+
+      - name: Full quality gate
+        run: |
+          npm run type-check
+          npm run lint
+          npx prettier --check "src/**/*.ts" "tests/**/*.ts"
+          npm test
+
+      - name: Publish (OIDC — no token, provenance automatic)
+        run: npm publish
