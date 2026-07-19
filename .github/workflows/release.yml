@@ -1,38 +1,41 @@
 name: Release
 
-# npm Trusted Publisher (OIDC): no NPM_TOKEN secret anywhere. npm mints a
-# short-lived credential from the GitHub Actions OIDC token, and provenance
-# attestations are generated automatically. Requires the package to be
-# configured on npmjs.com: @hivehub/rulebook → Settings → Trusted Publisher →
-# GitHub Actions → repository "hivellm/rulebook", workflow "release.yml".
+# npm Trusted Publisher (OIDC) — mirrors the proven hivellm/thunder setup:
+# npm verifies this workflow's OIDC identity (org/repo/workflow/environment)
+# and mints a short-lived credential itself. No token to store, leak or
+# rotate; provenance attestations are automatic.
+#
+# One-time owner setup at https://www.npmjs.com/package/@hivehub/rulebook/access
+#   organization: hivellm | repository: rulebook | workflow: release.yml
+#   environment: npm
 
 on:
   push:
     tags:
       - 'v*'
 
-permissions:
-  contents: read
-  id-token: write # REQUIRED for npm trusted publishing (OIDC)
-
 jobs:
   publish:
-    name: Publish to npm (trusted publishing)
+    name: npm (@hivehub/rulebook)
     runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write # REQUIRED for npm trusted publishing (OIDC)
     steps:
       - uses: actions/checkout@v4
 
-      # NOTE: no registry-url here — setup-node would write an .npmrc with a
-      # placeholder _authToken that PREEMPTS the OIDC exchange (npm then sends
-      # the bogus token and gets a 404). With no token config present, npm
-      # >= 11.5.1 performs trusted publishing automatically.
+      # Trusted publishing needs Node >= 22.14 and npm >= 11.5.1 — this is the
+      # publisher's Node version, not the package's support floor.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          registry-url: https://registry.npmjs.org
 
-      # Trusted publishing needs npm >= 11.5.1 (node 22 bundles npm 10).
-      - name: Upgrade npm for OIDC support
-        run: npm install -g npm@latest && npm --version
+      - name: Require an npm new enough for trusted publishing
+        run: |
+          npm install -g npm@latest
+          npm --version
 
       - name: Guard - tag must match package.json version
         run: |
@@ -54,4 +57,4 @@ jobs:
           npm test
 
       - name: Publish (OIDC — no token, provenance automatic)
-        run: npm publish
+        run: npm publish --access public

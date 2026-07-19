@@ -15,9 +15,8 @@ automatic provenance attestations.
    - **Organization or user**: `hivellm`
    - **Repository**: `rulebook`
    - **Workflow filename**: `release.yml`
-   - **Environment**: leave empty (or create a GitHub `release` environment
-     with required reviewers for extra gating, and mirror the name here and in
-     the workflow's `environment:` key).
+   - **Environment**: `npm` (must match the workflow's `environment: npm` —
+     same pattern as hivellm/thunder).
 4. Save. From now on the workflow can publish without any token; npm also
    marks releases with **provenance** (visible on the package page).
 
