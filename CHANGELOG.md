@@ -5,7 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [7.0.2] - 2026-08-17
+## [7.1.0] - 2026-08-17
+
+### Added — GitHub-issues task backend (opt-in)
+
+Tasks can now live as labelled GitHub issues instead of directories under
+`.rulebook/tasks/`:
+
+```jsonc
+{ "tasks": { "backend": "github", "repo": "owner/name", "label": "rulebook-task" } }
+```
+
+GitHub is a shared store, so parallel agents — including ones in separate
+worktrees or on other machines — coordinate without conflicting on task files,
+progress renders natively in the issue, and task state cannot diverge between
+branches because it does not live in the repo. Closes #25.
+
+`proposal.md`, `tasks.md`, `design.md` and `specs/<module>/spec.md` become
+marked sections of the issue body; status maps to a `rulebook-status:<state>`
+label; archiving closes the issue. Validation — including the mandatory tail and
+its waiver — is shared with the file backend rather than reimplemented, so both
+enforce identical rules on identical content.
+
+The `rulebook_task` MCP tool and the `rulebook task` CLI are unchanged: a new
+`TaskBackend` interface sits behind them and `resolveTaskBackend()` picks the
+implementation from config. Anything other than an explicit `"github"` — a
+missing key, an unknown value, an unreadable config — resolves to the file
+backend, so a config problem degrades to the historical behaviour instead of
+losing access to tasks. The generated `CLAUDE.md` task line adapts to whichever
+backend is active.
+
+Requires `gh` on PATH and authenticated; a missing or unauthenticated `gh` is
+reported with the command to run rather than an opaque spawn error.
 
 ### Fixed — worktree and `.git` destruction guard
 

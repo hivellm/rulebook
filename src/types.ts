@@ -202,6 +202,14 @@ export interface RulebookConfig {
         tool?: 'turborepo' | 'nx' | 'pnpm' | 'lerna' | 'manual' | null;
         packages?: string[]; // relative paths to package roots
     };
+    // Task backend (v7.1): 'files' keeps tasks in <rulebookDir>/tasks/ (default);
+    // 'github' stores each task as a labelled GitHub issue, so parallel agents
+    // and separate machines share one store instead of conflicting on files.
+    tasks?: {
+        backend?: 'files' | 'github';
+        repo?: string; // owner/name — defaults to whatever `gh` infers from the remote
+        label?: string; // issue label marking rulebook tasks (default: rulebook-task)
+    };
     // MCP server configuration
     mcp?: {
         enabled?: boolean;

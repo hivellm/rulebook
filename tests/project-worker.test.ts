@@ -37,6 +37,9 @@ vi.mock('../src/core/tasks/task-manager.js', () => ({
     TaskManager: vi.fn().mockImplementation(function (this: any) {
         this.list = vi.fn();
     }),
+    // The worker no longer constructs a backend itself — it asks the resolver,
+    // which picks files or GitHub from the project's config.
+    resolveTaskBackend: vi.fn().mockResolvedValue({ list: vi.fn() }),
 }));
 
 vi.mock('../src/core/state/config-manager.js', () => ({
@@ -78,14 +81,14 @@ describe('ProjectWorker', () => {
 
     describe('initialize()', () => {
         it('should create all managers', async () => {
-            const { TaskManager } = await import('../src/core/tasks/task-manager.js');
+            const { resolveTaskBackend } = await import('../src/core/tasks/task-manager.js');
             const { ConfigManager } = await import('../src/core/state/config-manager.js');
             const { SkillsManager } = await import('../src/core/skills/skills-manager.js');
 
             await worker.initialize();
 
             expect(worker.initialized).toBe(true);
-            expect(TaskManager).toHaveBeenCalledWith('/projects/frontend', '.rulebook');
+            expect(resolveTaskBackend).toHaveBeenCalledWith('/projects/frontend', '.rulebook');
             expect(ConfigManager).toHaveBeenCalledWith('/projects/frontend');
             expect(SkillsManager).toHaveBeenCalledWith('/mock/templates', '/projects/frontend');
         });

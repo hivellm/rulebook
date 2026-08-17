@@ -92,6 +92,39 @@ describe('directive guards', () => {
         });
     });
 
+    describe('task tracking line (phase11)', () => {
+        it('names the MCP tool in the default file backend', async () => {
+            const claudeMd = await generateClaudeMd(projectRoot);
+
+            expect(claudeMd).toContain('track via the `rulebook` MCP (`rulebook_task`)');
+            // The placeholder must always be substituted, never shipped raw.
+            expect(claudeMd).not.toContain('TASK_TRACKING_LINE');
+        });
+
+        it('names GitHub issues and the label when the project is in github mode', async () => {
+            await fs.mkdir(path.join(projectRoot, '.rulebook'), { recursive: true });
+            await fs.writeFile(
+                path.join(projectRoot, '.rulebook', 'rulebook.json'),
+                JSON.stringify({ tasks: { backend: 'github', label: 'my-tasks' } })
+            );
+
+            const claudeMd = await generateClaudeMd(projectRoot);
+
+            expect(claudeMd).toContain('tracked as GitHub issues (label `my-tasks`)');
+            expect(claudeMd).not.toContain('TASK_TRACKING_LINE');
+        });
+
+        it('falls back to the default label when github mode names none', async () => {
+            await fs.mkdir(path.join(projectRoot, '.rulebook'), { recursive: true });
+            await fs.writeFile(
+                path.join(projectRoot, '.rulebook', 'rulebook.json'),
+                JSON.stringify({ tasks: { backend: 'github' } })
+            );
+
+            expect(await generateClaudeMd(projectRoot)).toContain('label `rulebook-task`');
+        });
+    });
+
     describe('communication style (phase13)', () => {
         it('CLAUDE.md carries the plain-language section', async () => {
             const claudeMd = await generateClaudeMd(projectRoot);

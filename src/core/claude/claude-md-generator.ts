@@ -39,6 +39,29 @@ export interface ClaudeMdGenerationOptions {
      * commented out so Claude Code does not warn about broken `@imports`.
      */
     keepAllImports?: boolean;
+    /**
+     * Task backend the project is configured for. Decides which tracking line
+     * the generated file carries. Defaults to the file backend.
+     */
+    taskBackend?: 'files' | 'github';
+    /** Issue label used when taskBackend is 'github'. */
+    taskLabel?: string;
+}
+
+/**
+ * Placeholder in `templates/core/claude-md.md`, always substituted — same
+ * mechanism as LANGUAGE_REFS in the lean AGENTS.md template. Keeping it a token
+ * rather than matching prose means a template reword cannot silently strip the
+ * github-mode variant; the generator tests fail instead.
+ */
+const TASK_TRACKING_PLACEHOLDER = 'TASK_TRACKING_LINE';
+
+function renderTaskTrackingLine(options: ClaudeMdGenerationOptions): string {
+    if (options.taskBackend === 'github') {
+        const label = options.taskLabel || 'rulebook-task';
+        return `Multi-session or multi-phase work: tracked as GitHub issues (label \`${label}\`) via \`gh\` or the \`rulebook\` MCP (\`rulebook_task\`).`;
+    }
+    return 'Multi-session or multi-phase work: track via the `rulebook` MCP (`rulebook_task`).';
 }
 
 export function getClaudeMdPath(projectRoot: string): string {
@@ -67,7 +90,34 @@ export async function generateClaudeMd(
     options: ClaudeMdGenerationOptions = {}
 ): Promise<string> {
     const template = await readClaudeMdTemplate();
-    return resolveImports(template, projectRoot, options);
+    // When the caller does not state a backend, take it from the project's own
+    // config so every call site (merger, update, init) adapts without threading
+    // the option through.
+    const resolved =
+        options.taskBackend === undefined
+            ? { ...options, ...(await readTaskConfig(projectRoot)) }
+            : options;
+    const withTaskLine = template.replace(
+        TASK_TRACKING_PLACEHOLDER,
+        renderTaskTrackingLine(resolved)
+    );
+    return resolveImports(withTaskLine, projectRoot, resolved);
+}
+
+/** Read `tasks.backend` / `tasks.label` from `.rulebook/rulebook.json`. */
+async function readTaskConfig(
+    projectRoot: string
+): Promise<Pick<ClaudeMdGenerationOptions, 'taskBackend' | 'taskLabel'>> {
+    try {
+        const raw = await readFile(path.join(projectRoot, '.rulebook', 'rulebook.json'));
+        const tasks = JSON.parse(raw).tasks;
+        if (tasks?.backend === 'github') {
+            return { taskBackend: 'github', taskLabel: tasks.label };
+        }
+    } catch {
+        // No config or unreadable — the file backend is the default.
+    }
+    return { taskBackend: 'files' };
 }
 
 /**

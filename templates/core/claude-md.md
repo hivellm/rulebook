@@ -44,7 +44,7 @@ parallel or context-heavy; work directly when it isn't. Rulebook never blocks or
 mandates orchestration.
 
 ## Rulebook (on demand — no ceremony for small fixes)
-- Multi-session or multi-phase work: track via the `rulebook` MCP (`rulebook_task`).
+- TASK_TRACKING_LINE
   Checklist order = dependencies; independent items may run in parallel.
 - Optional session context: `rulebook_session`. Learned something non-obvious?
   `rulebook_memory`.
