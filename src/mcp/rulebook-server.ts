@@ -15,7 +15,8 @@ import { dirname, join, resolve } from 'path';
 import { z } from 'zod';
 import { ConfigManager } from '../core/state/config-manager.js';
 import { SkillsManager, getDefaultTemplatesPath } from '../core/skills/skills-manager.js';
-import { TaskManager } from '../core/tasks/task-manager.js';
+import { resolveTaskBackend } from '../core/tasks/task-manager.js';
+import type { TaskBackend } from '../core/tasks/task-backend.js';
 import { WorkspaceManager } from '../core/workspace/workspace-manager.js';
 import type { ToolContext } from './tools/context.js';
 import { registerV7Tools } from './tools/v7-tools.js';
@@ -223,7 +224,7 @@ export async function startRulebookMcpServer(): Promise<void> {
     let workspaceManager: WorkspaceManager | null = null;
 
     // Default managers (single-project mode OR default workspace project)
-    let taskManager!: TaskManager;
+    let taskManager!: TaskBackend;
     let skillsManager!: SkillsManager;
     let configManager!: ConfigManager;
     let projectRoot: string;
@@ -281,7 +282,7 @@ export async function startRulebookMcpServer(): Promise<void> {
     } else {
         const singleConfig = loadConfig();
         projectRoot = singleConfig.projectRoot;
-        taskManager = new TaskManager(projectRoot, '.rulebook');
+        taskManager = await resolveTaskBackend(projectRoot, '.rulebook');
         skillsManager = new SkillsManager(getDefaultTemplatesPath(), projectRoot);
         configManager = new ConfigManager(projectRoot);
     }
@@ -291,7 +292,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
     // --- Manager Resolution Helpers (workspace-aware) ---
 
-    async function getTaskMgr(projectId?: string): Promise<TaskManager> {
+    async function getTaskMgr(projectId?: string): Promise<TaskBackend> {
         if (!projectId || !workspaceManager) return taskManager;
         const w = await workspaceManager.getWorker(projectId);
         return w.getTaskManager();

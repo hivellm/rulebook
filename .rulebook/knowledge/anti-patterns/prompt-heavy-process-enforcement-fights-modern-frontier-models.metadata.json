@@ -1,0 +1,19 @@
+{
+  "id": "prompt-heavy-process-enforcement-fights-modern-frontier-models",
+  "type": "anti-pattern",
+  "title": "Prompt-heavy process enforcement fights modern frontier models",
+  "category": "architecture",
+  "description": "Measured in v6.0.0 (analysis: docs/analysis/v7-performance/): the dominant slowdown from Rulebook is NOT hook latency (~36ms/spawn) or MCP startup (~370ms) but (1) ~15k tokens of static context injected every session (CLAUDE.md imports + 19 rule files + 26 MCP tool schemas), (2) 10-14 ceremonial model turns per task (session_start, knowledge_list x3, task_create/update/archive, learn_capture, session_end), (3) forced delegation/sequential-editing rules that multiply wall-clock 2-5x on models with native planning and parallel tool use, and (4) content-regex PreToolUse denials with false positives (e.g. 'placeholder' matches JSX placeholder= attributes) that each cost a full recovery turn. Rules stated 2-3x across files and mutually contradictory rules degrade compliance on rules that matter.",
+  "whenToUse": "Consult before designing any v7+ feature that injects context, adds hooks, adds MCP tools, or mandates model process.",
+  "whenNotToUse": "Cheap, high-precision structural guards (path-scoped deny on .rulebook/tasks manual writes; git safety) remain valid — the anti-pattern is content regexes and process scripting, not enforcement per se.",
+  "createdAt": "2026-07-14T04:34:17.105Z",
+  "tags": [
+    "analysis:v7-performance",
+    "performance",
+    "context-budget",
+    "hooks",
+    "mcp",
+    "v7"
+  ],
+  "source": "manual"
+}

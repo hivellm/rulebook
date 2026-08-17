@@ -1,0 +1,10 @@
+{
+  "id": "opt-out-sentinel-for-generated-files-in-user-editable-locations",
+  "type": "pattern",
+  "title": "Opt-out sentinel for generated files in user-editable locations",
+  "category": "file-generation",
+  "description": "Pattern for generating files into user-editable directories: embed a canonical sentinel comment that the user can delete to \"adopt\" the file and stop regeneration.",
+  "createdAt": "2026-04-07T17:59:03.776Z",
+  "tags": [],
+  "source": "manual"
+}

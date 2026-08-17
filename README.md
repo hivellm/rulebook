@@ -92,6 +92,34 @@ rulebook task archive phase1_add-auth    # Archive when done
 
 Each task gets `proposal.md` (why), `tasks.md` (checklist), and `specs/` (SHALL/MUST requirements with Given/When/Then scenarios).
 
+#### Task backend: files (default) or GitHub issues
+
+By default tasks are directories under `.rulebook/tasks/`. Projects running
+several agents at once can switch to GitHub issues instead, where one issue is
+one task:
+
+```jsonc
+// .rulebook/rulebook.json
+{ "tasks": { "backend": "github", "repo": "owner/name", "label": "rulebook-task" } }
+```
+
+The commands above and the `rulebook_task` MCP tool are unchanged — they talk
+to whichever backend is configured, and agents can equally drive `gh` directly.
+`repo` is optional (`gh` infers it from the remote).
+
+Why switch: GitHub is a shared store, so parallel agents — including ones in
+separate worktrees or on other machines — coordinate without conflicting on
+task files. Progress renders natively in the issue, and task state cannot
+diverge between branches because it does not live in the repo.
+
+What moves into the issue: `proposal.md`, `tasks.md`, `design.md` and any
+`specs/<module>/spec.md` become marked sections of the issue body. Status maps
+to a `rulebook-status:<state>` label, and archiving closes the issue. Project
+specs under `.rulebook/specs/` stay on disk either way.
+
+Requires `gh` on PATH and authenticated (`gh auth login`); rulebook says so
+plainly rather than failing obscurely if it is missing.
+
 ### Knowledge, decisions & learnings
 
 Lightweight, file-based project memory — plain markdown, searchable, committed with your repo.

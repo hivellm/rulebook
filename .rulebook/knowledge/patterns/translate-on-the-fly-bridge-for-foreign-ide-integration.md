@@ -1,0 +1,8 @@
+# Translate-on-the-fly bridge for foreign-IDE integration
+
+**Category**: architecture
+**Tags**: none
+
+## Description
+
+When integrating a third-party tool (OpenCode, etc.) that consumes a different command/agent/skill schema than Rulebook's own templates, translate at generation time directly from the canonical sources (`templates/commands/`, `templates/agents/`, `templates/skills/dev/`) instead of duplicating them under a per-IDE template tree. This avoids template drift, keeps a single source of truth, and reduces maintenance to one frontmatter-mapping function per IDE. Idempotency is enforced via a `<!-- RULEBOOK:START -->` marker so user-owned files at the destination are preserved. A managed-keys sidecar JSON (`.<tool>/.rulebook-managed.json`) lists which top-level/MCP/instructions keys the generator owns, so future updates can refresh them without disturbing user edits.

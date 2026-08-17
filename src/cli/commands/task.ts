@@ -18,7 +18,7 @@ async function resolveTaskManager(
     cwd: string,
     options?: WorkspaceTaskOptions
 ): Promise<{ taskManager: any; projectLabel?: string }> {
-    const { createTaskManager } = await import('../../core/tasks/task-manager.js');
+    const { resolveTaskBackend } = await import('../../core/tasks/task-manager.js');
     const { createConfigManager } = await import('../../core/state/config-manager.js');
     const { isAbsolute, resolve } = await import('path');
 
@@ -26,7 +26,10 @@ async function resolveTaskManager(
         const configManager = createConfigManager(projectRoot);
         const config = await configManager.loadConfig();
         const rulebookDir = config.rulebookDir || '.rulebook';
-        return { taskManager: createTaskManager(projectRoot, rulebookDir), projectLabel: label };
+        return {
+            taskManager: await resolveTaskBackend(projectRoot, rulebookDir),
+            projectLabel: label,
+        };
     };
 
     if (options?.project) {
@@ -63,7 +66,7 @@ async function resolveTaskManager(
     const configManager = createConfigManager(cwd);
     const config = await configManager.loadConfig();
     const rulebookDir = config.rulebookDir || '.rulebook';
-    return { taskManager: createTaskManager(cwd, rulebookDir) };
+    return { taskManager: await resolveTaskBackend(cwd, rulebookDir) };
 }
 
 export async function taskCreateCommand(
@@ -109,7 +112,7 @@ export async function taskListCommand(
 
             console.log(chalk.bold.blue(`\n📋 Workspace Tasks (${ws.config.name})\n`));
 
-            const { createTaskManager } = await import('../../core/tasks/task-manager.js');
+            const { resolveTaskBackend } = await import('../../core/tasks/task-manager.js');
             const { createConfigManager } = await import('../../core/state/config-manager.js');
             const { isAbsolute, resolve } = await import('path');
 
@@ -122,7 +125,7 @@ export async function taskListCommand(
                     const configManager = createConfigManager(projectRoot);
                     const config = await configManager.loadConfig();
                     const rulebookDir = config.rulebookDir || '.rulebook';
-                    const taskManager = createTaskManager(projectRoot, rulebookDir);
+                    const taskManager = await resolveTaskBackend(projectRoot, rulebookDir);
                     const tasks = await taskManager.listTasks(includeArchived);
 
                     if (tasks.length > 0) {

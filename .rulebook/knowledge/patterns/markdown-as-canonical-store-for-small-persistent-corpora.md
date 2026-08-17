@@ -1,0 +1,8 @@
+# Markdown-as-canonical-store for small persistent corpora
+
+**Category**: architecture
+**Tags**: none
+
+## Description
+
+For sub-1K corpora (memories, learnings, notes), prefer plain markdown files with YAML frontmatter as the canonical store over SQLite/binary indexes. Trade-off: pure BM25 over file bodies replaces vector hybrid search — at small scale recall is comparable and a per-call in-memory index build is faster than re-reading a sidecar. Wins: zero native deps, diffable/greppable/git-trackable corpus, atomic temp+rename writes, no index drift to monitor. Add a lazy sidecar inverted-index only above an opt-in threshold (e.g. memoryCount > 1000). Migration from legacy SQLite via a one-shot side-importer that renames the source DB to `.legacy` so the runtime never reads SQLite again.

@@ -16,7 +16,8 @@ overrides in `AGENTS.override.md` (user-owned, wins on conflict). Detail lives i
    `checkout -- .` / `restore .`, `clean -f`, `push --force`, `rebase`, `stash`,
    `branch -D`, branch switching. Always fine: status, diff, log, blame, add, commit.
 4. **No deletion without authorization** — never `rm`/`del` without an explicit user
-   "yes, delete it".
+   "yes, delete it". Never delete or move a `.git`. Worktrees live outside the repo
+   tree and come out via `git worktree remove`, never `rm -rf`.
 5. **Root causes, not workarounds** — research before implementing; never guess at bug
    causes or API behavior.
 6. **Surgical, simple diffs** — touch only what the task needs; the least code that
@@ -30,6 +31,8 @@ overrides in `AGENTS.override.md` (user-owned, wins on conflict). Detail lives i
    files, one theme per file.
 9. **Orchestration is the model's choice** — subagents, parallelism, and teams are
    never blocked and never mandated.
+10. **Answers are plain and short** — plain words over jargon (gloss a term when it
+    isn't obvious), answer before reasoning, no restating what the reader knows.
 
 ## Task format (full spec: `/.rulebook/specs/rulebook.md`)
 

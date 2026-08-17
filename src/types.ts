@@ -192,11 +192,23 @@ export interface RulebookConfig {
     modular?: boolean; // Enable modular /.rulebook directory structure
     rulebookDir?: string; // Custom rulebook directory (default: '.rulebook')
     agentsMode?: 'full' | 'lean'; // AGENTS.md generation mode: full (default) or lean (index-only)
+    // Git push mode stamped into <rulebookDir>/specs/git.md. Persisted so that
+    // `rulebook update` regenerates the spec with the project's chosen mode
+    // instead of silently resetting it to 'manual'.
+    gitPushMode?: 'manual' | 'prompt' | 'auto';
     // Monorepo configuration (v4.0)
     monorepo?: {
         detected?: boolean;
         tool?: 'turborepo' | 'nx' | 'pnpm' | 'lerna' | 'manual' | null;
         packages?: string[]; // relative paths to package roots
+    };
+    // Task backend (v7.1): 'files' keeps tasks in <rulebookDir>/tasks/ (default);
+    // 'github' stores each task as a labelled GitHub issue, so parallel agents
+    // and separate machines share one store instead of conflicting on files.
+    tasks?: {
+        backend?: 'files' | 'github';
+        repo?: string; // owner/name — defaults to whatever `gh` infers from the remote
+        label?: string; // issue label marking rulebook tasks (default: rulebook-task)
     };
     // MCP server configuration
     mcp?: {

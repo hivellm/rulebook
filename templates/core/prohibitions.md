@@ -16,15 +16,22 @@ Require explicit user authorization (destroys history or uncommitted work):
 `branch -D`, `rebase` on shared branches, `stash`. Autonomous and safe:
 `status`/`diff`/`log`/`blame`/`add`/`commit`, creating branches for your own
 work, switching to or merging YOUR agent-created branches, `revert` of your
-own unpushed commits, and `git worktree` for parallel work. Never switch a
-shared checkout that has changes you did not author; never rewrite or merge
-into the default branch except via an approved PR.
+own unpushed commits, and creating a `git worktree` for parallel work — placed
+OUTSIDE the repository tree (`../<repo>-wt-<name>`), never nested under the
+repo root. That autonomy covers creating and using a worktree; tearing one down
+is a deletion and stays under #3. Never switch a shared checkout that has
+changes you did not author; never rewrite or merge into the default branch
+except via an approved PR.
 
 ## 3. No deletion without authorization
 
 Never `rm`/`del` any file without an explicit user "yes, delete it". Caches
 auto-invalidate; build artifacts have clean commands; investigate locks before
-touching them.
+touching them. Deleting, moving, or overwriting a `.git` directory is forbidden
+outright — no task requires it and no authorization makes it routine. Before any
+recursive delete of a path you computed, verify it is non-empty and is not the
+repository root; remove worktrees with `git worktree remove` + `prune`, never
+with `rm -rf`.
 
 ## 4. Research before implementing — never guess
 

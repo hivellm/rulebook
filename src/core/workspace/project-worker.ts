@@ -5,7 +5,8 @@
  * Tracks idle time for lifecycle management.
  */
 
-import { TaskManager } from '../tasks/task-manager.js';
+import { resolveTaskBackend } from '../tasks/task-manager.js';
+import type { TaskBackend } from '../tasks/task-backend.js';
 import { ConfigManager } from '../state/config-manager.js';
 import { SkillsManager, getDefaultTemplatesPath } from '../skills/skills-manager.js';
 import { DecisionManager } from '../tasks/decision-manager.js';
@@ -17,7 +18,7 @@ export class ProjectWorker {
     readonly projectId: string;
     readonly projectRoot: string;
 
-    private taskManager: TaskManager | null = null;
+    private taskManager: TaskBackend | null = null;
     private configManager: ConfigManager | null = null;
     private skillsManager: SkillsManager | null = null;
     private decisionManager: DecisionManager | null = null;
@@ -62,7 +63,7 @@ export class ProjectWorker {
 
         this.configManager = new ConfigManager(this.projectRoot);
         this._rulebookConfig = await this.configManager.loadConfig();
-        this.taskManager = new TaskManager(this.projectRoot, '.rulebook');
+        this.taskManager = await resolveTaskBackend(this.projectRoot, '.rulebook');
         this.skillsManager = new SkillsManager(getDefaultTemplatesPath(), this.projectRoot);
         this.decisionManager = new DecisionManager(this.projectRoot, '.rulebook');
         this.knowledgeManager = new KnowledgeManager(this.projectRoot, '.rulebook');
@@ -77,8 +78,8 @@ export class ProjectWorker {
         this._initialized = false;
     }
 
-    /** Returns the TaskManager for this project. Throws if not initialized. */
-    getTaskManager(): TaskManager {
+    /** Returns the task backend for this project. Throws if not initialized. */
+    getTaskManager(): TaskBackend {
         this.touch();
         if (!this.taskManager) throw new Error(`Worker ${this.projectId} not initialized`);
         return this.taskManager;

@@ -268,6 +268,7 @@ export async function initCommand(options: {
             modules: config.modules as ModuleDetection['module'][],
             modular: config.modular ?? true,
             rulebookDir: config.rulebookDir || '.rulebook',
+            gitPushMode: config.gitPushMode ?? 'manual',
             ...(config.agentsMode ? { agentsMode: config.agentsMode } : {}),
             skills: enabledSkills.length > 0 ? { enabled: enabledSkills } : undefined,
         });

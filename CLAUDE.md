@@ -24,11 +24,19 @@ Managed by [@hivehub/rulebook](https://github.com/hivellm/rulebook) — few rule
 5. Fix forward — never discard uncommitted work.
 6. State assumptions — if interpretations diverge, say so instead of picking silently.
 
+## Communication
+- Plain words over jargon; gloss a term when it isn't obvious from context.
+- Answer first, reasoning after.
+- Cut what the reader already knows and options you didn't take. Length follows
+  the result, not the effort behind it.
+
 ## Git safety (requires explicit user authorization)
 `reset --hard` · `checkout -- .` / `restore .` · `clean -f` · `push --force` ·
 `rebase` on shared branches · `stash` · `branch -D` · switching a shared checkout
 with changes you did not author. Yours autonomously: status/diff/log/add/commit,
 branches you create (create/switch/merge), `git worktree`, PRs via `gh`.
+Worktrees live outside the repo tree and come out via `git worktree remove` —
+never `rm -rf` a worktree, never delete or move a `.git`.
 
 ## Orchestration
 Subagents, parallel dispatch, and teams are your call — fan out freely when work is

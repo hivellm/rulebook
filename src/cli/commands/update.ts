@@ -166,6 +166,15 @@ export async function updateSingleProject(
         }
     }
 
+    // Push mode must survive the update. Prefer the persisted value; fall back to
+    // the mode stamped in the existing git spec (repos installed before v7.0.2
+    // never persisted it); only a project with neither defaults to 'manual'.
+    const { readGitPushModeFromSpec } = await import('../../core/generators/generator.js');
+    const resolvedPushMode =
+        existingConfig.gitPushMode ??
+        (await readGitPushModeFromSpec(cwd, existingConfig.rulebookDir || '.rulebook')) ??
+        'manual';
+
     const minimalMode = options.minimal ?? existingMode === 'minimal';
     const lightMode = options.light !== undefined ? options.light : (existingLightMode ?? false);
     // Default to lean mode unless the user explicitly stored 'full' in their config.
@@ -181,7 +190,7 @@ export async function updateSingleProject(
         strictDocs: true,
         generateWorkflows: false,
         includeGitWorkflow: true,
-        gitPushMode: 'manual' as const,
+        gitPushMode: resolvedPushMode,
         installGitHooks: installHooksOnUpdate,
         minimal: minimalMode,
         lightMode: lightMode,
@@ -236,6 +245,7 @@ export async function updateSingleProject(
         modules: config.modules as ModuleDetection['module'][],
         modular: config.modular ?? true,
         rulebookDir: config.rulebookDir || '.rulebook',
+        gitPushMode: resolvedPushMode,
         skills: detectedSkills.length > 0 ? { enabled: detectedSkills } : undefined,
     });
 
@@ -469,6 +479,9 @@ export async function updateSingleProject(
             cliResponse: 180000,
             testRun: 600000,
         },
+        // This object REPLACES the persisted config, so anything that must
+        // survive an update has to be carried forward explicitly here.
+        gitPushMode: resolvedPushMode,
         ...(existingConfig.skills ? { skills: existingConfig.skills } : {}),
         ...(leanMode
             ? { agentsMode: 'lean' as const }

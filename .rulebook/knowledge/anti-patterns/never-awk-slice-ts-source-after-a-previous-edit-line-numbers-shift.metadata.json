@@ -1,0 +1,10 @@
+{
+  "id": "never-awk-slice-ts-source-after-a-previous-edit-line-numbers-shift",
+  "type": "anti-pattern",
+  "title": "Never awk-slice TS source after a previous Edit — line numbers shift",
+  "category": "tooling",
+  "description": "Anti-pattern: using awk to delete a line range after a prior Edit has shifted line numbers.",
+  "createdAt": "2026-04-07T17:37:20.416Z",
+  "tags": [],
+  "source": "manual"
+}

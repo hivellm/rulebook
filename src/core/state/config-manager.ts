@@ -12,6 +12,50 @@ const writeFileAsync = promisify(writeFile);
 const CONFIG_DIR = '.rulebook';
 const CONFIG_FILE = 'rulebook.json';
 
+export const RULEBOOK_GITIGNORE_HEADER =
+    '# Rulebook - ignore runtime data, keep specs, tasks and project memory';
+
+/**
+ * The `.gitignore` block rulebook owns. Everything named as an exception is
+ * meant to be committed and shared with collaborators.
+ */
+export const RULEBOOK_GITIGNORE_BLOCK = [
+    RULEBOOK_GITIGNORE_HEADER,
+    '/.rulebook/*',
+    '!/.rulebook/specs/',
+    '!/.rulebook/tasks/',
+    '!/.rulebook/archive/',
+    '!/.rulebook/decisions/',
+    '!/.rulebook/knowledge/',
+    '!/.rulebook/learnings/',
+    '!/.rulebook/rulebook.json',
+];
+
+/**
+ * Every line any rulebook release has emitted into that block. They are stripped
+ * before the current block is written, which is what makes the rewrite
+ * idempotent and lets an old project pick up newly added exceptions.
+ */
+const RULEBOOK_MANAGED_GITIGNORE_LINES = new Set<string>([
+    ...RULEBOOK_GITIGNORE_BLOCK,
+    '# Rulebook - ignore runtime data, keep specs and tasks',
+    '.rulebook',
+    '.rulebook/',
+    '.rulebook/*',
+    '/.rulebook',
+    '/.rulebook/',
+    ...[
+        'specs/',
+        'tasks/',
+        'tasks/**/*.md',
+        'archive/',
+        'decisions/',
+        'knowledge/',
+        'learnings/',
+        'rulebook.json',
+    ].flatMap((entry) => [`!.rulebook/${entry}`, `!/.rulebook/${entry}`]),
+]);
+
 function getPackageVersion(): string {
     try {
         const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -486,64 +530,45 @@ export class ConfigManager {
     }
 
     /**
-     * Ensure .gitignore has .rulebook entries with specs/ and tasks/ exceptions
+     * Ensure .gitignore keeps rulebook's runtime data out of git while committing
+     * everything a collaborator needs.
+     *
+     * `/.rulebook/*` ignores the directory wholesale, so every directory worth
+     * sharing must be named as an exception. Project memory — decisions,
+     * knowledge, learnings — and the task archive are shared knowledge, not
+     * runtime state: without their exceptions they are written locally and never
+     * reach anyone else. Negating a directory is enough; git then evaluates the
+     * files inside it, so no `**` patterns are needed.
+     *
+     * Still ignored by the catch-all: backup/, logs/, telemetry/, handoff/, PID
+     * files, STATE.md and PLANS.md.
+     *
+     * The block is rewritten from scratch on every call — lines from any past
+     * release are stripped first — so an existing project picks up newly added
+     * exceptions instead of being skipped by an "already correct" check.
      */
     async ensureGitignore(): Promise<void> {
         const gitignorePath = join(this.projectRoot, '.gitignore');
-        const rulebookBlock = [
-            '',
-            '# Rulebook - ignore runtime data, keep specs and tasks',
-            '/.rulebook/*',
-            '!/.rulebook/specs/',
-            '!/.rulebook/tasks/',
-            '!/.rulebook/tasks/**/*.md',
-            '!/.rulebook/rulebook.json',
-        ].join('\n');
 
         try {
-            if (existsSync(gitignorePath)) {
-                let content = await readFileAsync(gitignorePath, 'utf-8');
+            const existing = existsSync(gitignorePath)
+                ? await readFileAsync(gitignorePath, 'utf-8')
+                : '';
 
-                // Already has the correct block with all exceptions
-                if (
-                    content.includes('!/.rulebook/specs/') &&
-                    content.includes('!/.rulebook/tasks/**/*.md')
-                ) {
-                    return;
-                }
+            const kept = existing
+                .split('\n')
+                .filter((line) => !RULEBOOK_MANAGED_GITIGNORE_LINES.has(line.trim()));
 
-                // Has old-style entry without exceptions — replace it
-                if (content.includes('.rulebook')) {
-                    // Remove old entries (with or without leading /)
-                    const lines = content.split('\n');
-                    const filtered = lines.filter((line) => {
-                        const trimmed = line.trim();
-                        return (
-                            trimmed !== '.rulebook' &&
-                            trimmed !== '.rulebook/' &&
-                            trimmed !== '.rulebook/*' &&
-                            trimmed !== '/.rulebook' &&
-                            trimmed !== '/.rulebook/' &&
-                            trimmed !== '/.rulebook/*' &&
-                            trimmed !== '!.rulebook/specs/' &&
-                            trimmed !== '!.rulebook/tasks/' &&
-                            trimmed !== '!.rulebook/tasks/**/*.md' &&
-                            trimmed !== '!.rulebook/rulebook.json' &&
-                            trimmed !== '!/.rulebook/specs/' &&
-                            trimmed !== '!/.rulebook/tasks/' &&
-                            trimmed !== '!/.rulebook/tasks/**/*.md' &&
-                            trimmed !== '!/.rulebook/rulebook.json' &&
-                            trimmed !== '# Rulebook - ignore runtime data, keep specs and tasks'
-                        );
-                    });
-                    content = filtered.join('\n');
-                }
+            // Drop the blank lines the removal may have left dangling at the end.
+            while (kept.length > 0 && kept[kept.length - 1].trim() === '') kept.pop();
 
-                // Append the correct block
-                const separator = content.endsWith('\n') ? '' : '\n';
-                await writeFileAsync(gitignorePath, content + separator + rulebookBlock + '\n');
-            } else {
-                await writeFileAsync(gitignorePath, rulebookBlock.trimStart() + '\n');
+            const rebuilt =
+                (kept.length > 0 ? kept.join('\n') + '\n\n' : '') +
+                RULEBOOK_GITIGNORE_BLOCK.join('\n') +
+                '\n';
+
+            if (rebuilt !== existing) {
+                await writeFileAsync(gitignorePath, rebuilt);
             }
         } catch {
             // Non-critical, don't fail init

@@ -1,0 +1,12 @@
+# CLAUDE.md merger: three-mode strategy (create/replace/wrap) for safe v5.2→v5.3 migration
+**Source**: manual
+**Date**: 2026-04-07
+When migrating users from v5.2 (no sentinels in CLAUDE.md) to v5.3 (sentinel-wrapped @import block), the merger must handle three distinct cases without ever destroying user content:
+
+1. **create**: file does not exist → write the generated block, no backup needed
+2. **replace**: file has v5.3.0 sentinels → in-place regex replacement of just the block, preserving everything outside the sentinels verbatim
+3. **wrap**: file exists but has no sentinels → prepend the generated block, keep the legacy content underneath the END sentinel. Backup created.
+
+This was implemented in `src/core/merger.ts` `mergeClaudeMd()`. The wrap mode is essential because v5.2 projects have working CLAUDE.md content the user has hand-edited; silently overwriting would be a regression. The wrap puts the new block on top so Claude Code reads it first, but the legacy content stays available.
+
+Backup uses the existing `createBackup()` helper (`.backup-<ISO>` suffix on the same path) instead of inventing a new `.rulebook/backup/<timestamp>/` directory layout. Following the existing codebase pattern is always preferable to introducing parallel conventions.

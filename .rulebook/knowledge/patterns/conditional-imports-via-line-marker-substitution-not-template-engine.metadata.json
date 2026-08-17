@@ -1,0 +1,10 @@
+{
+  "id": "conditional-imports-via-line-marker-substitution-not-template-engine",
+  "type": "pattern",
+  "title": "Conditional @imports via line-marker substitution, not template engine",
+  "category": "templating",
+  "description": "Pattern for conditional @import emission in CLAUDE.md without a template engine.",
+  "createdAt": "2026-04-07T17:37:17.460Z",
+  "tags": [],
+  "source": "manual"
+}

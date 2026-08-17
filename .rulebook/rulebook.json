@@ -1,7 +1,7 @@
 {
-  "version": "7.0.0",
-  "installedAt": "2026-07-14T09:10:41.457Z",
-  "updatedAt": "2026-07-14T09:10:41.458Z",
+  "version": "7.1.0",
+  "installedAt": "2026-08-17T10:45:52.349Z",
+  "updatedAt": "2026-08-17T10:45:52.350Z",
   "projectId": "Rulebook",
   "mode": "full",
   "features": {
@@ -23,6 +23,7 @@
     "cliResponse": 180000,
     "testRun": 600000
   },
+  "gitPushMode": "auto",
   "skills": {
     "enabled": [
       "languages/typescript",

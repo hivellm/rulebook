@@ -13,6 +13,7 @@ import {
     readFile as readFileUtil,
     writeFile as writeFileUtil,
 } from '../../utils/file-system.js';
+import type { TaskBackend } from './task-backend.js';
 
 const writeFileAsync = promisify(fsWriteFile);
 
@@ -69,6 +70,36 @@ export const MANDATORY_TAIL_ITEMS = [
     },
 ] as const;
 
+/**
+ * Scaffold for a new task's proposal.md. Shared with the GitHub backend so a
+ * task created as an issue starts from the same shape as one created on disk.
+ */
+export function renderProposalTemplate(taskId: string): string {
+    return `# Proposal: ${taskId}
+
+## Why
+[Explain why this change is needed - minimum 20 characters]
+
+## What Changes
+[Describe what will change]
+
+## Impact
+- Affected specs: [list]
+- Affected code: [list]
+- Breaking change: YES/NO
+- User benefit: [describe]
+`;
+}
+
+/** Scaffold for a new task's tasks.md, mandatory tail included. */
+export function renderTasksTemplate(): string {
+    return `## 1. Implementation
+- [ ] 1.1 First task
+- [ ] 1.2 Second task
+
+${renderMandatoryTail(2)}`;
+}
+
 export function renderMandatoryTail(sectionNumber: number): string {
     return [
         `## ${sectionNumber}. Tail (docs + tests — check or waive with tailWaiver)`,
@@ -112,7 +143,94 @@ export function checkMandatoryTail(tasksContent: string): TailCheckResult {
     };
 }
 
-export class TaskManager {
+/**
+ * Validate an already-loaded task. Kept separate from any store so the file and
+ * GitHub backends enforce identical rules on identical content.
+ */
+export function validateLoadedTask(
+    task: RulebookTask | null,
+    taskId: string
+): TaskValidationResult {
+    if (!task) {
+        return { valid: false, errors: [`Task ${taskId} not found`], warnings: [] };
+    }
+
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // Validate proposal
+    if (!task.proposal) {
+        errors.push('Missing proposal.md');
+    } else {
+        // Check Purpose section (minimum 20 characters)
+        const purposeMatch = task.proposal.match(/## Why\s*\n([\s\S]*?)(?=\n##|$)/);
+        if (!purposeMatch || purposeMatch[1].trim().length < 20) {
+            errors.push('Purpose section (## Why) must have at least 20 characters');
+        }
+    }
+
+    // v5.3.0 F-NEW-3: mandatory task tail (docs + tests + verify)
+    const tail = task.tasks
+        ? checkMandatoryTail(task.tasks)
+        : { present: false, missing: MANDATORY_TAIL_ITEMS.map((i) => i.label), unchecked: [] };
+    if (!tail.present) {
+        errors.push(
+            `Task tail missing from tasks.md (docs + tests scaffold): ${tail.missing.join(', ')}`
+        );
+    } else if (tail.unchecked.length > 0) {
+        // v7 (#19): unchecked tail items warn instead of blocking — archive
+        // accepts a one-line tailWaiver rationale for tasks where the tail
+        // genuinely does not apply (doc-only, refactors with existing coverage).
+        warnings.push(
+            `Task tail items unchecked: ${tail.unchecked.join(', ')} — check them or archive with a tailWaiver rationale`
+        );
+    }
+
+    // Validate specs
+    if (!task.specs || Object.keys(task.specs).length === 0) {
+        warnings.push('No spec files found (specs/*/spec.md)');
+    } else {
+        for (const [module, specContent] of Object.entries(task.specs)) {
+            // Check for requirements with SHALL/MUST
+            const requirementMatches = specContent.match(/### Requirement:.*/g) || [];
+            for (const req of requirementMatches) {
+                const reqText = specContent.substring(specContent.indexOf(req));
+                const reqBody = reqText.split('\n').slice(1).join('\n').split('####')[0];
+                if (!reqBody.match(/\b(SHALL|MUST)\b/i)) {
+                    errors.push(
+                        `Requirement in ${module}/spec.md missing SHALL or MUST keyword: ${req}`
+                    );
+                }
+            }
+
+            // Check for scenarios with 4 hashtags (not 3)
+            // Only check at start of line (not in text content)
+            const scenario3Matches = specContent.match(/^### Scenario:/gm) || [];
+            if (scenario3Matches.length > 0) {
+                errors.push(
+                    `Scenarios in ${module}/spec.md must use 4 hashtags (####), not 3 (###)`
+                );
+            }
+
+            // Check for Given/When/Then structure
+            const scenarios = specContent.match(/#### Scenario:[\s\S]*?(?=####|##|$)/g) || [];
+            for (const scenario of scenarios) {
+                const hasGiven = /Given/i.test(scenario);
+                const hasWhen = /When/i.test(scenario);
+                const hasThen = /Then/i.test(scenario);
+                if (!hasGiven || !hasWhen || !hasThen) {
+                    warnings.push(
+                        `Scenario in ${module}/spec.md should use Given/When/Then structure`
+                    );
+                }
+            }
+        }
+    }
+
+    return { valid: errors.length === 0, errors, warnings };
+}
+
+export class TaskManager implements TaskBackend {
     private rulebookPath: string;
     private tasksPath: string;
     private archivePath: string;
@@ -189,35 +307,12 @@ export class TaskManager {
         mkdirSync(taskPath, { recursive: true });
         mkdirSync(join(taskPath, SPECS_DIR), { recursive: true });
 
-        // Create proposal.md template
-        const proposalContent = `# Proposal: ${taskId}
+        await writeFileAsync(join(taskPath, 'proposal.md'), renderProposalTemplate(taskId));
 
-## Why
-[Explain why this change is needed - minimum 20 characters]
-
-## What Changes
-[Describe what will change]
-
-## Impact
-- Affected specs: [list]
-- Affected code: [list]
-- Breaking change: YES/NO
-- User benefit: [describe]
-`;
-
-        await writeFileAsync(join(taskPath, 'proposal.md'), proposalContent);
-
-        // Create tasks.md template — the MANDATORY tail items (v5.3.0 F-NEW-3)
-        // are appended automatically here AND enforced by validateTask() /
-        // archiveTask(): a task cannot be closed unless docs are updated,
-        // tests are written, and tests pass.
-        const tasksContent = `## 1. Implementation
-- [ ] 1.1 First task
-- [ ] 1.2 Second task
-
-${renderMandatoryTail(2)}`;
-
-        await writeFileAsync(join(taskPath, 'tasks.md'), tasksContent);
+        // The MANDATORY tail items (v5.3.0 F-NEW-3) are appended automatically
+        // here AND enforced by validateTask() / archiveTask(): a task cannot be
+        // closed unless docs are updated, tests are written, and tests pass.
+        await writeFileAsync(join(taskPath, 'tasks.md'), renderTasksTemplate());
 
         // Create .metadata.json with initial status
         const now = new Date().toISOString();
@@ -480,92 +575,7 @@ ${renderMandatoryTail(2)}`;
      * Validate task format
      */
     async validateTask(taskId: string): Promise<TaskValidationResult> {
-        const task = await this.loadTask(taskId);
-        if (!task) {
-            return {
-                valid: false,
-                errors: [`Task ${taskId} not found`],
-                warnings: [],
-            };
-        }
-
-        const errors: string[] = [];
-        const warnings: string[] = [];
-
-        // Validate proposal
-        if (!task.proposal) {
-            errors.push('Missing proposal.md');
-        } else {
-            // Check Purpose section (minimum 20 characters)
-            const purposeMatch = task.proposal.match(/## Why\s*\n([\s\S]*?)(?=\n##|$)/);
-            if (!purposeMatch || purposeMatch[1].trim().length < 20) {
-                errors.push('Purpose section (## Why) must have at least 20 characters');
-            }
-        }
-
-        // v5.3.0 F-NEW-3: mandatory task tail (docs + tests + verify)
-        const tail = task.tasks
-            ? checkMandatoryTail(task.tasks)
-            : { present: false, missing: MANDATORY_TAIL_ITEMS.map((i) => i.label), unchecked: [] };
-        if (!tail.present) {
-            errors.push(
-                `Task tail missing from tasks.md (docs + tests scaffold): ${tail.missing.join(', ')}`
-            );
-        } else if (tail.unchecked.length > 0) {
-            // v7 (#19): unchecked tail items warn instead of blocking — archive
-            // accepts a one-line tailWaiver rationale for tasks where the tail
-            // genuinely does not apply (doc-only, refactors with existing coverage).
-            warnings.push(
-                `Task tail items unchecked: ${tail.unchecked.join(', ')} — check them or archive with a tailWaiver rationale`
-            );
-        }
-
-        // Validate specs
-        if (!task.specs || Object.keys(task.specs).length === 0) {
-            warnings.push('No spec files found (specs/*/spec.md)');
-        } else {
-            for (const [module, specContent] of Object.entries(task.specs)) {
-                // Check for requirements with SHALL/MUST
-                const requirementMatches = specContent.match(/### Requirement:.*/g) || [];
-                for (const req of requirementMatches) {
-                    const reqText = specContent.substring(specContent.indexOf(req));
-                    const reqBody = reqText.split('\n').slice(1).join('\n').split('####')[0];
-                    if (!reqBody.match(/\b(SHALL|MUST)\b/i)) {
-                        errors.push(
-                            `Requirement in ${module}/spec.md missing SHALL or MUST keyword: ${req}`
-                        );
-                    }
-                }
-
-                // Check for scenarios with 4 hashtags (not 3)
-                // Only check at start of line (not in text content)
-                const scenario3Matches = specContent.match(/^### Scenario:/gm) || [];
-                if (scenario3Matches.length > 0) {
-                    errors.push(
-                        `Scenarios in ${module}/spec.md must use 4 hashtags (####), not 3 (###)`
-                    );
-                }
-
-                // Check for Given/When/Then structure
-                const scenarios = specContent.match(/#### Scenario:[\s\S]*?(?=####|##|$)/g) || [];
-                for (const scenario of scenarios) {
-                    const hasGiven = /Given/i.test(scenario);
-                    const hasWhen = /When/i.test(scenario);
-                    const hasThen = /Then/i.test(scenario);
-                    if (!hasGiven || !hasWhen || !hasThen) {
-                        warnings.push(
-                            `Scenario in ${module}/spec.md should use Given/When/Then structure`
-                        );
-                    }
-                }
-            }
-        }
-
-        return {
-            valid: errors.length === 0,
-            errors,
-            warnings,
-        };
+        return validateLoadedTask(await this.loadTask(taskId), taskId);
     }
 
     /**
@@ -759,5 +769,33 @@ export function createTaskManager(
     projectRoot: string,
     rulebookDir: string = '.rulebook'
 ): TaskManager {
+    return new TaskManager(projectRoot, rulebookDir);
+}
+
+/**
+ * Resolve the task backend a project is configured for.
+ *
+ * Reads `tasks.backend` from `<rulebookDir>/rulebook.json`; anything other than
+ * an explicit "github" (including a missing key, an unreadable file, or an
+ * unknown value) resolves to the file backend, so a config problem degrades to
+ * the historical behaviour rather than losing access to tasks.
+ */
+export async function resolveTaskBackend(
+    projectRoot: string,
+    rulebookDir: string = '.rulebook'
+): Promise<TaskBackend> {
+    let tasksConfig: { backend?: string; repo?: string; label?: string } | undefined;
+    try {
+        const raw = await readFileUtil(join(projectRoot, rulebookDir, 'rulebook.json'));
+        tasksConfig = JSON.parse(raw).tasks;
+    } catch {
+        // No config, or unreadable — fall through to the file backend.
+    }
+
+    if (tasksConfig?.backend === 'github') {
+        const { GitHubTaskBackend } = await import('./github-backend.js');
+        return new GitHubTaskBackend({ repo: tasksConfig.repo, label: tasksConfig.label });
+    }
+
     return new TaskManager(projectRoot, rulebookDir);
 }

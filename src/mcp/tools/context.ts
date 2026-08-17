@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { TaskManager } from '../../core/tasks/task-manager.js';
+import type { TaskBackend } from '../../core/tasks/task-backend.js';
 import type { ConfigManager } from '../../core/state/config-manager.js';
 import type { SkillsManager } from '../../core/skills/skills-manager.js';
 import type { WorkspaceManager } from '../../core/workspace/workspace-manager.js';
@@ -17,7 +17,7 @@ export interface ToolContext {
     projectRoot: string;
     workspaceManager: WorkspaceManager | null;
     projectIdSchema: z.ZodOptional<z.ZodString>;
-    getTaskMgr: (projectId?: string) => Promise<TaskManager>;
+    getTaskMgr: (projectId?: string) => Promise<TaskBackend>;
     getConfigMgr: (projectId?: string) => Promise<ConfigManager>;
     getSkillsMgr: (projectId?: string) => Promise<SkillsManager>;
 }
