@@ -192,6 +192,10 @@ export interface RulebookConfig {
     modular?: boolean; // Enable modular /.rulebook directory structure
     rulebookDir?: string; // Custom rulebook directory (default: '.rulebook')
     agentsMode?: 'full' | 'lean'; // AGENTS.md generation mode: full (default) or lean (index-only)
+    // Git push mode stamped into <rulebookDir>/specs/git.md. Persisted so that
+    // `rulebook update` regenerates the spec with the project's chosen mode
+    // instead of silently resetting it to 'manual'.
+    gitPushMode?: 'manual' | 'prompt' | 'auto';
     // Monorepo configuration (v4.0)
     monorepo?: {
         detected?: boolean;

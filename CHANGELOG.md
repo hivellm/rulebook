@@ -29,6 +29,23 @@ not the repo root; deleting, moving, or overwriting a `.git` is forbidden
 outright. Worktree autonomy now covers creating and using one — teardown stays
 a deletion under Tier 1 #3.
 
+### Fixed — `rulebook update` no longer resets the git push mode
+
+`gitPushMode` was never persisted: it lived only on the in-memory
+`ProjectConfig`, so `mergedConfig.gitPushMode || 'manual'` resolved to `manual`
+on every update and rewrote `.rulebook/specs/git.md` accordingly. A project on
+AUTO silently became MANUAL, with the change buried among the other regenerated
+files.
+
+Two writes were involved — the `updateConfig` call mid-run, and a full
+`RulebookConfig` rebuild near the end that REPLACES the persisted file and only
+carries forward an explicit set of keys. Both now include the mode.
+
+`gitPushMode` is persisted in `.rulebook/rulebook.json`, and for repos installed
+before this release the new `readGitPushModeFromSpec()` recovers the mode from
+the stamped spec header instead of defaulting. `manual` remains the default only
+for a project with neither a persisted value nor an existing git spec.
+
 ### Added — Communication directive
 
 Generated `CLAUDE.md` and `AGENTS.md` gained a communication rule: plain words

@@ -455,6 +455,30 @@ export async function generateModuleRules(module: string): Promise<string> {
     return `<!-- ${module.toUpperCase()}:START -->\n# ${module.charAt(0).toUpperCase() + module.slice(1)} Instructions\n\nModule-specific instructions for ${module}.\n<!-- ${module.toUpperCase()}:END -->\n`;
 }
 
+/**
+ * Recover the git push mode from an already-generated `specs/git.md`.
+ *
+ * `gitPushMode` was not persisted in `.rulebook/rulebook.json` before v7.0.2,
+ * so for repos installed with an earlier version the generated spec header is
+ * the only surviving record of the choice. Reading it back keeps `update` from
+ * resetting a project to 'manual'.
+ *
+ * Returns undefined when the spec is absent or carries no recognizable header.
+ */
+export async function readGitPushModeFromSpec(
+    projectRoot: string,
+    rulebookDir: string = '.rulebook'
+): Promise<'manual' | 'prompt' | 'auto' | undefined> {
+    const specPath = path.join(projectRoot, rulebookDir, 'specs', 'git.md');
+    if (!(await fileExists(specPath))) return undefined;
+
+    const content = await readFile(specPath);
+    const match = content.match(/\*\*AI Assistant Git Push Mode\*\*:\s*(MANUAL|PROMPT|AUTO)\b/i);
+    if (!match) return undefined;
+
+    return match[1].toLowerCase() as 'manual' | 'prompt' | 'auto';
+}
+
 export async function generateGitRules(pushMode: string): Promise<string> {
     const templatesDir = path.join(getTemplatesDir(), 'git');
     const templatePath = path.join(templatesDir, 'git-workflow.md');
