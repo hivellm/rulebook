@@ -538,8 +538,14 @@ describe('ensureGitignore', () => {
         expect(content).toContain('/.rulebook/*');
         expect(content).toContain('!/.rulebook/specs/');
         expect(content).toContain('!/.rulebook/tasks/');
-        expect(content).toContain('!/.rulebook/tasks/**/*.md');
         expect(content).toContain('!/.rulebook/rulebook.json');
+        // Shared project memory + archive must be committable (v7.1).
+        expect(content).toContain('!/.rulebook/archive/');
+        expect(content).toContain('!/.rulebook/decisions/');
+        expect(content).toContain('!/.rulebook/knowledge/');
+        expect(content).toContain('!/.rulebook/learnings/');
+        // Negating the directory already covers its files — no `**` pattern needed.
+        expect(content).not.toContain('!/.rulebook/tasks/**/*.md');
     });
 
     it('should append to existing .gitignore', async () => {

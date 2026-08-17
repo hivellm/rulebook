@@ -38,6 +38,25 @@ backend is active.
 Requires `gh` on PATH and authenticated; a missing or unauthenticated `gh` is
 reported with the command to run rather than an opaque spawn error.
 
+### Fixed — project memory now reaches collaborators
+
+The generated `.gitignore` ignored `.rulebook/` wholesale and named only
+`specs/`, `tasks/` and `rulebook.json` as exceptions, so `decisions/`,
+`knowledge/`, `learnings/` and `archive/` were written locally and never
+committed. That is precisely the material a second person needs — why a choice
+was made, which patterns hold, what shipped — and git dropped it at the door.
+This repo had 7 knowledge entries and 8 learnings that had never been committed.
+
+All four are now exceptions. Verified against real `git check-ignore` that
+negating a directory suffices for the files inside it, so
+`!/.rulebook/tasks/**/*.md` is gone as redundant. Runtime data stays ignored:
+`backup/`, `logs/`, `telemetry/`, `handoff/`, PID files, `STATE.md`, `PLANS.md`.
+
+`ensureGitignore()` also returned early whenever the old exceptions were
+present, which would have limited the fix to new projects. The block is now
+rewritten on each call — lines from any past release stripped first — so it is
+idempotent and existing projects pick up newly added exceptions.
+
 ### Fixed — worktree and `.git` destruction guard
 
 A consumer repo lost its `.git` during agent worktree work. Rulebook blessed

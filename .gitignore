@@ -62,13 +62,6 @@ out/
 mcp_stderr.txt
 mcp_tools.txt
 
-# Rulebook - ignore runtime data, keep specs and tasks
-/.rulebook/*
-!/.rulebook/specs/
-!/.rulebook/tasks/
-!/.rulebook/tasks/**/*.md
-!/.rulebook/archive/
-!/.rulebook/rulebook.json
 
 CLAUDE.local.md
 .rulebook/backup/
@@ -76,3 +69,13 @@ CLAUDE.local.md
 .rulebook/handoff/.urgent
 .rulebook/telemetry/
 .claude/scheduled_tasks.lock
+
+# Rulebook - ignore runtime data, keep specs, tasks and project memory
+/.rulebook/*
+!/.rulebook/specs/
+!/.rulebook/tasks/
+!/.rulebook/archive/
+!/.rulebook/decisions/
+!/.rulebook/knowledge/
+!/.rulebook/learnings/
+!/.rulebook/rulebook.json

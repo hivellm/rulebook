@@ -1,0 +1,14 @@
+{
+  "id": "2026-07-14T07-52-25-post-v7-overhead-audit-remaining-budget-failures-are-mostly-benchmark-artifacts-12-redundant-slash-commands",
+  "title": "Post-v7 overhead audit: remaining budget failures are mostly benchmark artifacts + 12 redundant slash commands",
+  "content": "Audit at bd61e45 (2026-07-14): measure-overhead.mjs reports 3,352 static tokens (budget 2,500) and 29 files (budget 20), but countStaticTokens() counts on-demand assets as always-on — path-scoped .claude/rules/* (544 tok) and .rulebook/STATE+PLANS (167 tok) are not auto-injected. The honest always-on core is ~2,007 tok (CLAUDE.md 545 + override 42 + skills/commands 522 + MCP schemas 898) — already under budget. The one genuine redundancy: 12 templates/commands/rulebook-*.md duplicate the 5 consolidated MCP tools verb-for-verb (each ends with \"MCP equivalent: rulebook_task/_memory\"), costing 426 frontmatter tokens + 12 of the 29 installed files. AGENTS.md also paraphrases ~95% of CLAUDE.md (7 duplicated rules). Windows MCP init 210-232ms is Node spawn + Defender, not Rulebook code (passes on Linux). Full analysis + phased plan: docs/analysis/post-v7-context-optimization/.",
+  "source": "manual",
+  "tags": [
+    "performance",
+    "v7",
+    "context-budget",
+    "measurement",
+    "analysis"
+  ],
+  "createdAt": "2026-07-14T07:52:25.678Z"
+}
