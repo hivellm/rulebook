@@ -142,7 +142,7 @@ export class GitHubTaskBackend implements TaskBackend {
         try {
             return JSON.parse(stdout || '[]') as GhIssue[];
         } catch {
-            throw new Error(`gh issue list returned unparseable JSON: ${stdout.slice(0, 200)}`);
+            throw new Error(`gh issue list returned invalid JSON: ${stdout.slice(0, 200)}`);
         }
     }
 
