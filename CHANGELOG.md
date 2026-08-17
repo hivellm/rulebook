@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.0.2] - 2026-08-17
+
+### Fixed — worktree and `.git` destruction guard
+
+A consumer repo lost its `.git` during agent worktree work. Rulebook blessed
+`git worktree` as unconditionally autonomous in three generated surfaces with
+nothing said about where a worktree may live or how it may be removed, which
+read as exempting worktree teardown from Tier 1 #3 (no deletion without
+authorization).
+
+Reproduction settled where the hazard actually is: `git worktree add` cannot
+destroy a `.git` — git rejects empty, `.` and `..` paths, and
+`worktree remove` refuses the main worktree. But `git worktree add ./wt`
+succeeds and nests the worktree under the repo root, so any later cleanup that
+resolves one level wrong takes the root and `.git` with it. The destruction is
+in the cleanup step, never in the add.
+
+Directives now state: worktrees are placed outside the repository tree
+(`../<repo>-wt-<name>`), removed with `git worktree remove` + `prune` and never
+`rm -rf`; a recursive delete of a computed path must be verified non-empty and
+not the repo root; deleting, moving, or overwriting a `.git` is forbidden
+outright. Worktree autonomy now covers creating and using one — teardown stays
+a deletion under Tier 1 #3.
+
+### Added — Communication directive
+
+Generated `CLAUDE.md` and `AGENTS.md` gained a communication rule: plain words
+over jargon (glossed when not obvious), answer before reasoning, and length
+that follows the size of the result rather than the effort behind it. Rulebook
+directed how an agent works but never how it explains itself.
+
+New `tests/directive-guards.test.ts` asserts both sets of clauses survive from
+the templates into generated output, so a future template edit cannot drop them
+silently. Always-on context stays within budget: 1,460 of 1,600 tokens.
+
 ## [7.0.1] - 2026-07-14
 
 Release-infrastructure patch — first release cut via npm **Trusted

@@ -19,7 +19,7 @@ export function getTemplatesDir(): string {
 
 // Helper to read core template files (v7 naming: lowercase kebab-case, e.g.
 // templates/core/rulebook.md, quality.md, prohibitions.md)
-async function generateCoreRules(name: string): Promise<string> {
+export async function generateCoreRules(name: string): Promise<string> {
     const templatesDir = path.join(getTemplatesDir(), 'core');
     const templatePath = path.join(templatesDir, `${name.toLowerCase().replace(/_/g, '-')}.md`);
 

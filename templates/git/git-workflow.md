@@ -19,9 +19,23 @@ checks) · `branch`/`tag` (list only)
 | `push --force` | overwrites remote — NEVER on main/master |
 | `clean -f` | permanently deletes untracked files |
 | switching a SHARED checkout with foreign changes | breaks concurrent sessions — use `git worktree` |
+| `rm -rf` on a computed/variable path | one empty or wrong segment reaches the repo root — verify non-empty and not the root first |
+| deleting, moving, or overwriting `.git` | destroys history and reflog; no task ever requires it |
 
 Multiple AI sessions may share the same working tree — destructive operations
 affect ALL of them. Never commit with `--no-verify`.
+
+## Worktrees
+
+- **Place them outside the repository tree**: `git worktree add ../<repo>-wt-<name>`.
+  `git worktree add ./wt` succeeds and nests the worktree under the repo root —
+  from then on any cleanup that resolves one level wrong takes the root, and
+  `.git` with it.
+- **Remove with `git worktree remove <path>`, then `git worktree prune`.** Never
+  `rm -rf` a worktree path: `worktree remove` refuses to touch the main worktree,
+  `rm -rf` does not.
+- `git worktree add` is safe on its own — git rejects empty, `.` and `..` paths.
+  The destruction is always in the cleanup step, never in the add.
 
 ## Commits
 
@@ -38,5 +52,6 @@ affect ALL of them. Never commit with `--no-verify`.
   `fix/<name>`, releases on `release/vX.Y.Z`.
 - Branch freely for your own work and open PRs for review. Create/switch/merge
   YOUR agent-created branches autonomously; prefer `git worktree` for parallel
-  agents. Never switch a shared checkout that has changes you did not author.
+  agents, under the placement and removal rules above. Never switch a shared
+  checkout that has changes you did not author.
 <!-- GIT:END -->
