@@ -14,6 +14,17 @@ import {
     writeFile as writeFileUtil,
 } from '../../utils/file-system.js';
 import type { TaskBackend } from './task-backend.js';
+import {
+    applyAnswer,
+    assertBlockable,
+    buildQuestion,
+    openQuestions,
+    parseQuestions,
+    statusAfterAnswer,
+    summarizeQuestion,
+    type AskQuestionInput,
+    type TaskQuestion,
+} from './task-questions.js';
 
 const writeFileAsync = promisify(fsWriteFile);
 
@@ -39,6 +50,8 @@ export interface RulebookTask {
     createdAt: string;
     updatedAt: string;
     archivedAt?: string;
+    /** v7.2: decision requests filed against this task (open + answered). */
+    questions?: TaskQuestion[];
 }
 
 export interface TaskValidationResult {
@@ -383,6 +396,16 @@ export class TaskManager implements TaskBackend {
         const inProgressTasks = tasks.filter((t) => t.status === 'in-progress').length;
         readme += `**Total**: ${totalTasks} tasks | **Completed**: ${completedTasks} | **In Progress**: ${inProgressTasks} | **Pending**: ${totalTasks - completedTasks - inProgressTasks}\n\n`;
 
+        // Open decision requests first: this is what the operator has to act on.
+        const awaiting = tasks.flatMap((t) =>
+            openQuestions(t.questions).map((q) => summarizeQuestion(t.id, q))
+        );
+        if (awaiting.length > 0) {
+            readme += `## ❓ Awaiting operator decision (${awaiting.length})\n\n`;
+            for (const line of awaiting) readme += `- ${line}\n`;
+            readme += `\nAnswer with \`rulebook task answer <task-id> <question-id>\` or \`rulebook_task {action:"answer"}\`.\n\n`;
+        }
+
         for (const [phaseKey, phaseTasks] of phases) {
             readme += `## ${phaseKey}\n\n`;
             readme += `| Status | Task | Progress | Description |\n`;
@@ -393,7 +416,9 @@ export class TaskManager implements TaskBackend {
                 const progressStr = progress.total > 0 ? `${progress.done}/${progress.total}` : '-';
                 // Extract short description from task ID (after phase prefix)
                 const desc = task.id.replace(/^phase\d+[a-z]?_/, '').replace(/-/g, ' ');
-                readme += `| ${statusIcon(task.status)} | ${task.id} | ${progressStr} | ${desc} |\n`;
+                const open = openQuestions(task.questions).length;
+                const flag = open > 0 ? ` ❓ ${open} open question${open > 1 ? 's' : ''}` : '';
+                readme += `| ${statusIcon(task.status)} | ${task.id} | ${progressStr} | ${desc}${flag} |\n`;
             }
             readme += `\n`;
         }
@@ -524,6 +549,8 @@ export class TaskManager implements TaskBackend {
                 if (metadata.status) task.status = metadata.status;
                 if (metadata.createdAt) task.createdAt = metadata.createdAt;
                 if (metadata.updatedAt) task.updatedAt = metadata.updatedAt;
+                const questions = parseQuestions(metadata.questions);
+                if (questions.length > 0) task.questions = questions;
             } catch {
                 // Ignore invalid metadata
             }
@@ -596,6 +623,17 @@ export class TaskManager implements TaskBackend {
             throw new Error(`Task ${taskId} not found`);
         }
 
+        // An unanswered decision request must never be archived away: that is
+        // exactly how stuck work goes silent. No waiver, no skipValidation.
+        const open = openQuestions(task.questions);
+        if (open.length > 0) {
+            throw new Error(
+                `Task ${taskId} has ${open.length} open decision request(s): ${open
+                    .map((q) => q.id)
+                    .join(', ')}. Answer them (rulebook_task {action:"answer"}) before archiving.`
+            );
+        }
+
         // Validate before archiving (unless skipped)
         if (!skipValidation) {
             const validation = await this.validateTask(taskId);
@@ -657,24 +695,99 @@ export class TaskManager implements TaskBackend {
             throw new Error(`Task ${taskId} not found`);
         }
 
-        task.status = status;
-        task.updatedAt = new Date().toISOString();
+        const existing = (await this.getTaskMetadata(taskId)) ?? {};
+        if (status === 'blocked') {
+            assertBlockable(taskId, parseQuestions(existing.questions), existing);
+        }
 
-        // Persist status to .metadata.json
-        const taskPath = join(this.tasksPath, taskId);
-        const metadataPath = join(taskPath, '.metadata.json');
-
-        const metadata = {
-            status: task.status,
+        // Merge over the existing record so blocks/blockedBy/questions survive
+        // a status change (v7.2 — they used to be dropped here).
+        await this.writeMetadata(taskId, {
+            ...existing,
+            status,
             createdAt: task.createdAt,
-            updatedAt: task.updatedAt,
-        };
-
-        await writeFileUtil(metadataPath, JSON.stringify(metadata, null, 2));
+            updatedAt: new Date().toISOString(),
+        });
 
         // Update tasks README index + STATE.md
         await this.updateReadme();
         await this.refreshState();
+    }
+
+    private async writeMetadata(taskId: string, metadata: Record<string, unknown>): Promise<void> {
+        const metadataPath = join(this.tasksPath, taskId, '.metadata.json');
+        await writeFileUtil(metadataPath, JSON.stringify(metadata, null, 2));
+    }
+
+    // ── Decision requests (v7.2) ─────────────────────────────────────────
+
+    /**
+     * File a decision request and mark the task blocked. The returned record
+     * is what the caller shows the operator.
+     */
+    async askQuestion(taskId: string, input: AskQuestionInput): Promise<TaskQuestion> {
+        const task = await this.loadTask(taskId);
+        if (!task) {
+            throw new Error(`Task ${taskId} not found`);
+        }
+        const existing = (await this.getTaskMetadata(taskId)) ?? {};
+        const questions = parseQuestions(existing.questions);
+        const question = buildQuestion(questions, input);
+        await this.writeMetadata(taskId, {
+            ...existing,
+            status: 'blocked',
+            createdAt: task.createdAt,
+            updatedAt: question.askedAt,
+            questions: [...questions, question],
+        });
+        await this.updateReadme();
+        await this.refreshState();
+        return question;
+    }
+
+    /**
+     * Record the operator's answer. The task leaves `blocked` as soon as no
+     * open question (and no blockedBy dependency) remains.
+     */
+    async answerQuestion(
+        taskId: string,
+        questionId: string,
+        answer: string
+    ): Promise<TaskQuestion> {
+        const task = await this.loadTask(taskId);
+        if (!task) {
+            throw new Error(`Task ${taskId} not found`);
+        }
+        const existing = (await this.getTaskMetadata(taskId)) ?? {};
+        const { questions, answered } = applyAnswer(
+            parseQuestions(existing.questions),
+            questionId,
+            answer
+        );
+        const remaining = openQuestions(questions).length;
+        await this.writeMetadata(taskId, {
+            ...existing,
+            status:
+                task.status === 'blocked' ? statusAfterAnswer(remaining, existing) : task.status,
+            createdAt: task.createdAt,
+            updatedAt: answered.answeredAt,
+            questions,
+        });
+        await this.updateReadme();
+        await this.refreshState();
+        return answered;
+    }
+
+    /** Every open decision request across active tasks, oldest first. */
+    async listOpenQuestions(): Promise<Array<{ taskId: string; question: TaskQuestion }>> {
+        const tasks = await this.listTasks(false);
+        const out: Array<{ taskId: string; question: TaskQuestion }> = [];
+        for (const task of tasks) {
+            for (const question of openQuestions(task.questions)) {
+                out.push({ taskId: task.id, question });
+            }
+        }
+        return out.sort((a, b) => a.question.askedAt.localeCompare(b.question.askedAt));
     }
 
     /**
@@ -697,6 +810,9 @@ export class TaskManager implements TaskBackend {
                 const m = t.tasks?.match(/- \[x\]/gi);
                 return n + (m?.length ?? 0);
             }, 0);
+            const awaiting = tasks.flatMap((t) =>
+                openQuestions(t.questions).map((q) => summarizeQuestion(t.id, q))
+            );
             await writeState(join(this.rulebookPath, '..'), {
                 activeTask: active
                     ? {
@@ -705,6 +821,7 @@ export class TaskManager implements TaskBackend {
                           progress: `${checkedItems}/${totalItems} items`,
                       }
                     : null,
+                openQuestions: awaiting,
                 updatedAt: new Date().toISOString(),
             });
         } catch {

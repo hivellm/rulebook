@@ -14,7 +14,10 @@ import path from 'path';
  */
 const SERVER = path.join(process.cwd(), 'dist', 'mcp', 'rulebook-server.js');
 const MCP_TOOL_BUDGET = 8;
-const MCP_SCHEMA_BYTES_BUDGET = 3600;
+// v7.0 shipped at ~3.2 KB. v7.2 adds the decision-request surface to
+// rulebook_task (ask|answer|questions + 7 terse params) rather than an extra
+// tool, which costs ~0.6 KB of schema; the ceiling moves once to cover it.
+const MCP_SCHEMA_BYTES_BUDGET = 4400;
 // Node process startup dominates; generous CI-safe ceiling (Linux ~150ms,
 // Windows ~300ms). Regressions to full-CLI loading (~450ms+) still fail.
 const MCP_INIT_MS_BUDGET = 2000;

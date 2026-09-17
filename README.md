@@ -92,6 +92,29 @@ rulebook task archive phase1_add-auth    # Archive when done
 
 Each task gets `proposal.md` (why), `tasks.md` (checklist), and `specs/` (SHALL/MUST requirements with Given/When/Then scenarios).
 
+#### Decision requests: no more silently stuck tasks
+
+An agent that reaches a choice the spec does not settle is told to decide it
+when the choice is reversible and in scope, and otherwise to file an explicit
+**decision request** instead of burying the question in prose:
+
+```bash
+rulebook task ask phase1_add-auth -q "Which identity provider?" \
+  -o "Auth0 — hosted, fastest" -o "Keycloak — self-hosted" -r "Auth0" -b "1.2 wire login"
+rulebook task questions                  # everything awaiting the operator
+rulebook task answer phase1_add-auth     # interactive form: pick an option or type a decision
+```
+
+Filing a question marks the task `blocked` and hands the agent a ready-to-show
+operator prompt (Claude Code renders it as an `AskUserQuestion` form). Answering
+records the decision on the task and moves it back to `in-progress`. A task
+cannot be marked `blocked` without an open question or a `blockedBy`
+dependency, and cannot be archived over an open question. Open questions are
+listed by `rulebook_session start`, `rulebook_task {action:"questions"}`,
+`.rulebook/STATE.md` and the tasks README, so they are seen before new work
+starts. The `rulebook-driver` workflow stops with `awaiting-decision` instead
+of looping on a blocked item. Both task backends support it.
+
 #### Task backend: files (default) or GitHub issues
 
 By default tasks are directories under `.rulebook/tasks/`. Projects running
@@ -231,6 +254,9 @@ rulebook claude                  # Apply the recommended Claude Code setup
 rulebook task create <task-id>   # Create (phase-prefixed: phase1_add-auth)
 rulebook task list               # List active tasks
 rulebook task archive <task-id>  # Archive a completed task
+rulebook task ask <task-id> -q "<question>" -o "<A — trade-off>" -r "<A>"   # File a decision request (task → blocked)
+rulebook task questions          # Open decision requests awaiting the operator
+rulebook task answer <task-id>   # Answer one (interactive form; or pass <question-id> <answer>)
 
 # Knowledge / decisions / learnings
 rulebook knowledge list

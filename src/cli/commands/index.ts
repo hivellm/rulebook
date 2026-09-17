@@ -13,6 +13,9 @@ export {
     taskShowCommand,
     taskValidateCommand,
     taskArchiveCommand,
+    taskAskCommand,
+    taskQuestionsCommand,
+    taskAnswerCommand,
 } from './task.js';
 export { mcpInitCommand, mcpServerCommand } from './mcp.js';
 export {

@@ -1,4 +1,5 @@
 import type { RulebookTask, TaskValidationResult } from './task-manager.js';
+import type { AskQuestionInput, TaskQuestion } from './task-questions.js';
 
 /**
  * The task surface every backend must provide.
@@ -26,6 +27,15 @@ export interface TaskBackend {
     deleteTask(taskId: string): Promise<void>;
     getTaskMetadata(taskId: string): Promise<Record<string, unknown> | null>;
     updateReadme(): Promise<void>;
+
+    /**
+     * Decision requests (v7.2). `askQuestion` files one and marks the task
+     * blocked; `answerQuestion` records the answer and unblocks the task once
+     * no open question remains; `listOpenQuestions` spans every active task.
+     */
+    askQuestion(taskId: string, input: AskQuestionInput): Promise<TaskQuestion>;
+    answerQuestion(taskId: string, questionId: string, answer: string): Promise<TaskQuestion>;
+    listOpenQuestions(): Promise<Array<{ taskId: string; question: TaskQuestion }>>;
 }
 
 export type TaskBackendKind = 'files' | 'github';

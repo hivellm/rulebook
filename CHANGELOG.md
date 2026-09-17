@@ -5,6 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.2.0] - 2026-09-17
+
+### Added — decision requests: a task can no longer stall silently
+
+The recurring failure: an agent hits a choice the spec does not settle, writes
+a long reply with the question somewhere in the middle, flips the task to
+`blocked` (or leaves it `in-progress`) and moves on. The operator never sees a
+crisp question, so unresolved tasks pile up in `.rulebook/tasks/` and the
+backlog loop keeps rediscovering the same stuck item.
+
+Tasks now carry first-class **decision requests**. The rule, written into the
+generated `CLAUDE.md`, lean `AGENTS.md` and the task spec: decide it yourself
+when the choice is reversible and in scope; otherwise file it explicitly and
+stop working on that item.
+
+- `rulebook_task {action:"ask", taskId, question, options, recommended, blocks}`
+  stores the question (`q1`, `q2`, …) on the task, marks it `blocked`, and
+  returns an `operatorPrompt` plus an instruction to present it to the operator
+  as a form (AskUserQuestion in Claude Code) before continuing.
+- `rulebook_task {action:"answer", taskId, questionId, answer}` records the
+  decision; the task returns to `in-progress` once no open question (and no
+  `blockedBy` dependency) remains. Blank answers are refused.
+- `rulebook_task {action:"questions"}` lists everything awaiting the operator.
+- CLI: `rulebook task ask <id> -q ... -o ... -r ... -b ...`,
+  `rulebook task questions [id]`, and `rulebook task answer <id> [qN] [answer]`,
+  which opens an interactive form (pick an option or type a decision) when no
+  answer is given.
+- Open questions are surfaced wherever the operator looks: `rulebook_session
+  start` (`openQuestions` + hint), `rulebook_task list` (`awaitingDecision`),
+  `.rulebook/STATE.md` (an "Awaiting operator decision" block above the active
+  task) and the tasks README index.
+- `update status:"blocked"` is refused unless the task has an open question or
+  a `blockedBy` dependency; the error names the `ask` action. `archive` is
+  refused over an open question regardless of `skipValidation` or `tailWaiver`.
+- The `rulebook-driver` workflow discovers open questions and halts with
+  `awaitingDecision` (stop reason `awaiting-decision`) instead of looping; its
+  developer prompt tells the agent to file a request rather than guess, and the
+  reviewer treats a filed request as a legitimate stop, not a failed round.
+- Both task backends support it: questions live in the task's
+  `.metadata.json` (file backend) or a `<!-- rulebook:questions -->` JSON
+  section of the issue body (GitHub backend).
+
+### Fixed
+
+- `updateTaskStatus` rewrote `.metadata.json` with only status and dates,
+  dropping `blocks` / `blockedBy` (and now `questions`). It merges over the
+  existing record.
+- The init prompt's "git push behavior" question had a `when` condition on
+  `includeGitWorkflow` that could never fire because it ran in a separate
+  prompt session; it is now asked in the same session, so answering "no" to the
+  git workflow skips it as intended. Surfaced by inquirer 13.4's stricter types.
+
+### Changed — dependencies
+
+In-range refresh of every dependency (`npm outdated` "wanted"), plus three
+majors that pass the full gate without source changes: `globals` 15 → 17,
+`uuid` 13 → 14 and `inquirer` 13 → 14. Prettier 3.6 → 3.9 changed its output
+for six existing files; they are reformatted in the dependency commit and
+nowhere else. Deliberately held, with the reason:
+
+- `@modelcontextprotocol/sdk` stays pinned at 1.22.0: 1.30.0 makes
+  `tsc --noEmit` run out of heap (reproduced on a pristine checkout with the
+  same node_modules), so its type surface is not usable for this project yet.
+- `eslint` 10 / `@eslint/js` 10: the new recommended rules
+  (`no-useless-assignment`, `preserve-caught-error`) flag 14 pre-existing
+  spots; adopting them is a separate cleanup, not a dependency refresh.
+- `chalk` 6, `execa` 10, `commander` 15, `vitest` 5 / `@vitest/coverage-v8` 5
+  require Node ≥ 22; `engines.node` is `>=20`.
+- `typescript` 7 (the Go port), `zod` 4 (MCP SDK schema surface), `js-yaml` 5
+  (API change) and `@types/node` 26 are out of scope for a minor release.
+- The MCP schema-bytes budget in `tests/v7-budgets.test.ts` moves once from
+  3600 to 4400 bytes to cover the new actions and parameters on
+  `rulebook_task` (kept on the existing tool rather than adding a seventh).
+
 ## [7.1.0] - 2026-08-17
 
 ### Added — GitHub-issues task backend (opt-in)

@@ -15,6 +15,9 @@ import {
     taskShowCommand,
     taskValidateCommand,
     taskArchiveCommand,
+    taskAskCommand,
+    taskQuestionsCommand,
+    taskAnswerCommand,
     updateCommand,
     mcpServerCommand,
     mcpInitCommand,
@@ -199,6 +202,55 @@ taskCommand
     .option('--project <name>', 'Target a specific workspace project')
     .action((taskId: string, options: { skipValidation?: boolean; project?: string }) =>
         taskArchiveCommand(taskId, options.skipValidation || false, { project: options.project })
+    );
+
+taskCommand
+    .command('ask <task-id>')
+    .description('File a decision request the agent cannot settle; marks the task blocked')
+    .requiredOption('-q, --question <text>', 'One line: what must be decided')
+    .option('-c, --context <text>', 'Why it cannot be decided from the spec')
+    .option(
+        '-o, --option <label — trade-off>',
+        'A choice (repeatable)',
+        (v: string, acc: string[]) => [...acc, v],
+        [] as string[]
+    )
+    .option('-r, --recommend <label>', 'Option the agent would pick if forced')
+    .option('-b, --blocks <item>', 'Checklist item waiting on this answer')
+    .option('--project <name>', 'Target a specific workspace project')
+    .action(
+        (
+            taskId: string,
+            options: {
+                question: string;
+                context?: string;
+                option: string[];
+                recommend?: string;
+                blocks?: string;
+                project?: string;
+            }
+        ) => taskAskCommand(taskId, options)
+    );
+
+taskCommand
+    .command('questions [task-id]')
+    .description('List open decision requests awaiting the operator')
+    .option('--project <name>', 'Target a specific workspace project')
+    .action((taskId: string | undefined, options: { project?: string }) =>
+        taskQuestionsCommand(taskId, { project: options.project })
+    );
+
+taskCommand
+    .command('answer <task-id> [question-id] [answer]')
+    .description('Answer a decision request (interactive form when no answer is given)')
+    .option('--project <name>', 'Target a specific workspace project')
+    .action(
+        (
+            taskId: string,
+            questionId: string | undefined,
+            answer: string | undefined,
+            options: { project?: string }
+        ) => taskAnswerCommand(taskId, questionId, answer, { project: options.project })
     );
 
 taskCommand

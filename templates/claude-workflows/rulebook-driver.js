@@ -39,9 +39,14 @@ const MAX_FANOUT_ROUNDS = typeof opts.fanoutRounds === 'number' ? opts.fanoutRou
 const TASK_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['found', 'taskId', 'phase', 'item', 'specPaths', 'summary'],
+  required: ['found', 'taskId', 'phase', 'item', 'specPaths', 'summary', 'awaitingDecision'],
   properties: {
     found: { type: 'boolean', description: 'true if an unchecked checklist item was found' },
+    awaitingDecision: {
+      type: 'string',
+      description:
+        'if the task has an OPEN decision request (rulebook task questions <taskId>), the full operator prompt text; empty string otherwise',
+    },
     taskId: { type: 'string', description: 'task directory id; empty string if none' },
     phase: { type: 'string', description: 'phase the item belongs to; empty if none' },
     item: { type: 'string', description: 'exact text of the first unchecked "- [ ]" item' },
@@ -57,11 +62,16 @@ const TASK_SCHEMA = {
 const VERDICT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['pass', 'sddCompliant', 'tddCompliant', 'issues', 'summary'],
+  required: ['pass', 'sddCompliant', 'tddCompliant', 'issues', 'summary', 'awaitingDecision'],
   properties: {
     pass: {
       type: 'boolean',
       description: 'true ONLY if correct, well-implemented, and both SDD and TDD are satisfied',
+    },
+    awaitingDecision: {
+      type: 'string',
+      description:
+        'if the developer filed a decision request (task now has an OPEN question — check `rulebook task questions <taskId>`), the full operator prompt text and pass=false; empty string otherwise',
     },
     sddCompliant: {
       type: 'boolean',
@@ -148,6 +158,7 @@ Specs to satisfy (READ THESE FIRST): ${task.specPaths.join(', ')}
 The working tree is clean (previous items are already committed), so your changes are the ONLY uncommitted diff. Do NOT commit — the driver commits after review.
 TDD: write the failing test(s) first, then the minimum implementation that makes them pass.
 SDD: every behavior you add must trace to a SHALL/MUST scenario in the spec. Do NOT add unspecified features.
+Decide or ask: if the spec leaves a choice open, decide it yourself when it is reversible and in scope (say so in your report). If you genuinely cannot, do NOT guess and do NOT write prose about it — file it: \`rulebook task ask ${task.taskId} -q "<one line>" -o "<A — trade-off>" -o "<B — trade-off>" -r "<A>" -b "${task.item.replace(/"/g, '\\"')}"\` (or the rulebook_task MCP tool, action "ask"), leave the tree clean of half-work, and report BLOCKED with the question.
 Before finishing: run the type-checker, then the relevant tests. Both must be green.
 Report exactly which files you created/changed and which tests you added.`
         : `An independent reviewer REJECTED your previous attempt (round ${round - 1}). Fix ONLY these blocking issues; do not touch anything else:
@@ -169,6 +180,7 @@ Do NOT commit. Re-run the type-checker and tests (both must pass). Report which 
       `You are an INDEPENDENT senior reviewer with NO prior context. This is the FINAL quality gate — be exhaustive, judge ONLY from hard evidence, never trust the developer's claims without checking.
 
 Steps:
+0. Run \`rulebook task questions ${task.taskId}\` (or read the task's .metadata.json "questions"). If there is an OPEN decision request, the developer legitimately stopped: return pass=false, issues=[], and put the full operator prompt in awaitingDecision. Skip the remaining steps.
 1. Run \`git --no-pager diff\` and \`git --no-pager diff --staged\` to see exactly what changed. (Previous items are committed; this is only the current item's work.)
 2. Read the spec files: ${task.specPaths.join(', ')}
 3. Judge on two axes:
@@ -193,6 +205,11 @@ Set pass=true ONLY when SDD and TDD are both fully satisfied and the code is cor
     if (verdict && verdict.pass) {
       passedRound = round
       break
+    }
+    if (verdict && verdict.awaitingDecision) {
+      // The developer filed a decision request instead of guessing. That is the
+      // correct outcome, not a failure: hand the question to the operator and stop.
+      return { passed: false, awaitingDecision: verdict.awaitingDecision, issues: [], verdict: verdict.summary }
     }
     lastIssues = (verdict && verdict.issues) || ['Reviewer returned no verdict']
     log(`Item ${itemIndex} round ${round} rejected: ${lastIssues.length} issue(s).`)
@@ -290,6 +307,8 @@ let currentTaskId = null
 let currentSpecPaths = []
 let currentTaskBaseRef = null
 let halted = false
+// Set when the loop stops because a task waits on the operator ({ taskId, prompt }).
+let awaitingDecision = null
 
 // Run the per-task review-fanout gate once, scoped to the task's committed changeset (baseRef).
 // No-op (auto-pass) when fanout is disabled — the per-item SDD+TDD review + commit hooks
@@ -320,6 +339,7 @@ Steps:
 2. Open .rulebook/tasks/<active-task>/tasks.md (fall back to the lowest-numbered task directory if STATE.md is stale or the active task is fully checked).
 3. Find the first "- [ ]" item, top to bottom.
 4. Collect that task's spec material: proposal.md, tasks.md, and every specs/**/spec.md under the task directory.
+5. Run \`rulebook task questions <task-id>\` (or read "questions" in the task's .metadata.json). If an OPEN decision request exists, put its full operator prompt in awaitingDecision — the item cannot be worked until the operator answers. Otherwise awaitingDecision is "".
 
 Set found=false (and leave the other string fields empty) if every item in every task is already checked.`,
     { label: `discover:${i}`, phase: 'Discover', model: 'haiku', schema: TASK_SCHEMA }
@@ -327,6 +347,14 @@ Set found=false (and leave the other string fields empty) if every item in every
 
   if (!task || !task.found) {
     stopReason = processed.length ? 'backlog-drained' : 'no-pending-task'
+    break
+  }
+
+  if (task.awaitingDecision) {
+    // Never spin on a task that is waiting on the operator: surface the question and stop.
+    stopReason = 'awaiting-decision'
+    awaitingDecision = { taskId: task.taskId, prompt: task.awaitingDecision }
+    log(`Halting: task ${task.taskId} is waiting on an operator decision.\n${task.awaitingDecision}`)
     break
   }
 
@@ -350,6 +378,13 @@ Set found=false (and leave the other string fields empty) if every item in every
   log(`[${i}/${MAX_ITEMS}] ${task.taskId} / ${task.phase}: ${task.item}`)
   const result = await driveItem(task, i)
   processed.push({ taskId: task.taskId, phase: task.phase, item: task.item, ...result })
+
+  if (result.awaitingDecision) {
+    stopReason = 'awaiting-decision'
+    awaitingDecision = { taskId: task.taskId, prompt: result.awaitingDecision }
+    log(`Halting: the developer filed a decision request on ${task.taskId} — answer it and re-run.\n${result.awaitingDecision}`)
+    break
+  }
 
   if (!result.passed) {
     stopReason = 'item-failed-review'
@@ -389,4 +424,4 @@ if (passed > 0 && !halted) {
 
 log(`Done: ${passed}/${processed.length} item(s) passed & committed. Stop reason: ${stopReason}.`)
 
-return { stopReason, processedCount: processed.length, passedCount: passed, processed, taskGates, releaseGate }
+return { stopReason, awaitingDecision, processedCount: processed.length, passedCount: passed, processed, taskGates, releaseGate }
