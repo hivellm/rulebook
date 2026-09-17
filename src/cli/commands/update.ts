@@ -351,9 +351,8 @@ export async function updateSingleProject(
     }
 
     try {
-        const { applyClaudeSettings } = await import(
-            '../../core/claude/claude-settings-manager.js'
-        );
+        const { applyClaudeSettings } =
+            await import('../../core/claude/claude-settings-manager.js');
         // v7: one optional path-only guard + full-autonomy permissions; every
         // retired v5/v6 hook entry is stripped on sync (LEGACY_SIGNATURES).
         const rulebookCfg = await configManager.loadConfig();
@@ -495,9 +494,8 @@ export async function updateSingleProject(
 
     // v6 → v7 cleanup: remove rulebook-owned retired files, normalize spec names.
     try {
-        const { planV6Cleanup, applyV6Cleanup } = await import(
-            '../../core/migration/v6-cleanup.js'
-        );
+        const { planV6Cleanup, applyV6Cleanup } =
+            await import('../../core/migration/v6-cleanup.js');
         const plan = await planV6Cleanup(cwd);
         if (plan.remove.length > 0 || plan.rename.length > 0) {
             const { removed, renamed } = await applyV6Cleanup(cwd, plan);
@@ -677,9 +675,8 @@ export async function updateCommand(options: {
                 })
                 .join('\n');
 
-            const { getDefaultTemplatesPath: getTemplatesPath } = await import(
-                '../../core/skills/skills-manager.js'
-            );
+            const { getDefaultTemplatesPath: getTemplatesPath } =
+                await import('../../core/skills/skills-manager.js');
             let workspaceTplContent = '';
             try {
                 const tplPath = join(getTemplatesPath(), 'core', 'workspace.md');

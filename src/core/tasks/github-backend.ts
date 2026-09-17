@@ -13,6 +13,16 @@ import {
     type GitHubBackendOptions,
     type TaskBackend,
 } from './task-backend.js';
+import {
+    applyAnswer,
+    assertBlockable,
+    buildQuestion,
+    openQuestions,
+    parseQuestions,
+    statusAfterAnswer,
+    type AskQuestionInput,
+    type TaskQuestion,
+} from './task-questions.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -106,22 +116,59 @@ export class GitHubTaskBackend implements TaskBackend {
         for (const [module, spec] of Object.entries(task.specs ?? {})) {
             parts.push(GitHubTaskBackend.section(`spec:${module}`, spec));
         }
+        if (task.questions && task.questions.length > 0) {
+            parts.push(GitHubTaskBackend.questionsSection(task.questions));
+        }
         return parts.join('\n\n') + '\n';
     }
 
-    static decodeBody(body: string): Pick<RulebookTask, 'proposal' | 'tasks' | 'design' | 'specs'> {
+    static decodeBody(
+        body: string
+    ): Pick<RulebookTask, 'proposal' | 'tasks' | 'design' | 'specs' | 'questions'> {
         const specs: Record<string, string> = {};
         for (const match of body.matchAll(/<!-- rulebook:spec:([^\s]+?) -->/g)) {
             const module = match[1];
             const content = GitHubTaskBackend.readSection(body, `spec:${module}`);
             if (content !== undefined) specs[module] = content;
         }
+        const questions = GitHubTaskBackend.readQuestions(body);
         return {
             proposal: GitHubTaskBackend.readSection(body, 'proposal'),
             tasks: GitHubTaskBackend.readSection(body, 'tasks'),
             design: GitHubTaskBackend.readSection(body, 'design'),
             specs,
+            ...(questions.length > 0 ? { questions } : {}),
         };
+    }
+
+    /**
+     * Questions travel as a fenced JSON block inside their own section, so the
+     * issue renders them readably and the record round-trips losslessly.
+     */
+    private static questionsSection(questions: readonly TaskQuestion[]): string {
+        return GitHubTaskBackend.section(
+            'questions',
+            '```json\n' + JSON.stringify(questions, null, 2) + '\n```'
+        );
+    }
+
+    private static readQuestions(body: string): TaskQuestion[] {
+        const raw = GitHubTaskBackend.readSection(body, 'questions');
+        if (!raw) return [];
+        const json = raw.replace(/^\s*```(?:json)?\s*\n?/, '').replace(/\n?\s*```\s*$/, '');
+        try {
+            return parseQuestions(JSON.parse(json));
+        } catch {
+            return [];
+        }
+    }
+
+    /** Replace (or append) the questions section of an issue body. */
+    private static withQuestions(body: string, questions: readonly TaskQuestion[]): string {
+        const section = GitHubTaskBackend.questionsSection(questions);
+        const pattern = /<!-- rulebook:questions -->[\s\S]*?<!-- \/rulebook:questions -->/;
+        if (pattern.test(body)) return body.replace(pattern, section);
+        return `${body.trimEnd()}\n\n${section}\n`;
     }
 
     // ── issue lookup ─────────────────────────────────────────────────────
@@ -238,17 +285,9 @@ export class GitHubTaskBackend implements TaskBackend {
         return validateLoadedTask(await this.loadTask(taskId), taskId);
     }
 
-    async updateTaskStatus(taskId: string, status: RulebookTask['status']): Promise<void> {
-        const issue = await this.findIssue(taskId);
-        if (!issue) throw new Error(`Task ${taskId} not found`);
-
-        const args = [
-            'issue',
-            'edit',
-            String(issue.number),
-            '--add-label',
-            `${STATUS_LABEL_PREFIX}${status}`,
-        ];
+    /** `gh issue edit` args that swap the status label (no other label touched). */
+    private static statusLabelArgs(issue: GhIssue, status: RulebookTask['status']): string[] {
+        const args = ['--add-label', `${STATUS_LABEL_PREFIX}${status}`];
         for (const existing of issue.labels ?? []) {
             if (
                 existing.name.startsWith(STATUS_LABEL_PREFIX) &&
@@ -257,7 +296,83 @@ export class GitHubTaskBackend implements TaskBackend {
                 args.push('--remove-label', existing.name);
             }
         }
+        return args;
+    }
+
+    async updateTaskStatus(taskId: string, status: RulebookTask['status']): Promise<void> {
+        const issue = await this.findIssue(taskId);
+        if (!issue) throw new Error(`Task ${taskId} not found`);
+
+        if (status === 'blocked') {
+            // GitHub issues carry no blockedBy metadata, so an open question is
+            // the only sanctioned reason — same rule as the file backend.
+            assertBlockable(taskId, GitHubTaskBackend.readQuestions(issue.body || ''), {});
+        }
+
+        await this.gh([
+            'issue',
+            'edit',
+            String(issue.number),
+            ...GitHubTaskBackend.statusLabelArgs(issue, status),
+        ]);
+    }
+
+    // ── Decision requests (v7.2) ─────────────────────────────────────────
+
+    async askQuestion(taskId: string, input: AskQuestionInput): Promise<TaskQuestion> {
+        const issue = await this.findIssue(taskId);
+        if (!issue) throw new Error(`Task ${taskId} not found`);
+        const body = issue.body || '';
+        const questions = GitHubTaskBackend.readQuestions(body);
+        const question = buildQuestion(questions, input);
+        await this.gh([
+            'issue',
+            'edit',
+            String(issue.number),
+            '--body',
+            GitHubTaskBackend.withQuestions(body, [...questions, question]),
+            ...GitHubTaskBackend.statusLabelArgs(issue, 'blocked'),
+        ]);
+        return question;
+    }
+
+    async answerQuestion(
+        taskId: string,
+        questionId: string,
+        answer: string
+    ): Promise<TaskQuestion> {
+        const issue = await this.findIssue(taskId);
+        if (!issue) throw new Error(`Task ${taskId} not found`);
+        const body = issue.body || '';
+        const { questions, answered } = applyAnswer(
+            GitHubTaskBackend.readQuestions(body),
+            questionId,
+            answer
+        );
+        const args = [
+            'issue',
+            'edit',
+            String(issue.number),
+            '--body',
+            GitHubTaskBackend.withQuestions(body, questions),
+        ];
+        if (GitHubTaskBackend.statusOf(issue) === 'blocked') {
+            const next = statusAfterAnswer(openQuestions(questions).length, {});
+            args.push(...GitHubTaskBackend.statusLabelArgs(issue, next));
+        }
         await this.gh(args);
+        return answered;
+    }
+
+    async listOpenQuestions(): Promise<Array<{ taskId: string; question: TaskQuestion }>> {
+        const tasks = await this.listTasks(false);
+        const out: Array<{ taskId: string; question: TaskQuestion }> = [];
+        for (const task of tasks) {
+            for (const question of openQuestions(task.questions)) {
+                out.push({ taskId: task.id, question });
+            }
+        }
+        return out.sort((a, b) => a.question.askedAt.localeCompare(b.question.askedAt));
     }
 
     /**
@@ -272,6 +387,15 @@ export class GitHubTaskBackend implements TaskBackend {
     ): Promise<void> {
         const issue = await this.findIssue(taskId);
         if (!issue) throw new Error(`Task ${taskId} not found`);
+
+        const open = openQuestions(GitHubTaskBackend.readQuestions(issue.body || ''));
+        if (open.length > 0) {
+            throw new Error(
+                `Task ${taskId} has ${open.length} open decision request(s): ${open
+                    .map((q) => q.id)
+                    .join(', ')}. Answer them (rulebook_task {action:"answer"}) before archiving.`
+            );
+        }
 
         if (!skipValidation) {
             const validation = validateLoadedTask(GitHubTaskBackend.toTask(issue), taskId);

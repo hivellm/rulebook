@@ -258,6 +258,54 @@ Archive a completed task and apply spec deltas.
 
 ---
 
+## Decision requests (v7.2, `rulebook_task`)
+
+The consolidated v7 `rulebook_task` tool (actions `create|list|show|update|archive|validate|delete`) gains three actions so a task is never left blocked with the question buried in prose:
+
+| Action | Input | Effect |
+|--------|-------|--------|
+| `ask` | `taskId`, `question`, optional `context`, `options` (`"Label — trade-off"` strings), `recommended`, `blocks` | Stores the question (`q1`, `q2`, …) on the task, marks it `blocked`, returns `operatorPrompt` + `instruction` telling the model to show it to the operator as a form (AskUserQuestion in Claude Code) and stop working on that item |
+| `answer` | `taskId`, `questionId`, `answer` | Records the decision; the task returns to `in-progress` once no open question (and no `blockedBy`) remains |
+| `questions` | optional `taskId` | Lists open questions with their operator prompts |
+
+Rules enforced by the managers (both the file and GitHub backends):
+
+- `update` with `status:"blocked"` is refused unless the task has an open question or a `blockedBy` dependency — the error names the `ask` action.
+- `archive` is refused while a question is open, regardless of `skipValidation` or `tailWaiver`.
+- `answer` refuses an empty answer.
+- `list`, `show` and `rulebook_session {action:"start"}` carry open questions (`openQuestions` / `awaitingDecision`) so a fresh session sees them before picking up work.
+
+Example:
+
+```json
+{ "action": "ask", "taskId": "phase1_add-auth",
+  "question": "Which identity provider?",
+  "options": ["Auth0 — hosted, fastest", "Keycloak — self-hosted"],
+  "recommended": "Auth0", "blocks": "1.2 wire login" }
+```
+
+```json
+{ "success": true, "taskId": "phase1_add-auth", "taskStatus": "blocked",
+  "question": { "id": "q1", "status": "open", "...": "..." },
+  "operatorPrompt": "[phase1_add-auth · q1] Decision needed: Which identity provider?\nBlocks: 1.2 wire login\nOptions:\n  1. Auth0 (recommended) — hosted, fastest\n  2. Keycloak — self-hosted\nAnswer with: rulebook_task {action:\"answer\", taskId:\"phase1_add-auth\", questionId:\"q1\", answer:\"...\"}",
+  "instruction": "Present operatorPrompt to the operator NOW as an explicit form ..." }
+```
+
+On disk (file backend) questions live in the task's `.metadata.json` under `questions`; on the GitHub backend they are a `<!-- rulebook:questions -->` JSON section of the issue body.
+
+## Recurring requests → skills (v7.2, `rulebook_memory` + `rulebook_session`)
+
+A learning captured under the same title again is counted (`occurrences`, `lastSeenAt`) instead of duplicated, and the newest content wins. Learnings seen 2+ times and not yet promoted are **skill candidates**:
+
+| Surface | Field |
+|---------|-------|
+| `rulebook_session {action:"start"}` | `skillCandidates: [{id, title, occurrences}]` + `skillHint` |
+| `rulebook_memory {kind:"learning", action:"list"}` | `skillCandidates` + `hint` |
+| `rulebook_memory {kind:"learning", action:"promote", id, target:"skill", content?}` | writes `.claude/skills/<slug>/SKILL.md` (frontmatter `name`/`description`, body scaffolded as *When to use / Steps / Verify*), marks the learning `promotedTo: {type:"skill", id:<slug>}`; refuses to overwrite an existing skill. `content` is the one-line description. |
+| `rulebook_skill {action:"list", category:"project"}` | project skills from `.claude/skills/`, id `project/<dir>`, disabled unless listed in config |
+
+CLI equivalents: `rulebook learn promote <id> skill`, `rulebook skills list --category project`.
+
 ## Error Handling
 
 All MCP functions return structured error responses:

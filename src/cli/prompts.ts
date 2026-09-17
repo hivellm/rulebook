@@ -207,31 +207,30 @@ export async function promptProjectConfig(
         default: true,
     });
 
-    // Git push mode (only if git workflow included)
-    const gitWorkflowAnswer = await inquirer.prompt<{ gitPushMode: 'manual' | 'prompt' | 'auto' }>([
-        {
-            type: 'list',
-            name: 'gitPushMode',
-            message: 'Git push behavior for AI assistants:',
-            choices: [
-                {
-                    name: 'Manual - Provide push commands for manual execution (recommended for SSH with password)',
-                    value: 'manual',
-                },
-                {
-                    name: 'Prompt - Ask before each push',
-                    value: 'prompt',
-                },
-                {
-                    name: 'Auto - Automatic push (only for passwordless setups)',
-                    value: 'auto',
-                },
-            ],
-            default: 'manual',
-            when: (answers: { includeGitWorkflow?: boolean }) =>
-                answers.includeGitWorkflow !== false,
-        },
-    ]);
+    // Git push mode (only if git workflow included). Same prompt session as
+    // includeGitWorkflow so `when` can actually read that answer — as a
+    // separate session it never saw it and the question was always asked.
+    questions.push({
+        type: 'list',
+        name: 'gitPushMode',
+        message: 'Git push behavior for AI assistants:',
+        choices: [
+            {
+                name: 'Manual - Provide push commands for manual execution (recommended for SSH with password)',
+                value: 'manual',
+            },
+            {
+                name: 'Prompt - Ask before each push',
+                value: 'prompt',
+            },
+            {
+                name: 'Auto - Automatic push (only for passwordless setups)',
+                value: 'auto',
+            },
+        ],
+        default: 'manual',
+        when: (answers: { includeGitWorkflow?: boolean }) => answers.includeGitWorkflow !== false,
+    });
 
     // Git hooks installation prompt (only if hooks don't exist)
     const hasPreCommit = detection.gitHooks?.preCommitExists ?? false;
@@ -261,7 +260,7 @@ export async function promptProjectConfig(
         strictDocs: answers.strictDocs,
         generateWorkflows: answers.generateWorkflows,
         includeGitWorkflow: answers.includeGitWorkflow,
-        gitPushMode: gitWorkflowAnswer.gitPushMode || 'manual',
+        gitPushMode: answers.gitPushMode || 'manual',
         installGitHooks,
         minimal: isMinimal,
     };

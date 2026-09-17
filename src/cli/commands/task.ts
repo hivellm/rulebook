@@ -333,3 +333,198 @@ export async function tasksCommand(options: {
 
     await taskListCommand(false);
 }
+
+// ── Decision requests (v7.2) ─────────────────────────────────────────────
+
+export interface TaskAskOptions extends WorkspaceTaskOptions {
+    question?: string;
+    context?: string;
+    option?: string[];
+    recommend?: string;
+    blocks?: string;
+}
+
+/** Split "Label — trade-off" (also accepts " - " / " -- ") into an option record. */
+function splitOption(raw: string): { label: string; description?: string } {
+    const [label, ...rest] = raw.split(/\s+[—–-]{1,2}\s+/);
+    return { label: label.trim(), description: rest.join(' — ').trim() || undefined };
+}
+
+export async function taskAskCommand(taskId: string, options: TaskAskOptions): Promise<void> {
+    try {
+        if (!options.question) {
+            console.error(chalk.red('❌ --question is required (one line: what must be decided)'));
+            process.exit(1);
+            return;
+        }
+        const { renderOperatorPrompt } = await import('../../core/tasks/task-questions.js');
+        const { taskManager, projectLabel } = await resolveTaskManager(process.cwd(), options);
+        const question = await taskManager.askQuestion(taskId, {
+            question: options.question,
+            context: options.context,
+            options: options.option?.map(splitOption),
+            recommended: options.recommend,
+            blocks: options.blocks,
+        });
+        const prefix = projectLabel ? `[${projectLabel}] ` : '';
+        console.log(chalk.yellow(`❓ ${prefix}Task ${taskId} is now blocked on ${question.id}\n`));
+        console.log(renderOperatorPrompt(taskId, question));
+        console.log(chalk.gray(`\nCLI: rulebook task answer ${taskId} ${question.id}`));
+    } catch (error: any) {
+        console.error(chalk.red(`❌ Failed to file the decision request: ${error.message}`));
+        process.exit(1);
+    }
+}
+
+export async function taskQuestionsCommand(
+    taskId: string | undefined,
+    wsOptions?: WorkspaceTaskOptions
+): Promise<void> {
+    try {
+        const { renderOperatorPrompt } = await import('../../core/tasks/task-questions.js');
+        const { taskManager, projectLabel } = await resolveTaskManager(process.cwd(), wsOptions);
+        const all = await taskManager.listOpenQuestions();
+        const open = taskId ? all.filter((q: { taskId: string }) => q.taskId === taskId) : all;
+        if (open.length === 0) {
+            console.log(chalk.green('✅ No open decision requests'));
+            return;
+        }
+        const header = projectLabel
+            ? `\n❓ Awaiting operator decision [${projectLabel}] (${open.length})\n`
+            : `\n❓ Awaiting operator decision (${open.length})\n`;
+        console.log(chalk.bold.yellow(header));
+        for (const entry of open) {
+            console.log(renderOperatorPrompt(entry.taskId, entry.question));
+            console.log(
+                chalk.gray(`CLI: rulebook task answer ${entry.taskId} ${entry.question.id}\n`)
+            );
+        }
+    } catch (error: any) {
+        console.error(chalk.red(`❌ Failed to list decision requests: ${error.message}`));
+        process.exit(1);
+    }
+}
+
+/**
+ * Answer a decision request. With no answer on the command line this is the
+ * explicit form: the open question is shown with its options and the
+ * operator picks one (or types a free-text decision).
+ */
+export async function taskAnswerCommand(
+    taskId: string,
+    questionId: string | undefined,
+    answer: string | undefined,
+    wsOptions?: WorkspaceTaskOptions
+): Promise<void> {
+    try {
+        const { openQuestions, renderOperatorPrompt } =
+            await import('../../core/tasks/task-questions.js');
+        type Question = import('../../core/tasks/task-questions.js').TaskQuestion;
+        const { taskManager, projectLabel } = await resolveTaskManager(process.cwd(), wsOptions);
+        const task = await taskManager.loadTask(taskId);
+        if (!task) {
+            console.error(chalk.red(`❌ Task ${taskId} not found`));
+            process.exit(1);
+            return;
+        }
+        const open: Question[] = openQuestions(task.questions);
+        if (open.length === 0) {
+            console.log(chalk.green(`✅ Task ${taskId} has no open decision requests`));
+            return;
+        }
+
+        let question = questionId ? open.find((q) => q.id === questionId) : undefined;
+        if (questionId && !question) {
+            console.error(
+                chalk.red(
+                    `❌ ${questionId} is not an open question on ${taskId} (open: ${open.map((q) => q.id).join(', ')})`
+                )
+            );
+            process.exit(1);
+            return;
+        }
+        if (!question && open.length === 1) question = open[0];
+
+        if ((!answer || !question) && !process.stdin.isTTY) {
+            console.error(
+                chalk.red(
+                    '❌ No terminal to ask in — pass the question id and the answer as arguments'
+                )
+            );
+            process.exit(1);
+            return;
+        }
+
+        const inquirer = (await import('inquirer')).default;
+        if (!question) {
+            const picked = await inquirer.prompt<{ id: string }>([
+                {
+                    type: 'list',
+                    name: 'id',
+                    message: 'Which question?',
+                    choices: open.map((q) => ({ name: `${q.id}: ${q.question}`, value: q.id })),
+                },
+            ]);
+            question = open.find((q) => q.id === picked.id)!;
+        }
+        const current = question;
+
+        let decision = answer?.trim();
+        if (!decision) {
+            console.log('\n' + renderOperatorPrompt(taskId, current) + '\n');
+            const OTHER = '__other__';
+            const choices = (current.options ?? []).map((o) => ({
+                name:
+                    o.label +
+                    (current.recommended === o.label ? chalk.gray(' (recommended)') : '') +
+                    (o.description ? chalk.gray(` — ${o.description}`) : ''),
+                value: o.label,
+            }));
+            let picked: string = OTHER;
+            if (choices.length > 0) {
+                const res = await inquirer.prompt<{ picked: string }>([
+                    {
+                        type: 'list',
+                        name: 'picked',
+                        message: 'Your decision',
+                        default: current.recommended,
+                        choices: [...choices, { name: 'Other (type it)', value: OTHER }],
+                    },
+                ]);
+                picked = res.picked;
+            }
+            if (picked === OTHER) {
+                const res = await inquirer.prompt<{ text: string }>([
+                    {
+                        type: 'input',
+                        name: 'text',
+                        message: 'Decision (one line)',
+                        validate: (v: string) =>
+                            v.trim() ? true : 'An empty answer keeps the task blocked',
+                    },
+                ]);
+                decision = res.text.trim();
+            } else {
+                decision = picked;
+            }
+        }
+
+        const answered = await taskManager.answerQuestion(taskId, current.id, decision!);
+        const after = await taskManager.loadTask(taskId);
+        const remaining = openQuestions(after?.questions).length;
+        const prefix = projectLabel ? `[${projectLabel}] ` : '';
+        console.log(
+            chalk.green(`✅ ${prefix}${taskId} ${answered.id} answered: ${answered.answer}`)
+        );
+        console.log(
+            remaining === 0
+                ? chalk.gray(
+                      `Task status: ${after?.status} — the agent can resume the blocked item`
+                  )
+                : chalk.yellow(`${remaining} open question(s) still block this task`)
+        );
+    } catch (error: any) {
+        console.error(chalk.red(`❌ Failed to answer: ${error.message}`));
+        process.exit(1);
+    }
+}

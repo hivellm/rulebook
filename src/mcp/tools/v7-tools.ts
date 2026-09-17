@@ -86,7 +86,9 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
         {
             title: 'Rulebook Tasks',
             description:
-                'Manage rulebook tasks. action: create|list|show|update|archive|validate|delete',
+                'Manage rulebook tasks. action: create|list|show|update|archive|validate|delete|ask|answer|questions. ' +
+                'ask = a decision the spec does not settle and you cannot make: blocks the task, returns an operator form. ' +
+                'blocked requires an open question or blockedBy.',
             inputSchema: {
                 action: z.enum([
                     'create',
@@ -96,12 +98,22 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                     'archive',
                     'validate',
                     'delete',
+                    'ask',
+                    'answer',
+                    'questions',
                 ]),
                 taskId: z.string().optional().describe('phase<N>_<kebab-name>'),
                 status: z.enum(['pending', 'in-progress', 'completed', 'blocked']).optional(),
                 includeArchived: z.boolean().optional(),
                 skipValidation: z.boolean().optional(),
                 tailWaiver: z.string().optional().describe('archive: why the tail does not apply'),
+                question: z.string().optional().describe('ask: what must be decided'),
+                context: z.string().optional().describe('ask: why undecidable'),
+                options: z.array(z.string()).optional().describe('ask: "Label — trade-off"'),
+                recommended: z.string().optional().describe('ask: your pick'),
+                blocks: z.string().optional().describe('ask: checklist item'),
+                questionId: z.string().optional().describe('answer: qN'),
+                answer: z.string().optional().describe('answer: decision'),
                 path: z.string().optional().describe('file path → routes to its project'),
                 projectId: projectIdSchema,
             },
@@ -109,10 +121,21 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
         async (args) => {
             try {
                 const tm = await getTaskMgr(routeProjectId(args));
-                const needId = ['create', 'show', 'update', 'archive', 'validate', 'delete'];
+                const needId = [
+                    'create',
+                    'show',
+                    'update',
+                    'archive',
+                    'validate',
+                    'delete',
+                    'ask',
+                    'answer',
+                ];
                 if (needId.includes(args.action) && !args.taskId) {
                     return fail(`action "${args.action}" requires taskId`);
                 }
+                const { ASK_INSTRUCTION, openQuestions, renderOperatorPrompt } =
+                    await import('../../core/tasks/task-questions.js');
                 switch (args.action) {
                     case 'create':
                         await tm.createTask(args.taskId!);
@@ -122,14 +145,89 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                         const filtered = args.status
                             ? tasks.filter((t) => t.status === args.status)
                             : tasks;
+                        const awaiting = tasks.flatMap((t) =>
+                            openQuestions(t.questions).map((q) => ({
+                                taskId: t.id,
+                                id: q.id,
+                                question: q.question,
+                                recommended: q.recommended,
+                            }))
+                        );
                         return ok({
                             tasks: filtered.map((t) => ({
                                 id: t.id,
                                 title: t.title,
                                 status: t.status,
                                 updatedAt: t.updatedAt,
+                                openQuestions: openQuestions(t.questions).length,
                             })),
                             count: filtered.length,
+                            ...(awaiting.length > 0
+                                ? {
+                                      awaitingDecision: awaiting,
+                                      hint: `${awaiting.length} decision request(s) await the operator — surface them before starting new work (action:"questions" for the full form).`,
+                                  }
+                                : {}),
+                        });
+                    }
+                    case 'ask': {
+                        if (!args.question) return fail('ask requires question');
+                        const split = (o: string) => {
+                            const [label, ...rest] = o.split(/\s+[—–-]{1,2}\s+/);
+                            return {
+                                label: label.trim(),
+                                description: rest.join(' — ').trim() || undefined,
+                            };
+                        };
+                        const question = await tm.askQuestion(args.taskId!, {
+                            question: args.question,
+                            context: args.context,
+                            options: args.options?.map(split),
+                            recommended: args.recommended,
+                            blocks: args.blocks,
+                        });
+                        return ok({
+                            taskId: args.taskId,
+                            question,
+                            taskStatus: 'blocked',
+                            operatorPrompt: renderOperatorPrompt(args.taskId!, question),
+                            instruction: ASK_INSTRUCTION,
+                        });
+                    }
+                    case 'answer': {
+                        if (!args.questionId || !args.answer)
+                            return fail('answer requires questionId and answer');
+                        const answered = await tm.answerQuestion(
+                            args.taskId!,
+                            args.questionId,
+                            args.answer
+                        );
+                        const task = await tm.loadTask(args.taskId!);
+                        const remaining = openQuestions(task?.questions).length;
+                        return ok({
+                            taskId: args.taskId,
+                            question: answered,
+                            taskStatus: task?.status,
+                            remainingOpen: remaining,
+                            message:
+                                remaining === 0
+                                    ? 'answered — task unblocked, resume the blocked item'
+                                    : `answered — ${remaining} open question(s) still block this task`,
+                        });
+                    }
+                    case 'questions': {
+                        const all = await tm.listOpenQuestions();
+                        const scoped = args.taskId
+                            ? all.filter((q) => q.taskId === args.taskId)
+                            : all;
+                        return ok({
+                            openQuestions: scoped.map((q) => ({
+                                taskId: q.taskId,
+                                ...q.question,
+                                operatorPrompt: renderOperatorPrompt(q.taskId, q.question),
+                            })),
+                            count: scoped.length,
+                            ...(scoped.length > 0 ? { instruction: ASK_INSTRUCTION } : {}),
                         });
                     }
                     case 'show': {
@@ -183,7 +281,10 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 whenNotToUse: z.string().optional(),
                 tags: z.array(z.string()).optional(),
                 relatedTask: z.string().optional(),
-                target: z.enum(['knowledge', 'decision']).optional().describe('promote to'),
+                target: z
+                    .enum(['knowledge', 'decision', 'skill'])
+                    .optional()
+                    .describe('promote to; skill → .claude/skills/<slug>/SKILL.md'),
                 status: z.string().optional().describe('status'),
                 context: z.string().optional().describe('context'),
                 decision: z.string().optional().describe('text'),
@@ -198,9 +299,8 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
             try {
                 const root = await resolveRoot(args.projectId, args.path);
                 if (args.kind === 'knowledge') {
-                    const { KnowledgeManager } = await import(
-                        '../../core/tasks/knowledge-manager.js'
-                    );
+                    const { KnowledgeManager } =
+                        await import('../../core/tasks/knowledge-manager.js');
                     const km = new KnowledgeManager(root);
                     switch (args.action) {
                         case 'add': {
@@ -248,13 +348,28 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                         }
                         case 'list': {
                             const learnings = await lm.list(args.limit);
-                            return ok({ learnings, count: learnings.length });
+                            const candidates = await lm.skillCandidates();
+                            return ok({
+                                learnings,
+                                count: learnings.length,
+                                ...(candidates.length > 0
+                                    ? {
+                                          skillCandidates: candidates.map((c) => ({
+                                              id: c.id,
+                                              title: c.title,
+                                              occurrences: c.occurrences ?? 1,
+                                          })),
+                                          hint: 'Captured 2+ times — promote with {action:"promote", target:"skill"} so the procedure is reloaded on demand instead of re-derived.',
+                                      }
+                                    : {}),
+                            });
                         }
                         case 'promote': {
                             if (!args.id || !args.target)
                                 return fail('promote requires id and target');
                             const r = await lm.promote(args.id, args.target, {
                                 title: args.title,
+                                description: args.content,
                             });
                             return r ? ok({ promoted: r }) : fail('not found');
                         }
@@ -358,24 +473,70 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                         if (!plans && full.trim()) plans = full.slice(0, 4096);
                     }
                     let tasks: unknown[] = [];
+                    // Open decision requests (v7.2) ride along so a fresh
+                    // session sees what the operator still owes before it
+                    // picks up work — the failure mode this fixes is exactly
+                    // "nobody noticed the task was waiting on a question".
+                    let openQuestions: unknown[] = [];
                     try {
                         const tm = await getTaskMgr(args.projectId);
-                        tasks = (await tm.listTasks(false)).map((t) => ({
+                        const { openQuestions: open, renderOperatorPrompt } =
+                            await import('../../core/tasks/task-questions.js');
+                        const all = await tm.listTasks(false);
+                        tasks = all.map((t) => ({
                             id: t.id,
                             title: t.title,
                             status: t.status,
+                            ...(open(t.questions).length > 0
+                                ? { openQuestions: open(t.questions).length }
+                                : {}),
                         }));
+                        openQuestions = all.flatMap((t) =>
+                            open(t.questions).map((q) => ({
+                                taskId: t.id,
+                                id: q.id,
+                                question: q.question,
+                                recommended: q.recommended,
+                                operatorPrompt: renderOperatorPrompt(t.id, q),
+                            }))
+                        );
                     } catch {
                         // no tasks dir yet
                     }
                     let learnings: unknown[] = [];
+                    // v7.2: learnings captured 2+ times under the same title
+                    // are requests the operator keeps making — surface them so
+                    // the procedure becomes a skill instead of being re-derived.
+                    let skillCandidates: unknown[] = [];
                     try {
                         const { LearnManager } = await import('../../core/tasks/learn-manager.js');
-                        learnings = await new LearnManager(root).list(5);
+                        const lm = new LearnManager(root);
+                        learnings = await lm.list(5);
+                        skillCandidates = (await lm.skillCandidates()).map((c) => ({
+                            id: c.id,
+                            title: c.title,
+                            occurrences: c.occurrences ?? 1,
+                        }));
                     } catch {
                         // no learnings yet
                     }
-                    return ok({ plans, tasks, learnings });
+                    return ok({
+                        plans,
+                        tasks,
+                        learnings,
+                        ...(skillCandidates.length > 0
+                            ? {
+                                  skillCandidates,
+                                  skillHint: `${skillCandidates.length} learning(s) captured 2+ times — promote with rulebook_memory {kind:"learning", action:"promote", target:"skill"} and write the SKILL.md as a procedure.`,
+                              }
+                            : {}),
+                        ...(openQuestions.length > 0
+                            ? {
+                                  openQuestions,
+                                  hint: `${openQuestions.length} decision request(s) await the operator. Show them (operatorPrompt) before starting new work; answer with rulebook_task {action:"answer"}.`,
+                              }
+                            : {}),
+                    });
                 }
 
                 if (!args.summary) return fail('end requires summary');
@@ -537,9 +698,8 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
             try {
                 const root = await resolveRoot(args.projectId);
                 const { listRules } = await import('../../core/rule-engine.js');
-                const { listRulesWithSource } = await import(
-                    '../../core/generators/rules-generator.js'
-                );
+                const { listRulesWithSource } =
+                    await import('../../core/generators/rules-generator.js');
                 const canonical = await listRules(root);
                 const languageRules = await listRulesWithSource(root);
                 return ok({ canonical, languageRules });

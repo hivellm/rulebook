@@ -34,6 +34,44 @@ Never create README.md, PROCESS.md, or any other file in a task directory.
   one-line `tailWaiver` stating why they don't apply (doc-only, covered
   refactor, tooling).
 
+## Decide or ask — never stall silently
+
+A task blocked "for lack of definition" with the question buried in a long reply
+is the failure mode this section prevents.
+
+1. **Decide yourself** when the choice is reversible, inside the spec, and a
+   competent engineer would not escalate it. Record it (`rulebook_memory
+   {kind:"decision"}` if it shapes architecture; otherwise a line in design.md).
+2. **Ask explicitly** when you cannot: `rulebook_task {action:"ask", taskId,
+   question, options:["A — trade-off", "B — trade-off"], recommended:"A",
+   blocks:"<checklist item>"}` (CLI: `rulebook task ask <id> -q ... -o ... -r ...`).
+   That marks the task `blocked`, stores the question, and returns an
+   `operatorPrompt` — show it to the operator as a form (AskUserQuestion in
+   Claude Code) and stop working on that item. Move to an unblocked item or end.
+3. **Never** set `status:"blocked"` without an open question or a `blockedBy`
+   dependency — the update is refused. Never archive over an open question.
+4. The operator answers with `rulebook_task {action:"answer", taskId,
+   questionId, answer}` or `rulebook task answer <id>` (interactive). The task
+   returns to `in-progress`; resume the blocked item. Open questions are listed
+   in `rulebook_session start`, `rulebook_task {action:"questions"}`, `STATE.md`
+   and the tasks README — check them before starting new work.
+
+## Recurring requests become skills
+
+Context is limited and sessions rotate, so a procedure worked out once is lost
+unless it is stored where the harness reloads it: a skill.
+
+1. Did the operator ask for this before? Check `rulebook_session start`
+   (`skillCandidates`) and `rulebook_memory {kind:"learning", action:"list"}`.
+2. Done it once? Capture the procedure as a learning — exact commands, files,
+   how to verify — with `rulebook_memory {kind:"learning", action:"add", title,
+   content}`. Capturing the **same title** again bumps its count instead of
+   duplicating it.
+3. Seen 2+ times? Promote: `rulebook_memory {kind:"learning", action:"promote",
+   id, target:"skill"}` writes `.claude/skills/<slug>/SKILL.md` (user-owned,
+   survives `rulebook update`). Tighten it into when-to-use / steps / verify.
+   Next time, load the skill instead of re-deriving the work.
+
 ## Spec format
 
 ```markdown

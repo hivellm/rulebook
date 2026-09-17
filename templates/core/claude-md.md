@@ -46,6 +46,9 @@ mandates orchestration.
 ## Rulebook (on demand — no ceremony for small fixes)
 - TASK_TRACKING_LINE
   Checklist order = dependencies; independent items may run in parallel.
+- Undecidable choice? `rulebook_task {action:"ask"}` and show the form — never a
+  task blocked in prose. Same request again? Capture the learning under the same
+  title; at 2+ promote it to a skill. Details: `.rulebook/specs/rulebook.md`.
 - Optional session context: `rulebook_session`. Learned something non-obvious?
   `rulebook_memory`.
 - Project specs live in `.rulebook/specs/` — read a spec when the work touches its area.

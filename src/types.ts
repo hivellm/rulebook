@@ -292,7 +292,9 @@ export type SkillCategory =
     | 'core'
     | 'cli'
     | 'git'
-    | 'hooks';
+    | 'hooks'
+    /** v7.2: skills under the project's own `.claude/skills/` (user-owned). */
+    | 'project';
 
 export interface SkillMetadata {
     name: string;
@@ -362,12 +364,7 @@ export interface Decision {
 
 export type KnowledgeType = 'pattern' | 'anti-pattern';
 export type KnowledgeCategory =
-    | 'architecture'
-    | 'code'
-    | 'testing'
-    | 'security'
-    | 'performance'
-    | 'devops';
+    'architecture' | 'code' | 'testing' | 'security' | 'performance' | 'devops';
 
 export interface KnowledgeEntry {
     id: string;
@@ -392,8 +389,15 @@ export interface Learning {
     relatedDecision?: number;
     tags: string[];
     createdAt: string;
+    /**
+     * v7.2: how many times this learning was captured under the same title.
+     * Absent on legacy entries (treated as 1). At 2+ it is a skill candidate.
+     */
+    occurrences?: number;
+    /** v7.2: last time it was captured again. */
+    lastSeenAt?: string;
     promotedTo?: {
-        type: 'knowledge' | 'decision';
+        type: 'knowledge' | 'decision' | 'skill';
         id: string;
     };
 }

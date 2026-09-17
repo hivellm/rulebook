@@ -14,6 +14,8 @@ export const STATE_FILE = '.rulebook/STATE.md';
 
 export interface StateSnapshot {
     activeTask?: { id: string; phase: string; progress: string } | null;
+    /** v7.2: one line per open decision request (`<task> <qN>: <question>`). */
+    openQuestions?: string[];
     lastQualityGate?: string | null;
     healthScore?: number | null;
     updatedAt: string;
@@ -63,6 +65,19 @@ function renderState(s: StateSnapshot): string {
         `**Last updated**: ${s.updatedAt}`,
         '',
     ];
+
+    // Open decision requests come first: they are the one thing the operator
+    // must act on before the active task can move.
+    if (s.openQuestions && s.openQuestions.length > 0) {
+        lines.push(`## ❓ Awaiting operator decision (${s.openQuestions.length})`);
+        lines.push('');
+        for (const q of s.openQuestions) lines.push(`- ${q}`);
+        lines.push('');
+        lines.push(
+            'Answer: `rulebook task answer <task-id> <question-id>` or `rulebook_task {action:"answer"}`.'
+        );
+        lines.push('');
+    }
 
     if (s.activeTask) {
         lines.push(`## Active task`);

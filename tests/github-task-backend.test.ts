@@ -192,11 +192,21 @@ describe('GitHubTaskBackend', () => {
             ghReplies(JSON.stringify([OPEN_ISSUE]), '');
             const backend = new GitHubTaskBackend();
 
-            await backend.updateTaskStatus('phase1_demo', 'blocked');
+            await backend.updateTaskStatus('phase1_demo', 'completed');
 
             const edit = calls().find((c) => c[1] === 'edit')!;
-            expect(edit[edit.indexOf('--add-label') + 1]).toBe('rulebook-status:blocked');
+            expect(edit[edit.indexOf('--add-label') + 1]).toBe('rulebook-status:completed');
             expect(edit[edit.indexOf('--remove-label') + 1]).toBe('rulebook-status:in-progress');
+        });
+
+        it('refuses blocked without an open decision request (v7.2)', async () => {
+            ghReplies(JSON.stringify([OPEN_ISSUE]));
+            const backend = new GitHubTaskBackend();
+
+            await expect(backend.updateTaskStatus('phase1_demo', 'blocked')).rejects.toThrow(
+                /action:"ask"/
+            );
+            expect(calls().some((c) => c[1] === 'edit')).toBe(false);
         });
 
         it('closes the issue when the task validates', async () => {

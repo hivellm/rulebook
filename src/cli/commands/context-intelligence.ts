@@ -169,19 +169,23 @@ export async function learnPromoteCommand(
     const { LearnManager } = await import('../../core/tasks/learn-manager.js');
     const mgr = new LearnManager(process.cwd());
 
-    if (target !== 'knowledge' && target !== 'decision') {
-        console.log(chalk.red('Target must be "knowledge" or "decision".'));
+    if (target !== 'knowledge' && target !== 'decision' && target !== 'skill') {
+        console.log(chalk.red('Target must be "knowledge", "decision" or "skill".'));
         return;
     }
 
     const spinner = ora(`Promoting learning to ${target}...`).start();
     try {
-        const result = await mgr.promote(id, target as any, { title: options.title });
+        const result = await mgr.promote(id, target, { title: options.title });
         if (!result) {
             spinner.fail(`Learning "${id}" not found.`);
             return;
         }
-        spinner.succeed(`Learning promoted to ${result.type} (id: ${result.id}).`);
+        spinner.succeed(
+            result.path
+                ? `Learning promoted to skill "${result.id}" → ${result.path} (tighten it into a procedure)`
+                : `Learning promoted to ${result.type} (id: ${result.id}).`
+        );
     } catch (error) {
         spinner.fail(`Failed: ${String(error)}`);
     }

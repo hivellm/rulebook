@@ -27,6 +27,8 @@ import type {
 // Default skills directory relative to templates
 const DEFAULT_SKILLS_DIR = 'skills';
 const SKILL_FILE_NAME = 'SKILL.md';
+/** Project-local skills, in the Claude Code layout (`.claude/skills/<name>/SKILL.md`). */
+export const PROJECT_SKILLS_DIR = join('.claude', 'skills');
 const LEGACY_TEMPLATE_EXTENSIONS = ['.md'];
 
 // Category mappings from legacy template structure
@@ -190,12 +192,14 @@ export function convertLegacyTemplateToSkill(
 export class SkillsManager {
     private templatesPath: string;
     private skillsPath: string;
+    /** v7.2: the project's own skills (`.claude/skills/<name>/SKILL.md`). */
+    private projectSkillsPath: string;
     private skillsIndex: SkillsIndex | null = null;
 
-    constructor(templatesPath: string, _projectPath: string = process.cwd()) {
+    constructor(templatesPath: string, projectPath: string = process.cwd()) {
         this.templatesPath = templatesPath;
         this.skillsPath = join(templatesPath, DEFAULT_SKILLS_DIR);
-        // _projectPath reserved for future custom skills path support
+        this.projectSkillsPath = join(projectPath, PROJECT_SKILLS_DIR);
     }
 
     /**
@@ -212,6 +216,7 @@ export class SkillsManager {
             cli: [],
             git: [],
             hooks: [],
+            project: [],
         };
 
         // First, check if new skills directory exists
@@ -221,6 +226,11 @@ export class SkillsManager {
 
         // Also scan legacy template directories for backward compatibility
         await this.scanLegacyTemplates(skills, categories);
+
+        // v7.2: the project's own skills — hand-written or promoted from a
+        // recurring learning. Listed next to packaged skills; opt-in for
+        // generation like every other skill.
+        await this.scanProjectSkills(skills, categories);
 
         this.skillsIndex = {
             skills,
@@ -262,6 +272,43 @@ export class SkillsManager {
             }
         } catch {
             // Directory doesn't exist or can't be read
+        }
+    }
+
+    /**
+     * v7.2: scan `<project>/.claude/skills/<name>/SKILL.md`. Flat (one level),
+     * category fixed to `project`, id `project/<dir-name>` so a project skill
+     * can never shadow a packaged one.
+     */
+    private async scanProjectSkills(
+        skills: Skill[],
+        categories: Record<SkillCategory, Skill[]>
+    ): Promise<void> {
+        if (!(await fileExists(this.projectSkillsPath))) return;
+        try {
+            const entries = await readdir(this.projectSkillsPath, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isDirectory()) continue;
+                const skillFilePath = join(this.projectSkillsPath, entry.name, SKILL_FILE_NAME);
+                if (!(await fileExists(skillFilePath))) continue;
+                try {
+                    const { metadata, body } = parseSkillFrontmatter(await readFile(skillFilePath));
+                    const skill: Skill = {
+                        id: this.generateSkillId(entry.name, 'project'),
+                        path: skillFilePath,
+                        metadata: { ...metadata, name: metadata.name || entry.name },
+                        content: body,
+                        category: 'project',
+                        enabled: false,
+                    };
+                    skills.push(skill);
+                    categories.project.push(skill);
+                } catch {
+                    // unreadable skill file — skip it
+                }
+            }
+        } catch {
+            // Directory can't be read
         }
     }
 

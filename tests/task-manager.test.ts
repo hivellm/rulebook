@@ -6,7 +6,7 @@ import {
     renderMandatoryTail,
     MANDATORY_TAIL_ITEMS,
 } from '../src/core/tasks/task-manager.js';
-import { promises as fs } from 'fs';
+import { promises as fs, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -394,12 +394,29 @@ Then something occurs
             ).resolves.not.toThrow();
         });
 
-        it('should update task status to blocked (method executes)', async () => {
+        it('should refuse blocked without an open question or a blockedBy dependency', async () => {
             await taskManager.createTask('phase1_task-blocked');
-            // Method executes successfully
+            // v7.2: "blocked" must carry a reason the operator can act on.
             await expect(
                 taskManager.updateTaskStatus('phase1_task-blocked', 'blocked')
-            ).resolves.not.toThrow();
+            ).rejects.toThrow(/action:"ask"/);
+        });
+
+        it('should allow blocked when the task has a blockedBy dependency', async () => {
+            await taskManager.createTask('phase1_task-dep-blocked');
+            const metaPath = join(
+                testDir,
+                '.rulebook',
+                'tasks',
+                'phase1_task-dep-blocked',
+                '.metadata.json'
+            );
+            const meta = JSON.parse(readFileSync(metaPath, 'utf-8'));
+            writeFileSync(metaPath, JSON.stringify({ ...meta, blockedBy: ['phase0_dep'] }));
+            await taskManager.updateTaskStatus('phase1_task-dep-blocked', 'blocked');
+            const after = JSON.parse(readFileSync(metaPath, 'utf-8'));
+            expect(after.status).toBe('blocked');
+            expect(after.blockedBy).toEqual(['phase0_dep']);
         });
 
         it('should update updatedAt timestamp (method executes)', async () => {

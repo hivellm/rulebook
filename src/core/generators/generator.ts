@@ -977,9 +977,8 @@ export async function generateModularAgents(
 
     // Add enabled skills section (v2.0)
     try {
-        const { SkillsManager, getDefaultTemplatesPath } = await import(
-            '../skills/skills-manager.js'
-        );
+        const { SkillsManager, getDefaultTemplatesPath } =
+            await import('../skills/skills-manager.js');
         const { createConfigManager } = await import('../state/config-manager.js');
 
         const configManager = createConfigManager(projectRoot);

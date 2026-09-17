@@ -4,9 +4,8 @@ import path from 'path';
 
 export async function overrideShowCommand(): Promise<void> {
     const cwd = process.cwd();
-    const { overrideExists, getOverridePath, readOverrideContent } = await import(
-        '../../core/state/override-manager.js'
-    );
+    const { overrideExists, getOverridePath, readOverrideContent } =
+        await import('../../core/state/override-manager.js');
     if (!overrideExists(cwd)) {
         console.log(
             chalk.yellow(
