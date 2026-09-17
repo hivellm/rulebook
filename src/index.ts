@@ -600,7 +600,7 @@ learnCommand
 
 learnCommand
     .command('promote <id> <target>')
-    .description('Promote learning to knowledge entry or decision')
+    .description('Promote learning to knowledge, decision, or skill (.claude/skills/<slug>/)')
     .option('--title <title>', 'Override title for the promoted entry')
     .action((id: string, target: string, options: { title?: string }) =>
         learnPromoteCommand(id, target, options)

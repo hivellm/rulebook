@@ -25,10 +25,10 @@ overrides in `AGENTS.override.md` (user-owned, wins on conflict). Detail lives i
    silently.
 7. **Multi-session work is tracked as Rulebook tasks** (`.rulebook/tasks/`, managed via
    the `rulebook` MCP/CLI). Checklist order expresses dependencies — independent items
-   may run in parallel. Small fixes need no task ceremony. A decision the spec does
-   not settle: decide it yourself when reversible and in scope; otherwise
-   `rulebook_task {action:"ask"}` and show the returned prompt to the operator as a
-   form — a task is never left blocked with the question buried in prose.
+   may run in parallel. Small fixes need no task ceremony. Undecidable choice:
+   `rulebook_task {action:"ask"}` and show the form, never a task blocked in prose.
+   Same request again: capture the learning under the same title; at 2+ promote it
+   to a skill.
 8. **Docs in English.** Root allows only README/CHANGELOG/AGENTS/LICENSE/CONTRIBUTING/
    SECURITY — everything else in `/docs`. Analyses: `docs/analysis/<slug>/`, numbered
    files, one theme per file.

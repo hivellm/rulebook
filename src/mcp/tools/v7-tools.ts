@@ -281,7 +281,10 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 whenNotToUse: z.string().optional(),
                 tags: z.array(z.string()).optional(),
                 relatedTask: z.string().optional(),
-                target: z.enum(['knowledge', 'decision']).optional().describe('promote to'),
+                target: z
+                    .enum(['knowledge', 'decision', 'skill'])
+                    .optional()
+                    .describe('promote to; skill → .claude/skills/<slug>/SKILL.md'),
                 status: z.string().optional().describe('status'),
                 context: z.string().optional().describe('context'),
                 decision: z.string().optional().describe('text'),
@@ -345,13 +348,28 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                         }
                         case 'list': {
                             const learnings = await lm.list(args.limit);
-                            return ok({ learnings, count: learnings.length });
+                            const candidates = await lm.skillCandidates();
+                            return ok({
+                                learnings,
+                                count: learnings.length,
+                                ...(candidates.length > 0
+                                    ? {
+                                          skillCandidates: candidates.map((c) => ({
+                                              id: c.id,
+                                              title: c.title,
+                                              occurrences: c.occurrences ?? 1,
+                                          })),
+                                          hint: 'Captured 2+ times — promote with {action:"promote", target:"skill"} so the procedure is reloaded on demand instead of re-derived.',
+                                      }
+                                    : {}),
+                            });
                         }
                         case 'promote': {
                             if (!args.id || !args.target)
                                 return fail('promote requires id and target');
                             const r = await lm.promote(args.id, args.target, {
                                 title: args.title,
+                                description: args.content,
                             });
                             return r ? ok({ promoted: r }) : fail('not found');
                         }
@@ -486,9 +504,19 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                         // no tasks dir yet
                     }
                     let learnings: unknown[] = [];
+                    // v7.2: learnings captured 2+ times under the same title
+                    // are requests the operator keeps making — surface them so
+                    // the procedure becomes a skill instead of being re-derived.
+                    let skillCandidates: unknown[] = [];
                     try {
                         const { LearnManager } = await import('../../core/tasks/learn-manager.js');
-                        learnings = await new LearnManager(root).list(5);
+                        const lm = new LearnManager(root);
+                        learnings = await lm.list(5);
+                        skillCandidates = (await lm.skillCandidates()).map((c) => ({
+                            id: c.id,
+                            title: c.title,
+                            occurrences: c.occurrences ?? 1,
+                        }));
                     } catch {
                         // no learnings yet
                     }
@@ -496,6 +524,12 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                         plans,
                         tasks,
                         learnings,
+                        ...(skillCandidates.length > 0
+                            ? {
+                                  skillCandidates,
+                                  skillHint: `${skillCandidates.length} learning(s) captured 2+ times — promote with rulebook_memory {kind:"learning", action:"promote", target:"skill"} and write the SKILL.md as a procedure.`,
+                              }
+                            : {}),
                         ...(openQuestions.length > 0
                             ? {
                                   openQuestions,

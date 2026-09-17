@@ -153,6 +153,24 @@ rulebook decision list       # architecture decision records
 rulebook learn list          # captured implementation learnings
 ```
 
+#### Recurring requests become skills
+
+Context is limited and sessions rotate, so a procedure worked out once is
+re-derived the next time the operator asks for it. Rulebook now closes that
+loop: capturing a learning under the **same title** again bumps its count
+instead of duplicating it, learnings seen twice or more show up as
+`skillCandidates` in `rulebook_session start`, and one call turns the
+procedure into a project skill:
+
+```bash
+rulebook learn promote <learning-id> skill   # → .claude/skills/<slug>/SKILL.md
+rulebook skills list --category project      # project skills, next to packaged ones
+```
+
+The generated `SKILL.md` is scaffolded as a procedure (when to use, steps,
+verify), is user-owned, survives `rulebook update`, and is reloaded by the
+harness on demand. Promotion never overwrites an existing skill.
+
 ### Structural enforcement
 
 A single `PreToolUse` hook blocks forbidden patterns at the tool level — before edits reach disk: `deferred`/`skip`/`later`/`TODO` in tasks.md, stubs/placeholders/`HACK`/`FIXME` in source, and manual task-file creation in `.rulebook/tasks/`. Cross-platform (Node.js, no `jq` dependency), and short-circuits in pure bash so a normal edit costs ~one process spawn.

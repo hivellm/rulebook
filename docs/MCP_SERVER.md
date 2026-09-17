@@ -293,6 +293,19 @@ Example:
 
 On disk (file backend) questions live in the task's `.metadata.json` under `questions`; on the GitHub backend they are a `<!-- rulebook:questions -->` JSON section of the issue body.
 
+## Recurring requests → skills (v7.2, `rulebook_memory` + `rulebook_session`)
+
+A learning captured under the same title again is counted (`occurrences`, `lastSeenAt`) instead of duplicated, and the newest content wins. Learnings seen 2+ times and not yet promoted are **skill candidates**:
+
+| Surface | Field |
+|---------|-------|
+| `rulebook_session {action:"start"}` | `skillCandidates: [{id, title, occurrences}]` + `skillHint` |
+| `rulebook_memory {kind:"learning", action:"list"}` | `skillCandidates` + `hint` |
+| `rulebook_memory {kind:"learning", action:"promote", id, target:"skill", content?}` | writes `.claude/skills/<slug>/SKILL.md` (frontmatter `name`/`description`, body scaffolded as *When to use / Steps / Verify*), marks the learning `promotedTo: {type:"skill", id:<slug>}`; refuses to overwrite an existing skill. `content` is the one-line description. |
+| `rulebook_skill {action:"list", category:"project"}` | project skills from `.claude/skills/`, id `project/<dir>`, disabled unless listed in config |
+
+CLI equivalents: `rulebook learn promote <id> skill`, `rulebook skills list --category project`.
+
 ## Error Handling
 
 All MCP functions return structured error responses:

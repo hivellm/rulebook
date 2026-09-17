@@ -47,6 +47,34 @@ stop working on that item.
   `.metadata.json` (file backend) or a `<!-- rulebook:questions -->` JSON
   section of the issue body (GitHub backend).
 
+### Added — recurring requests become skills
+
+The other way work gets lost: the operator asks for the same thing every few
+days, and each time the agent re-derives the procedure under a shrinking
+context. Learnings existed but nothing noticed recurrence, and a learning could
+not become the one artifact a harness reloads on demand — a skill.
+
+- Capturing a learning under the **same title** again (unpromoted) bumps
+  `occurrences` and `lastSeenAt` and keeps the newest content instead of
+  writing a duplicate. Legacy entries count as 1. Two captures in the same
+  second no longer collide on the same id.
+- `LearnManager.skillCandidates(min = 2)`: unpromoted learnings seen at least
+  `min` times, most recurrent first. Surfaced as `skillCandidates` (+ hint) in
+  `rulebook_session start` and in `rulebook_memory {kind:"learning",
+  action:"list"}`.
+- `rulebook_memory {kind:"learning", action:"promote", target:"skill"}` and
+  `rulebook learn promote <id> skill` write `.claude/skills/<slug>/SKILL.md`
+  scaffolded as a procedure (*When to use / Steps / Verify*), user-owned and
+  untouched by `rulebook update`; the learning is marked promoted. An existing
+  skill is never overwritten.
+- `SkillsManager` scans the project's `.claude/skills/` as category `project`
+  (id `project/<dir>`), so `rulebook_skill list|show|search` and
+  `rulebook skills list --category project` see hand-written and promoted
+  skills next to packaged ones. They stay opt-in for generation like any skill.
+- Guidance in the generated `CLAUDE.md`, lean `AGENTS.md` and the task spec:
+  same request again → capture under the same title; seen 2+ times → promote
+  to a skill and tighten it into a procedure.
+
 ### Fixed
 
 - `updateTaskStatus` rewrote `.metadata.json` with only status and dates,

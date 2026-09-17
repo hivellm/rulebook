@@ -56,6 +56,22 @@ is the failure mode this section prevents.
    in `rulebook_session start`, `rulebook_task {action:"questions"}`, `STATE.md`
    and the tasks README — check them before starting new work.
 
+## Recurring requests become skills
+
+Context is limited and sessions rotate, so a procedure worked out once is lost
+unless it is stored where the harness reloads it: a skill.
+
+1. Did the operator ask for this before? Check `rulebook_session start`
+   (`skillCandidates`) and `rulebook_memory {kind:"learning", action:"list"}`.
+2. Done it once? Capture the procedure as a learning — exact commands, files,
+   how to verify — with `rulebook_memory {kind:"learning", action:"add", title,
+   content}`. Capturing the **same title** again bumps its count instead of
+   duplicating it.
+3. Seen 2+ times? Promote: `rulebook_memory {kind:"learning", action:"promote",
+   id, target:"skill"}` writes `.claude/skills/<slug>/SKILL.md` (user-owned,
+   survives `rulebook update`). Tighten it into when-to-use / steps / verify.
+   Next time, load the skill instead of re-deriving the work.
+
 ## Spec format
 
 ```markdown
