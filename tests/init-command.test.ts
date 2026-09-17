@@ -227,9 +227,8 @@ describe('Init Command Options', () => {
 
     describe('Skills Auto-Detection', () => {
         it('should auto-detect skills based on project config', async () => {
-            const { SkillsManager, getDefaultTemplatesPath } = await import(
-                '../src/core/skills/skills-manager.js'
-            );
+            const { SkillsManager, getDefaultTemplatesPath } =
+                await import('../src/core/skills/skills-manager.js');
             const skillsManager = new SkillsManager(getDefaultTemplatesPath(), testDir);
 
             const partialConfig = {

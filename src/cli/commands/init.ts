@@ -286,9 +286,8 @@ export async function initCommand(options: {
 
         if (detection.existingAgents) {
             {
-                const { hasFlatLayout, migrateFlatToSpecs } = await import(
-                    '../../core/migrator.js'
-                );
+                const { hasFlatLayout, migrateFlatToSpecs } =
+                    await import('../../core/migrator.js');
                 const rulebookDirForMigration = config.rulebookDir || '.rulebook';
                 if (await hasFlatLayout(cwd, rulebookDirForMigration)) {
                     const { migratedFiles } = await migrateFlatToSpecs(
@@ -427,9 +426,8 @@ export async function initCommand(options: {
             }
 
             try {
-                const { applyClaudeSettings } = await import(
-                    '../../core/claude/claude-settings-manager.js'
-                );
+                const { applyClaudeSettings } =
+                    await import('../../core/claude/claude-settings-manager.js');
                 // v7: one optional path-only guard + full-autonomy permissions.
                 // No Stop/UserPromptSubmit/SessionStart hooks, no orchestration
                 // enforcement (P0). Stale v5/v6 entries are stripped on sync.
@@ -449,9 +447,8 @@ export async function initCommand(options: {
             }
 
             try {
-                const { generateMcpReference } = await import(
-                    '../../core/docs/mcp-reference-generator.js'
-                );
+                const { generateMcpReference } =
+                    await import('../../core/docs/mcp-reference-generator.js');
                 const mcpRef = await generateMcpReference(cwd);
                 if (mcpRef.written) {
                     console.log(chalk.gray(`  • generated ${path.relative(cwd, mcpRef.path)}`));
@@ -495,9 +492,8 @@ export async function initCommand(options: {
         if (!minimalMode) {
             const claudeIntSpinner = ora('Checking Claude Code integration...').start();
             try {
-                const { setupClaudeCodeIntegration } = await import(
-                    '../../core/claude/claude-mcp.js'
-                );
+                const { setupClaudeCodeIntegration } =
+                    await import('../../core/claude/claude-mcp.js');
                 const result = await setupClaudeCodeIntegration(cwd);
                 if (result.detected) {
                     claudeIntSpinner.succeed('Claude Code integration configured');

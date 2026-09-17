@@ -285,14 +285,7 @@ export interface TelemetryData {
 // Skills System Types (v2.0)
 
 export type SkillCategory =
-    | 'languages'
-    | 'modules'
-    | 'workflows'
-    | 'ides'
-    | 'core'
-    | 'cli'
-    | 'git'
-    | 'hooks';
+    'languages' | 'modules' | 'workflows' | 'ides' | 'core' | 'cli' | 'git' | 'hooks';
 
 export interface SkillMetadata {
     name: string;
@@ -362,12 +355,7 @@ export interface Decision {
 
 export type KnowledgeType = 'pattern' | 'anti-pattern';
 export type KnowledgeCategory =
-    | 'architecture'
-    | 'code'
-    | 'testing'
-    | 'security'
-    | 'performance'
-    | 'devops';
+    'architecture' | 'code' | 'testing' | 'security' | 'performance' | 'devops';
 
 export interface KnowledgeEntry {
     id: string;
