@@ -53,4 +53,17 @@ prerequisites (earlier items it builds on) are incomplete, and never skip or
 silently drop items. Independent items — including within the same phase —
 may run in any order or in parallel (e.g. via subagents). Phases gate on
 their dependencies, not on the phase number.
+
+## 7. No OS-level scheduling
+
+Anything that must run on a schedule lives in the application — its job
+runner, queue, or scheduler library — committed, reviewed, and tested with the
+rest of the code. Never create, install, or edit an operating-system schedule
+in any form: `crontab`/`/etc/cron*`/anacron/`at`, systemd timers or units,
+launchd agents or daemons (`launchctl`, `LaunchAgents`/`LaunchDaemons`
+plists), Windows Task Scheduler (`schtasks`, `Register-ScheduledTask` and the
+other `*-ScheduledTask` cmdlets). The harness's own scheduler (cron jobs,
+wake-ups, routines) is for driving the agent, not a stand-in for application
+scheduling. If a task seems to need an OS schedule, the missing piece is a
+scheduler inside the app — implement that, or ask.
 <!-- TIER1_PROHIBITIONS:END -->

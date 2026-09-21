@@ -14,6 +14,8 @@ import { applyClaudeSettings } from '../../core/claude/claude-settings-manager.j
 export interface ClaudeSetupOptions {
     /** Cost-aware default model written to settings.json when none is set. */
     model?: string;
+    /** v7.3: enable the TypeSafe (Jev) integration (plugin + rule + key check). */
+    typesafe?: boolean;
 }
 
 /**
@@ -40,10 +42,31 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
         // sync via LEGACY_SIGNATURES.
         await applyClaudeSettings(cwd, {
             taskScaffoldingGuard: true,
+            osSchedulingGuard: true,
             fullAutonomyPermissions: true,
             statusLine: true,
             defaultModel,
         });
+
+        // v7.3: TypeSafe (Jev) — honour the stored answer, or enable with --typesafe.
+        try {
+            const { createConfigManager } = await import('../../core/state/config-manager.js');
+            const { decideTypesafe, applyTypesafe } = await import('./typesafe.js');
+            const decision = await decideTypesafe(createConfigManager(cwd), {
+                flag: options.typesafe,
+                interactive: false,
+            });
+            if (decision.enabled) {
+                console.log(chalk.bold('\nTypeSafe (Jev) integration'));
+                await applyTypesafe(cwd);
+            }
+        } catch (err) {
+            console.log(
+                chalk.gray(
+                    `  · TypeSafe setup skipped: ${err instanceof Error ? err.message : String(err)}`
+                )
+            );
+        }
 
         console.log(chalk.green('\n✅ Claude Code setup applied'));
         if (result.mcpConfigured) console.log(chalk.gray('  • MCP server configured in .mcp.json'));

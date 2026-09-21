@@ -68,6 +68,8 @@ export async function initCommand(options: {
     lean?: boolean;
     package?: string;
     addSequentialThinking?: boolean;
+    /** v7.3: enable the TypeSafe (Jev) integration without asking. */
+    typesafe?: boolean;
 }): Promise<void> {
     try {
         const cwd = process.cwd();
@@ -435,6 +437,7 @@ export async function initCommand(options: {
                 const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
                 await applyClaudeSettings(cwd, {
                     taskScaffoldingGuard: true,
+                    osSchedulingGuard: true,
                     fullAutonomyPermissions: true,
                     teamsEnv: multiAgentEnabled,
                 });
@@ -531,6 +534,27 @@ export async function initCommand(options: {
                 }
             } catch {
                 claudeIntSpinner.info('Claude Code integration skipped');
+            }
+
+            // v7.3: TypeSafe (Jev) — offered, never imposed. Asked once in an
+            // interactive run (default no), remembered in rulebook.json, or
+            // enabled outright with --typesafe.
+            try {
+                const { decideTypesafe, applyTypesafe } = await import('./typesafe.js');
+                const decision = await decideTypesafe(configManager, {
+                    flag: options.typesafe,
+                    interactive,
+                });
+                if (decision.enabled) {
+                    console.log(chalk.bold('\nTypeSafe (Jev) integration'));
+                    await applyTypesafe(cwd);
+                }
+            } catch (err) {
+                console.log(
+                    chalk.gray(
+                        `  · TypeSafe setup skipped: ${err instanceof Error ? err.message : String(err)}`
+                    )
+                );
             }
         }
 

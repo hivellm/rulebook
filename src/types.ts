@@ -210,6 +210,14 @@ export interface RulebookConfig {
         repo?: string; // owner/name — defaults to whatever `gh` infers from the remote
         label?: string; // issue label marking rulebook tasks (default: rulebook-task)
     };
+    // Optional third-party integrations (v7.3). Each is opt-in and remembers
+    // the operator's answer so init/update never ask twice.
+    integrations?: {
+        typesafe?: {
+            enabled: boolean;
+            askedAt?: string;
+        };
+    };
     // MCP server configuration
     mcp?: {
         enabled?: boolean;

@@ -17,7 +17,8 @@ overrides in `AGENTS.override.md` (user-owned, wins on conflict). Detail lives i
    `branch -D`, branch switching. Always fine: status, diff, log, blame, add, commit.
 4. **No deletion without authorization** — never `rm`/`del` without an explicit user
    "yes, delete it". Never delete or move a `.git`. Worktrees live outside the repo
-   tree and come out via `git worktree remove`, never `rm -rf`.
+   tree and come out via `git worktree remove`, never `rm -rf`. No OS schedules
+   (cron, systemd, launchd, schtasks): scheduling lives in the app.
 5. **Root causes, not workarounds** — research before implementing; never guess at bug
    causes or API behavior.
 6. **Surgical, simple diffs** — touch only what the task needs; the least code that
@@ -26,9 +27,8 @@ overrides in `AGENTS.override.md` (user-owned, wins on conflict). Detail lives i
 7. **Multi-session work is tracked as Rulebook tasks** (`.rulebook/tasks/`, managed via
    the `rulebook` MCP/CLI). Checklist order expresses dependencies — independent items
    may run in parallel. Small fixes need no task ceremony. Undecidable choice:
-   `rulebook_task {action:"ask"}` and show the form, never a task blocked in prose.
-   Same request again: capture the learning under the same title; at 2+ promote it
-   to a skill.
+   `rulebook_task {action:"ask"}`, show the form; never a task blocked in prose.
+   Same request again: capture a learning under one title; at 2+ promote to a skill.
 8. **Docs in English.** Root allows only README/CHANGELOG/AGENTS/LICENSE/CONTRIBUTING/
    SECURITY — everything else in `/docs`. Analyses: `docs/analysis/<slug>/`, numbered
    files, one theme per file.

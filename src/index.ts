@@ -94,6 +94,7 @@ program
     .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
     .option('--package <name>', 'Initialize only a single package inside a monorepo')
     .option('--add-sequential-thinking', 'Auto-add sequential-thinking MCP to .mcp.json')
+    .option('--typesafe', 'Enable the TypeSafe (Jev) integration without asking')
     .option(
         '--tools <tools>',
         'Comma-separated AI tools to generate for (e.g., claude-code,cursor,gemini)'
@@ -358,6 +359,7 @@ program
     .option('--minimal', 'Regenerate using minimal mode (essentials only)')
     .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
     .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
+    .option('--typesafe', 'Enable the TypeSafe (Jev) integration without asking')
     .option(
         '--tools <tools>',
         'Comma-separated AI tools to generate for (e.g., claude-code,cursor,gemini)'
@@ -390,9 +392,10 @@ claudeCommand
     .command('setup', { isDefault: true })
     .description('Install integrations and apply opinionated, cost-aware settings')
     .option('--model <model>', 'Default model for settings.json (default: sonnet)')
-    .action(async (opts: { model?: string }) => {
+    .option('--typesafe', 'Enable the TypeSafe (Jev) integration (plugin + rule + key check)')
+    .action(async (opts: { model?: string; typesafe?: boolean }) => {
         const { claudeSetupCommand } = await import('./cli/commands/claude.js');
-        await claudeSetupCommand({ model: opts.model });
+        await claudeSetupCommand({ model: opts.model, typesafe: opts.typesafe });
     });
 
 // Skills commands (v2.0)

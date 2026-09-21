@@ -175,6 +175,14 @@ harness on demand. Promotion never overwrites an existing skill.
 
 A single `PreToolUse` hook blocks forbidden patterns at the tool level — before edits reach disk: `deferred`/`skip`/`later`/`TODO` in tasks.md, stubs/placeholders/`HACK`/`FIXME` in source, and manual task-file creation in `.rulebook/tasks/`. Cross-platform (Node.js, no `jq` dependency), and short-circuits in pure bash so a normal edit costs ~one process spawn.
 
+A second guard, `no-os-scheduling`, enforces Tier 1 prohibition #7: scheduling
+lives in the application, never in the OS. It denies `Bash` commands that
+create or install OS schedules (`crontab -e`, `at`, `systemctl enable … .timer`,
+`launchctl load`, `schtasks /create`, `Register-ScheduledTask`) and
+`Edit`/`Write` targets under scheduler directories (`/etc/cron*`,
+`LaunchAgents/`, `*.timer`). Reads like `crontab -l` or `systemctl status`
+pass; a keyword prefilter keeps everything else on the fast path.
+
 ### Multi-project workspace
 
 One MCP server manages every project in a monorepo, with fully isolated per-project managers.
@@ -234,6 +242,30 @@ It installs the MCP server entry and the Rulebook-specific skills, then layers t
 All settings are **additive and non-clobbering** — existing `permissions.allow`, a user-authored `statusLine`, and an explicit `model` are preserved. Requires Claude Code installed (`~/.claude`); otherwise it no-ops with a notice.
 
 ---
+
+### TypeSafe (Jev) integration — opt-in
+
+[TypeSafe](https://typesafe.ai) turns natural language and application state
+into typed judgments (routing, ranking, extraction, verification) through its
+System One model, Jev, and ships a Claude Code plugin with the skill that
+teaches agents to build with it. Rulebook offers it during setup and never
+imposes it, because it only works with an API key you create:
+
+```bash
+rulebook init                 # asks once: "Enable TypeSafe (Jev) for this project?" (default no)
+rulebook update --typesafe    # or enable explicitly; update re-verifies on every run
+rulebook claude --typesafe    # same, on demand
+```
+
+When enabled, rulebook checks `~/.claude/plugins/installed_plugins.json` and
+installs `typesafe@typesafe-ai` only if it is missing (`claude plugin
+marketplace add typesafe-ai/skills`, then `claude plugin install
+typesafe@typesafe-ai`), writes `.claude/rules/typesafe.md` so the agent knows
+to use the `/typesafe:typesafe-ai` skill for semantic judgments, and checks
+`TYPESAFE_API_KEY`. If the key is missing it prints the steps: create one at
+https://console.typesafe.ai/keys, export the variable where the agent runs,
+never commit it. The answer is stored in `rulebook.json`
+(`integrations.typesafe.enabled`), so you are asked once.
 
 ## MCP Server
 

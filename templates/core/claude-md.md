@@ -15,6 +15,7 @@ Managed by [@hivehub/rulebook](https://github.com/hivellm/rulebook) — few rule
   full test suite), all green. Never bypass hooks — what the project wired
   into pre-commit/pre-push is the floor.
 - Diagnostic-first: run the type-checker before the test suite; it is the faster signal.
+- No OS schedules (cron, systemd, launchd, schtasks): scheduling lives in the app.
 
 ## Values
 1. Complete implementations — no stubs, no TODO markers left behind; finish, or say concretely why you can't.
@@ -46,9 +47,8 @@ mandates orchestration.
 ## Rulebook (on demand — no ceremony for small fixes)
 - TASK_TRACKING_LINE
   Checklist order = dependencies; independent items may run in parallel.
-- Undecidable choice? `rulebook_task {action:"ask"}` and show the form — never a
-  task blocked in prose. Same request again? Capture the learning under the same
-  title; at 2+ promote it to a skill. Details: `.rulebook/specs/rulebook.md`.
+- Undecidable choice? `rulebook_task {action:"ask"}`, show the form. Same request
+  again? Capture a learning under one title; at 2+ promote it to a skill.
 - Optional session context: `rulebook_session`. Learned something non-obvious?
   `rulebook_memory`.
 - Project specs live in `.rulebook/specs/` — read a spec when the work touches its area.
