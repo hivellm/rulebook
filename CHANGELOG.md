@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.3.0] - 2026-09-21
+
+### Added — Tier 1 #7: no OS-level scheduling
+
+Agents kept answering "this must run periodically" with `crontab -e`, a
+`schtasks /create`, a launchd plist or a systemd timer: a schedule outside the
+repository, untested, tied to one machine, still running after the task ends.
+Scheduling now has one home — the application (its job runner, queue or
+scheduler library) — and the generated rules say so at every level:
+
+- `prohibitions.md` gains **#7 No OS-level scheduling**: cron/anacron/`at`,
+  systemd timers, launchd agents and daemons, Windows Task Scheduler
+  (`schtasks`, `*-ScheduledTask`). The harness's own scheduler drives the
+  agent; it is not a stand-in for application scheduling.
+- One-line clause in the generated `CLAUDE.md` and lean `AGENTS.md`, kept
+  inside the always-loaded context budget by tightening the v7.2 lines.
+- A second optional PreToolUse guard, `no-os-scheduling.sh`, wired by
+  `rulebook init`, `rulebook update` and `rulebook claude`
+  (`osSchedulingGuard`). Matcher `Bash|Edit|Write`; a keyword prefilter keeps
+  it off the hot path, then a handful of anchored patterns deny commands that
+  create or install OS schedules (`crontab` in any writing form, `at`/`batch`,
+  `systemctl enable … .timer`, `launchctl load`, copying into
+  `LaunchAgents/`, `schtasks /create`, `Register-ScheduledTask`) and
+  Edit/Write targets under scheduler directories. `crontab -l`,
+  `cat /etc/crontab`, `systemctl status`, and prose that merely says "at 5"
+  stay allowed. Portable `sed -E`, no jq.
+
+### Added — TypeSafe (Jev) integration, opt-in
+
+[TypeSafe](https://typesafe.ai) ships a Claude Code plugin
+(`typesafe@typesafe-ai`) with the skill for building typed judgments on its
+System One model, Jev. It only works with an API key the operator creates, so
+rulebook offers it and never imposes it:
+
+- `rulebook init` asks once in an interactive run ("Enable TypeSafe (Jev) for
+  this project?", default no) and stores the answer as
+  `integrations.typesafe.enabled` in `rulebook.json`. `--typesafe` enables
+  without asking. `rulebook update` re-runs the setup when enabled, asks once
+  when never asked, and never asks again after an answer; `rulebook claude
+  --typesafe` applies it on demand.
+- Setup reads `~/.claude/plugins/installed_plugins.json` and installs the
+  plugin only when missing (`claude plugin marketplace add typesafe-ai/skills`
+  then `claude plugin install typesafe@typesafe-ai`, tolerating an
+  already-registered marketplace). A missing `claude` CLI is reported with the
+  manual commands; setup keeps going.
+- `.claude/rules/typesafe.md` (rulebook-owned marker) tells the agent the
+  capability exists, when to reach for the `/typesafe:typesafe-ai` skill, and
+  that the key comes from `TYPESAFE_API_KEY`. Disabling removes only that file.
+- The key is instructed, never written: when `TYPESAFE_API_KEY` is unset the
+  CLI prints where to create one (https://console.typesafe.ai/keys) and how to
+  export it, and says not to commit it.
+
 ## [7.2.0] - 2026-09-17
 
 ### Added — decision requests: a task can no longer stall silently

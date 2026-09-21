@@ -35,6 +35,8 @@ export async function updateSingleProject(
         light?: boolean;
         lean?: boolean;
         dryRun?: boolean;
+        /** v7.3: enable the TypeSafe (Jev) integration without asking. */
+        typesafe?: boolean;
     }
 ): Promise<void> {
     // v7: --dry-run prints the migration plan and exits before ANY write.
@@ -359,6 +361,7 @@ export async function updateSingleProject(
         const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
         const settingsResult = await applyClaudeSettings(cwd, {
             taskScaffoldingGuard: true,
+            osSchedulingGuard: true,
             fullAutonomyPermissions: true,
             teamsEnv: multiAgentEnabled,
         });
@@ -371,6 +374,29 @@ export async function updateSingleProject(
         console.log(
             chalk.gray(
                 `  · .claude/settings.json refresh skipped: ${err instanceof Error ? err.message : String(err)}`
+            )
+        );
+    }
+
+    // v7.3: TypeSafe (Jev). Enabled → re-verify the plugin (install only when
+    // missing), refresh the rule file, warn if the key is absent. Never asked
+    // → ask once in an interactive run and remember. Disabled → drop our rule.
+    try {
+        const { decideTypesafe, applyTypesafe, retireTypesafe } = await import('./typesafe.js');
+        const decision = await decideTypesafe(configManager, {
+            flag: options.typesafe,
+            interactive: !options.yes && Boolean(process.stdin.isTTY),
+        });
+        if (decision.enabled) {
+            console.log(chalk.bold('\nTypeSafe (Jev) integration'));
+            await applyTypesafe(cwd);
+        } else {
+            await retireTypesafe(cwd);
+        }
+    } catch (err) {
+        console.log(
+            chalk.gray(
+                `  · TypeSafe check skipped: ${err instanceof Error ? err.message : String(err)}`
             )
         );
     }
@@ -651,6 +677,7 @@ export async function updateCommand(options: {
     light?: boolean;
     lean?: boolean;
     dryRun?: boolean;
+    typesafe?: boolean;
 }): Promise<void> {
     try {
         const cwd = process.cwd();

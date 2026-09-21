@@ -17,6 +17,9 @@ import { getTemplatesDir } from '../generators/generator.js';
  *   protects `.rulebook/tasks/` scaffolding from manual creation. No content
  *   inspection, nothing on any other event (P0: no hook may deny or reroute
  *   orchestration; F-002: zero hot-path hooks).
+ * - v7.3: a second optional PreToolUse guard (`no-os-scheduling`) on
+ *   Bash|Edit|Write. A keyword prefilter keeps it off the hot path; it denies
+ *   only commands/paths that create OS schedules (Tier 1 #7).
  * - The full-autonomy permission profile (F-011): `defaultMode: acceptEdits`
  *   plus a broad allow list so the model never stalls on permission prompts.
  *   Rulebook only ADDS rules and only sets defaultMode when absent — user
@@ -32,6 +35,12 @@ import { getTemplatesDir } from '../generators/generator.js';
 export interface ClaudeSettingsDesire {
     /** Install the path-only PreToolUse guard for task scaffolding. */
     taskScaffoldingGuard?: boolean;
+    /**
+     * v7.3: install the PreToolUse guard that denies OS-level scheduling
+     * (crontab/at, systemd timers, launchd, Task Scheduler) on Bash and
+     * scheduler paths on Edit|Write. Scheduling belongs in the application.
+     */
+    osSchedulingGuard?: boolean;
     /** Apply the full-autonomy permission profile (v7 default). */
     fullAutonomyPermissions?: boolean;
     /** Set CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 (feature enable, never enforcement). */
@@ -93,6 +102,10 @@ interface SettingsShape {
 
 export const GUARD_SIGNATURE = 'protect-task-scaffolding';
 export const GUARD_SCRIPT = 'protect-task-scaffolding.sh';
+/** v7.3: second optional guard — no OS-level scheduling (Tier 1 #7). */
+export const OS_SCHEDULING_GUARD_SIGNATURE = 'no-os-scheduling';
+export const OS_SCHEDULING_GUARD_SCRIPT = 'no-os-scheduling.sh';
+export const OS_SCHEDULING_GUARD_MATCHER = 'Bash|Edit|Write';
 
 /**
  * Every hook signature rulebook has ever wired. All are removed on sync
@@ -143,7 +156,10 @@ export async function applyClaudeSettings(
     await ensureDir(path.dirname(settingsPath));
 
     if (desire.taskScaffoldingGuard) {
-        await installGuardScript(projectRoot);
+        await installGuardScript(projectRoot, GUARD_SCRIPT);
+    }
+    if (desire.osSchedulingGuard) {
+        await installGuardScript(projectRoot, OS_SCHEDULING_GUARD_SCRIPT);
     }
 
     let existing: SettingsShape = {};
@@ -167,9 +183,10 @@ export async function applyClaudeSettings(
             removeHook(existing.hooks, event, legacy);
         }
         removeHook(existing.hooks, event, GUARD_SIGNATURE);
+        removeHook(existing.hooks, event, OS_SCHEDULING_GUARD_SIGNATURE);
     }
 
-    // The single optional guard (PreToolUse Edit|Write, path-only).
+    // Optional guard 1 (PreToolUse Edit|Write, path-only): task scaffolding.
     if (desire.taskScaffoldingGuard) {
         upsertHook(
             existing.hooks,
@@ -177,6 +194,19 @@ export async function applyClaudeSettings(
             'Edit|Write',
             GUARD_SIGNATURE,
             `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${GUARD_SCRIPT}`
+        );
+    }
+
+    // Optional guard 2 (PreToolUse Bash|Edit|Write): no OS-level scheduling.
+    // Keyword prefilter, then a handful of anchored patterns — cheap, and the
+    // only way to stop `crontab -e` before it runs.
+    if (desire.osSchedulingGuard) {
+        upsertHook(
+            existing.hooks,
+            'PreToolUse',
+            OS_SCHEDULING_GUARD_MATCHER,
+            OS_SCHEDULING_GUARD_SIGNATURE,
+            `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${OS_SCHEDULING_GUARD_SCRIPT}`
         );
     }
 
@@ -272,11 +302,11 @@ function pruneEmptyHooks(hooks: NonNullable<SettingsShape['hooks']>): void {
     }
 }
 
-/** Copy the guard script from templates into `.claude/hooks/`. Rulebook-owned. */
-async function installGuardScript(projectRoot: string): Promise<void> {
-    const src = path.join(getTemplatesDir(), 'hooks', GUARD_SCRIPT);
+/** Copy a guard script from templates into `.claude/hooks/`. Rulebook-owned. */
+async function installGuardScript(projectRoot: string, scriptName: string): Promise<void> {
+    const src = path.join(getTemplatesDir(), 'hooks', scriptName);
     if (!(await fileExists(src))) return; // template not present — nothing to install
     const destDir = path.join(projectRoot, '.claude', 'hooks');
     await ensureDir(destDir);
-    await writeShellScript(path.join(destDir, GUARD_SCRIPT), { sourcePath: src });
+    await writeShellScript(path.join(destDir, scriptName), { sourcePath: src });
 }

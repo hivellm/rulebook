@@ -81,6 +81,20 @@ describe('directive guards', () => {
             expect(gitRules).toMatch(/deleting, moving, or overwriting `\.git`/i);
         });
 
+        it('prohibitions forbid OS-level scheduling and point to the application (v7.3)', async () => {
+            const prohibitions = await generateCoreRules('prohibitions');
+            expect(prohibitions).toMatch(/## 7\. No OS-level scheduling/);
+            expect(prohibitions).toMatch(/lives in the application/i);
+            for (const term of ['crontab', 'systemd timers', 'launchd', 'schtasks']) {
+                expect(prohibitions).toContain(term);
+            }
+
+            const claudeMd = await generateClaudeMd(projectRoot);
+            expect(claudeMd).toMatch(/No OS schedules .*scheduling lives in the app/i);
+            const agentsMd = await generateLeanAgents(config, projectRoot);
+            expect(agentsMd).toMatch(/No OS schedules[\s\S]*scheduling lives in the app/i);
+        });
+
         it('prohibitions scope worktree autonomy to create/use and keep teardown under #3', async () => {
             const prohibitions = await generateCoreRules('prohibitions');
 
