@@ -1,4 +1,7 @@
-import type { z } from 'zod';
+// 'zod/v3', not 'zod': the MCP SDK types import 'zod/v3'; under moduleResolution
+// "node" bare 'zod' loads a separate .d.cts copy of the same types and tsc
+// runs out of memory comparing the two (TS2589). Keep all MCP zod imports on 'zod/v3'.
+import type { z } from 'zod/v3';
 import type { TaskBackend } from '../../core/tasks/task-backend.js';
 import type { ConfigManager } from '../../core/state/config-manager.js';
 import type { SkillsManager } from '../../core/skills/skills-manager.js';

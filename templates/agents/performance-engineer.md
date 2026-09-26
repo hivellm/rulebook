@@ -1,6 +1,7 @@
 ---
 name: performance-engineer
-model: sonnet
+# v7.4 model routing — fable for architecture/review, opus for edits/tests/docs, haiku for research
+model: opus
 description: Profiles code, benchmarks performance, and optimizes memory and bundle size. Use for performance analysis and optimization.
 tools: Read, Glob, Grep, Bash
 maxTurns: 20

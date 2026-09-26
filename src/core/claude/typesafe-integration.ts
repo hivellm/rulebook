@@ -6,15 +6,15 @@ import { fileExists, readFile, writeFile, ensureDir } from '../../utils/file-sys
 import { promises as fs } from 'fs';
 
 /**
- * TypeSafe (https://typesafe.ai) integration — v7.3.
+ * TypeSafe (https://typesafe.ai) integration — v7.3, on by default since v7.4.
  *
  * TypeSafe ships a Claude Code plugin (`typesafe@typesafe-ai`) carrying the
- * skill that teaches an agent to build with its System One model, Jev. It is
- * useful only with an API key the operator creates, so rulebook offers it,
- * never imposes it: `init`/`update` ask once, remember the answer, and when
- * enabled make sure the plugin is installed (without reinstalling), tell the
- * agent it is available, and say plainly how to provide the key. The key is
- * never written by rulebook.
+ * skill that teaches an agent to build with its System One model, Jev, and
+ * powers rulebook's entry gate (`rulebook_gate`). `init`/`update`/`claude
+ * setup` enable it unless the operator opted out (`--no-typesafe`, or a stored
+ * `integrations.typesafe.enabled: false`), make sure the plugin is installed
+ * (without reinstalling), tell the agent it is available, and say plainly how
+ * to provide the API key. The key is never written by rulebook.
  *
  * Facts below come from the plugin README and https://docs.typesafe.ai/agent-skill.
  */
@@ -62,7 +62,7 @@ export interface TypesafeSetupResult {
     installedNow: boolean;
     /** Install was attempted and failed; the message names the manual commands. */
     installError?: string;
-    /** TYPESAFE_API_KEY is set in the environment. */
+    /** TYPESAFE_API_KEY is set in the environment or the project's `.env`. */
     tokenPresent: boolean;
     /** `.claude/rules/typesafe.md` path (always written on setup). */
     rulePath: string;
@@ -92,19 +92,33 @@ export async function isTypesafePluginInstalled(homeDir?: string): Promise<boole
     }
 }
 
-export function hasTypesafeToken(env: NodeJS.ProcessEnv = process.env): boolean {
-    return Boolean(env[TYPESAFE_ENV_VAR]?.trim());
+/**
+ * Is the key available? Environment first, then `<projectRoot>/.env` — the
+ * MCP server is spawned by Claude Code and may not inherit the shell profile.
+ * Only a yes/no leaves this function; the value is never logged or stored.
+ * Same resolution as the gate client (`resolveTypesafeKey`), loaded lazily
+ * because that module imports constants from this one.
+ */
+export async function hasTypesafeToken(
+    projectRoot?: string,
+    env: NodeJS.ProcessEnv = process.env
+): Promise<boolean> {
+    if (env[TYPESAFE_ENV_VAR]?.trim()) return true;
+    if (!projectRoot) return false;
+    const { resolveTypesafeKey } = await import('../typesafe/client.js');
+    return (await resolveTypesafeKey(projectRoot, env)).key !== null;
 }
 
 /** Human instructions for the one step rulebook cannot do: the API key. */
 export function typesafeTokenInstructions(): string[] {
     return [
-        `TypeSafe needs an API key in ${TYPESAFE_ENV_VAR} (not set in this shell).`,
+        `TypeSafe needs an API key in ${TYPESAFE_ENV_VAR} (not found in this shell or the project's .env).`,
         `  1. Create a key: ${TYPESAFE_KEYS_URL}`,
         `  2. Export it where the agent runs, e.g. add to your shell profile:`,
         `       export ${TYPESAFE_ENV_VAR}=ts_...`,
         `     or to the project's untracked .env — never commit it.`,
         `  3. Restart Claude Code (or /reload-plugins) so the skill sees the key.`,
+        `The Jev gate (rulebook_gate) runs once ${TYPESAFE_ENV_VAR} is set, in the shell or the project's untracked .env.`,
     ];
 }
 
@@ -152,26 +166,17 @@ export function getTypesafeRulePath(projectRoot: string): string {
 /**
  * What the agent needs to know, and nothing more: the capability exists, when
  * to reach for it, where the key comes from. The skill itself carries the
- * how-to, so this stays a pointer.
+ * how-to, so this stays a pointer. It has no `paths:` frontmatter, so it is
+ * always loaded in every project — keep it within ~90 tokens.
  */
 export function renderTypesafeRule(): string {
     return [
         TYPESAFE_RULE_MARKER,
-        '# TypeSafe (Jev) is enabled for this project',
-        '',
-        `Managed by @hivehub/rulebook (\`rulebook update\` refreshes it; disable via`,
-        '`integrations.typesafe.enabled: false` in `.rulebook/rulebook.json`).',
-        '',
-        'When a feature needs a semantic judgment that plain code cannot make —',
-        'routing, ranking, extraction, verification, "does this text mean X" — use',
-        `the \`${TYPESAFE_SKILL}\` skill: it returns typed answers and probabilities`,
-        "from TypeSafe's System One model (Jev) instead of prompt-and-parse text.",
-        'Load the skill and read the live docs it points to before writing an',
-        'integration; keep rules, lookups and execution in ordinary code.',
-        '',
-        `- API key: read from \`${TYPESAFE_ENV_VAR}\` at runtime. Never hard-code or commit it;`,
-        `  if it is missing, tell the operator to create one at ${TYPESAFE_KEYS_URL}.`,
-        '- Do not reinstall the plugin; `rulebook update` verifies it.',
+        '# TypeSafe (Jev)',
+        `- Semantic judgments plain code can't make: \`${TYPESAFE_SKILL}\`.`,
+        '- A prompt hook runs the gate; no hook routing → call `rulebook_gate`.',
+        `- Key: \`${TYPESAFE_ENV_VAR}\` (shell or untracked .env; ${TYPESAFE_KEYS_URL}). Never commit it.`,
+        '- Managed by `rulebook update`.',
         '',
     ].join('\n');
 }
@@ -224,7 +229,7 @@ export async function setupTypesafeIntegration(
         installed,
         installedNow,
         installError,
-        tokenPresent: hasTypesafeToken(options.env),
+        tokenPresent: await hasTypesafeToken(projectRoot, options.env),
         rulePath,
     };
 }

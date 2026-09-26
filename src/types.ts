@@ -210,12 +210,40 @@ export interface RulebookConfig {
         repo?: string; // owner/name — defaults to whatever `gh` infers from the remote
         label?: string; // issue label marking rulebook tasks (default: rulebook-task)
     };
-    // Optional third-party integrations (v7.3). Each is opt-in and remembers
-    // the operator's answer so init/update never ask twice.
+    // Optional third-party integrations (v7.3). The stored decision is
+    // remembered so init/update never re-decide.
     integrations?: {
+        // v7.4: on by default; enabled:false = operator opted out (never overridden).
         typesafe?: {
             enabled: boolean;
             askedAt?: string;
+        };
+    };
+    // Jev gate hooks (v7.4). promptHook and scope are resolved (defaults + clamps) by
+    // resolvePromptHookConfig() and resolveScopeConfig() in src/core/typesafe/prompt-hook.ts.
+    gate?: {
+        // UserPromptSubmit hook that runs the entry gate on every prompt.
+        promptHook?: {
+            enabled?: boolean; // default true; always off when integrations.typesafe.enabled === false
+            deadlineMs?: number; // default 5000, clamped 1000–8500
+            blockThreshold?: number; // risk_os_scheduling ≥ this blocks; default 0.9, clamped 0.5–1
+        };
+        // Project-scope question (in_project_scope) and the prompt hook's off-topic action.
+        scope?: {
+            enabled?: boolean; // default true; false → the question is never asked
+            description?: string; // default: package.json description, then README.md's first prose paragraph
+            offTopicBelow?: number; // in_project_scope ≤ this → onOffTopic; default 0.15, clamped 0–0.3
+            onOffTopic?: 'ask' | 'block'; // default 'ask'
+        };
+        // PreToolUse tool-call gate (opt-in). Resolved by resolveToolHookConfig()
+        // in src/core/typesafe/tool-gate.ts.
+        toolHook?: {
+            enabled?: boolean; // default false; always off when integrations.typesafe.enabled === false
+            matcher?: string; // PreToolUse matcher; default 'Bash|Edit|Write'
+            denyBelow?: number; // criterion p < this → deny; default 0.5, clamped 0–1 and ≤ askBelow
+            askBelow?: number; // criterion p < this → ask; default 0.7, clamped 0–1
+            deadlineMs?: number; // default 2000, clamped 500–5000
+            cacheTtlMs?: number; // default 900000 (15 min), clamped 0–86400000
         };
     };
     // MCP server configuration
@@ -241,10 +269,12 @@ export interface RulebookConfig {
         projectType?: 'game-engine' | 'compiler' | 'web-app' | 'mobile' | 'generic';
         enableAgents?: boolean; // default: true when complexity is large/complex
         enableMemory?: boolean; // default: true — create agent-memory/ dirs
+        // v7.4 routing: fable for architecture / complex bugs / code review,
+        // opus for edits / tests / docs / refactoring, haiku for research.
         modelAssignment?: {
-            core?: string; // default: 'opus'
-            standard?: string; // default: 'sonnet'
-            research?: string; // default: 'haiku'
+            core?: string; // default: 'fable' (architecture, complex bugs, review)
+            standard?: string; // default: 'opus' (edits, tests, docs, refactoring)
+            research?: string; // default: 'haiku' (research, summaries)
         };
     };
     // Reference implementation configuration (v5.0)

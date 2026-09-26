@@ -1,6 +1,7 @@
 ---
 name: docs-writer
-model: haiku
+# v7.4 model routing — fable for architecture/review, opus for edits/tests/docs, haiku for research
+model: opus
 description: Generates and updates documentation, README, and changelogs. Use after code changes to keep docs in sync.
 tools: Read, Glob, Grep, Edit, Write
 disallowedTools: Bash

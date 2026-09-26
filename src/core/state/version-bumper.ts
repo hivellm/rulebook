@@ -1,9 +1,6 @@
 import { readFile, writeFile, fileExists } from '../../utils/file-system.js';
+import { promises as fs, type Dirent } from 'fs';
 import path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 
 export type BumpType = 'major' | 'minor' | 'patch';
 
@@ -130,21 +127,45 @@ async function updateGradleKts(projectDir: string, newVersion: string): Promise<
 }
 
 /**
+ * Find the first `*.csproj` at most two levels deep (the project root or one
+ * directory below it), like `find . -maxdepth 2 -name "*.csproj"` but without
+ * a shell. Entries are visited in name order and root-level files win over
+ * nested ones, so the pick is deterministic. Unreadable directories are skipped.
+ */
+async function findCsproj(projectDir: string): Promise<string | null> {
+    const isCsproj = (entry: Dirent): boolean =>
+        (entry.isFile() || entry.isSymbolicLink()) && entry.name.endsWith('.csproj');
+    const list = async (dir: string): Promise<Dirent[]> => {
+        try {
+            const entries = await fs.readdir(dir, { withFileTypes: true });
+            return entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+        } catch {
+            return [];
+        }
+    };
+
+    const top = await list(projectDir);
+    const rootHit = top.find(isCsproj);
+    if (rootHit) return path.join(projectDir, rootHit.name);
+
+    for (const entry of top) {
+        if (!entry.isDirectory()) continue;
+        const nested = (await list(path.join(projectDir, entry.name))).find(isCsproj);
+        if (nested) return path.join(projectDir, entry.name, nested.name);
+    }
+    return null;
+}
+
+/**
  * Update version in .csproj (C#)
  */
 async function updateCsproj(projectDir: string, newVersion: string): Promise<boolean> {
-    const csprojFiles = await execAsync(`find . -maxdepth 2 -name "*.csproj" 2>/dev/null || true`, {
-        cwd: projectDir,
-    });
+    const csprojPath = await findCsproj(projectDir);
 
-    if (!csprojFiles.stdout.trim()) {
+    if (!csprojPath) {
         return false;
     }
 
-    const csprojPath = path.join(
-        projectDir,
-        csprojFiles.stdout.trim().split('\n')[0].replace('./', '')
-    );
     let content = await readFile(csprojPath);
     content = content.replace(/<Version>[^<]+<\/Version>/, `<Version>${newVersion}</Version>`);
 

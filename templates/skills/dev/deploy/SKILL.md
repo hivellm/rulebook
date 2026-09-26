@@ -1,7 +1,7 @@
 ---
 name: deploy
 description: Prepare deployment artifacts and verify CI/CD readiness
-model: sonnet
+model: opus
 context: fork
 agent: devops-engineer
 ---

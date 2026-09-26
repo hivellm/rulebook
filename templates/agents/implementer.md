@@ -1,6 +1,7 @@
 ---
 name: implementer
-model: sonnet
+# v7.4 model routing — fable for architecture/review, opus for edits/tests/docs, haiku for research
+model: opus
 description: Writes production-quality {{language}} code following established patterns. Use for any implementation task.
 tools: Read, Glob, Grep, Edit, Write, Bash
 maxTurns: 25

@@ -1,7 +1,7 @@
 ---
 name: migrate
 description: Plan and execute migrations (database, API, framework)
-model: sonnet
+model: opus
 context: fork
 agent: migration-engineer
 ---

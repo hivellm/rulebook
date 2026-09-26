@@ -1,4 +1,23 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// The bumper must not depend on the host shell (cmd.exe has no `find`/`true`):
+// any child_process use fails loudly here instead of passing on hosts where
+// GNU tools happen to be on PATH.
+vi.mock('child_process', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('child_process')>();
+    const noShell = (): never => {
+        throw new Error('version-bumper must not spawn processes');
+    };
+    return {
+        ...actual,
+        exec: noShell,
+        execSync: noShell,
+        execFile: noShell,
+        execFileSync: noShell,
+        spawn: noShell,
+        spawnSync: noShell,
+    };
+});
 import {
     bumpVersion,
     getCurrentVersion,
@@ -117,6 +136,69 @@ edition = "2024"
 
             const updated = await fs.readFile(path.join(testDir, 'Cargo.toml'), 'utf-8');
             expect(updated).toContain('version = "1.0.0"');
+        });
+
+        describe('.csproj', () => {
+            const csproj = (version: string): string =>
+                `<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>${version}</Version>
+  </PropertyGroup>
+</Project>
+`;
+            const writePkg = (version: string) =>
+                fs.writeFile(path.join(testDir, 'package.json'), JSON.stringify({ version }));
+
+            it('updates a .csproj in the project root', async () => {
+                await writePkg('1.0.0');
+                await fs.writeFile(path.join(testDir, 'App.csproj'), csproj('1.0.0'));
+
+                const result = await bumpProjectVersion(testDir, 'patch');
+
+                expect(result.filesUpdated).toEqual(['package.json', '*.csproj']);
+                const updated = await fs.readFile(path.join(testDir, 'App.csproj'), 'utf-8');
+                expect(updated).toContain('<Version>1.0.1</Version>');
+            });
+
+            it('updates a .csproj one directory down', async () => {
+                await writePkg('1.0.0');
+                await fs.mkdir(path.join(testDir, 'src'));
+                await fs.writeFile(path.join(testDir, 'src', 'Lib.csproj'), csproj('1.0.0'));
+
+                const result = await bumpProjectVersion(testDir, 'minor');
+
+                expect(result.filesUpdated).toContain('*.csproj');
+                const updated = await fs.readFile(path.join(testDir, 'src', 'Lib.csproj'), 'utf-8');
+                expect(updated).toContain('<Version>1.1.0</Version>');
+            });
+
+            it('prefers a root .csproj over a nested one', async () => {
+                await writePkg('1.0.0');
+                await fs.mkdir(path.join(testDir, 'a'));
+                await fs.writeFile(path.join(testDir, 'a', 'Nested.csproj'), csproj('1.0.0'));
+                await fs.writeFile(path.join(testDir, 'Root.csproj'), csproj('1.0.0'));
+
+                await bumpProjectVersion(testDir, 'major');
+
+                expect(await fs.readFile(path.join(testDir, 'Root.csproj'), 'utf-8')).toContain(
+                    '<Version>2.0.0</Version>'
+                );
+                expect(
+                    await fs.readFile(path.join(testDir, 'a', 'Nested.csproj'), 'utf-8')
+                ).toContain('<Version>1.0.0</Version>');
+            });
+
+            it('ignores a .csproj deeper than two levels', async () => {
+                await writePkg('1.0.0');
+                await fs.mkdir(path.join(testDir, 'a', 'b'), { recursive: true });
+                const deep = path.join(testDir, 'a', 'b', 'Deep.csproj');
+                await fs.writeFile(deep, csproj('1.0.0'));
+
+                const result = await bumpProjectVersion(testDir, 'patch');
+
+                expect(result.filesUpdated).toEqual(['package.json']);
+                expect(await fs.readFile(deep, 'utf-8')).toContain('<Version>1.0.0</Version>');
+            });
         });
 
         it('should throw if no version files found', async () => {

@@ -1,7 +1,7 @@
 ---
 name: docs
 description: Generate or update project documentation based on recent changes
-model: haiku
+model: opus
 context: fork
 agent: docs-writer
 ---

@@ -27,6 +27,57 @@ function getRulebookVersion(): string {
 }
 
 /** Update a single project at the given root directory. */
+export interface ConfigRebuildInput {
+    version: string;
+    projectId: string;
+    minimalMode: boolean;
+    leanMode: boolean;
+    features: RulebookConfig['features'];
+    gitPushMode: RulebookConfig['gitPushMode'];
+    /** `integrations` as persisted after the TypeSafe decision of this update. */
+    integrations?: RulebookConfig['integrations'];
+    now?: string;
+}
+
+/**
+ * The config `rulebook update` saves. It REPLACES the persisted config, so
+ * anything that must survive an update is carried forward explicitly here —
+ * `installedAt` (now only when absent) and `integrations` among them.
+ */
+export function rebuildConfigOnUpdate(
+    existing: Partial<RulebookConfig>,
+    input: ConfigRebuildInput
+): RulebookConfig {
+    const now = input.now ?? new Date().toISOString();
+    const integrations = input.integrations ?? existing.integrations;
+    return {
+        version: input.version,
+        installedAt: existing.installedAt || now,
+        updatedAt: now,
+        projectId: input.projectId,
+        mode: input.minimalMode ? 'minimal' : 'full',
+        features: input.features,
+        coverageThreshold: existing.coverageThreshold ?? 95,
+        language: existing.language ?? 'en',
+        outputLanguage: existing.outputLanguage ?? 'en',
+        cliTools: existing.cliTools ?? [],
+        maxParallelTasks: existing.maxParallelTasks ?? 5,
+        timeouts: existing.timeouts ?? {
+            taskExecution: 3600000,
+            cliResponse: 180000,
+            testRun: 600000,
+        },
+        gitPushMode: input.gitPushMode,
+        ...(existing.skills ? { skills: existing.skills } : {}),
+        ...(input.leanMode
+            ? { agentsMode: 'lean' as const }
+            : existing.agentsMode
+              ? { agentsMode: existing.agentsMode }
+              : {}),
+        ...(integrations ? { integrations } : {}),
+    };
+}
+
 export async function updateSingleProject(
     cwd: string,
     options: {
@@ -35,7 +86,7 @@ export async function updateSingleProject(
         light?: boolean;
         lean?: boolean;
         dryRun?: boolean;
-        /** v7.3: enable the TypeSafe (Jev) integration without asking. */
+        /** `--typesafe` → true, `--no-typesafe` → false (opt out), neither → undefined. */
         typesafe?: boolean;
     }
 ): Promise<void> {
@@ -355,13 +406,30 @@ export async function updateSingleProject(
     try {
         const { applyClaudeSettings } =
             await import('../../core/claude/claude-settings-manager.js');
-        // v7: one optional path-only guard + full-autonomy permissions; every
-        // retired v5/v6 hook entry is stripped on sync (LEGACY_SIGNATURES).
+        const { resolvePromptHookConfig } = await import('../../core/typesafe/prompt-hook.js');
+        const { resolveToolHookConfig, toolHookTimeoutSec } =
+            await import('../../core/typesafe/tool-gate.js');
+        // v7: two optional PreToolUse guards + full-autonomy permissions; v7.4
+        // adds the fail-open Jev prompt hook (UserPromptSubmit) while TypeSafe
+        // is on and gate.promptHook.enabled is not false, and the opt-in Jev
+        // tool gate (PreToolUse) under gate.toolHook.enabled. Every retired
+        // v5/v6 hook entry is stripped on sync (LEGACY_SIGNATURES).
         const rulebookCfg = await configManager.loadConfig();
         const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
+        const promptHook = resolvePromptHookConfig(rulebookCfg);
+        const toolHook = resolveToolHookConfig(rulebookCfg);
         const settingsResult = await applyClaudeSettings(cwd, {
             taskScaffoldingGuard: true,
             osSchedulingGuard: true,
+            jevPromptGate: options.typesafe !== false && promptHook.enabled,
+            jevPromptGateDeadlineMs: promptHook.deadlineMs,
+            jevToolGate:
+                options.typesafe !== false && toolHook.enabled
+                    ? {
+                          matcher: toolHook.matcher,
+                          timeoutSec: toolHookTimeoutSec(toolHook.deadlineMs),
+                      }
+                    : undefined,
             fullAutonomyPermissions: true,
             teamsEnv: multiAgentEnabled,
         });
@@ -378,21 +446,19 @@ export async function updateSingleProject(
         );
     }
 
-    // v7.3: TypeSafe (Jev). Enabled → re-verify the plugin (install only when
-    // missing), refresh the rule file, warn if the key is absent. Never asked
-    // → ask once in an interactive run and remember. Disabled → drop our rule.
+    // TypeSafe (Jev) — offered by default since v7.4; --no-typesafe opts out.
+    // Enabled → re-verify the plugin (install only when missing), refresh the
+    // rule file, warn if the key is absent. Nothing stored → enable and
+    // remember. Disabled (stored or flag) → drop our rule. Only where Claude
+    // Code is installed.
     try {
-        const { decideTypesafe, applyTypesafe, retireTypesafe } = await import('./typesafe.js');
-        const decision = await decideTypesafe(configManager, {
+        const { runTypesafeStep } = await import('./typesafe.js');
+        const { isClaudeCodeInstalled } = await import('../../core/claude/claude-mcp.js');
+        await runTypesafeStep(configManager, cwd, {
             flag: options.typesafe,
-            interactive: !options.yes && Boolean(process.stdin.isTTY),
+            claudeDetected: await isClaudeCodeInstalled(),
+            retireWhenDisabled: true,
         });
-        if (decision.enabled) {
-            console.log(chalk.bold('\nTypeSafe (Jev) integration'));
-            await applyTypesafe(cwd);
-        } else {
-            await retireTypesafe(cwd);
-        }
     } catch (err) {
         console.log(
             chalk.gray(
@@ -485,35 +551,18 @@ export async function updateSingleProject(
         smartContinue: minimalMode ? false : true,
     };
 
-    const rulebookConfig: RulebookConfig = {
+    // Fresh read: the TypeSafe step above persisted its decision after
+    // `existingConfig` was loaded.
+    const persistedConfig = await configManager.loadConfig();
+    const rulebookConfig = rebuildConfigOnUpdate(existingConfig, {
         version: getRulebookVersion(),
-        installedAt:
-            detection.existingAgents.content?.match(/Generated at: (.+)/)?.[1] ||
-            new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
         projectId: path.basename(cwd),
-        mode: minimalMode ? 'minimal' : 'full',
+        minimalMode,
+        leanMode,
         features: rulebookFeatures,
-        coverageThreshold: existingConfig.coverageThreshold ?? 95,
-        language: existingConfig.language ?? 'en',
-        outputLanguage: existingConfig.outputLanguage ?? 'en',
-        cliTools: existingConfig.cliTools ?? [],
-        maxParallelTasks: existingConfig.maxParallelTasks ?? 5,
-        timeouts: existingConfig.timeouts ?? {
-            taskExecution: 3600000,
-            cliResponse: 180000,
-            testRun: 600000,
-        },
-        // This object REPLACES the persisted config, so anything that must
-        // survive an update has to be carried forward explicitly here.
         gitPushMode: resolvedPushMode,
-        ...(existingConfig.skills ? { skills: existingConfig.skills } : {}),
-        ...(leanMode
-            ? { agentsMode: 'lean' as const }
-            : existingConfig.agentsMode
-              ? { agentsMode: existingConfig.agentsMode }
-              : {}),
-    };
+        integrations: persistedConfig.integrations,
+    });
 
     await configManager.saveConfig(rulebookConfig);
     configSpinner.succeed('.rulebook configuration updated');

@@ -11,10 +11,18 @@ import chalk from 'chalk';
 import { setupClaudeCodeIntegration } from '../../core/claude/claude-mcp.js';
 import { applyClaudeSettings } from '../../core/claude/claude-settings-manager.js';
 
+/**
+ * Model written to .claude/settings.json (`model`) when none is set.
+ * v7.4 routing: Opus handles day-to-day edits, tests, and docs; Fable is
+ * reserved for architecture / complex bugs / review and Haiku for research,
+ * both chosen per agent rather than as the session default.
+ */
+export const DEFAULT_CLAUDE_MODEL = 'opus';
+
 export interface ClaudeSetupOptions {
     /** Cost-aware default model written to settings.json when none is set. */
     model?: string;
-    /** v7.3: enable the TypeSafe (Jev) integration (plugin + rule + key check). */
+    /** `--typesafe` → true, `--no-typesafe` → false (opt out), neither → undefined. */
     typesafe?: boolean;
 }
 
@@ -23,7 +31,7 @@ export interface ClaudeSetupOptions {
  */
 export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Promise<void> {
     const cwd = process.cwd();
-    const defaultModel = options.model ?? 'sonnet';
+    const defaultModel = options.model ?? DEFAULT_CLAUDE_MODEL;
 
     try {
         const result = await setupClaudeCodeIntegration(cwd);
@@ -36,25 +44,43 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
             return;
         }
 
-        // v7: exactly one optional path-only guard + the full-autonomy
-        // permission profile. No hooks on Stop/UserPromptSubmit/SessionStart,
-        // no orchestration enforcement (P0). Stale v5/v6 entries self-heal on
-        // sync via LEGACY_SIGNATURES.
+        // v7: two optional PreToolUse guards + the full-autonomy permission
+        // profile; v7.4 adds the fail-open Jev prompt hook (UserPromptSubmit)
+        // while TypeSafe is on and gate.promptHook.enabled is not false, and the
+        // opt-in Jev tool gate (PreToolUse) under gate.toolHook.enabled. No
+        // hooks on Stop/SessionStart, no orchestration enforcement (P0). Stale
+        // v5/v6 entries self-heal on sync via LEGACY_SIGNATURES.
+        const { readConfigFile } = await import('../../core/typesafe/gate.js');
+        const { resolvePromptHookConfig } = await import('../../core/typesafe/prompt-hook.js');
+        const { resolveToolHookConfig, toolHookTimeoutSec } =
+            await import('../../core/typesafe/tool-gate.js');
+        const rulebookCfg = await readConfigFile(cwd);
+        const promptHook = resolvePromptHookConfig(rulebookCfg);
+        const toolHook = resolveToolHookConfig(rulebookCfg);
         await applyClaudeSettings(cwd, {
             taskScaffoldingGuard: true,
             osSchedulingGuard: true,
+            jevPromptGate: options.typesafe !== false && promptHook.enabled,
+            jevPromptGateDeadlineMs: promptHook.deadlineMs,
+            jevToolGate:
+                options.typesafe !== false && toolHook.enabled
+                    ? {
+                          matcher: toolHook.matcher,
+                          timeoutSec: toolHookTimeoutSec(toolHook.deadlineMs),
+                      }
+                    : undefined,
             fullAutonomyPermissions: true,
             statusLine: true,
             defaultModel,
         });
 
-        // v7.3: TypeSafe (Jev) — honour the stored answer, or enable with --typesafe.
+        // TypeSafe (Jev) — offered by default since v7.4; --no-typesafe opts out;
+        // a stored answer is honoured.
         try {
             const { createConfigManager } = await import('../../core/state/config-manager.js');
             const { decideTypesafe, applyTypesafe } = await import('./typesafe.js');
             const decision = await decideTypesafe(createConfigManager(cwd), {
                 flag: options.typesafe,
-                interactive: false,
             });
             if (decision.enabled) {
                 console.log(chalk.bold('\nTypeSafe (Jev) integration'));

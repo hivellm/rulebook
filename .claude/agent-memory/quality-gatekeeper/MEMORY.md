@@ -1,0 +1,1 @@
+- [Windows probing env](env-windows-probing.md) — global `rulebook` shim is broken; use `node dist/index.js`; tsx scratch probes need async IIFE + CJS-style paths

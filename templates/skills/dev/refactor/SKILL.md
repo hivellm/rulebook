@@ -1,7 +1,7 @@
 ---
 name: refactor
 description: Identify code smells and execute safe refactorings
-model: sonnet
+model: opus
 context: fork
 agent: refactoring-agent
 ---

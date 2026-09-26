@@ -467,7 +467,8 @@ export class TaskManager implements TaskBackend {
      * List all tasks
      */
     async listTasks(includeArchived: boolean = false): Promise<RulebookTask[]> {
-        await this.initialize();
+        // Reading never creates tasks/ or archive/; a legacy archive still migrates.
+        await this.migrateArchive();
 
         const tasks: RulebookTask[] = [];
 

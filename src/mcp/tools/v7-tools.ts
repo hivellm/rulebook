@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3'; // same type copy as the MCP SDK — see tools/context.ts
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolContext } from './context.js';
 
@@ -703,6 +703,50 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 const canonical = await listRules(root);
                 const languageRules = await listRulesWithSource(root);
                 return ok({ canonical, languageRules });
+            } catch (error) {
+                return fail(error);
+            }
+        }
+    );
+
+    // ── rulebook_gate (v7.4 Jev entry gate) ──────────────────────────────
+    // Advisory: failure is a state (`available:false`), never an error. The
+    // gate's own 8.5 s deadline finishes inside the server's 10 s guard.
+    server.registerTool(
+        'rulebook_gate',
+        {
+            title: 'Rulebook Gate',
+            description:
+                'Call FIRST with every operator prompt. Jev decides kind, task, model, agent, ' +
+                'skill, parallelism, risk. Act on routing; unavailable/undecided → CLAUDE.md rules.',
+            inputSchema: {
+                prompt: z.string().describe('operator prompt verbatim'),
+                notes: z.string().optional().describe('what you want decided'),
+                projectId: projectIdSchema,
+            },
+        },
+        async (args) => {
+            try {
+                const root = await resolveRoot(args.projectId);
+                const { existsSync } = await import('fs');
+                const { join } = await import('path');
+                const { runGate } = await import('../../core/typesafe/gate.js');
+                // ConfigManager.loadConfig() writes a default rulebook.json and
+                // the file task backend creates tasks/ + archive/ when missing;
+                // the gate must create nothing in a project without them.
+                const hasConfig = existsSync(join(root, '.rulebook', 'rulebook.json'));
+                const hasRulebookDir = existsSync(join(root, '.rulebook'));
+                const result = await runGate({
+                    projectRoot: root,
+                    prompt: args.prompt,
+                    notes: args.notes,
+                    loadConfig: async () =>
+                        hasConfig ? (await getConfigMgr(args.projectId)).loadConfig() : null,
+                    listTasks: async () =>
+                        hasRulebookDir ? (await getTaskMgr(args.projectId)).listTasks(false) : [],
+                    source: 'mcp',
+                });
+                return ok({ ...result });
             } catch (error) {
                 return fail(error);
             }

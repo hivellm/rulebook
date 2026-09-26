@@ -131,7 +131,8 @@ export class LearnManager {
     }
 
     async list(limit?: number): Promise<Learning[]> {
-        this.ensureDir();
+        // Reading never creates the directory: no learnings yet is an empty list.
+        if (!existsSync(this.learningsPath)) return [];
         const files = readdirSync(this.learningsPath).filter((f) => f.endsWith('.metadata.json'));
         const learnings: Learning[] = [];
 

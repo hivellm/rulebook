@@ -5,6 +5,252 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.4.0] - 2026-09-26
+
+### Changed — the main session orchestrates; subagents do the work
+
+Through v7.3 the generated rules left orchestration to the model's choice, and
+in practice the main session did everything itself: slow, and every task
+competed for one context window. From v7.4 the generated `CLAUDE.md`, lean
+`AGENTS.md` and a new on-demand spec, `.rulebook/specs/orchestration.md`, say:
+
+- The main session never does the work itself. Every task — small ones
+  included — is delegated to a subagent, one subagent per task, planned first,
+  independent agents run in parallel, and the main session reads the
+  subagent's report, never the files.
+- Model routing, set explicitly in every agent call. Fable 5.1: architecture,
+  complex bugs, code review. Opus 5.5: edits, tests, documentation,
+  refactoring — never Fable for simple work. Haiku 4.5: research, summaries.
+- Each subagent owns its rulebook task: fills and updates it, checks items as
+  they complete, runs type-check → lint → tests, and archives it. Small fixes
+  without a task come back as a report, no ceremony.
+- The main session monitors progress, pauses or restarts an agent that stalls
+  or drifts (TaskStop / SendMessage / re-spawn with a corrected brief), then
+  reviews the archived task and keeps the CHANGELOG.
+
+The rule is directive-only: no hook enforces or reroutes orchestration, and
+the always-loaded context stays inside the 1600-token budget (other lines were
+tightened without dropping a rule).
+
+### Added — Jev is the entry gate (`rulebook_gate`)
+
+Every operator prompt now goes to Jev (TypeSafe's System One model) before the
+main session does anything: the prompt verbatim, a short description of the
+project (id, languages, active task, task ids, open questions, skill
+candidates, installed skills, the subagent types and the model routing) and up
+to eleven typed questions in one call — request kind, needs a task, belongs to
+an existing task (asked only when the project has tasks; likewise the skill
+question only when skills are installed), primary model, subagent type, applicable skill, can be
+parallelised, needs an operator decision, and three risk flags (destructive
+git, OS scheduling, secrets). The answer comes back as `routing` with
+probabilities and a decided/undecided mark per field (Choice decided at
+confidence ≥ 0.6; yes/no at ≥ 0.7 / ≤ 0.3; risk flags at ≥ 0.5, never
+undecided), so the session picks the right tool, task, model and agent instead
+of guessing, and skips calls it does not need.
+
+- New MCP tool `rulebook_gate {prompt, notes?}` — "Call FIRST with every
+  operator prompt". Six tools total; the schema-bytes budget moves once to
+  4900. Gate code loads only when the tool is called, so server start-up is
+  unchanged.
+- CLI: `rulebook gate "<prompt>" [--notes] [--json]` and
+  `rulebook gate --check [--strict]` (key present + one cheap live call).
+- Fetch-based client, no new dependency: Bearer auth, 10 s per-attempt
+  timeout, 8.5 s overall deadline (inside the server's 10 s tool limit),
+  exponential backoff with jitter on 429/529/network (max 2 retries), typed
+  errors, key redacted everywhere. The key is read from `TYPESAFE_API_KEY` or,
+  failing that, the one matching line of the project's untracked `.env` — the
+  MCP server does not inherit the shell.
+- Advisory, never blocking: no key, network failure or `RULEBOOK_GATE=off` →
+  `available:false` and the session proceeds under the Orchestration rules
+  (token instructions printed once per process); undecided fields fall back to
+  those rules; an undecided or `unclear` kind, or `needsOperatorDecision`, means
+  ask (`rulebook_task ask`). Subagents do not call the gate.
+- Decisions are appended to `.rulebook/logs/gate.jsonl` when
+  `features.logging` is on — prompt hash, routing, usage and timing only; never
+  the prompt text or the key; newest 500 lines kept.
+- Generated rules: `CLAUDE.md` Orchestration now opens with "Gate first: every
+  operator prompt → `rulebook_gate {prompt}` (Jev); act on `routing`;
+  unavailable or undecided → these rules." The full protocol is section 3,
+  "Entry gate (Jev)", of `.rulebook/specs/orchestration.md`. Eleven wording
+  trims elsewhere keep the always-loaded context at 1599 of 1600 tokens with no
+  rule dropped.
+
+### Added — the prompt hook runs Jev on every prompt
+
+The gate above was advisory: the main session had to remember to call
+`rulebook_gate`, and nothing happened when it forgot. A Claude Code
+`UserPromptSubmit` hook now runs the same gate automatically.
+
+- New hidden CLI entry point `rulebook hook prompt-gate`: reads the hook JSON
+  on stdin, runs the gate with the hook's deadline, and prints one answer —
+  the routing as `additionalContext` (at most 1024 bytes, headed "Jev routing
+  (rulebook prompt hook) — do not call rulebook_gate again for this prompt",
+  plus a warning line per risk at ≥ 0.5), or `{"decision":"block"}` only for a
+  high-confidence OS-scheduling request (`risk_os_scheduling` ≥
+  `gate.promptHook.blockThreshold`, default 0.9). Destructive git and secrets
+  never block here — the operator's prompt is the authorization — they warn.
+- Fail-open: no key, `RULEBOOK_GATE=off`, TypeSafe opted out, timeout
+  (`gate.promptHook.deadlineMs`, default 5000 ms), network or bad response,
+  bad stdin, missing CLI, or any error → exit 0, no output.
+- `init`, `update` and `claude` install `.claude/hooks/jev-gate.sh` and upsert
+  one `UserPromptSubmit` entry (signature `jev-gate`, `timeout` = deadline +
+  3 s) while TypeSafe is on and `gate.promptHook.enabled` is not false; user
+  hooks on the event are left alone; the entry is removed when the hook is
+  turned off or TypeSafe is opted out. This reverses the v7 "no
+  UserPromptSubmit hook" rule (F-002) on purpose.
+- The gate decision log gains a `source` field (`mcp`, `cli`, `hook`).
+- Rule text: `CLAUDE.md` now reads "Gate first: act on Jev `routing` from the
+  prompt hook, else from `rulebook_gate {prompt}`"; section 3 of the
+  orchestration spec and `.claude/rules/typesafe.md` describe the hook, its
+  one blocking case and fail-open behaviour. Two wording trims keep the
+  always-loaded context inside 1600 tokens.
+
+### Added — the gate asks whether a prompt belongs to this project
+
+The gate routed every prompt but never asked whether it was about this
+project at all, so an unrelated request still got a task, a subagent and a
+model.
+
+- A one-line project description joins the gate state: `gate.scope.description`
+  in `rulebook.json`, else `package.json` `description`, else the first prose
+  paragraph of `README.md`; clipped to 400 chars (trimmed to 200, before the
+  prompt, when the state is over budget). No description → nothing changes.
+- New yes/no question `in_project_scope` in the same single Jev request (up to
+  12 questions) and routing field `inProjectScope` (true ≥ 0.7, false ≤ 0.3,
+  else null). The instruction says "Off-topic for this project — confirm with
+  the operator before acting." when it is false; `rulebook gate` shows an
+  "in scope" row.
+- Prompt hook: `in_project_scope` ≤ `gate.scope.offTopicBelow` (default 0.15,
+  clamped 0–0.3) applies `gate.scope.onOffTopic` — `ask` (default) opens the
+  context with a confirm-with-the-operator line; `block` stops the prompt with
+  a reason quoting the description and naming the key. Up to 0.3 it is only a
+  warning line. The OS-scheduling block still wins.
+- Config `gate.scope` (`enabled`, `description`, `offTopicBelow`,
+  `onOffTopic`); orchestration spec section 3 gains the table row.
+
+### Added — opt-in tool-call gate (`PreToolUse`)
+
+The prompt hook judges what the operator asked for, not what an agent then
+runs or writes; past it, only two keyword guards stood between a subagent and
+a destructive command or a printed secret.
+
+- New hidden event `rulebook hook tool-gate` behind `jev-gate.sh tool`, off
+  by default (`gate.toolHook.enabled: true` turns it on). Cheap checks first:
+  the wrapper runs the installed OS-scheduling guard and returns its `deny`
+  as-is; a deterministic destructive-git check (`reset --hard`, force push,
+  `clean -f`, `checkout -- .`, `restore .`, `stash`, `branch -D`) answers
+  `ask` citing Git safety. Neither calls Jev.
+- Otherwise one Jev request per call: a redacted summary (command ≤ 1024
+  chars, file path, edit sizes, preview ≤ 512 chars; `.env*` content never
+  sent) plus project id, languages, active task and the Tier 1 rules, at most
+  3072 bytes; yes/no criteria `safe_reversible`, `no_secret_exposure`,
+  `follows_project_rules`, and `in_task_scope` with an active task. Below
+  `denyBelow` (0.5) → `deny`, below `askBelow` (0.7) → `ask`, scope capped
+  at `ask`; the reason lists each failing criterion with its probability. It
+  never answers `allow`, so permission rules are unchanged.
+- `redactSecrets()` in the TypeSafe client: `redact()` plus `sk-…`, GitHub,
+  AWS and Slack tokens, PEM private keys and `*KEY*`/`*TOKEN*`/`*SECRET*`/
+  `*PASSWORD*` assignment values.
+- Deadline `gate.toolHook.deadlineMs` (2000 ms, settings `timeout` = deadline
+  + 2 s); cache `.rulebook/cache/tool-gate.json` (15 min, 200 entries, atomic
+  writes, Jev answers only); decisions in `.rulebook/logs/tool-gate.jsonl`
+  with `features.logging` (summary hash, never the command or content).
+  Fail-open on every error path.
+- Installer: one `PreToolUse` entry (`matcher` from `gate.toolHook.matcher`,
+  default `Bash|Edit|Write`) after the guard entries; removed when disabled
+  or TypeSafe is opted out. The two Jev entries are now matched by their
+  command (`jev-gate.sh prompt` / `jev-gate.sh tool`), so toggling one never
+  strips the other; existing prompt-hook installs stay byte-identical.
+- Hardening: `jev-gate.sh` prefers the project's `node_modules/.bin/rulebook`
+  over one on `PATH`, drops the CLI's stderr and always exits 0 (a stale
+  global shim no longer fails every prompt and tool call); `redactSecrets()`
+  also masks URL and `-u user:pass` passwords, `--password`/`--secret…`/
+  `--api-key`/`--token` flag values and whole quoted assignment values; the
+  destructive-git check also catches `push +refspec`, quoted `-C`/`-c`
+  values and `checkout -- ./` / `restore ./`.
+- In the rulebook repo itself (`package.json` named `@hivehub/rulebook`, no
+  `node_modules/.bin/rulebook`) `jev-gate.sh` runs `node dist/index.js` before
+  falling back to `PATH`, so a stale global shim no longer silences the prompt
+  gate there; `redactSecrets()` stops an unquoted flag value at `;`, `&`, `|`
+  and `,`, keeping the command separator and the next command.
+- Docs: `docs/MCP_SERVER.md` "Tool-call gate"; orchestration spec section 3.
+
+### Changed — TypeSafe ships by default
+
+The v7.3 opt-in prompt is gone: `rulebook init`, `update` and `claude` enable
+the TypeSafe (Jev) integration unless the project stored `enabled: false` or
+the operator passes `--no-typesafe` (`--typesafe` still forces it on). Setup
+installs the Claude Code plugin only when missing, writes a slimmer
+`.claude/rules/typesafe.md` (~75 tokens: the skill, the gate, where the key
+comes from, never commit it), and detects the key in the shell or the
+project's untracked `.env`; when absent it prints where to create one
+(https://console.typesafe.ai/keys) and says the gate starts working once it is
+set. The key itself is never written by rulebook.
+
+### Fixed
+
+- `rulebook update` rebuilt `rulebook.json` from scratch, dropping
+  `integrations` (a stored `--no-typesafe` did not survive the next update)
+  and resetting `installedAt` to the update time because the lean `AGENTS.md`
+  has no "Generated at:" line to recover it from. Both are carried forward now.
+- The TypeSafe step ran even when Claude Code was not detected, persisting the
+  setting and shelling out to a `claude` CLI that may not exist. It now runs
+  only behind the same detection guard as the rest of the Claude Code setup.
+- `rulebook_gate` in a project without `.rulebook/` created a default
+  `rulebook.json` and a gate log; it now creates nothing.
+- The tool gate never writes into the project after its deadline. When the
+  backstop timer won, the losing Jev call kept running and still wrote the
+  cache and the `tool-gate.jsonl` line after the hook had returned. The raced
+  work now only reads; the cache and the log line are written after the race
+  and only when the work won, and an expired deadline logs one `error:
+  "timeout"` line on time. Listing learnings no longer creates
+  `.rulebook/learnings`.
+- The prompt hook never logs after its deadline. Same pattern: a Jev answer
+  arriving after `gate.promptHook.deadlineMs` still appended its line to
+  `gate.jsonl`. The raced gate run now writes nothing; the hook writes the
+  line only when the gate finished first, and an expired deadline logs one
+  `reason: "timeout"` line (`source: "hook"`) on time. `rulebook_gate` and
+  `rulebook gate` log exactly as before. Listing tasks no longer creates
+  `.rulebook/tasks` or `.rulebook/archive` (a legacy archive still migrates).
+- `rulebook version` failed on Windows (`'true' is not recognized…`): the
+  `.csproj` lookup ran `find … || true` through cmd.exe. It now searches with
+  Node's `fs` (root and one level down, root first, name order) — no shell.
+- The MCP server reported version `7.0.0` in `initialize`; it now reads the
+  version from `package.json`, like the CLI.
+
+### Security
+
+- `@modelcontextprotocol/sdk` 1.22.0 → 1.26.0, the first release outside all
+  three high-severity advisories npm audit reported: GHSA-345p-7cg4-v4c7
+  (cross-client data leak via shared server/transport reuse, CVSS 7.1),
+  GHSA-w48q-cv73-mx4w (DNS-rebinding protection off by default) and
+  GHSA-8r9q-7v3j-jr4g (ReDoS). The MCP modules now import `zod/v3`, the same
+  type declarations the SDK uses; bare `zod` resolved to a second copy and
+  made `tsc` run out of memory on every `registerTool` call.
+
+### Changed — model routing in shipped agents, workflows and skills
+
+- Agent definitions (`templates/agents/*.md`): architect, code-reviewer,
+  quality-gatekeeper, security-reviewer → `fable`; build-engineer,
+  implementer, performance-engineer, tester, docs-writer, team-lead → `opus`;
+  researcher → `haiku`. The generator's agent registry follows the same table.
+- Workflows (`templates/claude-workflows/*.js`): `sonnet` is gone. Review,
+  verify, design and critique phases run on `fable`; implement, test,
+  document, commit and synthesis phases on `opus`; discover and research on
+  `haiku`. Every `agent()` call names its model, and a header comment in each
+  workflow states the routing.
+- Dev skills (`templates/skills/dev/*/SKILL.md`): architect, review, debug,
+  security-audit, accessibility, api-design, db-design → `fable`; refactor,
+  perf, build-fix, deploy, migrate, docs → `opus`; research stays `haiku`.
+- `rulebook claude` writes `opus` (not `sonnet`) as the default model when
+  none is configured; `--model` still wins. The generated
+  `.claude/rules/mcp-tool-reference.md` no longer says orchestration is
+  "your call".
+- New tests guard the routing table (agents, workflows, skills), the default
+  model, and the directive text; the v6-era "never mandates orchestration"
+  assertion is replaced by one that checks the delegation rule is present and
+  still unenforced by hooks.
+
 ## [7.3.0] - 2026-09-21
 
 ### Added — Tier 1 #7: no OS-level scheduling

@@ -656,7 +656,7 @@ const AGENT_REGISTRY: AgentEntry[] = [
     {
         task: 'Implementation',
         agent: 'implementer',
-        model: 'sonnet',
+        model: 'opus',
         when: 'Writing new code or modifying existing',
     },
     {
@@ -668,44 +668,44 @@ const AGENT_REGISTRY: AgentEntry[] = [
     {
         task: 'Testing',
         agent: 'tester',
-        model: 'sonnet',
+        model: 'opus',
         when: 'Writing and running tests',
     },
     {
         task: 'Documentation',
         agent: 'docs-writer',
-        model: 'haiku',
+        model: 'opus',
         when: 'README, docs, changelogs',
     },
     {
         task: 'Code Review',
         agent: 'code-reviewer',
-        model: 'sonnet',
+        model: 'fable',
         when: 'Reviewing implementations for quality',
     },
     {
         task: 'Build/CI',
         agent: 'build-engineer',
-        model: 'sonnet',
+        model: 'opus',
         when: 'Build failures, CI, dependencies',
     },
     {
         task: 'Security',
         agent: 'security-reviewer',
-        model: 'haiku',
+        model: 'fable',
         when: 'Dependency audit, vulnerability review',
     },
     // Specialist agents
     {
         task: 'Architecture',
         agent: 'architect',
-        model: 'opus',
+        model: 'fable',
         when: 'System design, ADRs, scalability decisions',
     },
     {
         task: 'Performance',
         agent: 'performance-engineer',
-        model: 'sonnet',
+        model: 'opus',
         when: 'Profiling, benchmarks, optimization',
     },
     // Orchestration
@@ -751,7 +751,7 @@ export function generateDelegationSection(config: ProjectConfig): string {
         '3. **The main conversation** serves for planning, coordination, and user communication only'
     );
     lines.push(
-        '4. **Use haiku agents** (researcher, docs-writer, security-reviewer) for read-only tasks — they are significantly cheaper'
+        '4. **Route by model** — fable for architecture, complex bugs, and review; opus for edits, tests, and docs (never fable for simple work); haiku for research'
     );
     lines.push('5. **Launch independent agents in parallel** when possible to maximize throughput');
     lines.push('');
@@ -920,6 +920,11 @@ export async function generateModularAgents(
         await writeModularFile(projectRoot, 'PROHIBITIONS', tier1Content.trim(), rulebookDir);
     }
 
+    // v7.4: orchestration protocol + model routing (always included — CLAUDE.md
+    // and the lean AGENTS.md point here for the full rules).
+    const orchestrationContent = await generateCoreRules('orchestration');
+    await writeModularFile(projectRoot, 'ORCHESTRATION', orchestrationContent.trim(), rulebookDir);
+
     // v7: TOKEN_OPTIMIZATION is retired (F-010) — verbosity is the harness's job.
 
     // Write Git workflow rules to /.rulebook/specs/git.md
@@ -971,7 +976,7 @@ export async function generateModularAgents(
     // v7: the library-rules subsystem is retired — no library specs or refs.
 
     // v7: AGENT_AUTOMATION, MULTI_AGENT, and MCP-module spec docs are retired
-    // (F-005/F-010, P0). Orchestration is the model's choice; MCP servers are
+    // (F-005/F-010, P0). Orchestration lives in specs/orchestration.md; MCP servers are
     // self-describing via their own tool schemas. Module selection still drives
     // .mcp.json wiring elsewhere — only the spec documents are gone.
 

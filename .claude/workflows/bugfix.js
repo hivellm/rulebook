@@ -4,10 +4,16 @@ export const meta = {
     'Research-first bug fix: root-cause the bug, write a regression test then fix it (TDD), and gate through a quality-gatekeeper verdict (loop max 2). Pass the bug report via args.',
   phases: [
     { title: 'Diagnose', model: 'haiku' },
-    { title: 'Fix', model: 'sonnet' },
-    { title: 'Verify', model: 'opus' },
+    { title: 'Fix', model: 'opus' },
+    { title: 'Verify', model: 'fable' },
   ],
 }
+
+// v7.4 model routing — every agent() call names its model explicitly:
+//   fable = architecture, complex bugs, code review / verification
+//   opus  = edits, tests, documentation, refactoring (never fable for simple work)
+//   haiku = research, discovery, summaries
+// sonnet is not part of the routing — do not reintroduce it.
 
 const bug =
   args && typeof args === 'object' && args.bug
@@ -61,7 +67,7 @@ Re-run type-check + tests. Report what you changed.`
   const fix = await agent(fixPrompt, {
     label: `fix:round-${round}`,
     phase: 'Fix',
-    model: 'sonnet',
+    model: 'opus',
   })
 
   phase('Verify')
@@ -73,7 +79,7 @@ Re-run type-check + tests. Report what you changed.`
 Bug: "${bug}"
 Developer report (verify, don't trust): """${fix}"""
 Set pass=true only if the root cause is fixed and covered by a passing regression test.`,
-    { label: `verify:round-${round}`, phase: 'Verify', model: 'opus', schema: VERDICT_SCHEMA }
+    { label: `verify:round-${round}`, phase: 'Verify', model: 'fable', schema: VERDICT_SCHEMA }
   )
 
   if (verdict && verdict.pass) {

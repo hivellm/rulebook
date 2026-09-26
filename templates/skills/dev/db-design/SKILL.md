@@ -1,7 +1,7 @@
 ---
 name: db-design
 description: Database schema design, migrations, and query optimization
-model: sonnet
+model: fable
 context: fork
 agent: database-architect
 ---

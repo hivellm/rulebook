@@ -68,7 +68,7 @@ export async function initCommand(options: {
     lean?: boolean;
     package?: string;
     addSequentialThinking?: boolean;
-    /** v7.3: enable the TypeSafe (Jev) integration without asking. */
+    /** `--typesafe` → true, `--no-typesafe` → false (opt out), neither → undefined. */
     typesafe?: boolean;
 }): Promise<void> {
     try {
@@ -430,14 +430,32 @@ export async function initCommand(options: {
             try {
                 const { applyClaudeSettings } =
                     await import('../../core/claude/claude-settings-manager.js');
-                // v7: one optional path-only guard + full-autonomy permissions.
-                // No Stop/UserPromptSubmit/SessionStart hooks, no orchestration
-                // enforcement (P0). Stale v5/v6 entries are stripped on sync.
+                const { resolvePromptHookConfig } =
+                    await import('../../core/typesafe/prompt-hook.js');
+                const { resolveToolHookConfig, toolHookTimeoutSec } =
+                    await import('../../core/typesafe/tool-gate.js');
+                // v7: two optional PreToolUse guards + full-autonomy permissions.
+                // v7.4: plus the fail-open Jev prompt hook (UserPromptSubmit)
+                // while TypeSafe is on and gate.promptHook.enabled is not false,
+                // and the opt-in Jev tool gate (PreToolUse, gate.toolHook.enabled).
+                // No Stop/SessionStart hooks, no orchestration enforcement (P0).
+                // Stale v5/v6 entries are stripped on sync.
                 const rulebookCfg = await configManager.loadConfig();
                 const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
+                const promptHook = resolvePromptHookConfig(rulebookCfg);
+                const toolHook = resolveToolHookConfig(rulebookCfg);
                 await applyClaudeSettings(cwd, {
                     taskScaffoldingGuard: true,
                     osSchedulingGuard: true,
+                    jevPromptGate: options.typesafe !== false && promptHook.enabled,
+                    jevPromptGateDeadlineMs: promptHook.deadlineMs,
+                    jevToolGate:
+                        options.typesafe !== false && toolHook.enabled
+                            ? {
+                                  matcher: toolHook.matcher,
+                                  timeoutSec: toolHookTimeoutSec(toolHook.deadlineMs),
+                              }
+                            : undefined,
                     fullAutonomyPermissions: true,
                     teamsEnv: multiAgentEnabled,
                 });
@@ -493,11 +511,13 @@ export async function initCommand(options: {
         }
 
         if (!minimalMode) {
+            let claudeDetected = false;
             const claudeIntSpinner = ora('Checking Claude Code integration...').start();
             try {
                 const { setupClaudeCodeIntegration } =
                     await import('../../core/claude/claude-mcp.js');
                 const result = await setupClaudeCodeIntegration(cwd);
+                claudeDetected = result.detected;
                 if (result.detected) {
                     claudeIntSpinner.succeed('Claude Code integration configured');
                     if (result.mcpConfigured) {
@@ -536,19 +556,15 @@ export async function initCommand(options: {
                 claudeIntSpinner.info('Claude Code integration skipped');
             }
 
-            // v7.3: TypeSafe (Jev) — offered, never imposed. Asked once in an
-            // interactive run (default no), remembered in rulebook.json, or
-            // enabled outright with --typesafe.
+            // TypeSafe (Jev) — offered by default since v7.4; --no-typesafe opts
+            // out. The decision is remembered in rulebook.json; a stored "no"
+            // is never overridden. Only where Claude Code is detected.
             try {
-                const { decideTypesafe, applyTypesafe } = await import('./typesafe.js');
-                const decision = await decideTypesafe(configManager, {
+                const { runTypesafeStep } = await import('./typesafe.js');
+                await runTypesafeStep(configManager, cwd, {
                     flag: options.typesafe,
-                    interactive,
+                    claudeDetected,
                 });
-                if (decision.enabled) {
-                    console.log(chalk.bold('\nTypeSafe (Jev) integration'));
-                    await applyTypesafe(cwd);
-                }
             } catch (err) {
                 console.log(
                     chalk.gray(

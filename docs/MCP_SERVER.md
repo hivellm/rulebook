@@ -306,6 +306,138 @@ A learning captured under the same title again is counted (`occurrences`, `lastS
 
 CLI equivalents: `rulebook learn promote <id> skill`, `rulebook skills list --category project`.
 
+## Entry gate (v7.4, `rulebook_gate`)
+
+The main session calls `rulebook_gate` first with every operator prompt. Rulebook sends Jev (TypeSafe's System One model) one request: a JSON description of the project plus the prompt, and up to 12 questions — one per decision the session would otherwise guess. The answers come back as a `routing` to act on. The gate is advisory: it never throws and never blocks, and it is called once per operator prompt, never by subagents.
+
+| Input | Meaning |
+|-------|---------|
+| `prompt` | the operator prompt, verbatim |
+| `notes` (optional) | what you want decided |
+| `projectId` (optional) | workspace project override |
+
+**What Jev sees** (`stateBytes` reports the size, at most 8 KB): project id/version/languages/agents mode/task backend from `rulebook.json`; a one-line project description (≤ 400 chars, below); the active task and up to 15 tasks (titles ≤ 60 chars); up to 5 open decision requests; up to 5 skill candidates; up to 20 installed skills (enabled ids plus `.claude/skills/<dir>`); the eight subagent types; the model routing table; the prompt (≤ 4096 chars, then `[…truncated by rulebook]`) and notes (≤ 1024). Over 6.5 KB, rulebook drops notes, then trims skills to 10, tasks to 8, skill candidates, open questions to 2, the project description to 200 chars, and the prompt to 2048 chars, in that order.
+
+**Questions**: `kind`, `needs_task`, `existing_task` (omitted when there are no tasks), `model`, `agent`, `skill` (omitted when no skills are installed), `parallel`, `needs_operator_decision`, `in_project_scope` (omitted when there is no project description), `risk_destructive_git`, `risk_os_scheduling`, `risk_secrets`.
+
+**Project scope**: `in_project_scope` asks whether the prompt is about the project in `project.description` (its code, docs, tooling, tasks, or workflow), in the same single request. The description comes from the first source that has one: `gate.scope.description` in `rulebook.json`, then `description` in `package.json`, then the first prose paragraph of `README.md` (headings, badge lines, HTML, tables and code fences are skipped); whitespace is collapsed and it is clipped to 400 chars. A missing or unreadable source counts as none. With no description — or with `gate.scope.enabled: false` — the question is not asked and `routing.inProjectScope` is `null`, exactly as before. Otherwise `routing.inProjectScope` is `true` at `≥ 0.7`, `false` at `≤ 0.3` (the instruction then says "Off-topic for this project — confirm with the operator before acting."), and `null` in between, listed in `undecided`.
+
+**Thresholds**: a choice is decided at `confidence ≥ 0.6`; a yes/no at `≥ 0.7` (true) or `≤ 0.3` (false), undecided in between; a risk flag is true at `≥ 0.5` and never undecided. Undecided fields are `null` in `routing` and listed in `undecided`. Post-rules: `small-fix` ⇒ `needsTask:false`; a decided existing task ⇒ `needsTask:true`; `answer-to-open-question` with no decided task picks the task owning the first open question; an undecided `model` with a decided agent follows the routing table (architect/code-reviewer/security-reviewer → fable, researcher → haiku, else opus).
+
+```json
+{ "success": true, "available": true, "model": "jev-1.13.0",
+  "routing": { "kind": "task-work", "needsTask": true, "existingTaskId": "phase1_add-auth",
+               "model": "opus", "agentType": "implementer", "skill": "languages/typescript",
+               "parallel": false, "needsOperatorDecision": false, "inProjectScope": true,
+               "risk": { "destructiveGit": false, "osScheduling": false, "secrets": false } },
+  "undecided": [], "decisions": [ { "id": "kind", "primitive": "choice", "answer": "task_work",
+                                    "probability": 0.91, "confidence": 0.89, "decided": true } ],
+  "instruction": "Jev routing: kind=task-work, needsTask=yes (reuse phase1_add-auth), ...",
+  "elapsedMs": 812, "stateBytes": 1934, "usage": { "input_tokens": 2310, "output_tokens": 164 } }
+```
+
+**When Jev cannot be used** the result is still `success:true`, with `available:false`, a `reason`, and `instruction: "Gate unavailable (<reason>); proceed under CLAUDE.md Orchestration rules."`:
+
+| `reason` | Cause |
+|----------|-------|
+| `disabled` | `RULEBOOK_GATE=off` in the environment, or `integrations.typesafe.enabled:false` in `rulebook.json` — no network call |
+| `no-key` | no `TYPESAFE_API_KEY` in the environment or in the project's `.env`; `instructions` (how to create and export the key) is included the first time per server process |
+| `timeout` | the call did not finish inside the gate's 8.5 s deadline (the server's per-tool guard is 10 s) |
+| `http` / `network` / `bad-response` | an HTTP error, a connection failure, or a malformed answer; `detail` carries the message with any key redacted |
+
+**Key and network**: the key is read from `process.env.TYPESAFE_API_KEY`, else from the single `TYPESAFE_API_KEY=` line of `<project>/.env` (other variables are never read, `process.env` is never modified). It is sent only as `Authorization: Bearer …`, and never appears in results, errors or logs. Each attempt times out after 10 s (capped by the deadline); 429, 529 and connection errors are retried at most twice with exponential backoff plus jitter; other errors fail at once.
+
+**Decision log**: when `features.logging` is true in `rulebook.json`, each call appends one line to `.rulebook/logs/gate.jsonl` — a 16-hex prompt hash, `routing`, `undecided`, `usage`, `elapsedMs`, `stateBytes` (never the prompt text or the key); the newest 500 lines are kept.
+
+**CLI**: `rulebook gate "<prompt>" [--notes <text>] [--json]` prints the routing as a readable block (or the full result as JSON) and exits 0 even when unavailable. `rulebook gate --check [--json] [--strict]` reports where the key was found (`env`, `.env`, or not found — never the value) and makes one cheap live call (`state: "ping"`, one yes/no question) with its latency and token usage; it exits 0 either way, or 2 with `--strict` when the gate is unavailable.
+
+### Prompt hook (v7.4, `UserPromptSubmit`)
+
+The main session no longer has to remember to call the gate: a Claude Code `UserPromptSubmit` hook runs it on every operator prompt and hands the routing to the model as context. The model calls `rulebook_gate` by hand only when no hook routing is in its context.
+
+**Install**: `rulebook init`, `rulebook update` and `rulebook claude` copy `templates/hooks/jev-gate.sh` to `.claude/hooks/jev-gate.sh` and add one entry to `.claude/settings.json`:
+
+```json
+{ "hooks": { "UserPromptSubmit": [
+  { "hooks": [ { "type": "command",
+                 "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/jev-gate.sh prompt",
+                 "timeout": 8 } ] } ] } }
+```
+
+The entry is identified by its command (`jev-gate.sh prompt`): it is upserted once (a second run leaves the file byte-identical), user hooks on the same event stay untouched and in order, and the entry is removed when the hook is turned off. The wrapper finds the CLI (`$CLAUDE_PROJECT_DIR/node_modules/.bin/rulebook` first, so the project's own version wins over a stale global one; then, in the rulebook repo itself — `package.json` named `@hivehub/rulebook` with a built `dist/index.js` — `node dist/index.js`; then `rulebook` on `PATH`) and runs `rulebook hook prompt-gate` with the hook JSON on stdin; without a CLI it exits 0 silently, and a CLI that fails (for example a broken global shim) has its error output dropped — the wrapper always exits 0.
+
+**What the model sees**: `{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"…"}}`, where the context (at most 1024 bytes) is the line `Jev routing (rulebook prompt hook) — do not call rulebook_gate again for this prompt`, the gate's `instruction`, and one warning line per risk flag at or above 0.5 that does not block.
+
+**Block rule**: when Jev is available and `risk_os_scheduling` is at or above `gate.promptHook.blockThreshold`, the hook answers `{"decision":"block","reason":…}` — OS-level scheduling is never allowed (Tier 1); the reason names the rule and how to turn the hook off. Destructive git and secrets never block here: the operator's own prompt is the authorization, so they become warnings that point to the Git safety and secrets rules. The MCP tool and `rulebook gate` never block.
+
+**Off-topic rule** (only when the project has a description): when `in_project_scope` is at or below `gate.scope.offTopicBelow`, the hook applies `gate.scope.onOffTopic`. `ask` (default) keeps the prompt and makes the first context line `Confirm with the operator before acting: this prompt looks unrelated to this project "<first 80 chars of the description>" (Jev in_project_scope p=…)`; `block` answers `{"decision":"block","reason":…}` with a reason that quotes the description and names `gate.scope.onOffTopic`. Above `offTopicBelow` and up to 0.3 the context only gains a `Warning: possibly off-topic …` line. In all three cases the hook's line replaces the gate's generic off-topic sentence. The OS-scheduling block is checked first and wins.
+
+**Config** (`.rulebook/rulebook.json`):
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `gate.promptHook.enabled` | `true` | install and run the hook; always off when `integrations.typesafe.enabled` is `false` |
+| `gate.promptHook.deadlineMs` | `5000` | deadline for the whole gate call inside the hook, clamped to 1000–8500 ms; the settings `timeout` is `ceil(deadlineMs / 1000) + 3` seconds |
+| `gate.promptHook.blockThreshold` | `0.9` | `risk_os_scheduling` probability that blocks, clamped to 0.5–1 |
+| `gate.scope.enabled` | `true` | ask `in_project_scope` when a description exists; `false` never asks it |
+| `gate.scope.description` | — | project description for the scope question; overrides `package.json` and `README.md` |
+| `gate.scope.offTopicBelow` | `0.15` | `in_project_scope` probability at or below which `onOffTopic` applies, clamped to 0–0.3 |
+| `gate.scope.onOffTopic` | `ask` | `ask`: confirm-with-the-operator line first in the context; `block`: stop the prompt |
+
+**Fail-open**: no key, `RULEBOOK_GATE=off`, TypeSafe opted out, the hook disabled, a timeout, a network or HTTP error, a bad response, unreadable or non-JSON stdin, an empty prompt, a missing CLI, or any thrown error → exit 0 with no output, and the prompt goes through unchanged. The hook always exits 0.
+
+**Decision log**: with `features.logging` on, hook calls are logged to `.rulebook/logs/gate.jsonl` like any other gate call, with `"source": "hook"` (the MCP tool writes `"mcp"`, the CLI `"cli"`).
+
+**Turn it off**: set `"gate": {"promptHook": {"enabled": false}}` in `rulebook.json` and run `rulebook update` (the entry is removed), or opt out of TypeSafe with `--no-typesafe` (also removes it). `RULEBOOK_GATE=off` silences it for one environment without touching settings.
+
+### Tool-call gate (v7.4, `PreToolUse`, opt-in)
+
+The prompt hook judges what the operator asked for; the tool-call gate judges what an agent is about to do. A Claude Code `PreToolUse` hook asks Jev a few yes/no questions about each matched tool call and answers `deny` or `ask` with a reason — or nothing, so the normal permission flow applies. It never answers `allow`: your permission rules still decide everything it lets through. Off by default.
+
+**Install**: with `"gate": {"toolHook": {"enabled": true}}` in `rulebook.json`, `rulebook init`, `update` and `claude` add one `PreToolUse` entry after the rulebook guard entries (same `.claude/hooks/jev-gate.sh`, argument `tool`):
+
+```json
+{ "matcher": "Bash|Edit|Write",
+  "hooks": [ { "type": "command",
+               "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/jev-gate.sh tool",
+               "timeout": 4 } ] }
+```
+
+Each Jev entry is identified by its command (`jev-gate.sh prompt`, `jev-gate.sh tool`), so turning one on or off never touches the other; the entry is upserted once (a second run leaves the file byte-identical), user hooks stay untouched, and it is removed when the gate is turned off or TypeSafe is opted out.
+
+**Order, cheapest first** (Claude Code runs matching hooks in parallel, so the order lives inside this one hook):
+
+1. The wrapper runs the installed `no-os-scheduling.sh` guard on the same payload; its `deny` is printed as-is and the CLI is never called.
+2. Tools outside `matcher` get no answer.
+3. A deterministic destructive-git check on Bash commands — `git reset --hard`, `push --force` / `-f` / `--force-with-lease` / `+refspec`, `clean -f`, `checkout -- .` (or `./`), `restore .` (or `./`), `stash` (not `list`/`show`), `branch -D`, anchored to a git invocation — answers `ask` citing CLAUDE.md "Git safety". It runs even without a TypeSafe key and never calls Jev.
+4. The cache (below); a hit answers with no request.
+5. One Jev request within the deadline.
+
+**What Jev sees** (at most 3072 bytes): project id and languages, the active task (id + title), the Tier 1 rules (destructive git without authorization, OS scheduling, hook bypass such as `--no-verify`, reading or printing secrets, stubs/TODOs), and a summary of the call — Bash: the command (≤ 1024 chars); Edit: the file (relative when inside the project), old/new sizes and a `new_string` preview (≤ 512); Write: the file, content size and a preview (≤ 512); other tools: the file and a JSON preview of the input. Over budget, the preview, then the command, then the path are cut.
+
+**Criteria** (each a yes/no probability that the call is fine, one request): `safe_reversible`, `no_secret_exposure`, `follows_project_rules`, and `in_task_scope` when a task is in progress. Below `denyBelow` (0.5) → `deny`; below `askBelow` (0.7) → `ask`; `in_task_scope` never goes past `ask`. The most severe criterion wins, and the reason lists each failing criterion with its probability (`safe_reversible p=0.30 (may destroy work or be hard to undo)`).
+
+**Redaction**: every summary string goes through `redactSecrets()` — `redact()` (TypeSafe keys, `Bearer …`) plus `sk-…`, `ghp_…`/`github_pat_…`, `AKIA…`, `xox?-…`, PEM private-key blocks, URL passwords (`scheme://user:***@host`), `-u`/`--user user:***`, the value of `--password`/`--passwd`/`--secret…`/`--api-key`/`--apikey`/`--token` flags, and the value (quoted values whole) of any `*KEY*`/`*TOKEN*`/`*SECRET*`/`*PASSWORD*` assignment — before it is clipped. The content of `.env*` files is never sent: the preview reads `[env file — not sent]`.
+
+**Cache**: `.rulebook/cache/tool-gate.json` (ignored by the `/.rulebook/*` gitignore rule), keyed by sha256 of tool + redacted summary + active task id + question-set version; each entry holds the decision, the probabilities and the time. Entries live `cacheTtlMs` (15 min); the newest 200 are kept; the file is written atomically (temp file + rename), and an unreadable file counts as empty. Only Jev answers are cached — never a fail-open result.
+
+**Latency**: everything after the destructive-git check (task list, cache, Jev) runs within `deadlineMs` (default 2000 ms); the settings `timeout` is `ceil(deadlineMs / 1000) + 2` seconds.
+
+**Config** (`.rulebook/rulebook.json`):
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `gate.toolHook.enabled` | `false` | install and run the gate; always off when `integrations.typesafe.enabled` is `false` |
+| `gate.toolHook.matcher` | `Bash\|Edit\|Write` | `PreToolUse` matcher (a tool-name regex), also applied inside the hook |
+| `gate.toolHook.denyBelow` | `0.5` | a criterion below this denies (`in_task_scope`: asks); clamped 0–1 and never above `askBelow` |
+| `gate.toolHook.askBelow` | `0.7` | a criterion below this asks; clamped 0–1 |
+| `gate.toolHook.deadlineMs` | `2000` | clamped to 500–5000 ms |
+| `gate.toolHook.cacheTtlMs` | `900000` | cache lifetime; `0` never reuses an answer |
+
+**Fail-open**: no key, `RULEBOOK_GATE=off`, TypeSafe opted out, the gate disabled, a timeout, a network or HTTP error, a bad response, unreadable stdin, a missing CLI, or any thrown error → exit 0 with no output. The destructive-git `ask` needs no key, so it works without Jev.
+
+**Decision log**: with `features.logging` on, each decision appends one line to `.rulebook/logs/tool-gate.jsonl` — a 16-hex summary hash, tool name, decision, per-criterion probabilities, `cached`, `elapsedMs` (plus `precheck` or `error` when relevant); never the command text, file content or key. The newest 500 lines are kept.
+
 ## Error Handling
 
 All MCP functions return structured error responses:

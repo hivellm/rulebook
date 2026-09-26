@@ -4,13 +4,19 @@ export const meta = {
     'End-to-end feature delivery: research → architect → implement → test → review → document. Sequential because each stage depends on the previous one. Pass the feature description via args.',
   phases: [
     { title: 'Research', model: 'haiku' },
-    { title: 'Design', model: 'opus' },
-    { title: 'Implement', model: 'sonnet' },
-    { title: 'Test', model: 'sonnet' },
-    { title: 'Review', model: 'opus' },
-    { title: 'Document', model: 'haiku' },
+    { title: 'Design', model: 'fable' },
+    { title: 'Implement', model: 'opus' },
+    { title: 'Test', model: 'opus' },
+    { title: 'Review', model: 'fable' },
+    { title: 'Document', model: 'opus' },
   ],
 }
+
+// v7.4 model routing — every agent() call names its model explicitly:
+//   fable = architecture, complex bugs, code review / verification
+//   opus  = edits, tests, documentation, refactoring (never fable for simple work)
+//   haiku = research, discovery, summaries
+// sonnet is not part of the routing — do not reintroduce it.
 
 const feature =
   args && typeof args === 'object' && args.feature
@@ -50,7 +56,7 @@ Use this codebase research as ground truth:
 ${research}
 """
 Produce a concrete implementation blueprint: files to create/modify, component/data design, and the build sequence. Follow existing conventions; flag trade-offs. Do not write production code yet.`,
-  { label: 'design', phase: 'Design', model: 'opus' }
+  { label: 'design', phase: 'Design', model: 'fable' }
 )
 
 phase('Implement')
@@ -62,13 +68,13 @@ Blueprint:
 ${design}
 """
 Run the type-checker before finishing. Report the files you created/changed.`,
-  { label: 'implement', phase: 'Implement', model: 'sonnet' }
+  { label: 'implement', phase: 'Implement', model: 'opus' }
 )
 
 phase('Test')
 const tests = await agent(
   `Write/extend tests for the feature just implemented ("${feature}"). Cover the new behavior and its edge cases with meaningful assertions (no boilerplate). Run \`git --no-pager diff\` to see what was implemented, write the tests, and run them until green. Report coverage of the new code.`,
-  { label: 'test', phase: 'Test', model: 'sonnet' }
+  { label: 'test', phase: 'Test', model: 'opus' }
 )
 
 phase('Review')
@@ -76,13 +82,13 @@ const review = await agent(
   `Independently review the full diff for feature "${feature}". Run \`git --no-pager diff\`. Judge correctness, adherence to the design, edge cases, and test adequacy. Run type-check and tests to confirm green. Return pass=true only if it is genuinely ready to merge.
 Implementation report: """${impl}"""
 Test report: """${tests}"""`,
-  { label: 'review', phase: 'Review', model: 'opus', schema: VERDICT_SCHEMA }
+  { label: 'review', phase: 'Review', model: 'fable', schema: VERDICT_SCHEMA }
 )
 
 phase('Document')
 const docs = await agent(
   `Document the feature "${feature}". Run \`git --no-pager diff\` to see what shipped. Update README.md (if user-facing) and add a conventional-commit CHANGELOG.md entry under the unreleased section. English only; document only what exists in the diff.`,
-  { label: 'document', phase: 'Document', model: 'haiku' }
+  { label: 'document', phase: 'Document', model: 'opus' }
 )
 
 return { feature, design, review, passed: !!(review && review.pass), docs }

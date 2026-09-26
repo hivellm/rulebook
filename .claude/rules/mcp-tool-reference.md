@@ -5,7 +5,8 @@
 This project has the following MCP servers configured. Use whichever
 surface is cheapest for the operation — an MCP tool when it returns
 structured data you would otherwise have to parse, the shell when a
-one-liner does the job. Orchestration is entirely your call.
+one-liner does the job. The work itself is delegated per the
+Orchestration section of CLAUDE.md.
 
 | Server | Source |
 |--------|--------|

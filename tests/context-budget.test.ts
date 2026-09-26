@@ -6,6 +6,10 @@ import { encoding_for_model } from 'tiktoken';
 import { generateClaudeMd } from '../src/core/claude/claude-md-generator.js';
 import { generateLeanAgents } from '../src/core/generators/generator.js';
 import { generateRules, getRulesDir } from '../src/core/generators/rules-generator.js';
+import {
+    applyClaudeSettings,
+    getClaudeSettingsPath,
+} from '../src/core/claude/claude-settings-manager.js';
 import type { ProjectConfig } from '../src/types.js';
 
 /**
@@ -89,14 +93,16 @@ describe('v7 context budget (F-001)', () => {
         }
     });
 
-    it('generated context never denies or mandates orchestration (P0)', async () => {
+    it('generated context carries no v6 team/hook orchestration mandates (P0)', async () => {
         const claudeMd = await generateClaudeMd(projectRoot);
         const agentsMd = await generateLeanAgents(config, projectRoot);
         const all = claudeMd + '\n' + agentsMd;
 
-        // Forbidden v6 directives: nothing may block or mandate subagents/teams.
+        // Forbidden v6 directives: no hook enforcement, no Team mandate. v7.4's
+        // orchestrator directive (the main session never implements directly; it
+        // delegates every task to a subagent) is prose, never a hook, and never
+        // forces a Team.
         expect(all).not.toMatch(/must (use|go through) a Team/i);
-        expect(all).not.toMatch(/Never implement directly/i);
         expect(all).not.toMatch(/blocked by the enforcement hook/i);
         expect(all).not.toMatch(/Delegate by default/i);
         // No total-order execution mandate (issue #18): order = dependencies.
@@ -105,8 +111,29 @@ describe('v7 context budget (F-001)', () => {
         expect(all).not.toMatch(/sequentially/i);
         // No blanket branch-switching ban (issue #20).
         expect(all).not.toMatch(/never switch branches on your own/i);
-        // The affirmative freedom line must be present.
-        expect(claudeMd).toMatch(/never blocks or\s+mandates orchestration/);
+        // v7.4 replaced the "never mandated" line with the orchestrator directive:
+        // the main session delegates every task to a subagent with an explicit model.
+        expect(claudeMd).not.toMatch(/never blocks or\s+mandates orchestration/);
+        for (const doc of [claudeMd, agentsMd]) {
+            expect(doc).toMatch(/main session never does the work itself/i);
+            expect(doc).toMatch(/one subagent/i);
+            expect(doc).toMatch(/model set\s+per\s+call/i);
+        }
+
+        // Enforcement stays directive-only: no rulebook hook may deny or reroute
+        // agent/subagent calls, even with every optional guard enabled.
+        await applyClaudeSettings(projectRoot, {
+            taskScaffoldingGuard: true,
+            osSchedulingGuard: true,
+        });
+        const settings = JSON.parse(
+            await fs.readFile(getClaudeSettingsPath(projectRoot), 'utf-8')
+        ) as { hooks?: Record<string, Array<{ matcher?: string }>> };
+        for (const entries of Object.values(settings.hooks ?? {})) {
+            for (const entry of entries) {
+                expect(entry.matcher ?? '').not.toMatch(/\b(Agent|Task|SendMessage)\b/);
+            }
+        }
     });
 
     it('generated CLAUDE.md does not import AGENTS.md or rule essays', async () => {

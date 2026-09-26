@@ -1,17 +1,23 @@
 export const meta = {
   name: 'rulebook-driver',
   description:
-    'Drain the rulebook backlog in a loop: discover the next unchecked task item, implement it, gate it through an independent SDD+TDD opus reviewer (max 3 rounds), document it, COMMIT it, then move to the next item — until none remain, a item fails review, the item cap is hit, or the token budget runs low. Each approved item is committed before the next starts, so the working tree is clean between items and every gate sees only the relevant diff.',
+    'Drain the rulebook backlog in a loop: discover the next unchecked task item, implement it, gate it through an independent SDD+TDD fable reviewer (max 3 rounds), document it, COMMIT it, then move to the next item — until none remain, a item fails review, the item cap is hit, or the token budget runs low. Each approved item is committed before the next starts, so the working tree is clean between items and every gate sees only the relevant diff.',
   phases: [
     { title: 'Discover', detail: 'find first unchecked item (lowest phase)', model: 'haiku' },
-    { title: 'Implement', detail: 'dev implements; independent opus reviewer gates; loop ≤3', model: 'sonnet' },
-    { title: 'Review', detail: 'independent full SDD+TDD review', model: 'opus' },
-    { title: 'Document', detail: 'docs-writer updates README/CHANGELOG', model: 'haiku' },
-    { title: 'Commit', detail: 'commit the approved item (conventional, hooks must pass)', model: 'sonnet' },
-    { title: 'Fanout', detail: 'OPT-IN ({ fanout: true }) review-fanout adversarial review of the task changeset', model: 'sonnet' },
-    { title: 'Gate', detail: 'release-gate go/no-go once the backlog is drained', model: 'sonnet' },
+    { title: 'Implement', detail: 'dev implements; independent fable reviewer gates; loop ≤3', model: 'opus' },
+    { title: 'Review', detail: 'independent full SDD+TDD review', model: 'fable' },
+    { title: 'Document', detail: 'docs-writer updates README/CHANGELOG', model: 'opus' },
+    { title: 'Commit', detail: 'commit the approved item (conventional, hooks must pass)', model: 'opus' },
+    { title: 'Fanout', detail: 'OPT-IN ({ fanout: true }) review-fanout adversarial review of the task changeset', model: 'opus' },
+    { title: 'Gate', detail: 'release-gate go/no-go once the backlog is drained', model: 'opus' },
   ],
 }
+
+// v7.4 model routing — every agent() call names its model explicitly:
+//   fable = architecture, complex bugs, code review / verification
+//   opus  = edits, tests, documentation, refactoring (never fable for simple work)
+//   haiku = research, discovery, summaries
+// sonnet is not part of the routing — do not reintroduce it.
 
 // ---- Tunables (override via args) ------------------------------------------
 // args: { once?, maxItems?, minBudget?, fanout?, fanoutRounds? }
@@ -20,7 +26,7 @@ export const meta = {
 //   minBudget    — stop before the next item if remaining tokens fall below this
 //   fanout       — run the per-task review-fanout adversarial gate. DEFAULT false
 //                  (it is the most token-expensive phase). Pass { fanout: true } to
-//                  enable. The per-item SDD+TDD opus review + the commit hooks still
+//                  enable. The per-item SDD+TDD fable review + the commit hooks still
 //                  run regardless; fanout is the extra multi-dimension pass.
 //   fanoutRounds — max review-fanout remediation rounds per completed task (default 1)
 const opts = args && typeof args === 'object' ? args : {}
@@ -135,7 +141,7 @@ Steps:
 3. Commit with a Conventional Commits message — \`type(scope): subject\` (subject ≤72 chars), optional body. Choose the type from the actual change (feat/fix/docs/test/refactor/chore).
 4. The pre-commit hooks (type-check, lint, tests) MUST pass. NEVER pass --no-verify. If a hook fails, do NOT bypass it: return committed=false with the hook output in error.
 Return committed, the new commit sha, and the message used.`,
-    { label, phase: 'Commit', model: 'sonnet', schema: COMMIT_SCHEMA }
+    { label, phase: 'Commit', model: 'opus', schema: COMMIT_SCHEMA }
   )
 }
 
@@ -170,10 +176,10 @@ Do NOT commit. Re-run the type-checker and tests (both must pass). Report which 
     const dev = await agent(devPrompt, {
       label: `dev:item${itemIndex}:r${round}`,
       phase: 'Implement',
-      model: 'sonnet',
+      model: 'opus',
     })
 
-    // Independent reviewer — fresh subagent, NO conversation context, opus for a thorough
+    // Independent reviewer — fresh subagent, NO conversation context, fable for a thorough
     // review. Sees only the current item's diff (working tree) + the spec, because previous
     // items are already committed.
     verdict = await agent(
@@ -197,7 +203,7 @@ Set pass=true ONLY when SDD and TDD are both fully satisfied and the code is cor
       {
         label: `review:item${itemIndex}:r${round}`,
         phase: 'Review',
-        model: 'opus',
+        model: 'fable',
         schema: VERDICT_SCHEMA,
       }
     )
@@ -232,7 +238,7 @@ Update the application documentation to reflect what shipped (do NOT commit — 
 3. Update README.md only if public/user-facing behavior changed.
 Keep all docs in English. Do not document behavior that is not present in the diff.
 Report which documentation files you updated.`,
-    { label: `document:item${itemIndex}`, phase: 'Document', model: 'haiku' }
+    { label: `document:item${itemIndex}`, phase: 'Document', model: 'opus' }
   )
 
   // Commit the approved item BEFORE the next item starts. Pre-commit hooks gate it; a hook
@@ -292,7 +298,7 @@ ${issues}
 
 Specs that still must hold: ${(specPaths || []).join(', ') || '(see task directory)'}
 Re-run the type-checker and the relevant tests (both must pass). Report which files you changed.`,
-      { label: `fanout-fix:${taskId}:r${fround}`, phase: 'Fanout', model: 'sonnet' }
+      { label: `fanout-fix:${taskId}:r${fround}`, phase: 'Fanout', model: 'opus' }
     )
   }
   return { passed: true, rounds: MAX_FANOUT_ROUNDS, blocking: [] }

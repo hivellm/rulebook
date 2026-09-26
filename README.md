@@ -12,9 +12,10 @@
 > Tool-agnostic AI development framework. One `init` generates **`AGENTS.md`** — the universal standard every AI coding agent reads — plus Claude Code integration, quality gates, spec-driven task management, and an MCP server. Auto-detects 28 languages.
 
 **v7 — built to assist frontier models, never to anchor them.** ~3.4k tokens of
-session overhead (was ~15k in v6, −77%), 5 consolidated MCP tools, one
-path-only guard hook, zero permission prompts for routine work, and
-orchestration (subagents/parallelism/teams) that is never blocked or mandated.
+session overhead (was ~15k in v6, −77%), 6 consolidated MCP tools, one
+path-only guard hook, zero permission prompts for routine work, and (v7.4) an
+orchestrator main session that delegates every task to a model-routed subagent,
+routed by the TypeSafe (Jev) entry gate on every prompt.
 Measured, budgeted in CI, and documented in
 [`docs/analysis/v7-performance/`](docs/analysis/v7-performance/README.md).
 Upgrading from v6? See the
@@ -41,7 +42,7 @@ Then, inside Claude Code, spec a feature and let the backlog implement itself
 
 ```
 /spec rate-limit the public REST API   # asks questions, creates rulebook tasks
-/rulebook-driver                        # implements every task, opus review gate
+/rulebook-driver                        # implements every task, fable review gate
 ```
 
 > Install globally with `npm install -g @hivehub/rulebook` to use `rulebook` directly.
@@ -57,13 +58,23 @@ AI coding agents produce inconsistent, error-prone code without clear guidelines
 | **Universal rules** | `AGENTS.md` + `CLAUDE.md` generated from one source — read natively by any AGENTS.md-aware agent |
 | **Quality gates** | Pre-commit (lint, type-check, format) + pre-push (build, tests) hooks — language-aware, cross-platform |
 | **Spec-driven tasks** | OpenSpec-compatible tasks with a docs + tests tail — check it or archive with a one-line waiver |
-| **6 MCP tools** | `rulebook_task` / `_memory` / `_session` / `_skill` / `_rules` / `_workspace` — action-parameterized, ~3.6 KB of schemas total |
+| **6 MCP tools** | `rulebook_task` / `_memory` / `_session` / `_skill` / `_rules` / `_gate` (+ `_workspace` in workspace mode) — action-parameterized, ~4.9 KB of schemas total |
 | **Lean by design** | One path-only guard hook, full-autonomy permissions, no content regexes, no ceremony for small fixes |
 | **28 languages** | Auto-detected with confidence scores; language-specific templates and CI/CD workflows |
 
 ---
 
 ## Core Features
+
+### Orchestrator main session (v7.4)
+
+The generated rules make the main session plan, delegate and monitor — it
+never does the work itself. Each task goes to one subagent (independent ones in
+parallel), and every agent call names its model: **Fable 5.1** for
+architecture, hard bugs and review; **Opus 5.5** for edits, tests, docs and
+refactors; **Haiku 4.5** for research and summaries. The TypeSafe (Jev)
+[entry gate](#typesafe-jev-integration--on-by-default) routes each prompt
+first. Details: [Multi-Agent Workflows](#multi-agent-workflows).
 
 ### Modular rules
 
@@ -199,15 +210,31 @@ Auto-discovers from `pnpm-workspace.yaml`, `turbo.json`, `nx.json`, `lerna.json`
 
 ## Multi-Agent Workflows
 
-Orchestrated [Claude Code Workflow](https://code.claude.com/docs/en/workflows) scripts are **opt-in** (agents and workflows no longer install by default — native harness agents cover the roles). When installed into `.claude/workflows/`, each fans work across bundled agents with cost-tiered models — `haiku` for read-only steps, `sonnet` for implementation, `opus` for the final review gate.
+**Orchestrator model (v7.4).** The generated rules make the main session an
+orchestrator: it never does the work itself. It plans, then delegates each task
+to one subagent — independent ones in parallel — and reads their reports, not
+the files. Every agent call names its model:
+
+| Model | Use for |
+|-------|---------|
+| **Fable 5.1** | Architecture, complex bugs, code review |
+| **Opus 5.5** | Edits, tests, documentation, refactoring (simple work never goes to Fable) |
+| **Haiku 4.5** | Research, summaries |
+
+Each subagent owns one rulebook task: it checks items off as it goes and drives
+the task through the quality gate to archive. The main session monitors the
+agents, pauses or restarts one that stalls or drifts, reviews each archived
+task, and updates the CHANGELOG. Full protocol: `.rulebook/specs/orchestration.md`.
+
+Orchestrated [Claude Code Workflow](https://code.claude.com/docs/en/workflows) scripts are **opt-in** (agents and workflows no longer install by default — native harness agents cover the roles). When installed into `.claude/workflows/`, each fans work across bundled agents with the same routing — `haiku` for research, `opus` for implementation, tests, and docs, `fable` for design and review gates.
 
 | Workflow | What it does |
 |----------|--------------|
-| `rulebook-driver` | Loops the backlog: next unchecked item → implement (SDD+TDD) → independent **opus** review gate (≤3 rounds) → document → next |
-| `spec-author` | Research → draft proposal + SHALL/MUST spec → **opus** gap-critic returns ranked questions + gaps |
-| `feature-pipeline` | research → architect (opus) → implement → test → **opus** review → document |
-| `bugfix` | root-cause → TDD fix → **opus** quality-gatekeeper verdict (≤2 rounds) |
-| `review-fanout` | Adversarial multi-dimension review of the diff, each finding verified, **opus** synthesis |
+| `rulebook-driver` | Loops the backlog: next unchecked item → implement (SDD+TDD) → independent **fable** review gate (≤3 rounds) → document → next |
+| `spec-author` | Research → draft proposal + SHALL/MUST spec → **fable** gap-critic returns ranked questions + gaps |
+| `feature-pipeline` | research → architect (fable) → implement → test → **fable** review → document |
+| `bugfix` | root-cause → TDD fix → **fable** quality-gatekeeper verdict (≤2 rounds) |
+| `review-fanout` | Adversarial multi-dimension review of the diff, each finding verified by **fable**, **opus** synthesis |
 | `release-gate` | Parallel build / tests+coverage / security / docs → single go/no-go |
 
 The independent reviewers run as fresh subagents with **no developer context** — they see only the `git diff` plus the spec, so the gate is a genuine second opinion.
@@ -227,45 +254,72 @@ The independent reviewers run as fresh subagents with **no developer context** �
 
 ```bash
 rulebook claude                 # apply the recommended setup
-rulebook claude --model opus    # same, but set the default model (default: sonnet)
+rulebook claude --model fable   # same, but set the default model (default: opus)
 ```
 
 It installs the MCP server entry and the Rulebook-specific skills, then layers the v7 `.claude/settings.json` (agents/workflows are opt-in):
 
 | Applied | Detail |
 |---------|--------|
-| Hook | ONE path-only `PreToolUse` guard protecting task scaffolding — nothing on Stop/UserPromptSubmit/SessionStart, no content regexes |
+| Hooks | Path-only `PreToolUse` guards (task scaffolding, `no-os-scheduling`); with TypeSafe on, the fail-open Jev prompt hook on `UserPromptSubmit` (and the opt-in tool-call gate) — nothing on Stop/SessionStart, no content regexes |
 | Full-autonomy permissions | `defaultMode: acceptEdits` + broad allow list (Bash/Edit/Write/Agent/WebFetch/…) — ~0 permission prompts for routine work |
 | `statusLine` | project dir + git branch + context meter (`ctx NN%`) |
-| `model` | cost-aware default (`sonnet`) |
+| `model` | cost-aware default (`opus`) |
 
 All settings are **additive and non-clobbering** — existing `permissions.allow`, a user-authored `statusLine`, and an explicit `model` are preserved. Requires Claude Code installed (`~/.claude`); otherwise it no-ops with a notice.
 
 ---
 
-### TypeSafe (Jev) integration — opt-in
+### TypeSafe (Jev) integration — on by default
 
 [TypeSafe](https://typesafe.ai) turns natural language and application state
 into typed judgments (routing, ranking, extraction, verification) through its
 System One model, Jev, and ships a Claude Code plugin with the skill that
-teaches agents to build with it. Rulebook offers it during setup and never
-imposes it, because it only works with an API key you create:
+teaches agents to build with it. Since v7.4 `init`, `update` and `claude`
+enable it without asking, unless you opt out (only where Claude Code is
+detected):
 
 ```bash
-rulebook init                 # asks once: "Enable TypeSafe (Jev) for this project?" (default no)
-rulebook update --typesafe    # or enable explicitly; update re-verifies on every run
-rulebook claude --typesafe    # same, on demand
+rulebook init                   # enabled by default
+rulebook update --no-typesafe   # opt out (stored; a stored "no" is never overridden)
+rulebook claude --typesafe      # force it back on
 ```
 
 When enabled, rulebook checks `~/.claude/plugins/installed_plugins.json` and
 installs `typesafe@typesafe-ai` only if it is missing (`claude plugin
 marketplace add typesafe-ai/skills`, then `claude plugin install
 typesafe@typesafe-ai`), writes `.claude/rules/typesafe.md` so the agent knows
-to use the `/typesafe:typesafe-ai` skill for semantic judgments, and checks
-`TYPESAFE_API_KEY`. If the key is missing it prints the steps: create one at
-https://console.typesafe.ai/keys, export the variable where the agent runs,
-never commit it. The answer is stored in `rulebook.json`
-(`integrations.typesafe.enabled`), so you are asked once.
+to use the `/typesafe:typesafe-ai` skill and the gate, and looks for
+`TYPESAFE_API_KEY` in the shell or the project's untracked `.env`. If the key
+is missing it prints where to create one (https://console.typesafe.ai/keys);
+the gate starts working once it is set. Rulebook never writes the key — never
+commit it. The choice is stored in `rulebook.json`
+(`integrations.typesafe.enabled`).
+
+With TypeSafe on, Jev gates the session at three points. All of them fail
+open: no key, `RULEBOOK_GATE=off`, a timeout or any error lets the prompt or
+tool call through unchanged. Full reference:
+[`docs/MCP_SERVER.md`](docs/MCP_SERVER.md#entry-gate-v74-rulebook_gate).
+
+- **Entry gate** — `rulebook_gate {prompt}` (MCP) or `rulebook gate "<prompt>"`
+  (CLI) sends the prompt and a short project description to Jev and returns a
+  `routing`: request kind, task, model, subagent type, skill, and risk flags.
+  Advisory, never blocking; `rulebook gate --check` tests the key.
+- **Prompt hook** (`UserPromptSubmit`, on by default) — runs the gate on every
+  prompt and hands the routing to the model as context. It blocks only a
+  high-confidence OS-scheduling request (`gate.promptHook.blockThreshold`,
+  default 0.9); destructive git and secrets only warn. Turn it off with
+  `"gate": {"promptHook": {"enabled": false}}` and `rulebook update`.
+- **Project scope** (`gate.scope`) — the gate also asks whether the prompt
+  belongs to this project (description from `gate.scope.description`,
+  `package.json`, or this README). When it looks off-topic
+  (`gate.scope.offTopicBelow`, default 0.15), `onOffTopic: "ask"` (default)
+  tells the model to confirm with the operator; `"block"` stops the prompt.
+- **Tool-call gate** (`PreToolUse`, opt-in) — `"gate": {"toolHook":
+  {"enabled": true}}` checks each `Bash|Edit|Write` call. Cheap checks run
+  first (the OS-scheduling guard, a deterministic destructive-git `ask`), then
+  one Jev request with a redacted summary answers `deny` or `ask` with a
+  reason. It never answers `allow`, so your permission rules still decide.
 
 ## MCP Server
 
@@ -282,6 +336,7 @@ rulebook mcp init    # One-time setup — configures .mcp.json automatically
 | `rulebook_session` | start (plans + tasks + learnings in ONE call) · end (rotating history) |
 | `rulebook_skill` | list · show · search · enable · disable · validate |
 | `rulebook_rules` | list project rules |
+| `rulebook_gate` | `{prompt, notes?}` → Jev `routing` for the prompt (advisory; see [TypeSafe](#typesafe-jev-integration--on-by-default)) |
 | `rulebook_workspace` | list · status · tasks (workspace mode only) |
 
 Workspace routing is automatic: pass any file `path` and the server resolves
@@ -299,6 +354,8 @@ rulebook init --lean             # AGENTS.md as a <3KB index
 rulebook update                  # Update to the latest rules
 rulebook doctor                  # Health checks (file sizes, broken imports, stale state)
 rulebook claude                  # Apply the recommended Claude Code setup
+rulebook gate "<prompt>"         # Jev routing for a prompt (--json for the full result)
+rulebook gate --check            # Key found? One cheap live call (--strict exits 2 if unavailable)
 
 # Tasks
 rulebook task create <task-id>   # Create (phase-prefixed: phase1_add-auth)
@@ -393,6 +450,7 @@ npm run build
 
 - **[OpenSpec](https://github.com/Fission-AI/openspec)** — influenced the task-management format (delta-based specs, Given/When/Then scenarios, requirement-focused organization).
 - **[forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills)** — source of the four "Editing Discipline" principles (think before coding, simplicity first, surgical changes, goal-driven execution) inlined in the generated `AGENTS.md`, grounded in [Andrej Karpathy's observations](https://x.com/karpathy/status/2015883857489522876) on common LLM coding pitfalls.
+- **[Jev](https://typesafe.ai)** — the System One model by TypeSafe, which powers the rulebook entry gate (`rulebook_gate`, prompt hook, project scope and tool-call gate).
 
 ---
 

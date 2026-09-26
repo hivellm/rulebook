@@ -1,7 +1,7 @@
 ---
 name: architect
 description: Architecture review, design decisions, and ADR writing
-model: opus
+model: fable
 context: fork
 agent: architect
 ---

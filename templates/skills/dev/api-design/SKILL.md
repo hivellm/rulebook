@@ -1,7 +1,7 @@
 ---
 name: api-design
 description: Design or review API endpoints (REST/GraphQL)
-model: sonnet
+model: fable
 context: fork
 agent: api-designer
 ---
