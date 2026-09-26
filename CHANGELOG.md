@@ -212,6 +212,11 @@ set. The key itself is never written by rulebook.
   `reason: "timeout"` line (`source: "hook"`) on time. `rulebook_gate` and
   `rulebook gate` log exactly as before. Listing tasks no longer creates
   `.rulebook/tasks` or `.rulebook/archive` (a legacy archive still migrates).
+- `rulebook version` failed on Windows (`'true' is not recognized…`): the
+  `.csproj` lookup ran `find … || true` through cmd.exe. It now searches with
+  Node's `fs` (root and one level down, root first, name order) — no shell.
+- The MCP server reported version `7.0.0` in `initialize`; it now reads the
+  version from `package.json`, like the CLI.
 
 ### Security
 

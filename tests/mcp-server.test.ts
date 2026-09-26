@@ -4,6 +4,7 @@ import {
     acquirePidLock,
     releasePidLock,
     cleanStalePidFiles,
+    getServerVersion,
 } from '../src/mcp/rulebook-server.js';
 import { TaskManager } from '../src/core/tasks/task-manager.js';
 import { SkillsManager } from '../src/core/skills/skills-manager.js';
@@ -18,6 +19,11 @@ const isWindows = process.platform === 'win32';
 const describeOrSkip = isWindows ? describe.skip : describe;
 
 describeOrSkip('MCP Server', () => {
+    it('reports the package.json version', () => {
+        const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf-8'));
+        expect(getServerVersion()).toBe(pkg.version);
+    });
+
     let testDir: string;
 
     beforeEach(async () => {

@@ -12,6 +12,7 @@ import {
     writeFileSync,
 } from 'fs';
 import { dirname, join, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import { z } from 'zod/v3'; // same type copy as the MCP SDK — see tools/context.ts
 import { ConfigManager } from '../core/state/config-manager.js';
 import { SkillsManager, getDefaultTemplatesPath } from '../core/skills/skills-manager.js';
@@ -45,6 +46,18 @@ function withTimeout<T>(
             }
         );
     });
+}
+
+// Server version comes from package.json, like the CLI's (src/index.ts).
+// src/mcp/ and dist/mcp/ both sit two levels below the package root.
+export function getServerVersion(): string {
+    try {
+        const here = dirname(fileURLToPath(import.meta.url));
+        const pkg = JSON.parse(readFileSync(join(here, '..', '..', 'package.json'), 'utf-8'));
+        return pkg.version;
+    } catch {
+        return 'unknown';
+    }
 }
 
 // Find .rulebook file/directory by walking up directories
@@ -312,7 +325,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
     const server = new McpServer({
         name: 'rulebook',
-        version: '7.0.0',
+        version: getServerVersion(),
     });
 
     // --- Wrap all tool handlers with a timeout guard ---
