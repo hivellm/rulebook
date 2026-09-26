@@ -32,6 +32,73 @@ The rule is directive-only: no hook enforces or reroutes orchestration, and
 the always-loaded context stays inside the 1600-token budget (other lines were
 tightened without dropping a rule).
 
+### Added — Jev is the entry gate (`rulebook_gate`)
+
+Every operator prompt now goes to Jev (TypeSafe's System One model) before the
+main session does anything: the prompt verbatim, a short description of the
+project (id, languages, active task, task ids, open questions, skill
+candidates, installed skills, the subagent types and the model routing) and up
+to eleven typed questions in one call — request kind, needs a task, belongs to
+an existing task (asked only when the project has tasks; likewise the skill
+question only when skills are installed), primary model, subagent type, applicable skill, can be
+parallelised, needs an operator decision, and three risk flags (destructive
+git, OS scheduling, secrets). The answer comes back as `routing` with
+probabilities and a decided/undecided mark per field (Choice decided at
+confidence ≥ 0.6; yes/no at ≥ 0.7 / ≤ 0.3; risk flags at ≥ 0.5, never
+undecided), so the session picks the right tool, task, model and agent instead
+of guessing, and skips calls it does not need.
+
+- New MCP tool `rulebook_gate {prompt, notes?}` — "Call FIRST with every
+  operator prompt". Six tools total; the schema-bytes budget moves once to
+  4900. Gate code loads only when the tool is called, so server start-up is
+  unchanged.
+- CLI: `rulebook gate "<prompt>" [--notes] [--json]` and
+  `rulebook gate --check [--strict]` (key present + one cheap live call).
+- Fetch-based client, no new dependency: Bearer auth, 10 s per-attempt
+  timeout, 8.5 s overall deadline (inside the server's 10 s tool limit),
+  exponential backoff with jitter on 429/529/network (max 2 retries), typed
+  errors, key redacted everywhere. The key is read from `TYPESAFE_API_KEY` or,
+  failing that, the one matching line of the project's untracked `.env` — the
+  MCP server does not inherit the shell.
+- Advisory, never blocking: no key, network failure or `RULEBOOK_GATE=off` →
+  `available:false` and the session proceeds under the Orchestration rules
+  (token instructions printed once per process); undecided fields fall back to
+  those rules; an undecided or `unclear` kind, or `needsOperatorDecision`, means
+  ask (`rulebook_task ask`). Subagents do not call the gate.
+- Decisions are appended to `.rulebook/logs/gate.jsonl` when
+  `features.logging` is on — prompt hash, routing, usage and timing only; never
+  the prompt text or the key; newest 500 lines kept.
+- Generated rules: `CLAUDE.md` Orchestration now opens with "Gate first: every
+  operator prompt → `rulebook_gate {prompt}` (Jev); act on `routing`;
+  unavailable or undecided → these rules." The full protocol is section 3,
+  "Entry gate (Jev)", of `.rulebook/specs/orchestration.md`. Eleven wording
+  trims elsewhere keep the always-loaded context at 1599 of 1600 tokens with no
+  rule dropped.
+
+### Changed — TypeSafe ships by default
+
+The v7.3 opt-in prompt is gone: `rulebook init`, `update` and `claude` enable
+the TypeSafe (Jev) integration unless the project stored `enabled: false` or
+the operator passes `--no-typesafe` (`--typesafe` still forces it on). Setup
+installs the Claude Code plugin only when missing, writes a slimmer
+`.claude/rules/typesafe.md` (~75 tokens: the skill, the gate, where the key
+comes from, never commit it), and detects the key in the shell or the
+project's untracked `.env`; when absent it prints where to create one
+(https://console.typesafe.ai/keys) and says the gate starts working once it is
+set. The key itself is never written by rulebook.
+
+### Fixed
+
+- `rulebook update` rebuilt `rulebook.json` from scratch, dropping
+  `integrations` (a stored `--no-typesafe` did not survive the next update)
+  and resetting `installedAt` to the update time because the lean `AGENTS.md`
+  has no "Generated at:" line to recover it from. Both are carried forward now.
+- The TypeSafe step ran even when Claude Code was not detected, persisting the
+  setting and shelling out to a `claude` CLI that may not exist. It now runs
+  only behind the same detection guard as the rest of the Claude Code setup.
+- `rulebook_gate` in a project without `.rulebook/` created a default
+  `rulebook.json` and a gate log; it now creates nothing.
+
 ### Changed — model routing in shipped agents, workflows and skills
 
 - Agent definitions (`templates/agents/*.md`): architect, code-reviewer,

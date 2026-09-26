@@ -306,6 +306,49 @@ A learning captured under the same title again is counted (`occurrences`, `lastS
 
 CLI equivalents: `rulebook learn promote <id> skill`, `rulebook skills list --category project`.
 
+## Entry gate (v7.4, `rulebook_gate`)
+
+The main session calls `rulebook_gate` first with every operator prompt. Rulebook sends Jev (TypeSafe's System One model) one request: a JSON description of the project plus the prompt, and 11 questions — one per decision the session would otherwise guess. The answers come back as a `routing` to act on. The gate is advisory: it never throws and never blocks, and it is called once per operator prompt, never by subagents.
+
+| Input | Meaning |
+|-------|---------|
+| `prompt` | the operator prompt, verbatim |
+| `notes` (optional) | what you want decided |
+| `projectId` (optional) | workspace project override |
+
+**What Jev sees** (`stateBytes` reports the size, at most 8 KB): project id/version/languages/agents mode/task backend from `rulebook.json`; the active task and up to 15 tasks (titles ≤ 60 chars); up to 5 open decision requests; up to 5 skill candidates; up to 20 installed skills (enabled ids plus `.claude/skills/<dir>`); the eight subagent types; the model routing table; the prompt (≤ 4096 chars, then `[…truncated by rulebook]`) and notes (≤ 1024). Over 6.5 KB, rulebook drops notes, then trims skills to 10, tasks to 8, skill candidates, open questions to 2, and the prompt to 2048 chars, in that order.
+
+**Questions**: `kind`, `needs_task`, `existing_task` (omitted when there are no tasks), `model`, `agent`, `skill` (omitted when no skills are installed), `parallel`, `needs_operator_decision`, `risk_destructive_git`, `risk_os_scheduling`, `risk_secrets`.
+
+**Thresholds**: a choice is decided at `confidence ≥ 0.6`; a yes/no at `≥ 0.7` (true) or `≤ 0.3` (false), undecided in between; a risk flag is true at `≥ 0.5` and never undecided. Undecided fields are `null` in `routing` and listed in `undecided`. Post-rules: `small-fix` ⇒ `needsTask:false`; a decided existing task ⇒ `needsTask:true`; `answer-to-open-question` with no decided task picks the task owning the first open question; an undecided `model` with a decided agent follows the routing table (architect/code-reviewer/security-reviewer → fable, researcher → haiku, else opus).
+
+```json
+{ "success": true, "available": true, "model": "jev-1.13.0",
+  "routing": { "kind": "task-work", "needsTask": true, "existingTaskId": "phase1_add-auth",
+               "model": "opus", "agentType": "implementer", "skill": "languages/typescript",
+               "parallel": false, "needsOperatorDecision": false,
+               "risk": { "destructiveGit": false, "osScheduling": false, "secrets": false } },
+  "undecided": [], "decisions": [ { "id": "kind", "primitive": "choice", "answer": "task_work",
+                                    "probability": 0.91, "confidence": 0.89, "decided": true } ],
+  "instruction": "Jev routing: kind=task-work, needsTask=yes (reuse phase1_add-auth), ...",
+  "elapsedMs": 812, "stateBytes": 1934, "usage": { "input_tokens": 2310, "output_tokens": 164 } }
+```
+
+**When Jev cannot be used** the result is still `success:true`, with `available:false`, a `reason`, and `instruction: "Gate unavailable (<reason>); proceed under CLAUDE.md Orchestration rules."`:
+
+| `reason` | Cause |
+|----------|-------|
+| `disabled` | `RULEBOOK_GATE=off` in the environment, or `integrations.typesafe.enabled:false` in `rulebook.json` — no network call |
+| `no-key` | no `TYPESAFE_API_KEY` in the environment or in the project's `.env`; `instructions` (how to create and export the key) is included the first time per server process |
+| `timeout` | the call did not finish inside the gate's 8.5 s deadline (the server's per-tool guard is 10 s) |
+| `http` / `network` / `bad-response` | an HTTP error, a connection failure, or a malformed answer; `detail` carries the message with any key redacted |
+
+**Key and network**: the key is read from `process.env.TYPESAFE_API_KEY`, else from the single `TYPESAFE_API_KEY=` line of `<project>/.env` (other variables are never read, `process.env` is never modified). It is sent only as `Authorization: Bearer …`, and never appears in results, errors or logs. Each attempt times out after 10 s (capped by the deadline); 429, 529 and connection errors are retried at most twice with exponential backoff plus jitter; other errors fail at once.
+
+**Decision log**: when `features.logging` is true in `rulebook.json`, each call appends one line to `.rulebook/logs/gate.jsonl` — a 16-hex prompt hash, `routing`, `undecided`, `usage`, `elapsedMs`, `stateBytes` (never the prompt text or the key); the newest 500 lines are kept.
+
+**CLI**: `rulebook gate "<prompt>" [--notes <text>] [--json]` prints the routing as a readable block (or the full result as JSON) and exits 0 even when unavailable. `rulebook gate --check [--json] [--strict]` reports where the key was found (`env`, `.env`, or not found — never the value) and makes one cheap live call (`state: "ping"`, one yes/no question) with its latency and token usage; it exits 0 either way, or 2 with `--strict` when the gate is unavailable.
+
 ## Error Handling
 
 All MCP functions return structured error responses:

@@ -172,7 +172,7 @@ describe('directive guards', () => {
             expect(section).toMatch(/delegate each task to one subagent/i);
             expect(section).toMatch(/model set\s+per call/i);
             expect(section).toMatch(/Fable 5\.1 architecture, hard bugs, review/);
-            expect(section).toMatch(/Opus 5\.5 edits, tests, docs/);
+            expect(section).toMatch(/Opus 5\.5 edits, tests, docs,\s+refactors/);
             expect(section).toMatch(/never Fable for simple work/);
             expect(section).toMatch(/Haiku 4\.5 research, summaries/);
             expect(section).toMatch(/read reports, not files/i);
@@ -248,6 +248,81 @@ describe('directive guards', () => {
             expect(ref).toMatch(/delegated per the\s+Orchestration section of CLAUDE\.md/);
             expect(ref).not.toMatch(/your call/i);
             expect(ref).toContain('| `mcp__rulebook__*` | `.mcp.json` |');
+        });
+    });
+    describe('entry gate (v7.4)', () => {
+        it('CLAUDE.md opens the Orchestration section with the gate rule', async () => {
+            const claudeMd = await generateClaudeMd(projectRoot);
+            const section = claudeMd.slice(
+                claudeMd.indexOf('## Orchestration'),
+                claudeMd.indexOf('## Rulebook')
+            );
+            const firstLine = section.split('\n')[1];
+
+            expect(firstLine).toMatch(
+                /^Gate first: every operator prompt → `rulebook_gate \{prompt\}`/
+            );
+            expect(section).toMatch(/act on `routing`; unavailable or undecided → these rules\./);
+            // The gate precedes, and does not replace, the orchestrator directive.
+            expect(section.indexOf('Gate first')).toBeLessThan(
+                section.search(/main session never does the work itself/i)
+            );
+        });
+
+        it('orchestration spec documents the gate protocol as section 3', async () => {
+            const spec = await generateCoreRules('orchestration');
+
+            expect(spec).toContain('## 3. Entry gate (Jev)');
+            expect(spec).toContain('rulebook_gate {prompt, notes?}');
+            expect(spec).toMatch(/short project description/);
+            for (const id of [
+                'kind',
+                'needs_task',
+                'existing_task',
+                'model',
+                'agent',
+                'skill',
+                'parallel',
+                'needs_operator_decision',
+                'risk_destructive_git',
+                'risk_os_scheduling',
+                'risk_secrets',
+            ]) {
+                expect(spec, id).toContain(`| \`${id}\` |`);
+            }
+            // Thresholds: choice confidence, yes/no bands, risk flags.
+            expect(spec).toMatch(/choice is decided at confidence ≥ 0\.6/);
+            expect(spec).toMatch(/true at\s+≥ 0\.7, false at ≤ 0\.3/);
+            expect(spec).toMatch(/risk flag is true at ≥ 0\.5\s+and is never undecided/);
+            // Follow-on rules — the four post-rules in gate.ts interpretAnswers().
+            expect(spec).toMatch(/a small fix\s+needs no task/);
+            expect(spec).toMatch(
+                /an answer to an open question with an undecided existing task\s+goes to the task that owns the first open question/
+            );
+            expect(spec).toMatch(/a decided existing task\s+means a task/);
+            expect(spec).toMatch(
+                /an undecided `model` with a decided `agent` is derived from\s+section 2/
+            );
+            // Acting on routing, fallback, and call discipline.
+            expect(spec).toMatch(/`needsOperatorDecision` — true: ask before acting/);
+            expect(spec).toContain('{action:"ask"}');
+            expect(spec).toMatch(/Tier 1 prohibitions/);
+            expect(spec).toMatch(/`available:false`[\s\S]*proceed under this spec/);
+            expect(spec).toMatch(/advisory — it never blocks/);
+            expect(spec).toMatch(/once per operator prompt/);
+            expect(spec).toContain('subagents do not call the gate');
+            expect(spec).toContain('RULEBOOK_GATE=off');
+            expect(spec).toMatch(/`features\.logging`[\s\S]*`\.rulebook\/logs\/gate\.jsonl`/);
+            expect(spec).toMatch(/no\s+prompt text, no key/);
+            // Later sections renumbered 4–7.
+            for (const h of [
+                '## 4. Delegation',
+                '## 5. Subagent contract',
+                '## 6. Monitoring',
+                '## 7. Close-out',
+            ]) {
+                expect(spec).toContain(h);
+            }
         });
     });
 });

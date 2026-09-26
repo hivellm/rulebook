@@ -17,7 +17,10 @@ const MCP_TOOL_BUDGET = 8;
 // v7.0 shipped at ~3.2 KB. v7.2 adds the decision-request surface to
 // rulebook_task (ask|answer|questions + 7 terse params) rather than an extra
 // tool, which costs ~0.6 KB of schema; the ceiling moves once to cover it.
-const MCP_SCHEMA_BYTES_BUDGET = 4400;
+// v7.4 adds the rulebook_gate tool (Jev entry gate, ~0.5 KB); the ceiling moves once more.
+// Measured 4869 of 4900 at v7.4.0 (31 B headroom): any change to the rulebook_gate
+// description or input schema can trip this check — re-measure before moving the ceiling.
+const MCP_SCHEMA_BYTES_BUDGET = 4900;
 // Node process startup dominates; generous CI-safe ceiling (Linux ~150ms,
 // Windows ~300ms). Regressions to full-CLI loading (~450ms+) still fail.
 const MCP_INIT_MS_BUDGET = 2000;

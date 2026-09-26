@@ -95,7 +95,8 @@ program
     .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
     .option('--package <name>', 'Initialize only a single package inside a monorepo')
     .option('--add-sequential-thinking', 'Auto-add sequential-thinking MCP to .mcp.json')
-    .option('--typesafe', 'Enable the TypeSafe (Jev) integration without asking')
+    .option('--typesafe', 'Enable the TypeSafe (Jev) integration (on by default)')
+    .option('--no-typesafe', 'Disable the TypeSafe (Jev) integration for this project')
     .option(
         '--tools <tools>',
         'Comma-separated AI tools to generate for (e.g., claude-code,cursor,gemini)'
@@ -360,12 +361,31 @@ program
     .option('--minimal', 'Regenerate using minimal mode (essentials only)')
     .option('--light', 'Light mode: bare minimum rules (no tests, no linting)')
     .option('--lean', 'Lean mode: AGENTS.md is a lightweight index (<3KB) referencing spec files')
-    .option('--typesafe', 'Enable the TypeSafe (Jev) integration without asking')
+    .option('--typesafe', 'Enable the TypeSafe (Jev) integration (on by default)')
+    .option('--no-typesafe', 'Disable the TypeSafe (Jev) integration for this project')
     .option(
         '--tools <tools>',
         'Comma-separated AI tools to generate for (e.g., claude-code,cursor,gemini)'
     )
     .action(updateCommand);
+
+// Jev entry gate (v7.4)
+program
+    .command('gate [prompt]')
+    .description('Route an operator prompt through the Jev entry gate (TypeSafe System One)')
+    .option('--notes <text>', 'What you want decided')
+    .option('--json', 'Print the full result as JSON')
+    .option('--check', 'Verify the TypeSafe key and one live call')
+    .option('--strict', 'With --check: exit 2 when the gate is unavailable')
+    .action(
+        async (
+            prompt: string | undefined,
+            opts: { notes?: string; json?: boolean; check?: boolean; strict?: boolean }
+        ) => {
+            const { gateCommand } = await import('./cli/commands/gate.js');
+            process.exitCode = await gateCommand(prompt, opts);
+        }
+    );
 
 // MCP commands
 const mcpCommand = program.command('mcp').description('Manage Rulebook MCP server');
@@ -393,7 +413,8 @@ claudeCommand
     .command('setup', { isDefault: true })
     .description('Install integrations and apply opinionated, cost-aware settings')
     .option('--model <model>', `Default model for settings.json (default: ${DEFAULT_CLAUDE_MODEL})`)
-    .option('--typesafe', 'Enable the TypeSafe (Jev) integration (plugin + rule + key check)')
+    .option('--typesafe', 'Enable the TypeSafe (Jev) integration (on by default)')
+    .option('--no-typesafe', 'Disable the TypeSafe (Jev) integration for this project')
     .action(async (opts: { model?: string; typesafe?: boolean }) => {
         const { claudeSetupCommand } = await import('./cli/commands/claude.js');
         await claudeSetupCommand({ model: opts.model, typesafe: opts.typesafe });

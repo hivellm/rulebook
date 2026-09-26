@@ -26,7 +26,66 @@ Specify the model in every agent call. Never rely on the default.
 Never use Fable for simple work — simple tasks go to Opus 5.5. In Claude Code,
 set the Agent tool's `model` to `fable`, `opus`, or `haiku`.
 
-## 3. Delegation
+## 3. Entry gate (Jev)
+
+Before planning anything, send every operator prompt — verbatim — through
+`rulebook_gate {prompt, notes?}`. Rulebook sends Jev (TypeSafe's System One
+model) a short project description (config, tasks, open questions, installed
+skills, subagent types, the routing table in section 2) plus the prompt, and
+asks one question per decision the main session would otherwise guess:
+
+| Decision | Question | Routing field |
+|----------|----------|---------------|
+| `kind` | Small fix, task work, question or analysis, answer to an open question, setup or config, or unclear? | `kind` |
+| `needs_task` | Should it be tracked as a rulebook task? | `needsTask` |
+| `existing_task` | Which listed task does it continue? (omitted when there are no tasks) | `existingTaskId` |
+| `model` | Fable, Opus, or Haiku, per section 2? | `model` |
+| `agent` | Which subagent type does the main work? | `agentType` |
+| `skill` | Which installed skill applies? (omitted when none are installed) | `skill` |
+| `parallel` | Does it split into independent parts with disjoint files? | `parallel` |
+| `needs_operator_decision` | Does it leave an outcome-changing choice only the operator can make? | `needsOperatorDecision` |
+| `risk_destructive_git` | Does it imply a destructive git operation? | `risk.destructiveGit` |
+| `risk_os_scheduling` | Does it imply OS-level scheduling? | `risk.osScheduling` |
+| `risk_secrets` | Does it involve API keys, tokens, passwords, or `.env` files? | `risk.secrets` |
+
+Thresholds: a choice is decided at confidence ≥ 0.6. A yes/no answer is true at
+≥ 0.7, false at ≤ 0.3, and undecided in between. A risk flag is true at ≥ 0.5
+and is never undecided — a maybe-risk is a risk. Follow-on rules: a small fix
+needs no task; an answer to an open question with an undecided existing task
+goes to the task that owns the first open question; a decided existing task
+means a task; an undecided `model` with a decided `agent` is derived from
+section 2.
+
+Act on `routing` directly:
+- `kind` — small-fix: brief a subagent, no task. task-work: create or reuse a
+  task (`existingTaskId`). question-or-analysis: a researcher/architect
+  subagent reports; no edits. answer-to-open-question: `rulebook_task
+  {action:"answer"}`. setup-or-config: implementer or build-engineer.
+- `needsTask`, `existingTaskId` — create a task only when `needsTask` is true
+  and there is no existing id; otherwise reuse the existing task.
+- `model`, `agentType`, `skill` — pass them into the subagent brief and the
+  Agent call; the subagent loads the skill.
+- `parallel` — true: split into independent subagents with disjoint files.
+- `needsOperatorDecision` — true: ask before acting (`rulebook_task
+  {action:"ask"}` when a task exists; otherwise one direct question).
+- `risk.destructiveGit` / `risk.osScheduling` / `risk.secrets` — true: the
+  Tier 1 prohibitions (destructive git, OS-level scheduling) and the rule never
+  to read, print, or log secrets apply. Refuse the step, or get explicit
+  authorization before it.
+
+Undecided fields (listed in `undecided`) fall back to sections 1, 2 and 4 of
+this spec; `kind` undecided or `unclear` means ask. `available:false` means Jev
+could not be reached, has no key, or is disabled: proceed under this spec and,
+once, show the operator the `instructions` for `TYPESAFE_API_KEY`. The gate is
+advisory — it never blocks. Call it once per operator prompt, from the main
+session only: subagents do not call the gate; they receive `routing` in their
+brief. Disable it with `RULEBOOK_GATE=off`.
+
+When `features.logging` is on, each gate decision is appended as one JSON line
+to `.rulebook/logs/gate.jsonl` (prompt hash, routing, usage, elapsed time) — no
+prompt text, no key.
+
+## 4. Delegation
 
 - One subagent per task. Do not bundle unrelated tasks into one agent.
 - Run independent subagents in parallel; run dependent ones in order.
@@ -35,7 +94,7 @@ set the Agent tool's `model` to `fable`, `opus`, or `haiku`.
 - Read the subagent's report, never the files it touched. If the report is
   unclear, ask the agent — do not re-read its work yourself.
 
-## 4. Subagent contract
+## 5. Subagent contract
 
 When the work has a rulebook task (multi-session or multi-phase work), the
 subagent owns that ONE task and drives it through the full cycle:
@@ -51,7 +110,7 @@ subagent owns that ONE task and drives it through the full cycle:
 A small fix has no rulebook task: the subagent works from the brief, runs the
 quality gate, and reports back — no proposal, tasks, specs, or archive.
 
-## 5. Monitoring
+## 6. Monitoring
 
 The main session is responsible for progress until every task is archived:
 
@@ -62,7 +121,7 @@ The main session is responsible for progress until every task is archived:
 - Never finish an abandoned task in the main session — hand it to a fresh
   subagent.
 
-## 6. Close-out
+## 7. Close-out
 
 When a task is archived, the main session:
 

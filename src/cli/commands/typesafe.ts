@@ -9,21 +9,20 @@ import {
 } from '../../core/claude/typesafe-integration.js';
 
 /**
- * Shared CLI plumbing for the TypeSafe integration (v7.3), used by
- * `rulebook init`, `rulebook update` and `rulebook claude`.
+ * Shared CLI plumbing for the TypeSafe integration, used by `rulebook init`,
+ * `rulebook update` and `rulebook claude`. On by default since v7.4; never
+ * prompts.
  *
  * Decision flow, identical in every command:
- *   --typesafe flag        → enable, no question
- *   answer already stored  → honour it, no question
- *   interactive terminal   → ask once (default no), store the answer
- *   otherwise              → leave as is (never enable silently)
+ *   --typesafe             → enable (persisted)
+ *   --no-typesafe          → disable (persisted)
+ *   answer already stored  → honour it (a stored "no" stays "no")
+ *   otherwise              → enable and persist
  */
 
 export interface TypesafeDecisionInput {
-    /** `--typesafe` given on the command line. */
+    /** `--typesafe` → true, `--no-typesafe` → false, neither → undefined. */
     flag?: boolean;
-    /** Interactive terminal and not `--yes`. */
-    interactive: boolean;
 }
 
 export async function decideTypesafe(
@@ -33,29 +32,19 @@ export async function decideTypesafe(
     const config = await configManager.loadConfig();
     const stored = config?.integrations?.typesafe;
 
-    if (input.flag) {
-        if (!stored?.enabled) await persistTypesafeAnswer(configManager, true);
+    if (input.flag === true) {
+        if (stored?.enabled !== true) await persistTypesafeAnswer(configManager, true);
         return { enabled: true, asked: false };
+    }
+    if (input.flag === false) {
+        if (stored?.enabled !== false) await persistTypesafeAnswer(configManager, false);
+        return { enabled: false, asked: false };
     }
     if (stored && typeof stored.enabled === 'boolean') {
         return { enabled: stored.enabled, asked: false };
     }
-    if (!input.interactive) {
-        return { enabled: false, asked: false };
-    }
-
-    const inquirer = (await import('inquirer')).default;
-    const { enable } = await inquirer.prompt<{ enable: boolean }>([
-        {
-            type: 'confirm',
-            name: 'enable',
-            message:
-                'Enable TypeSafe (Jev) for this project? Installs the Claude Code plugin and needs a TYPESAFE_API_KEY',
-            default: false,
-        },
-    ]);
-    await persistTypesafeAnswer(configManager, enable);
-    return { enabled: enable, asked: true };
+    await persistTypesafeAnswer(configManager, true);
+    return { enabled: true, asked: false };
 }
 
 export async function persistTypesafeAnswer(
@@ -82,6 +71,13 @@ export async function applyTypesafe(projectRoot: string): Promise<TypesafeSetupR
 }
 
 export function reportTypesafe(result: TypesafeSetupResult): void {
+    // Common case: plugin already there, key found — one line.
+    if (result.installed && !result.installedNow && result.tokenPresent) {
+        console.log(
+            chalk.gray(`  • TypeSafe ready (${TYPESAFE_PLUGIN_ID}, rule refreshed, key found)`)
+        );
+        return;
+    }
     if (result.installedNow) {
         console.log(chalk.green(`  • TypeSafe plugin installed (${TYPESAFE_PLUGIN_ID})`));
     } else if (result.installed) {
@@ -95,6 +91,29 @@ export function reportTypesafe(result: TypesafeSetupResult): void {
         console.log('');
         for (const line of typesafeTokenInstructions()) console.log(chalk.yellow(line));
     }
+}
+
+/**
+ * The init/update step. TypeSafe ships as a Claude Code plugin, so without
+ * Claude Code nothing is decided, persisted, or installed.
+ */
+export async function runTypesafeStep(
+    configManager: ConfigManager,
+    projectRoot: string,
+    opts: { flag?: boolean; claudeDetected: boolean; retireWhenDisabled?: boolean }
+): Promise<'skipped' | 'enabled' | 'disabled'> {
+    if (!opts.claudeDetected) {
+        console.log(chalk.gray('  · TypeSafe skipped: Claude Code not detected'));
+        return 'skipped';
+    }
+    const decision = await decideTypesafe(configManager, { flag: opts.flag });
+    if (decision.enabled) {
+        console.log(chalk.bold('\nTypeSafe (Jev) integration'));
+        await applyTypesafe(projectRoot);
+        return 'enabled';
+    }
+    if (opts.retireWhenDisabled) await retireTypesafe(projectRoot);
+    return 'disabled';
 }
 
 /** Disabled after having been enabled: drop the rulebook-owned rule file. */

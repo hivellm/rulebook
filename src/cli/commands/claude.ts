@@ -22,7 +22,7 @@ export const DEFAULT_CLAUDE_MODEL = 'opus';
 export interface ClaudeSetupOptions {
     /** Cost-aware default model written to settings.json when none is set. */
     model?: string;
-    /** v7.3: enable the TypeSafe (Jev) integration (plugin + rule + key check). */
+    /** `--typesafe` → true, `--no-typesafe` → false (opt out), neither → undefined. */
     typesafe?: boolean;
 }
 
@@ -56,13 +56,13 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
             defaultModel,
         });
 
-        // v7.3: TypeSafe (Jev) — honour the stored answer, or enable with --typesafe.
+        // TypeSafe (Jev) — offered by default since v7.4; --no-typesafe opts out;
+        // a stored answer is honoured.
         try {
             const { createConfigManager } = await import('../../core/state/config-manager.js');
             const { decideTypesafe, applyTypesafe } = await import('./typesafe.js');
             const decision = await decideTypesafe(createConfigManager(cwd), {
                 flag: options.typesafe,
-                interactive: false,
             });
             if (decision.enabled) {
                 console.log(chalk.bold('\nTypeSafe (Jev) integration'));
