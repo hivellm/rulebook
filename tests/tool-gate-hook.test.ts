@@ -28,6 +28,15 @@ const PASS = {
     follows_project_rules: 0.95,
 };
 
+/**
+ * Removes a temp project. On Windows an on-access scanner can hold a file the
+ * test just wrote for tens of milliseconds (about a second under load), which
+ * turns an immediate `rm -r` into ENOTEMPTY, EBUSY or EPERM; `maxRetries` is
+ * Node's linear backoff for exactly those codes.
+ */
+const removeTempDir = (dir: string) =>
+    fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+
 /** Jev answering every noul in the request with 0.95 unless overridden. */
 function jevFetch(over: Record<string, number> = {}) {
     return vi.fn(async (_url: string, init: RequestInit) => {
@@ -276,7 +285,7 @@ describe('rulebook hook tool-gate', () => {
     });
 
     afterEach(async () => {
-        await fs.rm(root, { recursive: true, force: true });
+        await removeTempDir(root);
     });
 
     async function writeConfig(cfg: Record<string, unknown>) {
@@ -603,7 +612,7 @@ describe.skipIf(!hasBash())('jev-gate.sh tool (wrapper)', () => {
     });
 
     afterEach(async () => {
-        await fs.rm(root, { recursive: true, force: true });
+        await removeTempDir(root);
     });
 
     function runWrapper(command: string): string {
@@ -645,7 +654,7 @@ describe.skipIf(!hasBash())('jev-gate.sh fail-open (wrapper)', () => {
     });
 
     afterEach(async () => {
-        await fs.rm(root, { recursive: true, force: true });
+        await removeTempDir(root);
     });
 
     async function fakeCli(file: string, body: string): Promise<void> {

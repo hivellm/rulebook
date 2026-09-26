@@ -17,6 +17,15 @@ import type { Question } from '../src/core/typesafe/client';
 const FAKE_KEY = 'ts_fake_hook_key_000';
 const KEY_ENV = { TYPESAFE_API_KEY: FAKE_KEY };
 
+/**
+ * Removes a temp project. On Windows an on-access scanner can hold a file the
+ * test just wrote for tens of milliseconds (about a second under load), which
+ * turns an immediate `rm -r` into ENOTEMPTY, EBUSY or EPERM; `maxRetries` is
+ * Node's linear backoff for exactly those codes.
+ */
+const removeTempDir = (dir: string) =>
+    fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+
 type Overrides = Record<string, { choice?: string; confidence?: number; noul?: number }>;
 
 /** A System One answer for every question in the request body, with overrides. */
@@ -314,7 +323,7 @@ describe('rulebook hook prompt-gate', () => {
     });
 
     afterEach(async () => {
-        await fs.rm(root, { recursive: true, force: true });
+        await removeTempDir(root);
     });
 
     async function writeConfig(cfg: Record<string, unknown>) {
