@@ -628,7 +628,17 @@ export async function runToolGate(opts: RunToolGateOptions): Promise<ToolGateVer
     const { key } = await resolveTypesafeKey(opts.projectRoot, env);
     if (!key) return NONE;
 
-    const ask = async (): Promise<ToolGateVerdict> => {
+    /**
+     * Reads only. The cache write and the log line happen after the race, so
+     * work that loses to the deadline never writes into the project once the
+     * hook has returned (it keeps running until the process exits).
+     */
+    type Outcome = {
+        verdict: ToolGateVerdict;
+        line: Omit<ToolGateLogLine, 'summaryHash' | 'tool' | 'elapsedMs'>;
+        cache?: { file: string; key: string; entry: ToolGateCacheEntry };
+    };
+    const ask = async (): Promise<Outcome> => {
         try {
             const sources = await loadGateSources(opts.projectRoot, opts.config, {
                 listTasks: opts.listTasks,
@@ -642,12 +652,14 @@ export async function runToolGate(opts: RunToolGateOptions): Promise<ToolGateVer
             const hit = (await readToolGateCache(cacheFile))[cacheKey];
             if (hit && isFresh(hit, Date.now(), cfg.cacheTtlMs)) {
                 const verdict = decideToolCall(hit.probabilities, cfg);
-                await log({
-                    decision: verdict.decision,
-                    probabilities: hit.probabilities,
-                    cached: true,
-                });
-                return verdict;
+                return {
+                    verdict,
+                    line: {
+                        decision: verdict.decision,
+                        probabilities: hit.probabilities,
+                        cached: true,
+                    },
+                };
             }
 
             const state = buildToolGateState(opts.config, task, summary);
@@ -666,30 +678,43 @@ export async function runToolGate(opts: RunToolGateOptions): Promise<ToolGateVer
                 if (a?.type === 'noul') probabilities[id] = a.noul;
             }
             const verdict = decideToolCall(probabilities, cfg);
-            await writeToolGateCache(
-                cacheFile,
-                cacheKey,
-                { decision: verdict.decision, probabilities, t: Date.now() },
-                cfg.cacheTtlMs
-            );
-            await log({ decision: verdict.decision, probabilities, cached: false });
-            return verdict;
+            return {
+                verdict,
+                line: { decision: verdict.decision, probabilities, cached: false },
+                cache: {
+                    file: cacheFile,
+                    key: cacheKey,
+                    entry: { decision: verdict.decision, probabilities, t: Date.now() },
+                },
+            };
         } catch (error) {
-            await log({
-                decision: 'none',
-                probabilities: {},
-                cached: false,
-                error: error instanceof TypesafeError ? error.kind : 'bad-response',
-            });
-            return NONE;
+            return {
+                verdict: NONE,
+                line: {
+                    decision: 'none',
+                    probabilities: {},
+                    cached: false,
+                    error: error instanceof TypesafeError ? error.kind : 'bad-response',
+                },
+            };
         }
     };
 
     // systemOne honours the deadline itself; the race is the backstop for a
     // slow task backend or a fetch that ignores its abort signal.
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const expired = new Promise<ToolGateVerdict>((resolve) => {
-        timer = setTimeout(() => resolve(NONE), cfg.deadlineMs);
+    const expired = new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), cfg.deadlineMs);
     });
-    return Promise.race([ask(), expired]).finally(() => clearTimeout(timer));
+    const outcome = await Promise.race([ask(), expired]).finally(() => clearTimeout(timer));
+    if (!outcome) {
+        await log({ decision: 'none', probabilities: {}, cached: false, error: 'timeout' });
+        return NONE;
+    }
+    if (outcome.cache) {
+        const { file, key: cacheKey, entry } = outcome.cache;
+        await writeToolGateCache(file, cacheKey, entry, cfg.cacheTtlMs);
+    }
+    await log(outcome.line);
+    return outcome.verdict;
 }

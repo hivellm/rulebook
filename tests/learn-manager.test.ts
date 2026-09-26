@@ -18,6 +18,14 @@ describe('LearnManager', () => {
         await fs.rm(testDir, { recursive: true, force: true });
     });
 
+    describe('list', () => {
+        it('returns [] without creating the learnings directory', async () => {
+            expect(await mgr.list()).toEqual([]);
+            expect(await mgr.skillCandidates()).toEqual([]);
+            await expect(fs.access(join(testDir, '.rulebook', 'learnings'))).rejects.toThrow();
+        });
+    });
+
     describe('capture', () => {
         it('should create a learning entry', async () => {
             const l = await mgr.capture('JSONB gotcha', 'Empty arrays return null');

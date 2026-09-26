@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { execFileSync, spawnSync } from 'child_process';
 import { existsSync, promises as fs } from 'fs';
 import path from 'path';
@@ -262,6 +262,14 @@ describe('summarizeToolCall / state / questions', () => {
 describe('rulebook hook tool-gate', () => {
     let root: string;
 
+    // The gate imports its task sources lazily. Under vitest the first import
+    // is an on-demand transform that, on a loaded machine, has taken over the
+    // 2000 ms deadline — load them before any test's clock starts.
+    beforeAll(async () => {
+        await import('../src/core/tasks/task-manager');
+        await import('../src/core/tasks/learn-manager');
+    });
+
     beforeEach(async () => {
         root = await fs.mkdtemp(path.join(os.tmpdir(), 'rb-tool-hook-'));
         await writeConfig({ gate: { toolHook: { enabled: true } } });
@@ -434,6 +442,53 @@ describe('rulebook hook tool-gate', () => {
         expect(Date.now() - t0).toBeLessThan(2000);
         expect({ code, lines }).toEqual({ code: 0, lines: [] });
         await expect(fs.access(cacheFile())).rejects.toThrow();
+    });
+
+    it('an answer arriving after the deadline is never cached or logged late', async () => {
+        await writeConfig({
+            gate: { toolHook: { enabled: true, deadlineMs: 500 } },
+            features: { logging: true },
+        });
+        // A fetch that ignores its abort signal and answers only when released.
+        let release: () => void = () => undefined;
+        const late = vi.fn(
+            () =>
+                new Promise<Response>((resolve) => {
+                    release = () =>
+                        resolve(
+                            new Response(
+                                JSON.stringify({
+                                    model: 'jev-1.13.0',
+                                    answers: Object.fromEntries(
+                                        Object.keys(PASS).map((id) => [
+                                            id,
+                                            { type: 'noul', noul: 0.95 },
+                                        ])
+                                    ),
+                                    usage: { input_tokens: 1, output_tokens: 1 },
+                                }),
+                                { status: 200 }
+                            )
+                        );
+                })
+        );
+        const { code, lines } = await run(bash('ls'), { fetch: late });
+        expect({ code, lines }).toEqual({ code: 0, lines: [] });
+        expect(late).toHaveBeenCalledTimes(1);
+
+        release();
+        await new Promise((r) => setTimeout(r, 200));
+        await expect(fs.access(cacheFile())).rejects.toThrow();
+        const log = await fs.readFile(
+            path.join(root, '.rulebook', 'logs', 'tool-gate.jsonl'),
+            'utf-8'
+        );
+        const entries = log
+            .trim()
+            .split('\n')
+            .map((l) => JSON.parse(l));
+        expect(entries).toHaveLength(1);
+        expect(entries[0]).toMatchObject({ decision: 'none', error: 'timeout' });
     });
 
     it('a bad JSON response → no output, nothing cached', async () => {
