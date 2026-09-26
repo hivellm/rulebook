@@ -4,10 +4,10 @@
 #   jev-gate.sh prompt   UserPromptSubmit → `rulebook hook prompt-gate`
 #   jev-gate.sh tool     PreToolUse       → `rulebook hook tool-gate` (opt-in)
 #
-# Reads the hook JSON from stdin once, finds the rulebook CLI (PATH first, then
-# the project's node_modules/.bin), and hands the payload to it. Fail-open: an
-# unknown argument or a missing CLI exits 0 with no output, so the prompt goes
-# through unchanged. The CLI itself always exits 0.
+# Reads the hook JSON from stdin once, finds the rulebook CLI (the project's
+# node_modules/.bin first, then PATH), and hands the payload to it. Fail-open:
+# the wrapper always exits 0; an unknown argument or a missing CLI prints
+# nothing, and a failing CLI's error output is dropped.
 #
 # `tool` runs the installed no-os-scheduling.sh guard on the same payload
 # first (Claude Code runs matching hooks in parallel, so the order lives here):
@@ -30,12 +30,15 @@ case "${1:-}" in
   *) exit 0 ;;
 esac
 
-if command -v rulebook >/dev/null 2>&1; then
-  cli="rulebook"
-elif [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/rulebook" ]; then
+if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/rulebook" ]; then
   cli="$CLAUDE_PROJECT_DIR/node_modules/.bin/rulebook"
+elif command -v rulebook >/dev/null 2>&1; then
+  cli="rulebook"
 else
   exit 0
 fi
 
-exec "$cli" hook "$event" <<<"$input"
+# A broken CLI (a stale global shim, a crash) must not fail the hook: its
+# stderr is dropped and the wrapper always exits 0. Stdout passes through.
+"$cli" hook "$event" <<<"$input" 2>/dev/null
+exit 0

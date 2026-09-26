@@ -403,7 +403,7 @@ export function decideToolCall(
 // ── Deterministic pre-check ──────────────────────────────────────────────
 
 /** A git invocation at the start of a command or after a shell separator, global options allowed. */
-const GIT = String.raw`(?:^|[;&|(\n]|\$\()\s*(?:sudo\s+)?git(?:\s+(?:-C|-c)\s+\S+|\s+--[\w-]+(?:=\S+)?)*\s+`;
+const GIT = String.raw`(?:^|[;&|(\n]|\$\()\s*(?:sudo\s+)?git(?:\s+(?:-C|-c)\s+(?:"[^"\n]*"|'[^'\n]*'|\S+)|\s+--[\w-]+(?:=\S+)?)*\s+`;
 /** The rest of the same simple command. */
 const ARGS = String.raw`[^;&|\n]*`;
 const END = String.raw`(?=\s|$|[;&|)])`;
@@ -413,12 +413,12 @@ const DESTRUCTIVE_GIT: ReadonlyArray<[string, RegExp]> = [
     [
         'push --force',
         new RegExp(
-            `${GIT}push\\b${ARGS}\\s(?:--force(?:-with-lease|-if-includes)?\\b|-[A-Za-z]*f[A-Za-z]*\\b)`
+            `${GIT}push\\b${ARGS}\\s(?:--force(?:-with-lease|-if-includes)?\\b|-[A-Za-z]*f[A-Za-z]*\\b|\\+\\S)`
         ),
     ],
     ['clean -f', new RegExp(`${GIT}clean\\b${ARGS}\\s(?:--force\\b|-[A-Za-z]*f[A-Za-z]*\\b)`)],
-    ['checkout -- .', new RegExp(`${GIT}checkout\\s+(?:--\\s+)?\\.${END}`)],
-    ['restore .', new RegExp(`${GIT}restore\\b${ARGS}\\s\\.${END}`)],
+    ['checkout -- .', new RegExp(`${GIT}checkout\\s+(?:--\\s+)?\\.\\/?${END}`)],
+    ['restore .', new RegExp(`${GIT}restore\\b${ARGS}\\s\\.\\/?${END}`)],
     ['stash', new RegExp(`${GIT}stash\\b(?!\\s+(?:list|show)\\b)`)],
     [
         'branch -D',

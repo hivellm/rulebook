@@ -364,7 +364,7 @@ The main session no longer has to remember to call the gate: a Claude Code `User
                  "timeout": 8 } ] } ] } }
 ```
 
-The entry is identified by its command (`jev-gate.sh prompt`): it is upserted once (a second run leaves the file byte-identical), user hooks on the same event stay untouched and in order, and the entry is removed when the hook is turned off. The wrapper finds the CLI (`rulebook` on `PATH`, then `$CLAUDE_PROJECT_DIR/node_modules/.bin/rulebook`) and runs `rulebook hook prompt-gate` with the hook JSON on stdin; without a CLI it exits 0 silently.
+The entry is identified by its command (`jev-gate.sh prompt`): it is upserted once (a second run leaves the file byte-identical), user hooks on the same event stay untouched and in order, and the entry is removed when the hook is turned off. The wrapper finds the CLI (`$CLAUDE_PROJECT_DIR/node_modules/.bin/rulebook` first, so the project's own version wins over a stale global one, then `rulebook` on `PATH`) and runs `rulebook hook prompt-gate` with the hook JSON on stdin; without a CLI it exits 0 silently, and a CLI that fails (for example a broken global shim) has its error output dropped — the wrapper always exits 0.
 
 **What the model sees**: `{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"…"}}`, where the context (at most 1024 bytes) is the line `Jev routing (rulebook prompt hook) — do not call rulebook_gate again for this prompt`, the gate's `instruction`, and one warning line per risk flag at or above 0.5 that does not block.
 
@@ -409,7 +409,7 @@ Each Jev entry is identified by its command (`jev-gate.sh prompt`, `jev-gate.sh 
 
 1. The wrapper runs the installed `no-os-scheduling.sh` guard on the same payload; its `deny` is printed as-is and the CLI is never called.
 2. Tools outside `matcher` get no answer.
-3. A deterministic destructive-git check on Bash commands — `git reset --hard`, `push --force` / `-f` / `--force-with-lease`, `clean -f`, `checkout -- .`, `restore .`, `stash` (not `list`/`show`), `branch -D`, anchored to a git invocation — answers `ask` citing CLAUDE.md "Git safety". No key or Jev call needed.
+3. A deterministic destructive-git check on Bash commands — `git reset --hard`, `push --force` / `-f` / `--force-with-lease` / `+refspec`, `clean -f`, `checkout -- .` (or `./`), `restore .` (or `./`), `stash` (not `list`/`show`), `branch -D`, anchored to a git invocation — answers `ask` citing CLAUDE.md "Git safety". It runs even without a TypeSafe key and never calls Jev.
 4. The cache (below); a hit answers with no request.
 5. One Jev request within the deadline.
 
@@ -417,7 +417,7 @@ Each Jev entry is identified by its command (`jev-gate.sh prompt`, `jev-gate.sh 
 
 **Criteria** (each a yes/no probability that the call is fine, one request): `safe_reversible`, `no_secret_exposure`, `follows_project_rules`, and `in_task_scope` when a task is in progress. Below `denyBelow` (0.5) → `deny`; below `askBelow` (0.7) → `ask`; `in_task_scope` never goes past `ask`. The most severe criterion wins, and the reason lists each failing criterion with its probability (`safe_reversible p=0.30 (may destroy work or be hard to undo)`).
 
-**Redaction**: every summary string goes through `redactSecrets()` — `redact()` (TypeSafe keys, `Bearer …`) plus `sk-…`, `ghp_…`/`github_pat_…`, `AKIA…`, `xox?-…`, PEM private-key blocks and the value of any `*KEY*`/`*TOKEN*`/`*SECRET*`/`*PASSWORD*` assignment — before it is clipped. The content of `.env*` files is never sent: the preview reads `[env file — not sent]`.
+**Redaction**: every summary string goes through `redactSecrets()` — `redact()` (TypeSafe keys, `Bearer …`) plus `sk-…`, `ghp_…`/`github_pat_…`, `AKIA…`, `xox?-…`, PEM private-key blocks, URL passwords (`scheme://user:***@host`), `-u`/`--user user:***`, the value of `--password`/`--passwd`/`--secret…`/`--api-key`/`--apikey`/`--token` flags, and the value (quoted values whole) of any `*KEY*`/`*TOKEN*`/`*SECRET*`/`*PASSWORD*` assignment — before it is clipped. The content of `.env*` files is never sent: the preview reads `[env file — not sent]`.
 
 **Cache**: `.rulebook/cache/tool-gate.json` (ignored by the `/.rulebook/*` gitignore rule), keyed by sha256 of tool + redacted summary + active task id + question-set version; each entry holds the decision, the probabilities and the time. Entries live `cacheTtlMs` (15 min); the newest 200 are kept; the file is written atomically (temp file + rename), and an unreadable file counts as empty. Only Jev answers are cached — never a fail-open result.
 

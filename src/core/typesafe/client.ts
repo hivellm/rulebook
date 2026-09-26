@@ -99,7 +99,10 @@ export function redact(text: string): string {
  * (the tool gate's call summary): OpenAI/Anthropic-style `sk-…` keys, GitHub
  * tokens (`ghp_…` and siblings, `github_pat_…`), AWS access key ids, Slack
  * tokens, PEM private-key blocks (to the end of the text when the END line is
- * missing), and the value of any assignment whose name contains KEY, TOKEN,
+ * missing), URL and `-u`/`--user` passwords (`https://user:***@host`,
+ * `curl -u admin:***`), the value of `--password`/`--passwd`/`--secret…`/
+ * `--api-key`/`--apikey`/`--token` flags (space or `=`), and the value —
+ * quoted values whole — of any assignment whose name contains KEY, TOKEN,
  * SECRET or PASSWORD (`API_KEY=…`, `"password": "…"`).
  */
 export function redactSecrets(text: string): string {
@@ -113,10 +116,20 @@ export function redactSecrets(text: string): string {
         .replace(/\bgh[pousr]_[A-Za-z0-9]{8,}/g, 'gh*_***')
         .replace(/\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g, 'AKIA***')
         .replace(/\bxox[abprs]-[A-Za-z0-9-]{8,}/g, 'xox*-***')
+        .replace(/\b([a-z][a-z0-9+.-]{0,20}:\/\/[^\s:@/]+:)[^\s@/]+@/gi, '$1***@')
+        .replace(/((?:^|\s)(?:-u|--user)(?:\s+|=)["']?[^\s:"']+:)[^\s"']+/g, '$1***')
+        .replace(
+            /((?:^|\s)--(?:password|passwd|secret[\w-]*|api-?key|token)(?:\s+|=))(?:"[^"\n]*"|'[^'\n]*'|[^\s"']+)/gi,
+            '$1***'
+        )
         .replace(
             // Bounded name parts keep the scan linear on long identifier runs.
-            /([A-Za-z0-9_.-]{0,40}(?:key|token|secret|password)[A-Za-z0-9_.-]{0,40}["']?\s*[:=](?![=>])\s*)(["']?)[^\s"',;&|]+/gi,
-            '$1$2***'
+            /([A-Za-z0-9_.-]{0,40}(?:key|token|secret|password)[A-Za-z0-9_.-]{0,40}["']?\s*[:=](?![=>])\s*)("[^"\n]*"|'[^'\n]*'|["']?[^\s"',;&|]+)/gi,
+            (_match, name: string, value: string) => {
+                const quote = /^["']/.test(value) ? value[0] : '';
+                const close = quote && value.length > 1 && value.endsWith(quote) ? quote : '';
+                return `${name}${quote}***${close}`;
+            }
         );
 }
 

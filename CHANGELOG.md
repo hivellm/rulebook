@@ -161,6 +161,13 @@ a destructive command or a printed secret.
   or TypeSafe is opted out. The two Jev entries are now matched by their
   command (`jev-gate.sh prompt` / `jev-gate.sh tool`), so toggling one never
   strips the other; existing prompt-hook installs stay byte-identical.
+- Hardening: `jev-gate.sh` prefers the project's `node_modules/.bin/rulebook`
+  over one on `PATH`, drops the CLI's stderr and always exits 0 (a stale
+  global shim no longer fails every prompt and tool call); `redactSecrets()`
+  also masks URL and `-u user:pass` passwords, `--password`/`--secret…`/
+  `--api-key`/`--token` flag values and whole quoted assignment values; the
+  destructive-git check also catches `push +refspec`, quoted `-C`/`-c`
+  values and `checkout -- ./` / `restore ./`.
 - Docs: `docs/MCP_SERVER.md` "Tool-call gate"; orchestration spec section 3.
 
 ### Changed — TypeSafe ships by default

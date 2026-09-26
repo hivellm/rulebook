@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { execFileSync } from 'child_process';
-import { promises as fs } from 'fs';
+import { execFileSync, spawnSync } from 'child_process';
+import { existsSync, promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
 import { hookCommand } from '../src/cli/commands/hook';
@@ -148,6 +148,12 @@ describe('destructiveGitCheck', () => {
         'npm test && git reset --hard origin/main',
         'git -C ../repo reset --hard',
         'cd sub; git stash push -m wip',
+        'git push origin +main',
+        'git push origin +HEAD:refs/heads/main',
+        'git -C "a b" reset --hard',
+        "git -c 'user.name=x y' stash",
+        'git checkout -- ./',
+        'git restore ./',
     ];
     const passes = [
         'git status',
@@ -567,5 +573,78 @@ describe.skipIf(!hasBash())('jev-gate.sh tool (wrapper)', () => {
     it('anything else → handed to `rulebook hook tool-gate`', async () => {
         expect(JSON.parse(runWrapper('npm test').trim())).toEqual({ fake: true });
         expect((await fs.readFile(marker, 'utf-8')).trim()).toBe('hook tool-gate');
+    });
+});
+
+/**
+ * Fail-open contract of the wrapper itself: whatever the CLI does, the hook
+ * exits 0, and only the CLI's stdout passes through. `PATH` is stripped of any
+ * directory holding a `rulebook` so a global install cannot leak in.
+ */
+describe.skipIf(!hasBash())('jev-gate.sh fail-open (wrapper)', () => {
+    const WRAPPER = path.join(process.cwd(), 'templates', 'hooks', 'jev-gate.sh');
+    let root: string;
+
+    beforeEach(async () => {
+        root = await fs.mkdtemp(path.join(os.tmpdir(), 'rb-wrapper-open-'));
+    });
+
+    afterEach(async () => {
+        await fs.rm(root, { recursive: true, force: true });
+    });
+
+    async function fakeCli(file: string, body: string): Promise<void> {
+        await fs.mkdir(path.dirname(file), { recursive: true });
+        await fs.writeFile(file, `#!/usr/bin/env bash\n${body}\n`);
+        await fs.chmod(file, 0o755);
+    }
+
+    function runWrapper(arg: string, extraPath?: string) {
+        const env: NodeJS.ProcessEnv = { ...process.env, CLAUDE_PROJECT_DIR: root };
+        const pathKey = Object.keys(env).find((k) => k.toUpperCase() === 'PATH') ?? 'PATH';
+        const entries = (env[pathKey] ?? '')
+            .split(path.delimiter)
+            .filter(
+                (dir) =>
+                    dir &&
+                    !['rulebook', 'rulebook.exe', 'rulebook.cmd'].some((name) =>
+                        existsSync(path.join(dir, name))
+                    )
+            );
+        env[pathKey] = [extraPath, ...entries].filter(Boolean).join(path.delimiter);
+        return spawnSync('bash', [WRAPPER, arg], {
+            input: JSON.stringify({ prompt: 'hello', tool_name: 'Bash', tool_input: {} }),
+            encoding: 'utf-8',
+            env,
+        });
+    }
+
+    it('prompt with no CLI → exit 0, no output', () => {
+        const r = runWrapper('prompt');
+        expect(r.status).toBe(0);
+        expect(r.stdout).toBe('');
+    });
+
+    it('a CLI that fails with a stack trace → exit 0, no output', async () => {
+        await fakeCli(
+            path.join(root, 'bin', 'rulebook'),
+            "echo 'Error: Cannot find module x (MODULE_NOT_FOUND)' >&2\nexit 1"
+        );
+        for (const arg of ['prompt', 'tool']) {
+            const r = runWrapper(arg, path.join(root, 'bin'));
+            expect(r.status).toBe(0);
+            expect(r.stdout).toBe('');
+        }
+    });
+
+    it('the project node_modules/.bin CLI wins over one on PATH', async () => {
+        await fakeCli(path.join(root, 'bin', 'rulebook'), 'echo \'{"from":"path"}\'');
+        await fakeCli(
+            path.join(root, 'node_modules', '.bin', 'rulebook'),
+            'echo "{\\"from\\":\\"local\\",\\"args\\":\\"$*\\"}"'
+        );
+        const r = runWrapper('prompt', path.join(root, 'bin'));
+        expect(r.status).toBe(0);
+        expect(JSON.parse(r.stdout.trim())).toEqual({ from: 'local', args: 'hook prompt-gate' });
     });
 });

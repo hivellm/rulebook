@@ -278,6 +278,55 @@ describe('redactSecrets', () => {
         expect(out).toMatch(/\*\*\*|\[private key redacted\]/);
     });
 
+    /** [label, text, secret that must go, parts that must survive]. */
+    const kept: Array<[string, string, string, string[]]> = [
+        [
+            'URL password',
+            'git clone https://user:hunter2@github.com/x',
+            'hunter2',
+            ['git clone https://user:', '@github.com/x'],
+        ],
+        [
+            'connection-string password',
+            'psql postgres://user:pa55@host/db',
+            'pa55',
+            ['psql postgres://user:', '@host/db'],
+        ],
+        [
+            'curl -u password',
+            'curl -u admin:hunter2 https://x',
+            'hunter2',
+            ['curl -u admin:', ' https://x'],
+        ],
+        [
+            '--secret-access-key value',
+            'aws configure set --secret-access-key wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+            'wJalrXUtnFEMI',
+            ['aws configure set --secret-access-key '],
+        ],
+        [
+            '--password value',
+            'mysql --password hunter2 -h db',
+            'hunter2',
+            ['mysql --password ', ' -h db'],
+        ],
+        ['--token= value', 'cli login --token=abc123xyz', 'abc123xyz', ['cli login --token=']],
+        [
+            'quoted KEY assignment',
+            'API_KEY = "quoted s3cret" next',
+            's3cret',
+            ['API_KEY = ', ' next'],
+        ],
+        ['single-quoted PASSWORD', "PASSWORD='p w0rd' cmd", 'w0rd', ['PASSWORD=', ' cmd']],
+    ];
+
+    it.each(kept)('masks a %s and keeps the rest', (_label, text, secret, parts) => {
+        const out = redactSecrets(text);
+        expect(out).not.toContain(secret);
+        expect(out).toContain('***');
+        for (const part of parts) expect(out).toContain(part);
+    });
+
     it('masks a PEM block with no END line to the end of the text', () => {
         const out = redactSecrets('before -----BEGIN PRIVATE KEY-----\nMIIBVgIBADANBg');
         expect(out).toBe('before [private key redacted]');
