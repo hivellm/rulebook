@@ -450,6 +450,7 @@ npm run build
 
 - **[OpenSpec](https://github.com/Fission-AI/openspec)** — influenced the task-management format (delta-based specs, Given/When/Then scenarios, requirement-focused organization).
 - **[forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills)** — source of the four "Editing Discipline" principles (think before coding, simplicity first, surgical changes, goal-driven execution) inlined in the generated `AGENTS.md`, grounded in [Andrej Karpathy's observations](https://x.com/karpathy/status/2015883857489522876) on common LLM coding pitfalls.
+- **[Jev](https://typesafe.ai)** — the System One model by TypeSafe, which powers the rulebook entry gate (`rulebook_gate`, prompt hook, project scope and tool-call gate).
 
 ---
 
