@@ -28,11 +28,16 @@ set the Agent tool's `model` to `fable`, `opus`, or `haiku`.
 
 ## 3. Entry gate (Jev)
 
-Before planning anything, send every operator prompt — verbatim — through
-`rulebook_gate {prompt, notes?}`. Rulebook sends Jev (TypeSafe's System One
-model) a short project description (config, tasks, open questions, installed
-skills, subagent types, the routing table in section 2) plus the prompt, and
-asks one question per decision the main session would otherwise guess:
+Before planning anything, every operator prompt goes through the gate. A
+`UserPromptSubmit` hook (`.claude/hooks/jev-gate.sh prompt` → `rulebook hook
+prompt-gate`) runs it on each prompt and injects the result into the context
+under "Jev routing (rulebook prompt hook)": act on that routing and do not call
+the gate again. Only when no hook routing is in context, send the prompt —
+verbatim — through `rulebook_gate {prompt, notes?}` yourself. Either way,
+rulebook sends Jev (TypeSafe's System One model) a short project description
+(config, tasks, open questions, installed skills, subagent types, the routing
+table in section 2) plus the prompt, and asks one question per decision the
+main session would otherwise guess:
 
 | Decision | Question | Routing field |
 |----------|----------|---------------|
@@ -80,6 +85,16 @@ once, show the operator the `instructions` for `TYPESAFE_API_KEY`. The gate is
 advisory — it never blocks. Call it once per operator prompt, from the main
 session only: subagents do not call the gate; they receive `routing` in their
 brief. Disable it with `RULEBOOK_GATE=off`.
+
+The prompt hook has one blocking case: Jev puts `risk_os_scheduling` at or
+above `gate.promptHook.blockThreshold` (default 0.9) — OS-level scheduling is
+never allowed — and the prompt stops with a reason. Destructive git and secrets
+never block there (the operator's own prompt is the authorization); they, and
+any risk from 0.5 up that does not block, arrive as warning lines in the
+context. The hook is fail-open: no key, gate disabled, timeout
+(`gate.promptHook.deadlineMs`, default 5000 ms), an error, or a missing CLI →
+no output, and the prompt goes through unchanged. Turn it off with
+`gate.promptHook.enabled: false` in `rulebook.json` or `--no-typesafe`.
 
 When `features.logging` is on, each gate decision is appended as one JSON line
 to `.rulebook/logs/gate.jsonl` (prompt hash, routing, usage, elapsed time) — no

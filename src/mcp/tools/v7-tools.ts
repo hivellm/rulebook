@@ -744,6 +744,7 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                         hasConfig ? (await getConfigMgr(args.projectId)).loadConfig() : null,
                     listTasks: async () =>
                         hasRulebookDir ? (await getTaskMgr(args.projectId)).listTasks(false) : [],
+                    source: 'mcp',
                 });
                 return ok({ ...result });
             } catch (error) {

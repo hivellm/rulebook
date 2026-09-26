@@ -112,6 +112,11 @@ export async function runTypesafeStep(
         await applyTypesafe(projectRoot);
         return 'enabled';
     }
+    // Opted out: the Jev prompt hook has nothing to call any more.
+    const { removeJevPromptGate } = await import('../../core/claude/claude-settings-manager.js');
+    if (await removeJevPromptGate(projectRoot)) {
+        console.log(chalk.gray('  • Jev prompt hook removed from .claude/settings.json'));
+    }
     if (opts.retireWhenDisabled) await retireTypesafe(projectRoot);
     return 'disabled';
 }

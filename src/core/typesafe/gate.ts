@@ -20,7 +20,8 @@ import {
  * One), asks one question per decision the session would otherwise guess,
  * and returns a `routing` to act on. Advisory: it never throws and never
  * blocks — without a key, a network, or when disabled it says so and the
- * CLAUDE.md Orchestration rules apply.
+ * CLAUDE.md Orchestration rules apply. The only blocking path is the prompt
+ * hook's high-confidence OS-scheduling rule (prompt-hook.ts).
  */
 
 export const AGENT_TYPES = [
@@ -174,7 +175,7 @@ function truncatePrompt(prompt: string, max: number): string {
 }
 
 /** Cut `text` to at most `maxBytes` UTF-8 bytes without splitting a code point. */
-function sliceUtf8(text: string, maxBytes: number): string {
+export function sliceUtf8(text: string, maxBytes: number): string {
     const buf = Buffer.from(text, 'utf8');
     if (buf.length <= maxBytes) return text;
     let end = Math.max(0, maxBytes);
@@ -570,7 +571,8 @@ export interface GateSourceLoaders {
     listTasks?: () => Promise<TaskLike[]>;
 }
 
-async function readConfigFile(projectRoot: string): Promise<Partial<RulebookConfig> | null> {
+/** `<root>/.rulebook/rulebook.json` as-is, or null when missing or unreadable. Never creates it. */
+export async function readConfigFile(projectRoot: string): Promise<Partial<RulebookConfig> | null> {
     try {
         const raw = await readFile(path.join(projectRoot, '.rulebook', 'rulebook.json'), 'utf-8');
         return JSON.parse(raw) as Partial<RulebookConfig>;
@@ -636,22 +638,27 @@ export async function loadGateSources(
 
 const GATE_LOG_MAX_LINES = 500;
 
+/** Which entry point ran the gate: the MCP tool, `rulebook gate`, or the prompt hook. */
+export type GateLogSource = 'mcp' | 'cli' | 'hook';
+
 /**
- * One JSON line per gate call in `<rulebookDir>/logs/gate.jsonl` — prompt
- * hash, routing, usage, timing. Never the prompt text, never the key. Kept
- * to the newest 500 lines. Failures are swallowed: logging is best effort.
+ * One JSON line per gate call in `<rulebookDir>/logs/gate.jsonl` — source,
+ * prompt hash, routing, usage, timing. Never the prompt text, never the key.
+ * Kept to the newest 500 lines. Failures are swallowed: logging is best effort.
  */
 export async function appendGateLog(
     projectRoot: string,
     rulebookDir: string,
     prompt: string,
-    result: GateResult
+    result: GateResult,
+    source?: GateLogSource
 ): Promise<void> {
     try {
         const dir = path.join(projectRoot, rulebookDir, 'logs');
         const file = path.join(dir, 'gate.jsonl');
         const line = JSON.stringify({
             ts: new Date().toISOString(),
+            ...(source ? { source } : {}),
             promptHash: createHash('sha256').update(prompt).digest('hex').slice(0, 16),
             available: result.available,
             ...(result.reason ? { reason: result.reason } : {}),
@@ -696,6 +703,8 @@ export interface RunGateOptions extends GateSourceLoaders {
     deadlineMs?: number;
     /** The CLI prints the key instructions every time it has no key. */
     alwaysShowInstructions?: boolean;
+    /** Recorded in the decision log line. */
+    source?: GateLogSource;
 }
 
 function unavailable(reason: GateReason, t0: number, extra: Partial<GateResult> = {}): GateResult {
@@ -786,7 +795,8 @@ export async function runGate(opts: RunGateOptions): Promise<GateResult> {
             opts.projectRoot,
             config.rulebookDir ?? '.rulebook',
             opts.prompt,
-            result
+            result,
+            opts.source
         );
     }
     return result;

@@ -163,6 +163,7 @@ export async function gateCommand(
         env,
         fetch: options.fetch,
         alwaysShowInstructions: true,
+        source: 'cli',
     });
     if (options.json) log(JSON.stringify(result, null, 2));
     else renderResult(result, log);

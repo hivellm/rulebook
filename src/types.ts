@@ -219,6 +219,16 @@ export interface RulebookConfig {
             askedAt?: string;
         };
     };
+    // Jev gate hooks (v7.4). Resolved (defaults + clamps) by
+    // resolvePromptHookConfig() in src/core/typesafe/prompt-hook.ts.
+    gate?: {
+        // UserPromptSubmit hook that runs the entry gate on every prompt.
+        promptHook?: {
+            enabled?: boolean; // default true; always off when integrations.typesafe.enabled === false
+            deadlineMs?: number; // default 5000, clamped 1000–8500
+            blockThreshold?: number; // risk_os_scheduling ≥ this blocks; default 0.9, clamped 0.5–1
+        };
+    };
     // MCP server configuration
     mcp?: {
         enabled?: boolean;

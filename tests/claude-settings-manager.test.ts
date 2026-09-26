@@ -7,6 +7,8 @@ import {
     getClaudeSettingsPath,
     FULL_AUTONOMY_PERMISSIONS,
     GUARD_SCRIPT,
+    JEV_GATE_SCRIPT,
+    removeJevPromptGate,
 } from '../src/core/claude/claude-settings-manager';
 
 const V7_DESIRE = { taskScaffoldingGuard: true, fullAutonomyPermissions: true };
@@ -60,7 +62,7 @@ describe('claude-settings-manager (v7)', () => {
     });
 
     describe('hook audit (F-002/P0 — acceptance check 2)', () => {
-        it('never wires Stop, UserPromptSubmit, SessionStart, or PreToolUse-Agent hooks', async () => {
+        it('never wires Stop, SessionStart, or PreToolUse-Agent hooks; UserPromptSubmit only on request', async () => {
             await applyClaudeSettings(projectRoot, { ...V7_DESIRE, teamsEnv: true });
             const content = JSON.parse(
                 await fs.readFile(getClaudeSettingsPath(projectRoot), 'utf-8')
@@ -153,6 +155,84 @@ describe('claude-settings-manager (v7)', () => {
             expect(after.hooks.UserPromptSubmit).toBeUndefined();
             expect(after.hooks.PreToolUse).toHaveLength(1);
             expect(after.hooks.PreToolUse[0].hooks[0].command).toContain(GUARD_SCRIPT);
+        });
+    });
+
+    describe('Jev prompt hook (UserPromptSubmit, v7.4)', () => {
+        const JEV_DESIRE = { ...V7_DESIRE, jevPromptGate: true };
+        const JEV_COMMAND = `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${JEV_GATE_SCRIPT} prompt`;
+
+        async function readSettings() {
+            return JSON.parse(await fs.readFile(getClaudeSettingsPath(projectRoot), 'utf-8'));
+        }
+
+        it('upserts exactly one UserPromptSubmit entry with a timeout and installs the LF script', async () => {
+            await applyClaudeSettings(projectRoot, JEV_DESIRE);
+            const content = await readSettings();
+            expect(content.hooks.UserPromptSubmit).toEqual([
+                { hooks: [{ type: 'command', command: JEV_COMMAND, timeout: 8 }] },
+            ]);
+            const buf = await fs.readFile(path.join(projectRoot, '.claude/hooks', JEV_GATE_SCRIPT));
+            expect(buf.length).toBeGreaterThan(0);
+            expect(buf.includes(0x0d)).toBe(false);
+        });
+
+        it('derives the timeout from the configured deadline', async () => {
+            await applyClaudeSettings(projectRoot, {
+                ...JEV_DESIRE,
+                jevPromptGateDeadlineMs: 8500,
+            });
+            const content = await readSettings();
+            expect(content.hooks.UserPromptSubmit[0].hooks[0].timeout).toBe(12);
+        });
+
+        it('is idempotent: a second apply leaves the file byte-identical', async () => {
+            await applyClaudeSettings(projectRoot, JEV_DESIRE);
+            const before = await fs.readFile(getClaudeSettingsPath(projectRoot), 'utf-8');
+            const r2 = await applyClaudeSettings(projectRoot, JEV_DESIRE);
+            expect(r2.changed).toBe(false);
+            expect(await fs.readFile(r2.path, 'utf-8')).toBe(before);
+            expect((await readSettings()).hooks.UserPromptSubmit).toHaveLength(1);
+        });
+
+        it('keeps user UserPromptSubmit hooks first and unchanged', async () => {
+            const target = getClaudeSettingsPath(projectRoot);
+            await fs.mkdir(path.dirname(target), { recursive: true });
+            const userEntry = { hooks: [{ type: 'command', command: 'bash my-hook.sh' }] };
+            await fs.writeFile(
+                target,
+                JSON.stringify({ hooks: { UserPromptSubmit: [userEntry] } }, null, 2) + '\n'
+            );
+            await applyClaudeSettings(projectRoot, JEV_DESIRE);
+            await applyClaudeSettings(projectRoot, JEV_DESIRE);
+            const list = (await readSettings()).hooks.UserPromptSubmit;
+            expect(list).toHaveLength(2);
+            expect(list[0]).toEqual(userEntry);
+            expect(list[1].hooks[0].command).toBe(JEV_COMMAND);
+        });
+
+        it('removes the entry when the toggle is off and drops an empty event key', async () => {
+            await applyClaudeSettings(projectRoot, JEV_DESIRE);
+            await applyClaudeSettings(projectRoot, V7_DESIRE);
+            expect((await readSettings()).hooks.UserPromptSubmit).toBeUndefined();
+        });
+
+        it('removeJevPromptGate drops only the jev-gate entry', async () => {
+            const target = getClaudeSettingsPath(projectRoot);
+            await fs.mkdir(path.dirname(target), { recursive: true });
+            const userEntry = { hooks: [{ type: 'command', command: 'bash my-hook.sh' }] };
+            await fs.writeFile(
+                target,
+                JSON.stringify({ hooks: { UserPromptSubmit: [userEntry] } })
+            );
+            await applyClaudeSettings(projectRoot, JEV_DESIRE);
+            const withGuards = await readSettings();
+
+            expect(await removeJevPromptGate(projectRoot)).toBe(true);
+            const after = await readSettings();
+            expect(after.hooks.UserPromptSubmit).toEqual([userEntry]);
+            expect(after.hooks.PreToolUse).toEqual(withGuards.hooks.PreToolUse);
+            expect(await removeJevPromptGate(projectRoot)).toBe(false);
         });
     });
 

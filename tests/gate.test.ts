@@ -405,12 +405,32 @@ describe('runGate', () => {
         const lines = raw.trim().split('\n');
         expect(lines).toHaveLength(1);
         const entry = JSON.parse(lines[0]);
+        expect(entry.source).toBeUndefined();
         expect(entry.promptHash).toMatch(/^[0-9a-f]{16}$/);
         expect(entry.routing).toBeDefined();
         expect(entry.usage).toEqual({ input_tokens: 2000, output_tokens: 150 });
         expect(typeof entry.elapsedMs).toBe('number');
         expect(raw).not.toContain('secret prompt text');
         expect(raw).not.toContain(FAKE_KEY);
+    });
+
+    it('records the calling entry point as `source` in the log line', async () => {
+        const logFile = path.join(root, '.rulebook', 'logs', 'gate.jsonl');
+        await writeConfig({ projectId: 'demo', features: { logging: true } });
+        for (const source of ['mcp', 'cli', 'hook'] as const) {
+            await runGate({
+                projectRoot: root,
+                prompt: 'x',
+                env: KEY_ENV,
+                fetch: jevFetch() as never,
+                source,
+            });
+        }
+        const sources = (await fs.readFile(logFile, 'utf-8'))
+            .trim()
+            .split('\n')
+            .map((l) => JSON.parse(l).source);
+        expect(sources).toEqual(['mcp', 'cli', 'hook']);
     });
 });
 

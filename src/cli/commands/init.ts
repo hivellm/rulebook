@@ -430,14 +430,21 @@ export async function initCommand(options: {
             try {
                 const { applyClaudeSettings } =
                     await import('../../core/claude/claude-settings-manager.js');
-                // v7: one optional path-only guard + full-autonomy permissions.
-                // No Stop/UserPromptSubmit/SessionStart hooks, no orchestration
-                // enforcement (P0). Stale v5/v6 entries are stripped on sync.
+                const { resolvePromptHookConfig } =
+                    await import('../../core/typesafe/prompt-hook.js');
+                // v7: two optional PreToolUse guards + full-autonomy permissions.
+                // v7.4: plus the fail-open Jev prompt hook (UserPromptSubmit)
+                // while TypeSafe is on and gate.promptHook.enabled is not false.
+                // No Stop/SessionStart hooks, no orchestration enforcement (P0).
+                // Stale v5/v6 entries are stripped on sync.
                 const rulebookCfg = await configManager.loadConfig();
                 const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
+                const promptHook = resolvePromptHookConfig(rulebookCfg);
                 await applyClaudeSettings(cwd, {
                     taskScaffoldingGuard: true,
                     osSchedulingGuard: true,
+                    jevPromptGate: options.typesafe !== false && promptHook.enabled,
+                    jevPromptGateDeadlineMs: promptHook.deadlineMs,
                     fullAutonomyPermissions: true,
                     teamsEnv: multiAgentEnabled,
                 });

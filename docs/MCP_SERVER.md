@@ -349,6 +349,39 @@ The main session calls `rulebook_gate` first with every operator prompt. Ruleboo
 
 **CLI**: `rulebook gate "<prompt>" [--notes <text>] [--json]` prints the routing as a readable block (or the full result as JSON) and exits 0 even when unavailable. `rulebook gate --check [--json] [--strict]` reports where the key was found (`env`, `.env`, or not found — never the value) and makes one cheap live call (`state: "ping"`, one yes/no question) with its latency and token usage; it exits 0 either way, or 2 with `--strict` when the gate is unavailable.
 
+### Prompt hook (v7.4, `UserPromptSubmit`)
+
+The main session no longer has to remember to call the gate: a Claude Code `UserPromptSubmit` hook runs it on every operator prompt and hands the routing to the model as context. The model calls `rulebook_gate` by hand only when no hook routing is in its context.
+
+**Install**: `rulebook init`, `rulebook update` and `rulebook claude` copy `templates/hooks/jev-gate.sh` to `.claude/hooks/jev-gate.sh` and add one entry to `.claude/settings.json`:
+
+```json
+{ "hooks": { "UserPromptSubmit": [
+  { "hooks": [ { "type": "command",
+                 "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/jev-gate.sh prompt",
+                 "timeout": 8 } ] } ] } }
+```
+
+The entry is identified by the `jev-gate` signature: it is upserted once (a second run leaves the file byte-identical), user hooks on the same event stay untouched and in order, and the entry is removed when the hook is turned off. The wrapper finds the CLI (`rulebook` on `PATH`, then `$CLAUDE_PROJECT_DIR/node_modules/.bin/rulebook`) and runs `rulebook hook prompt-gate` with the hook JSON on stdin; without a CLI it exits 0 silently.
+
+**What the model sees**: `{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"…"}}`, where the context (at most 1024 bytes) is the line `Jev routing (rulebook prompt hook) — do not call rulebook_gate again for this prompt`, the gate's `instruction`, and one warning line per risk flag at or above 0.5 that does not block.
+
+**Block rule**: only when Jev is available and `risk_os_scheduling` is at or above `gate.promptHook.blockThreshold` does the hook answer `{"decision":"block","reason":…}` — OS-level scheduling is never allowed (Tier 1); the reason names the rule and how to turn the hook off. Destructive git and secrets never block here: the operator's own prompt is the authorization, so they become warnings that point to the Git safety and secrets rules. The MCP tool and `rulebook gate` never block.
+
+**Config** (`.rulebook/rulebook.json`):
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `gate.promptHook.enabled` | `true` | install and run the hook; always off when `integrations.typesafe.enabled` is `false` |
+| `gate.promptHook.deadlineMs` | `5000` | deadline for the whole gate call inside the hook, clamped to 1000–8500 ms; the settings `timeout` is `ceil(deadlineMs / 1000) + 3` seconds |
+| `gate.promptHook.blockThreshold` | `0.9` | `risk_os_scheduling` probability that blocks, clamped to 0.5–1 |
+
+**Fail-open**: no key, `RULEBOOK_GATE=off`, TypeSafe opted out, the hook disabled, a timeout, a network or HTTP error, a bad response, unreadable or non-JSON stdin, an empty prompt, a missing CLI, or any thrown error → exit 0 with no output, and the prompt goes through unchanged. The hook always exits 0.
+
+**Decision log**: with `features.logging` on, hook calls are logged to `.rulebook/logs/gate.jsonl` like any other gate call, with `"source": "hook"` (the MCP tool writes `"mcp"`, the CLI `"cli"`).
+
+**Turn it off**: set `"gate": {"promptHook": {"enabled": false}}` in `rulebook.json` and run `rulebook update` (the entry is removed), or opt out of TypeSafe with `--no-typesafe` (also removes it). `RULEBOOK_GATE=off` silences it for one environment without touching settings.
+
 ## Error Handling
 
 All MCP functions return structured error responses:

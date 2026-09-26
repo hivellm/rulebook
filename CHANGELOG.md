@@ -75,6 +75,36 @@ of guessing, and skips calls it does not need.
   trims elsewhere keep the always-loaded context at 1599 of 1600 tokens with no
   rule dropped.
 
+### Added — the prompt hook runs Jev on every prompt
+
+The gate above was advisory: the main session had to remember to call
+`rulebook_gate`, and nothing happened when it forgot. A Claude Code
+`UserPromptSubmit` hook now runs the same gate automatically.
+
+- New hidden CLI entry point `rulebook hook prompt-gate`: reads the hook JSON
+  on stdin, runs the gate with the hook's deadline, and prints one answer —
+  the routing as `additionalContext` (at most 1024 bytes, headed "Jev routing
+  (rulebook prompt hook) — do not call rulebook_gate again for this prompt",
+  plus a warning line per risk at ≥ 0.5), or `{"decision":"block"}` only for a
+  high-confidence OS-scheduling request (`risk_os_scheduling` ≥
+  `gate.promptHook.blockThreshold`, default 0.9). Destructive git and secrets
+  never block here — the operator's prompt is the authorization — they warn.
+- Fail-open: no key, `RULEBOOK_GATE=off`, TypeSafe opted out, timeout
+  (`gate.promptHook.deadlineMs`, default 5000 ms), network or bad response,
+  bad stdin, missing CLI, or any error → exit 0, no output.
+- `init`, `update` and `claude` install `.claude/hooks/jev-gate.sh` and upsert
+  one `UserPromptSubmit` entry (signature `jev-gate`, `timeout` = deadline +
+  3 s) while TypeSafe is on and `gate.promptHook.enabled` is not false; user
+  hooks on the event are left alone; the entry is removed when the hook is
+  turned off or TypeSafe is opted out. This reverses the v7 "no
+  UserPromptSubmit hook" rule (F-002) on purpose.
+- The gate decision log gains a `source` field (`mcp`, `cli`, `hook`).
+- Rule text: `CLAUDE.md` now reads "Gate first: act on Jev `routing` from the
+  prompt hook, else from `rulebook_gate {prompt}`"; section 3 of the
+  orchestration spec and `.claude/rules/typesafe.md` describe the hook, its
+  one blocking case and fail-open behaviour. Two wording trims keep the
+  always-loaded context inside 1600 tokens.
+
 ### Changed — TypeSafe ships by default
 
 The v7.3 opt-in prompt is gone: `rulebook init`, `update` and `claude` enable

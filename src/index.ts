@@ -387,6 +387,16 @@ program
         }
     );
 
+// Claude Code hook entry point (v7.4) — called by .claude/hooks/jev-gate.sh,
+// not by people, so it stays out of the help list. Always exits 0.
+program
+    .command('hook <event>', { hidden: true })
+    .description('Run a rulebook Claude Code hook (reads the hook JSON on stdin)')
+    .action(async (event: string) => {
+        const { hookCommand } = await import('./cli/commands/hook.js');
+        process.exitCode = await hookCommand(event);
+    });
+
 // MCP commands
 const mcpCommand = program.command('mcp').description('Manage Rulebook MCP server');
 

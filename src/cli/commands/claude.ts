@@ -44,13 +44,19 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
             return;
         }
 
-        // v7: exactly one optional path-only guard + the full-autonomy
-        // permission profile. No hooks on Stop/UserPromptSubmit/SessionStart,
-        // no orchestration enforcement (P0). Stale v5/v6 entries self-heal on
-        // sync via LEGACY_SIGNATURES.
+        // v7: two optional PreToolUse guards + the full-autonomy permission
+        // profile; v7.4 adds the fail-open Jev prompt hook (UserPromptSubmit)
+        // while TypeSafe is on and gate.promptHook.enabled is not false. No
+        // hooks on Stop/SessionStart, no orchestration enforcement (P0). Stale
+        // v5/v6 entries self-heal on sync via LEGACY_SIGNATURES.
+        const { readConfigFile } = await import('../../core/typesafe/gate.js');
+        const { resolvePromptHookConfig } = await import('../../core/typesafe/prompt-hook.js');
+        const promptHook = resolvePromptHookConfig(await readConfigFile(cwd));
         await applyClaudeSettings(cwd, {
             taskScaffoldingGuard: true,
             osSchedulingGuard: true,
+            jevPromptGate: options.typesafe !== false && promptHook.enabled,
+            jevPromptGateDeadlineMs: promptHook.deadlineMs,
             fullAutonomyPermissions: true,
             statusLine: true,
             defaultModel,

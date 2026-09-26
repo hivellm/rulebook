@@ -174,7 +174,7 @@ export function renderTypesafeRule(): string {
         TYPESAFE_RULE_MARKER,
         '# TypeSafe (Jev)',
         `- Semantic judgments plain code can't make: \`${TYPESAFE_SKILL}\`.`,
-        '- `rulebook_gate` runs on every operator prompt.',
+        '- A prompt hook runs the gate; no hook routing → call `rulebook_gate`.',
         `- Key: \`${TYPESAFE_ENV_VAR}\` (shell or untracked .env; ${TYPESAFE_KEYS_URL}). Never commit it.`,
         '- Managed by `rulebook update`.',
         '',

@@ -260,9 +260,12 @@ describe('directive guards', () => {
             const firstLine = section.split('\n')[1];
 
             expect(firstLine).toMatch(
-                /^Gate first: every operator prompt → `rulebook_gate \{prompt\}`/
+                /^Gate first: act on Jev `routing` from the prompt hook, else/
             );
-            expect(section).toMatch(/act on `routing`; unavailable or undecided → these rules\./);
+            // The model calls the gate by hand only when the hook injected nothing.
+            expect(section).toMatch(
+                /from the prompt hook, else from\s+`rulebook_gate \{prompt\}`; unavailable or undecided → these rules\./
+            );
             // The gate precedes, and does not replace, the orchestrator directive.
             expect(section.indexOf('Gate first')).toBeLessThan(
                 section.search(/main session never does the work itself/i)
@@ -312,6 +315,18 @@ describe('directive guards', () => {
             expect(spec).toMatch(/once per operator prompt/);
             expect(spec).toContain('subagents do not call the gate');
             expect(spec).toContain('RULEBOOK_GATE=off');
+            // Prompt hook: runs the gate, injects routing, one blocking case, fail-open.
+            expect(spec).toMatch(
+                /`UserPromptSubmit` hook \(`\.claude\/hooks\/jev-gate\.sh prompt`/
+            );
+            expect(spec).toMatch(/act on that routing and do not call\s+the gate again/);
+            expect(spec).toMatch(/Only when no hook routing is in context/);
+            expect(spec).toMatch(
+                /`risk_os_scheduling` at or\s+above `gate\.promptHook\.blockThreshold`/
+            );
+            expect(spec).toMatch(/Destructive git and secrets\s+never block there/);
+            expect(spec).toMatch(/The hook is fail-open/);
+            expect(spec).toMatch(/`gate\.promptHook\.enabled: false`/);
             expect(spec).toMatch(/`features\.logging`[\s\S]*`\.rulebook\/logs\/gate\.jsonl`/);
             expect(spec).toMatch(/no\s+prompt text, no key/);
             // Later sections renumbered 4–7.

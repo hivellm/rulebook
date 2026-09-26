@@ -223,7 +223,7 @@ describe('typesafe integration', () => {
             expect(rule).toContain(TYPESAFE_ENV_VAR);
             expect(rule).toContain('/typesafe:typesafe-ai');
             expect(rule).toMatch(/never commit/i);
-            // Real token count, same tokenizer as context-budget.test.ts (82 at v7.4.0).
+            // Real token count, same tokenizer as context-budget.test.ts (88 at v7.4.0, with the prompt hook line).
             const enc = encoding_for_model('gpt-4');
             try {
                 expect(enc.encode(rule).length).toBeLessThanOrEqual(90);
