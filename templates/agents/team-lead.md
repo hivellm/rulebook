@@ -1,5 +1,6 @@
 ---
 name: team-lead
+# v7.4 model routing — fable for architecture/review, opus for edits/tests/docs, haiku for research
 model: opus
 description: Orchestrates agent teams, assigns tasks, and coordinates work across agents. Use when a task requires multiple specialists working in parallel.
 tools: Read, Glob, Grep, Bash, Agent, SendMessage

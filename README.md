@@ -13,8 +13,8 @@
 
 **v7 — built to assist frontier models, never to anchor them.** ~3.4k tokens of
 session overhead (was ~15k in v6, −77%), 5 consolidated MCP tools, one
-path-only guard hook, zero permission prompts for routine work, and
-orchestration (subagents/parallelism/teams) that is never blocked or mandated.
+path-only guard hook, zero permission prompts for routine work, and (v7.4) an
+orchestrator main session that delegates every task to a model-routed subagent.
 Measured, budgeted in CI, and documented in
 [`docs/analysis/v7-performance/`](docs/analysis/v7-performance/README.md).
 Upgrading from v6? See the
@@ -41,7 +41,7 @@ Then, inside Claude Code, spec a feature and let the backlog implement itself
 
 ```
 /spec rate-limit the public REST API   # asks questions, creates rulebook tasks
-/rulebook-driver                        # implements every task, opus review gate
+/rulebook-driver                        # implements every task, fable review gate
 ```
 
 > Install globally with `npm install -g @hivehub/rulebook` to use `rulebook` directly.
@@ -199,15 +199,31 @@ Auto-discovers from `pnpm-workspace.yaml`, `turbo.json`, `nx.json`, `lerna.json`
 
 ## Multi-Agent Workflows
 
-Orchestrated [Claude Code Workflow](https://code.claude.com/docs/en/workflows) scripts are **opt-in** (agents and workflows no longer install by default — native harness agents cover the roles). When installed into `.claude/workflows/`, each fans work across bundled agents with cost-tiered models — `haiku` for read-only steps, `sonnet` for implementation, `opus` for the final review gate.
+**Orchestrator model (v7.4).** The generated rules make the main session an
+orchestrator: it never does the work itself. It plans, then delegates each task
+to one subagent — independent ones in parallel — and reads their reports, not
+the files. Every agent call names its model:
+
+| Model | Use for |
+|-------|---------|
+| **Fable 5.1** | Architecture, complex bugs, code review |
+| **Opus 5.5** | Edits, tests, documentation, refactoring (simple work never goes to Fable) |
+| **Haiku 4.5** | Research, summaries |
+
+Each subagent owns one rulebook task: it checks items off as it goes and drives
+the task through the quality gate to archive. The main session monitors the
+agents, pauses or restarts one that stalls or drifts, reviews each archived
+task, and updates the CHANGELOG. Full protocol: `.rulebook/specs/orchestration.md`.
+
+Orchestrated [Claude Code Workflow](https://code.claude.com/docs/en/workflows) scripts are **opt-in** (agents and workflows no longer install by default — native harness agents cover the roles). When installed into `.claude/workflows/`, each fans work across bundled agents with the same routing — `haiku` for research, `opus` for implementation, tests, and docs, `fable` for design and review gates.
 
 | Workflow | What it does |
 |----------|--------------|
-| `rulebook-driver` | Loops the backlog: next unchecked item → implement (SDD+TDD) → independent **opus** review gate (≤3 rounds) → document → next |
-| `spec-author` | Research → draft proposal + SHALL/MUST spec → **opus** gap-critic returns ranked questions + gaps |
-| `feature-pipeline` | research → architect (opus) → implement → test → **opus** review → document |
-| `bugfix` | root-cause → TDD fix → **opus** quality-gatekeeper verdict (≤2 rounds) |
-| `review-fanout` | Adversarial multi-dimension review of the diff, each finding verified, **opus** synthesis |
+| `rulebook-driver` | Loops the backlog: next unchecked item → implement (SDD+TDD) → independent **fable** review gate (≤3 rounds) → document → next |
+| `spec-author` | Research → draft proposal + SHALL/MUST spec → **fable** gap-critic returns ranked questions + gaps |
+| `feature-pipeline` | research → architect (fable) → implement → test → **fable** review → document |
+| `bugfix` | root-cause → TDD fix → **fable** quality-gatekeeper verdict (≤2 rounds) |
+| `review-fanout` | Adversarial multi-dimension review of the diff, each finding verified by **fable**, **opus** synthesis |
 | `release-gate` | Parallel build / tests+coverage / security / docs → single go/no-go |
 
 The independent reviewers run as fresh subagents with **no developer context** — they see only the `git diff` plus the spec, so the gate is a genuine second opinion.
@@ -227,7 +243,7 @@ The independent reviewers run as fresh subagents with **no developer context** �
 
 ```bash
 rulebook claude                 # apply the recommended setup
-rulebook claude --model opus    # same, but set the default model (default: sonnet)
+rulebook claude --model fable   # same, but set the default model (default: opus)
 ```
 
 It installs the MCP server entry and the Rulebook-specific skills, then layers the v7 `.claude/settings.json` (agents/workflows are opt-in):
@@ -237,7 +253,7 @@ It installs the MCP server entry and the Rulebook-specific skills, then layers t
 | Hook | ONE path-only `PreToolUse` guard protecting task scaffolding — nothing on Stop/UserPromptSubmit/SessionStart, no content regexes |
 | Full-autonomy permissions | `defaultMode: acceptEdits` + broad allow list (Bash/Edit/Write/Agent/WebFetch/…) — ~0 permission prompts for routine work |
 | `statusLine` | project dir + git branch + context meter (`ctx NN%`) |
-| `model` | cost-aware default (`sonnet`) |
+| `model` | cost-aware default (`opus`) |
 
 All settings are **additive and non-clobbering** — existing `permissions.allow`, a user-authored `statusLine`, and an explicit `model` are preserved. Requires Claude Code installed (`~/.claude`); otherwise it no-ops with a notice.
 

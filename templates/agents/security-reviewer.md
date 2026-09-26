@@ -1,6 +1,7 @@
 ---
 name: security-reviewer
-model: haiku
+# v7.4 model routing — fable for architecture/review, opus for edits/tests/docs, haiku for research
+model: fable
 description: Audits dependencies, reviews code for vulnerabilities, and enforces security standards. Use for security reviews and audits.
 tools: Read, Glob, Grep, Bash
 disallowedTools: Write, Edit

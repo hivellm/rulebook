@@ -1,7 +1,7 @@
 ---
 name: perf
 description: Performance analysis, profiling, and optimization
-model: sonnet
+model: opus
 context: fork
 agent: performance-engineer
 ---

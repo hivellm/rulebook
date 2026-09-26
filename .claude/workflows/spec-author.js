@@ -1,13 +1,19 @@
 export const meta = {
   name: 'spec-author',
   description:
-    'Help the user write a rulebook task spec: research the codebase + existing specs, draft a proposal + SHALL/MUST spec with Given/When/Then scenarios, then run an opus gap-critic that returns ranked clarifying questions and detected gaps for the user to answer. Iterates when prior answers are supplied via args.answers.',
+    'Help the user write a rulebook task spec: research the codebase + existing specs, draft a proposal + SHALL/MUST spec with Given/When/Then scenarios, then run a fable gap-critic that returns ranked clarifying questions and detected gaps for the user to answer. Iterates when prior answers are supplied via args.answers.',
   phases: [
     { title: 'Research', model: 'haiku' },
     { title: 'Draft', model: 'opus' },
-    { title: 'Critique', model: 'opus' },
+    { title: 'Critique', model: 'fable' },
   ],
 }
+
+// v7.4 model routing — every agent() call names its model explicitly:
+//   fable = architecture, complex bugs, code review / verification
+//   opus  = edits, tests, documentation, refactoring (never fable for simple work)
+//   haiku = research, discovery, summaries
+// sonnet is not part of the routing — do not reintroduce it.
 
 // args: { topic: string, answers?: Array<{ question: string, answer: string }> }
 // NOTE: workflow subagents are non-interactive — this workflow cannot prompt the
@@ -119,7 +125,7 @@ Identify:
 - GAPS: requirements, constraints, error paths, or edge cases the draft omits.
 - MISSING SCENARIOS: Given/When/Then cases that should exist but are absent.
 Set ready=true ONLY if there are genuinely no open questions and the spec is implementation-ready.`,
-  { label: 'critique', phase: 'Critique', model: 'opus', schema: CRITIQUE_SCHEMA }
+  { label: 'critique', phase: 'Critique', model: 'fable', schema: CRITIQUE_SCHEMA }
 )
 
 return {

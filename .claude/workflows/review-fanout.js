@@ -2,8 +2,14 @@ export const meta = {
   name: 'review-fanout',
   description:
     'Adversarial multi-dimension review of the current git diff (correctness, security, performance, tests). Each finding is independently verified before it survives, then synthesized into a prioritized report.',
-  phases: [{ title: 'Review' }, { title: 'Verify' }, { title: 'Synthesize', model: 'sonnet' }],
+  phases: [{ title: 'Review', model: 'fable' }, { title: 'Verify', model: 'fable' }, { title: 'Synthesize', model: 'opus' }],
 }
+
+// v7.4 model routing — every agent() call names its model explicitly:
+//   fable = architecture, complex bugs, code review / verification
+//   opus  = edits, tests, documentation, refactoring (never fable for simple work)
+//   haiku = research, discovery, summaries
+// sonnet is not part of the routing — do not reintroduce it.
 
 const FINDINGS_SCHEMA = {
   type: 'object',
@@ -40,22 +46,22 @@ const VERDICT_SCHEMA = {
 const DIMENSIONS = [
   {
     key: 'correctness',
-    model: 'sonnet',
+    model: 'fable',
     focus: 'logic errors, broken edge cases, incorrect error handling, and regressions',
   },
   {
     key: 'security',
-    model: 'haiku',
+    model: 'fable',
     focus: 'injection, secret leakage, unsafe deserialization, missing authz/validation, vulnerable patterns',
   },
   {
     key: 'performance',
-    model: 'sonnet',
+    model: 'fable',
     focus: 'N+1 patterns, accidental quadratic work, unnecessary allocations, blocking I/O on hot paths',
   },
   {
     key: 'tests',
-    model: 'sonnet',
+    model: 'fable',
     focus: 'missing test coverage for changed behavior, weak assertions, and untested edge cases',
   },
 ]
@@ -79,7 +85,7 @@ const scopeNote = baseRef
     : 'Review the full current diff.'
 
 // Pipeline: each dimension's findings verify as soon as that dimension finishes —
-// no barrier, so the fast haiku security pass is not blocked by the slower lenses.
+// no barrier, so a fast lens is not blocked by the slower ones.
 const results = await pipeline(
   DIMENSIONS,
   (d) =>
@@ -96,7 +102,7 @@ Run \`${diffCmd}\` to see the changes. Report only issues introduced or exposed 
           `Adversarially verify this ${d.key} finding. Try to REFUTE it. Read the relevant code at ${f.file}. Default to real=false if you cannot concretely confirm the problem.
 Finding: ${f.title}
 Detail: ${f.detail}`,
-          { label: `verify:${d.key}`, phase: 'Verify', model: 'haiku', schema: VERDICT_SCHEMA }
+          { label: `verify:${d.key}`, phase: 'Verify', model: 'fable', schema: VERDICT_SCHEMA }
         ).then((v) => ({ ...f, dimension: d.key, verdict: v }))
       )
     )
@@ -115,7 +121,7 @@ phase('Synthesize')
 const report = await agent(
   `Synthesize a prioritized code-review report from these confirmed findings (already verified as real). Group by severity, give each a one-line fix recommendation, and lead with blockers.
 ${JSON.stringify(confirmed, null, 2)}`,
-  { label: 'synthesize', phase: 'Synthesize', model: 'sonnet' }
+  { label: 'synthesize', phase: 'Synthesize', model: 'opus' }
 )
 
 return { confirmedCount: confirmed.length, confirmed, blocking, report }

@@ -11,6 +11,14 @@ import chalk from 'chalk';
 import { setupClaudeCodeIntegration } from '../../core/claude/claude-mcp.js';
 import { applyClaudeSettings } from '../../core/claude/claude-settings-manager.js';
 
+/**
+ * Model written to .claude/settings.json (`model`) when none is set.
+ * v7.4 routing: Opus handles day-to-day edits, tests, and docs; Fable is
+ * reserved for architecture / complex bugs / review and Haiku for research,
+ * both chosen per agent rather than as the session default.
+ */
+export const DEFAULT_CLAUDE_MODEL = 'opus';
+
 export interface ClaudeSetupOptions {
     /** Cost-aware default model written to settings.json when none is set. */
     model?: string;
@@ -23,7 +31,7 @@ export interface ClaudeSetupOptions {
  */
 export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Promise<void> {
     const cwd = process.cwd();
-    const defaultModel = options.model ?? 'sonnet';
+    const defaultModel = options.model ?? DEFAULT_CLAUDE_MODEL;
 
     try {
         const result = await setupClaudeCodeIntegration(cwd);

@@ -241,10 +241,12 @@ export interface RulebookConfig {
         projectType?: 'game-engine' | 'compiler' | 'web-app' | 'mobile' | 'generic';
         enableAgents?: boolean; // default: true when complexity is large/complex
         enableMemory?: boolean; // default: true — create agent-memory/ dirs
+        // v7.4 routing: fable for architecture / complex bugs / code review,
+        // opus for edits / tests / docs / refactoring, haiku for research.
         modelAssignment?: {
-            core?: string; // default: 'opus'
-            standard?: string; // default: 'sonnet'
-            research?: string; // default: 'haiku'
+            core?: string; // default: 'fable' (architecture, complex bugs, review)
+            standard?: string; // default: 'opus' (edits, tests, docs, refactoring)
+            research?: string; // default: 'haiku' (research, summaries)
         };
     };
     // Reference implementation configuration (v5.0)

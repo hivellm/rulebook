@@ -1,6 +1,7 @@
 ---
 name: tester
-model: sonnet
+# v7.4 model routing — fable for architecture/review, opus for edits/tests/docs, haiku for research
+model: opus
 description: Writes tests, validates coverage, and enforces quality gates. Use after implementation to ensure code quality.
 tools: Read, Glob, Grep, Edit, Write, Bash
 maxTurns: 25

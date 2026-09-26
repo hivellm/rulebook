@@ -1,5 +1,6 @@
 ---
 name: researcher
+# v7.4 model routing — fable for architecture/review, opus for edits/tests/docs, haiku for research
 model: haiku
 description: Analyzes codebases, reads documentation, and gathers context for implementation. Use for exploration and understanding before coding.
 tools: Read, Glob, Grep, Bash

@@ -1,7 +1,7 @@
 ---
 name: build-fix
 description: Diagnose and fix build failures or CI issues
-model: sonnet
+model: opus
 context: fork
 agent: build-engineer
 ---

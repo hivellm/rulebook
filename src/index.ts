@@ -61,6 +61,7 @@ import {
     // Doctor command (v5.3.0)
     doctorCommand,
 } from './cli/commands/index.js';
+import { DEFAULT_CLAUDE_MODEL } from './cli/commands/claude.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -391,7 +392,7 @@ const claudeCommand = program
 claudeCommand
     .command('setup', { isDefault: true })
     .description('Install integrations and apply opinionated, cost-aware settings')
-    .option('--model <model>', 'Default model for settings.json (default: sonnet)')
+    .option('--model <model>', `Default model for settings.json (default: ${DEFAULT_CLAUDE_MODEL})`)
     .option('--typesafe', 'Enable the TypeSafe (Jev) integration (plugin + rule + key check)')
     .action(async (opts: { model?: string; typesafe?: boolean }) => {
         const { claudeSetupCommand } = await import('./cli/commands/claude.js');

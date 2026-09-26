@@ -1,6 +1,7 @@
 ---
 name: architect
-model: opus
+# v7.4 model routing — fable for architecture/review, opus for edits/tests/docs, haiku for research
+model: fable
 description: Makes system architecture decisions, writes ADRs, and analyzes scalability. Use for architectural design and tech debt analysis.
 tools: Read, Glob, Grep, Bash, Write
 maxTurns: 25

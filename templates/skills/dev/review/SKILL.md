@@ -1,7 +1,7 @@
 ---
 name: review
 description: Deep code review of recent changes or specified files
-model: sonnet
+model: fable
 context: fork
 agent: code-reviewer
 ---

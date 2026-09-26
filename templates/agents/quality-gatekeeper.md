@@ -1,7 +1,8 @@
 ---
 name: quality-gatekeeper
 description: "Reviews written or modified code for quality, security, correctness, and completeness, delivering a definitive APPROVED or NEEDS CORRECTION verdict. Use after implementing a feature, fixing a bug, or refactoring — before the work is considered done."
-model: opus
+# v7.4 model routing — fable for architecture/review, opus for edits/tests/docs, haiku for research
+model: fable
 color: purple
 memory: project
 tools: Read, Glob, Grep, Bash

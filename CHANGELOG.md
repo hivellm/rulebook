@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.4.0] - 2026-09-26
+
+### Changed — the main session orchestrates; subagents do the work
+
+Through v7.3 the generated rules left orchestration to the model's choice, and
+in practice the main session did everything itself: slow, and every task
+competed for one context window. From v7.4 the generated `CLAUDE.md`, lean
+`AGENTS.md` and a new on-demand spec, `.rulebook/specs/orchestration.md`, say:
+
+- The main session never does the work itself. Every task — small ones
+  included — is delegated to a subagent, one subagent per task, planned first,
+  independent agents run in parallel, and the main session reads the
+  subagent's report, never the files.
+- Model routing, set explicitly in every agent call. Fable 5.1: architecture,
+  complex bugs, code review. Opus 5.5: edits, tests, documentation,
+  refactoring — never Fable for simple work. Haiku 4.5: research, summaries.
+- Each subagent owns its rulebook task: fills and updates it, checks items as
+  they complete, runs type-check → lint → tests, and archives it. Small fixes
+  without a task come back as a report, no ceremony.
+- The main session monitors progress, pauses or restarts an agent that stalls
+  or drifts (TaskStop / SendMessage / re-spawn with a corrected brief), then
+  reviews the archived task and keeps the CHANGELOG.
+
+The rule is directive-only: no hook enforces or reroutes orchestration, and
+the always-loaded context stays inside the 1600-token budget (other lines were
+tightened without dropping a rule).
+
+### Changed — model routing in shipped agents, workflows and skills
+
+- Agent definitions (`templates/agents/*.md`): architect, code-reviewer,
+  quality-gatekeeper, security-reviewer → `fable`; build-engineer,
+  implementer, performance-engineer, tester, docs-writer, team-lead → `opus`;
+  researcher → `haiku`. The generator's agent registry follows the same table.
+- Workflows (`templates/claude-workflows/*.js`): `sonnet` is gone. Review,
+  verify, design and critique phases run on `fable`; implement, test,
+  document, commit and synthesis phases on `opus`; discover and research on
+  `haiku`. Every `agent()` call names its model, and a header comment in each
+  workflow states the routing.
+- Dev skills (`templates/skills/dev/*/SKILL.md`): architect, review, debug,
+  security-audit, accessibility, api-design, db-design → `fable`; refactor,
+  perf, build-fix, deploy, migrate, docs → `opus`; research stays `haiku`.
+- `rulebook claude` writes `opus` (not `sonnet`) as the default model when
+  none is configured; `--model` still wins. The generated
+  `.claude/rules/mcp-tool-reference.md` no longer says orchestration is
+  "your call".
+- New tests guard the routing table (agents, workflows, skills), the default
+  model, and the directive text; the v6-era "never mandates orchestration"
+  assertion is replaced by one that checks the delegation rule is present and
+  still unenforced by hooks.
+
 ## [7.3.0] - 2026-09-21
 
 ### Added — Tier 1 #7: no OS-level scheduling

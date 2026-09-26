@@ -1,6 +1,7 @@
 ---
 name: code-reviewer
-model: sonnet
+# v7.4 model routing — fable for architecture/review, opus for edits/tests/docs, haiku for research
+model: fable
 description: Reviews code for correctness, maintainability, and adherence to project standards. Use after implementation for quality review.
 tools: Read, Glob, Grep, Bash
 disallowedTools: Write, Edit

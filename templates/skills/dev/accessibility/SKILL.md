@@ -1,7 +1,7 @@
 ---
 name: accessibility
 description: Accessibility audit for WCAG compliance and usability
-model: haiku
+model: fable
 context: fork
 agent: accessibility-reviewer
 ---

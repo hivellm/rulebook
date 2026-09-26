@@ -1,6 +1,7 @@
 ---
 name: build-engineer
-model: sonnet
+# v7.4 model routing — fable for architecture/review, opus for edits/tests/docs, haiku for research
+model: opus
 description: Resolves build failures, CI issues, and dependency problems. Use when builds break or CI fails.
 tools: Read, Glob, Grep, Edit, Write, Bash
 maxTurns: 20

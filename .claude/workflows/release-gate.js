@@ -5,6 +5,12 @@ export const meta = {
   phases: [{ title: 'Checks' }, { title: 'Report' }],
 }
 
+// v7.4 model routing — every agent() call names its model explicitly:
+//   fable = architecture, complex bugs, code review / verification
+//   opus  = edits, tests, documentation, refactoring (never fable for simple work)
+//   haiku = research, discovery, summaries
+// sonnet is not part of the routing — do not reintroduce it.
+
 const GATE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -18,13 +24,13 @@ const GATE_SCHEMA = {
 const GATES = [
   {
     key: 'build',
-    model: 'sonnet',
+    model: 'opus',
     prompt:
       'Run the project type-checker and build (e.g. `npm run type-check` then `npm run build`). pass=true only if both succeed with zero errors. Report the outcome.',
   },
   {
     key: 'tests',
-    model: 'sonnet',
+    model: 'opus',
     prompt:
       'Run the full test suite with coverage (e.g. `npm run test:coverage`). pass=true only if 100% of tests pass AND coverage meets the project threshold (≥95%). Report pass rate and coverage %.',
   },

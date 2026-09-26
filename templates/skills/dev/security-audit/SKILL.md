@@ -1,7 +1,7 @@
 ---
 name: security-audit
 description: Run a security audit on the project (dependencies, secrets, OWASP)
-model: haiku
+model: fable
 context: fork
 agent: security-reviewer
 ---

@@ -8,6 +8,7 @@ import {
     generateGitRules,
     generateCoreRules,
 } from '../src/core/generators/generator.js';
+import { generateMcpReference } from '../src/core/docs/mcp-reference-generator.js';
 import type { ProjectConfig } from '../src/types.js';
 
 /**
@@ -22,6 +23,8 @@ import type { ProjectConfig } from '../src/types.js';
  *   because rulebook blessed `git worktree` with no placement or teardown
  *   rules attached.
  * - Communication clauses (phase13): plain wording and short answers.
+ * - Orchestrator directive (v7.4): the main session delegates every task to a
+ *   model-routed subagent, monitors it, and keeps the CHANGELOG.
  */
 
 const config: ProjectConfig = {
@@ -154,6 +157,97 @@ describe('directive guards', () => {
 
             expect(agentsMd).toMatch(/answers are plain and short/i);
             expect(agentsMd).toMatch(/plain words over jargon/i);
+        });
+    });
+
+    describe('orchestrator directive (v7.4)', () => {
+        it('CLAUDE.md makes the main session an orchestrator with model routing', async () => {
+            const claudeMd = await generateClaudeMd(projectRoot);
+            const section = claudeMd.slice(
+                claudeMd.indexOf('## Orchestration'),
+                claudeMd.indexOf('## Rulebook')
+            );
+
+            expect(section).toMatch(/main session never does the work itself/i);
+            expect(section).toMatch(/delegate each task to one subagent/i);
+            expect(section).toMatch(/model set\s+per call/i);
+            expect(section).toMatch(/Fable 5\.1 architecture, hard bugs, review/);
+            expect(section).toMatch(/Opus 5\.5 edits, tests, docs/);
+            expect(section).toMatch(/never Fable for simple work/);
+            expect(section).toMatch(/Haiku 4\.5 research, summaries/);
+            expect(section).toMatch(/read reports, not files/i);
+            expect(section).toMatch(/archive\s+their task/i);
+            expect(section).toMatch(/pause\/restart stalled agents/i);
+            expect(section).toContain('CHANGELOG');
+            expect(section).toContain('.rulebook/specs/orchestration.md');
+            // The v7.0–v7.3 "your call" line must be gone.
+            expect(claudeMd).not.toMatch(/Rulebook never blocks or\s+mandates orchestration/);
+        });
+
+        it('AGENTS.md (lean) carries the directive and indexes the orchestration spec', async () => {
+            const agentsMd = await generateLeanAgents(config, projectRoot);
+
+            expect(agentsMd).toMatch(/main session never does the work itself/i);
+            expect(agentsMd).toMatch(/one subagent per task/i);
+            expect(agentsMd).toMatch(/read reports, not files/i);
+            expect(agentsMd).toMatch(/subagents archive their task/i);
+            expect(agentsMd).toMatch(/pause\/restart stalled\s+agents/i);
+            expect(agentsMd).toContain('CHANGELOG');
+            expect(agentsMd).toContain(
+                '- `/.rulebook/specs/orchestration.md` — orchestration & model routing'
+            );
+            expect(agentsMd).not.toMatch(/orchestration is the model's choice/i);
+        });
+
+        it('orchestration spec carries the full protocol and is written to specs/', async () => {
+            const spec = await generateCoreRules('orchestration');
+
+            expect(spec.trim().startsWith('<!-- ORCHESTRATION:START -->')).toBe(true);
+            expect(spec.trim().endsWith('<!-- ORCHESTRATION:END -->')).toBe(true);
+            expect(spec).toMatch(/never executes the work itself/i);
+            expect(spec).toMatch(/Delegate every task to a subagent/i);
+            expect(spec).toMatch(/\*\*Fable 5\.1\*\* \| Architecture, complex bugs, code review/);
+            expect(spec).toMatch(/\*\*Opus 5\.5\*\* \| Edits, tests, documentation, refactoring/);
+            expect(spec).toMatch(/\*\*Haiku 4\.5\*\* \| Research, summaries/);
+            expect(spec).toMatch(/Never use Fable for simple work/);
+            expect(spec).toMatch(/Specify the model in every agent call/);
+            expect(spec).toMatch(/One subagent per task/);
+            expect(spec).toMatch(/Run independent subagents in parallel/);
+            expect(spec).toMatch(/Read the subagent's report, never the files/);
+            expect(spec).toMatch(/check each `tasks\.md` item as it is completed/);
+            expect(spec).toMatch(/type-check → lint → tests/);
+            expect(spec).toContain('rulebook_task {action:"archive"}');
+            expect(spec).toMatch(/Pause or restart an agent that stalls/);
+            expect(spec).toMatch(/TaskStop.*SendMessage/s);
+            expect(spec).toMatch(/Updates `CHANGELOG\.md`/);
+            // Small fixes are delegated too, but without the rulebook task cycle.
+            expect(spec).toMatch(/including small ones/);
+            expect(spec).toMatch(/small fix goes\s+out as a brief and comes back as a report/i);
+            expect(spec).toMatch(
+                /When the work has a rulebook task \(multi-session or multi-phase/
+            );
+
+            // generateModularAgents (via the lean generator) writes it unconditionally.
+            await generateLeanAgents({ ...config, lightMode: true }, projectRoot);
+            const written = await fs.readFile(
+                path.join(projectRoot, '.rulebook', 'specs', 'orchestration.md'),
+                'utf-8'
+            );
+            expect(written).toBe(spec.trim());
+        });
+
+        it('MCP tool reference defers to the CLAUDE.md Orchestration section', async () => {
+            await fs.writeFile(
+                path.join(projectRoot, '.mcp.json'),
+                JSON.stringify({ mcpServers: { rulebook: { command: 'rulebook' } } })
+            );
+            const result = await generateMcpReference(projectRoot);
+            expect(result.written).toBe(true);
+
+            const ref = await fs.readFile(result.path, 'utf-8');
+            expect(ref).toMatch(/delegated per the\s+Orchestration section of CLAUDE\.md/);
+            expect(ref).not.toMatch(/your call/i);
+            expect(ref).toContain('| `mcp__rulebook__*` | `.mcp.json` |');
         });
     });
 });

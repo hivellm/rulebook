@@ -1,7 +1,7 @@
 ---
 name: debug
 description: Systematic debugging workflow for bugs and test failures
-model: sonnet
+model: fable
 context: fork
 agent: researcher
 ---
