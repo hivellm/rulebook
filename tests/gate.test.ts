@@ -7,6 +7,9 @@ import {
     buildGateState,
     buildGateQuestions,
     interpretAnswers,
+    OFF_TOPIC_SENTENCE,
+    renderInstruction,
+    resolveProjectDescription,
     runGate,
     stateBytes,
     STATE_CAPS,
@@ -165,6 +168,215 @@ describe('gate state', () => {
     });
 });
 
+describe('project scope', () => {
+    let root: string;
+
+    beforeEach(async () => {
+        root = await fs.mkdtemp(path.join(os.tmpdir(), 'rb-gate-scope-'));
+    });
+
+    afterEach(async () => {
+        await fs.rm(root, { recursive: true, force: true });
+    });
+
+    const DESC = 'CLI that standardises AI agent rules';
+
+    it('description: config wins over package.json', async () => {
+        await fs.writeFile(
+            path.join(root, 'package.json'),
+            JSON.stringify({ description: 'Something else' })
+        );
+        const d = await resolveProjectDescription(root, {
+            gate: { scope: { description: `  ${DESC}\n ` } },
+        });
+        expect(d).toBe(DESC);
+    });
+
+    it('description: package.json before README', async () => {
+        await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ description: DESC }));
+        await fs.writeFile(path.join(root, 'README.md'), 'A README paragraph.\n');
+        expect(await resolveProjectDescription(root, null)).toBe(DESC);
+    });
+
+    it('description: README first prose paragraph, skipping headings, badges, HTML and code', async () => {
+        await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ name: 'x' }));
+        const readme = [
+            '# Rulebook',
+            '',
+            '[![npm](https://img.shields.io/npm/v/x.svg)](https://npm.im/x) ![ci](ci.svg)',
+            '<p align="center"><img src="logo.png"></p>',
+            '```bash',
+            'npx rulebook init',
+            '```',
+            '',
+            'Rulebook   standardises AI',
+            'agent rules ' + 'x'.repeat(500),
+            '',
+            'Second paragraph.',
+        ].join('\n');
+        await fs.writeFile(path.join(root, 'README.md'), readme);
+        const d = await resolveProjectDescription(root, null);
+        expect(d!.startsWith('Rulebook standardises AI agent rules xxx')).toBe(true);
+        expect(d!.length).toBe(STATE_CAPS.description);
+        expect(d).not.toContain('Second paragraph');
+    });
+
+    it('description: a setext heading is not prose', async () => {
+        await fs.writeFile(path.join(root, 'README.md'), 'Rulebook\n========\n\nThe prose.\n');
+        expect(await resolveProjectDescription(root, null)).toBe('The prose.');
+    });
+
+    it('description: none found, unreadable package.json, or scope disabled → null', async () => {
+        expect(await resolveProjectDescription(root, null)).toBeNull();
+        await fs.writeFile(path.join(root, 'package.json'), '{not json');
+        expect(await resolveProjectDescription(root, null)).toBeNull();
+        expect(
+            await resolveProjectDescription(root, {
+                gate: { scope: { enabled: false, description: DESC } },
+            })
+        ).toBeNull();
+    });
+
+    it('asks in_project_scope only when there is a description', () => {
+        const without = buildGateQuestions(buildGateState(sources(), 'hello'));
+        expect(without.in_project_scope).toBeUndefined();
+        expect(Object.keys(without)).toHaveLength(11);
+
+        const state = buildGateState(sources({ projectDescription: DESC }), 'hello');
+        expect(state.project.description).toBe(DESC);
+        const q = buildGateQuestions(state);
+        expect(Object.keys(q)).toHaveLength(12);
+        expect(q.in_project_scope).toMatchObject({
+            type: 'noul',
+            instructions: expect.stringMatching(/`project\.description`/),
+            criteria: { true: expect.any(String), false: expect.any(String) },
+        });
+    });
+
+    it('inProjectScope: true ≥ 0.7, false ≤ 0.3, null in between (undecided) or when not asked', () => {
+        const state = buildGateState(sources({ projectDescription: DESC }), 'hello');
+        const questions = buildGateQuestions(state);
+        const run = (noul: number) =>
+            interpretAnswers(
+                questions,
+                { answers: answersFor(questions, { in_project_scope: { noul } }) as never },
+                state
+            );
+        expect(run(0.92).routing.inProjectScope).toBe(true);
+        expect(run(0.92).undecided).not.toContain('in_project_scope');
+        expect(run(0.05).routing.inProjectScope).toBe(false);
+        const mid = run(0.5);
+        expect(mid.routing.inProjectScope).toBeNull();
+        expect(mid.undecided).toContain('in_project_scope');
+
+        const plain = buildGateState(sources(), 'hello');
+        const q2 = buildGateQuestions(plain);
+        const r2 = interpretAnswers(q2, { answers: answersFor(q2) as never }, plain);
+        expect(r2.routing.inProjectScope).toBeNull();
+        expect(r2.undecided).not.toContain('in_project_scope');
+    });
+
+    it('instruction says off-topic only when inProjectScope is false', () => {
+        const base = {
+            available: true,
+            undecided: [],
+            routing: {
+                kind: 'small-fix' as const,
+                needsTask: false,
+                existingTaskId: null,
+                model: 'opus' as const,
+                agentType: 'implementer' as const,
+                skill: null,
+                parallel: false,
+                needsOperatorDecision: false,
+                inProjectScope: false,
+                risk: { destructiveGit: false, osScheduling: false, secrets: false },
+            },
+        };
+        expect(renderInstruction(base)).toContain(OFF_TOPIC_SENTENCE);
+        expect(
+            renderInstruction({ ...base, routing: { ...base.routing, inProjectScope: null } })
+        ).not.toMatch(/off-topic/i);
+    });
+
+    it('clips the description to 400 characters in the state', () => {
+        const s = buildGateState(sources({ projectDescription: 'd'.repeat(1000) }), 'hi');
+        expect(s.project.description!.length).toBe(STATE_CAPS.description);
+    });
+
+    it('trims the description to 200 before the prompt', () => {
+        const desc = 'd'.repeat(STATE_CAPS.description);
+        const base = stateBytes(buildGateState(sources({ projectDescription: desc }), ''));
+        // Two-byte chars: about 100 bytes over the soft budget with the full description.
+        const n = Math.ceil((STATE_CAPS.softBytes - base + 100) / 2);
+        const prompt = 'é'.repeat(n);
+        const s = buildGateState(sources({ projectDescription: desc }), prompt);
+        expect(s.project.description!.length).toBe(STATE_CAPS.descriptionTrimmed);
+        expect(s.prompt).toBe(prompt);
+        expect(stateBytes(s)).toBeLessThanOrEqual(STATE_CAPS.softBytes);
+    });
+
+    it('stays ≤ 8192 bytes with a long description and prompt', () => {
+        const s = buildGateState(
+            sources({ projectDescription: 'ü'.repeat(1000) }),
+            '😀'.repeat(3000),
+            'n'.repeat(1000)
+        );
+        expect(stateBytes(s)).toBeLessThanOrEqual(STATE_CAPS.hardBytes);
+        expect(s.notes).toBeUndefined();
+        expect(s.project.description!.length).toBe(STATE_CAPS.descriptionTrimmed);
+    });
+
+    it('runGate sends in_project_scope in the one request when package.json has a description', async () => {
+        await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ description: DESC }));
+        const fetchMock = jevFetch({ in_project_scope: { noul: 0.92 } });
+        const r = await runGate({
+            projectRoot: root,
+            prompt: 'add a flag to the CLI',
+            env: KEY_ENV,
+            fetch: fetchMock as never,
+            listTasks: async () => [],
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+        expect(body.state.project.description).toBe(DESC);
+        expect(Object.keys(body.questions)).toContain('in_project_scope');
+        expect(r.routing.inProjectScope).toBe(true);
+    });
+
+    it('runGate omits the question without a description or when gate.scope.enabled is false', async () => {
+        const fetchMock = jevFetch();
+        const none = await runGate({
+            projectRoot: root,
+            prompt: 'x',
+            env: KEY_ENV,
+            fetch: fetchMock as never,
+        });
+        expect(none.routing.inProjectScope).toBeNull();
+
+        await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ description: DESC }));
+        await fs.mkdir(path.join(root, '.rulebook'));
+        await fs.writeFile(
+            path.join(root, '.rulebook', 'rulebook.json'),
+            JSON.stringify({ gate: { scope: { enabled: false } } })
+        );
+        const off = await runGate({
+            projectRoot: root,
+            prompt: 'x',
+            env: KEY_ENV,
+            fetch: fetchMock as never,
+            listTasks: async () => [],
+        });
+        expect(off.routing.inProjectScope).toBeNull();
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        for (const call of fetchMock.mock.calls) {
+            const body = JSON.parse((call[1] as RequestInit).body as string);
+            expect(Object.keys(body.questions)).not.toContain('in_project_scope');
+            expect(body.state.project.description).toBeUndefined();
+        }
+    });
+});
+
 describe('gate interpretation', () => {
     const state = buildGateState(sources(), 'fix it');
     const questions = buildGateQuestions(state);
@@ -196,6 +408,7 @@ describe('gate interpretation', () => {
             skill: 'languages/typescript',
             parallel: false,
             needsOperatorDecision: false,
+            inProjectScope: null,
             risk: { destructiveGit: false, osScheduling: false, secrets: true },
         });
         expect(r.undecided).toEqual([]);

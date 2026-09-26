@@ -287,6 +287,7 @@ describe('directive guards', () => {
                 'skill',
                 'parallel',
                 'needs_operator_decision',
+                'in_project_scope',
                 'risk_destructive_git',
                 'risk_os_scheduling',
                 'risk_secrets',

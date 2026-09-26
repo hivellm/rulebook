@@ -20,8 +20,9 @@ import {
  * One), asks one question per decision the session would otherwise guess,
  * and returns a `routing` to act on. Advisory: it never throws and never
  * blocks — without a key, a network, or when disabled it says so and the
- * CLAUDE.md Orchestration rules apply. The only blocking path is the prompt
- * hook's high-confidence OS-scheduling rule (prompt-hook.ts).
+ * CLAUDE.md Orchestration rules apply. The only blocking paths are the prompt
+ * hook's high-confidence OS-scheduling rule and its opt-in off-topic rule
+ * (`gate.scope.onOffTopic: "block"`, prompt-hook.ts).
  */
 
 export const AGENT_TYPES = [
@@ -74,6 +75,8 @@ export const STATE_CAPS = {
     candidateTitle: 80,
     skills: 20,
     skillsTrimmed: 10,
+    description: 400,
+    descriptionTrimmed: 200,
     softBytes: 6656,
     hardBytes: 8192,
 } as const;
@@ -108,6 +111,8 @@ export interface GateRouting {
     skill: string | null;
     parallel: boolean | null;
     needsOperatorDecision: boolean | null;
+    /** `in_project_scope`; null when undecided or not asked (no project description). */
+    inProjectScope: boolean | null;
     risk: { destructiveGit: boolean; osScheduling: boolean; secrets: boolean };
 }
 
@@ -143,11 +148,14 @@ export interface GateSources {
     skillCandidates: Array<{ id: string; title: string; occurrences?: number }>;
     /** Directory names under `.claude/skills/` (promoted skills). */
     promotedSkills: string[];
+    /** One-line project description for the scope question (resolveProjectDescription). */
+    projectDescription?: string | null;
 }
 
 export interface GateState {
     project: {
         id?: string;
+        description?: string;
         version?: string;
         languages?: string[];
         agentsMode?: string;
@@ -191,8 +199,8 @@ const STATUS_ORDER: Record<string, number> = { 'in-progress': 0, blocked: 1, pen
 
 /**
  * The JSON state Jev sees. Capped per field, then trimmed in a fixed order
- * (notes → skills → task list → skill candidates → open questions → prompt)
- * while it is over the soft budget.
+ * (notes → skills → task list → skill candidates → open questions →
+ * description → prompt) while it is over the soft budget.
  */
 export function buildGateState(sources: GateSources, prompt: string, notes?: string): GateState {
     const cfg = sources.config ?? {};
@@ -205,6 +213,9 @@ export function buildGateState(sources: GateSources, prompt: string, notes?: str
     const state: GateState = {
         project: {
             id: cfg.projectId,
+            ...(sources.projectDescription
+                ? { description: clip(sources.projectDescription, STATE_CAPS.description) }
+                : {}),
             version: cfg.version,
             languages: cfg.languages,
             agentsMode: cfg.agentsMode,
@@ -247,6 +258,14 @@ export function buildGateState(sources: GateSources, prompt: string, notes?: str
         () => (state.tasks.list = state.tasks.list.slice(0, STATE_CAPS.tasksTrimmed)),
         () => (state.skillCandidates = []),
         () => (state.openQuestions = state.openQuestions.slice(0, STATE_CAPS.openQuestionsTrimmed)),
+        () => {
+            if (state.project.description) {
+                state.project.description = clip(
+                    state.project.description,
+                    STATE_CAPS.descriptionTrimmed
+                );
+            }
+        },
         () => (state.prompt = truncatePrompt(prompt, STATE_CAPS.promptTrimmed)),
     ];
     for (const trim of trims) {
@@ -288,7 +307,10 @@ function humanise(skillId: string): string {
     return skillId.replace(/[/_-]+/g, ' ').trim();
 }
 
-/** The 11-question set; `existing_task` and `skill` are omitted for empty lists. */
+/**
+ * The 12-question set; `existing_task` and `skill` are omitted for empty
+ * lists, `in_project_scope` when the state has no project description.
+ */
 export function buildGateQuestions(state: GateState): Record<string, Question> {
     const q: Record<string, Question> = {};
     q.kind = {
@@ -367,6 +389,17 @@ export function buildGateQuestions(state: GateState): Record<string, Question> {
             false: 'The request is unambiguous enough to start',
         },
     };
+    if (state.project.description) {
+        q.in_project_scope = {
+            type: 'noul',
+            instructions:
+                'Is `prompt` about the project in `project.description` (its code, docs, tooling, tasks, or workflow)?',
+            criteria: {
+                true: 'Concerns this project: its code, docs, tests, tooling, tasks, or how work on it is run',
+                false: 'Unrelated to this project: personal errands, general writing, or work for another repository',
+            },
+        };
+    }
     q.risk_destructive_git = {
         type: 'noul',
         instructions:
@@ -396,6 +429,7 @@ function emptyRouting(): GateRouting {
         skill: null,
         parallel: null,
         needsOperatorDecision: null,
+        inProjectScope: null,
         risk: { destructiveGit: false, osScheduling: false, secrets: false },
     };
 }
@@ -486,6 +520,7 @@ export function interpretAnswers(
     routing.skill = choice('skill');
     routing.parallel = flag('parallel');
     routing.needsOperatorDecision = flag('needs_operator_decision');
+    routing.inProjectScope = flag('in_project_scope');
     routing.risk = {
         destructiveGit: flag('risk_destructive_git') === true,
         osScheduling: flag('risk_os_scheduling') === true,
@@ -521,6 +556,10 @@ export function interpretAnswers(
 
 const FALLBACK = 'proceed under CLAUDE.md Orchestration rules.';
 
+/** Instruction sentence for `inProjectScope === false`; the prompt hook swaps it for its own scope action. */
+export const OFF_TOPIC_SENTENCE =
+    'Off-topic for this project — confirm with the operator before acting.';
+
 export function renderInstruction(
     result: Pick<GateResult, 'available' | 'reason' | 'routing' | 'undecided'>,
     derived: string[] = []
@@ -541,6 +580,7 @@ export function renderInstruction(
     const sentences = [`Jev routing: ${parts.join(', ')}.`];
     if (derived.length > 0)
         sentences.push(`Derived by rulebook post-rules: ${derived.join(', ')}.`);
+    if (r.inProjectScope === false) sentences.push(OFF_TOPIC_SENTENCE);
     if (r.needsOperatorDecision === true || r.kind === null || r.kind === 'unclear') {
         sentences.push(
             'Ask the operator before acting (rulebook_task {action:"ask"} when a task exists, otherwise one direct question).'
@@ -569,6 +609,8 @@ export function renderInstruction(
 export interface GateSourceLoaders {
     loadConfig?: () => Promise<Partial<RulebookConfig> | null>;
     listTasks?: () => Promise<TaskLike[]>;
+    /** Defaults to resolveProjectDescription(projectRoot, config). */
+    loadDescription?: () => Promise<string | null>;
 }
 
 /** `<root>/.rulebook/rulebook.json` as-is, or null when missing or unreadable. Never creates it. */
@@ -587,6 +629,77 @@ function bounded<T>(work: Promise<T>, ms: number, fallback: T): Promise<T> {
         timer = setTimeout(() => resolve(fallback), ms);
     });
     return Promise.race([work.catch(() => fallback), timeout]).finally(() => clearTimeout(timer));
+}
+
+/** Lines that are not prose: headings, badges, HTML, tables, thematic breaks. */
+const NON_PROSE = /^(#|\[?!\[|<|\||(\*{3,}|-{3,}|_{3,})$)/;
+
+/**
+ * The first prose paragraph of a Markdown file — headings, badge lines, HTML,
+ * tables, code fences and blank lines are skipped. Null when there is none.
+ */
+function firstProseParagraph(markdown: string): string | null {
+    let inFence = false;
+    let para: string[] = [];
+    for (const raw of markdown.split(/\r?\n/)) {
+        const line = raw.trim();
+        if (/^(```|~~~)/.test(line)) {
+            if (para.length > 0) break;
+            inFence = !inFence;
+            continue;
+        }
+        if (inFence) continue;
+        if (/^(=+|-+)$/.test(line) && para.length > 0) {
+            // Setext underline: the lines above were a heading.
+            para = [];
+            continue;
+        }
+        if (!line || NON_PROSE.test(line)) {
+            if (para.length > 0) break;
+            continue;
+        }
+        para.push(line);
+    }
+    return para.length > 0 ? para.join(' ') : null;
+}
+
+/**
+ * The project description the scope question uses, first hit wins:
+ * `gate.scope.description`, then `package.json` `description`, then the
+ * first prose paragraph of `README.md`. Whitespace collapsed, clipped to 400
+ * characters. Null when nothing is found, on read errors, after
+ * SOURCE_TIMEOUT_MS, or when `gate.scope.enabled` is false.
+ */
+export async function resolveProjectDescription(
+    projectRoot: string,
+    config: Partial<RulebookConfig> | null
+): Promise<string | null> {
+    const scope = config?.gate?.scope;
+    if (scope?.enabled === false) return null;
+    const normalise = (text: unknown): string | null => {
+        if (typeof text !== 'string') return null;
+        const flat = text.replace(/\s+/g, ' ').trim();
+        return flat ? clip(flat, STATE_CAPS.description) : null;
+    };
+    const work = async (): Promise<string | null> => {
+        const configured = normalise(scope?.description);
+        if (configured) return configured;
+        try {
+            const pkg = JSON.parse(await readFile(path.join(projectRoot, 'package.json'), 'utf-8'));
+            const fromPkg = normalise(pkg?.description);
+            if (fromPkg) return fromPkg;
+        } catch {
+            // no package.json, or not JSON
+        }
+        try {
+            return normalise(
+                firstProseParagraph(await readFile(path.join(projectRoot, 'README.md'), 'utf-8'))
+            );
+        } catch {
+            return null;
+        }
+    };
+    return bounded(work(), SOURCE_TIMEOUT_MS, null);
 }
 
 /**
@@ -631,7 +744,11 @@ export async function loadGateSources(
         // no promoted skills
     }
 
-    return { config, tasks, skillCandidates, promotedSkills };
+    const loadDescription =
+        loaders.loadDescription ?? (() => resolveProjectDescription(projectRoot, config));
+    const projectDescription = await loadDescription().catch(() => null);
+
+    return { config, tasks, skillCandidates, promotedSkills, projectDescription };
 }
 
 // ── Decision log ─────────────────────────────────────────────────────────

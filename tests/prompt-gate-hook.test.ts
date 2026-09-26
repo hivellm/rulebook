@@ -7,10 +7,11 @@ import {
     promptHookAnswer,
     promptHookTimeoutSec,
     resolvePromptHookConfig,
+    resolveScopeConfig,
     PROMPT_HOOK_CONTEXT_MAX_BYTES,
     PROMPT_HOOK_HEADER,
 } from '../src/core/typesafe/prompt-hook';
-import type { GateResult } from '../src/core/typesafe/gate';
+import { OFF_TOPIC_SENTENCE, type GateResult } from '../src/core/typesafe/gate';
 import type { Question } from '../src/core/typesafe/client';
 
 const FAKE_KEY = 'ts_fake_hook_key_000';
@@ -77,6 +78,7 @@ function gateResult(
             skill: null,
             parallel: false,
             needsOperatorDecision: false,
+            inProjectScope: null,
             risk: { destructiveGit: false, osScheduling: false, secrets: false },
         },
         undecided: [],
@@ -172,6 +174,127 @@ describe('promptHookAnswer', () => {
         expect(a.additionalContext.startsWith(PROMPT_HOOK_HEADER)).toBe(true);
         expect(a.additionalContext).toMatch(/Warning: secrets/);
         expect(a.additionalContext).not.toContain('�');
+    });
+});
+
+describe('promptHookAnswer — project scope', () => {
+    const DESC =
+        'CLI that standardises AI agent rules across Claude Code, Cursor, Gemini, Codex and more tools';
+    const ASK = { offTopicBelow: 0.15, onOffTopic: 'ask' as const, description: DESC };
+    const BLOCK = { ...ASK, onOffTopic: 'block' as const };
+
+    /** A result whose `in_project_scope` answer is `p` (plus optional risks). */
+    function scoped(p: number, risks: Partial<Record<string, number>> = {}, instruction?: string) {
+        const r = gateResult(
+            risks,
+            instruction ?? `Jev routing: kind=small-fix. ${OFF_TOPIC_SENTENCE}`
+        );
+        r.decisions.push({
+            id: 'in_project_scope',
+            primitive: 'noul',
+            answer: p >= 0.7 ? true : p <= 0.3 ? false : null,
+            probability: p,
+            decided: p >= 0.7 || p <= 0.3,
+        });
+        r.routing.inProjectScope = p >= 0.7 ? true : p <= 0.3 ? false : null;
+        return r;
+    }
+
+    it('resolveScopeConfig: defaults ask / 0.15, clamps to 0–0.3', () => {
+        expect(resolveScopeConfig(null)).toEqual({ offTopicBelow: 0.15, onOffTopic: 'ask' });
+        expect(
+            resolveScopeConfig({ gate: { scope: { offTopicBelow: 0.9, onOffTopic: 'block' } } })
+        ).toEqual({ offTopicBelow: 0.3, onOffTopic: 'block' });
+        expect(resolveScopeConfig({ gate: { scope: { offTopicBelow: -1 } } }).offTopicBelow).toBe(
+            0
+        );
+    });
+
+    it('off-topic ≤ offTopicBelow, ask → context begins with the confirm line', () => {
+        const a = promptHookAnswer(scoped(0.05), { blockThreshold: 0.9 }, ASK);
+        expect(a.kind).toBe('context');
+        if (a.kind !== 'context') return;
+        const lines = a.additionalContext.split('\n');
+        expect(lines[0]).toMatch(
+            /^Confirm with the operator before acting: this prompt looks unrelated to this project "CLI that/
+        );
+        expect(lines[0]).toContain(`"${DESC.slice(0, 80)}…"`);
+        expect(lines[1]).toBe(PROMPT_HOOK_HEADER);
+        // The gate's generic sentence is replaced, not repeated.
+        expect(a.additionalContext).not.toContain(OFF_TOPIC_SENTENCE);
+        expect(a.additionalContext).not.toMatch(/Warning: possibly off-topic/);
+    });
+
+    it('ask mode stays within 1024 bytes and keeps the confirm line first', () => {
+        const a = promptHookAnswer(
+            scoped(0.05, { risk_secrets: 0.9 }, 'Jev routing: ' + 'ü'.repeat(2000)),
+            { blockThreshold: 0.9 },
+            ASK
+        );
+        expect(a.kind).toBe('context');
+        if (a.kind !== 'context') return;
+        expect(Buffer.byteLength(a.additionalContext)).toBeLessThanOrEqual(
+            PROMPT_HOOK_CONTEXT_MAX_BYTES
+        );
+        expect(a.additionalContext.startsWith('Confirm with the operator before acting')).toBe(
+            true
+        );
+        expect(a.additionalContext).toMatch(/Warning: secrets/);
+    });
+
+    it('off-topic ≤ offTopicBelow, block → block naming the project and gate.scope.onOffTopic', () => {
+        const a = promptHookAnswer(scoped(0.05), { blockThreshold: 0.9 }, BLOCK);
+        expect(a.kind).toBe('block');
+        if (a.kind !== 'block') return;
+        expect(a.reason).toContain(DESC.slice(0, 80));
+        expect(a.reason).toContain('gate.scope.onOffTopic');
+    });
+
+    it('borderline (between offTopicBelow and 0.3) → warning line only, even in block mode', () => {
+        for (const scope of [ASK, BLOCK]) {
+            const a = promptHookAnswer(scoped(0.2), { blockThreshold: 0.9 }, scope);
+            expect(a.kind).toBe('context');
+            if (a.kind !== 'context') return;
+            expect(a.additionalContext.startsWith(PROMPT_HOOK_HEADER)).toBe(true);
+            expect(a.additionalContext).toMatch(
+                /Warning: possibly off-topic for this project .*p=0\.20/
+            );
+            expect(a.additionalContext).not.toMatch(/Confirm with the operator/i);
+        }
+    });
+
+    it('on-topic or undecided scope → plain routing', () => {
+        for (const p of [0.92, 0.5]) {
+            const a = promptHookAnswer(
+                scoped(p, {}, 'Jev routing: x.'),
+                { blockThreshold: 0.9 },
+                BLOCK
+            );
+            expect(a).toEqual({
+                kind: 'context',
+                additionalContext: `${PROMPT_HOOK_HEADER}\nJev routing: x.`,
+            });
+        }
+    });
+
+    it('no description (no scope argument) → never blocks or asks on scope', () => {
+        const a = promptHookAnswer(scoped(0.01), { blockThreshold: 0.9 });
+        expect(a.kind).toBe('context');
+        if (a.kind !== 'context') return;
+        expect(a.additionalContext.startsWith(PROMPT_HOOK_HEADER)).toBe(true);
+        expect(a.additionalContext).not.toMatch(/Confirm with the operator before acting:/);
+    });
+
+    it('an OS-scheduling block still wins over a scope block', () => {
+        const a = promptHookAnswer(
+            scoped(0.01, { risk_os_scheduling: 0.95 }),
+            { blockThreshold: 0.9 },
+            BLOCK
+        );
+        expect(a.kind).toBe('block');
+        if (a.kind !== 'block') return;
+        expect(a.reason).toMatch(/OS-level scheduling/);
+        expect(a.reason).not.toContain('gate.scope.onOffTopic');
     });
 });
 
@@ -342,6 +465,88 @@ describe('rulebook hook prompt-gate', () => {
         expect(JSON.parse(raw.trim()).source).toBe('hook');
         expect(raw).not.toContain('secret prompt text');
         expect(raw).not.toContain(FAKE_KEY);
+    });
+
+    async function writeDescription(description: string) {
+        await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({ description }));
+    }
+
+    it('off-topic prompt, ask mode (default) → context begins with the confirm line', async () => {
+        await writeDescription('CLI that standardises AI agent rules');
+        const fetchMock = jevFetch({ in_project_scope: { noul: 0.05 } });
+        const { code, lines } = await run('write me a cover letter for a marketing job', {
+            fetch: fetchMock,
+        });
+        expect(code).toBe(0);
+        const out = JSON.parse(lines[0]);
+        expect(out.decision).toBeUndefined();
+        const ctx: string = out.hookSpecificOutput.additionalContext;
+        expect(ctx).toMatch(
+            /^Confirm with the operator before acting: this prompt looks unrelated to this project "CLI that standardises AI agent rules"/
+        );
+        expect(Buffer.byteLength(ctx)).toBeLessThanOrEqual(1024);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+        expect(body.state.project.description).toBe('CLI that standardises AI agent rules');
+    });
+
+    it('off-topic prompt, block mode → decision block naming gate.scope.onOffTopic', async () => {
+        await writeDescription('CLI that standardises AI agent rules');
+        await writeConfig({ gate: { scope: { onOffTopic: 'block' } } });
+        const { code, lines } = await run('write me a cover letter', {
+            fetch: jevFetch({ in_project_scope: { noul: 0.05 } }),
+        });
+        expect(code).toBe(0);
+        const out = JSON.parse(lines[0]);
+        expect(out.decision).toBe('block');
+        expect(out.reason).toContain('CLI that standardises AI agent rules');
+        expect(out.reason).toContain('gate.scope.onOffTopic');
+    });
+
+    it('borderline scope (0.2) → warning line only, no block', async () => {
+        await writeDescription('CLI that standardises AI agent rules');
+        await writeConfig({ gate: { scope: { onOffTopic: 'block' } } });
+        const { lines } = await run('tidy my desktop', {
+            fetch: jevFetch({ in_project_scope: { noul: 0.2 } }),
+        });
+        const out = JSON.parse(lines[0]);
+        expect(out.decision).toBeUndefined();
+        const ctx: string = out.hookSpecificOutput.additionalContext;
+        expect(ctx.startsWith('Jev routing (rulebook prompt hook)')).toBe(true);
+        expect(ctx).toMatch(/Warning: possibly off-topic/);
+        expect(ctx).not.toMatch(/confirm with the operator/i);
+    });
+
+    it('OS-scheduling block wins over an off-topic block', async () => {
+        await writeDescription('CLI that standardises AI agent rules');
+        await writeConfig({ gate: { scope: { onOffTopic: 'block' } } });
+        const { lines } = await run('add a crontab entry for my home backup', {
+            fetch: jevFetch({
+                in_project_scope: { noul: 0.05 },
+                risk_os_scheduling: { noul: 0.95 },
+            }),
+        });
+        const out = JSON.parse(lines[0]);
+        expect(out.decision).toBe('block');
+        expect(out.reason).toMatch(/OS-level scheduling/);
+    });
+
+    it('no project description → the scope question is not sent and nothing blocks on scope', async () => {
+        await writeConfig({ gate: { scope: { onOffTopic: 'block' } } });
+        const fetchMock = jevFetch({ in_project_scope: { noul: 0.01 } });
+        const { lines } = await run('write me a cover letter', { fetch: fetchMock });
+        const out = JSON.parse(lines[0]);
+        expect(out.decision).toBeUndefined();
+        expect(out.hookSpecificOutput.additionalContext).not.toMatch(/off-topic|unrelated/i);
+        const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+        expect(Object.keys(body.questions)).not.toContain('in_project_scope');
+    });
+
+    it('Jev unavailable (no key) with a description → no output', async () => {
+        await writeDescription('CLI that standardises AI agent rules');
+        const { code, lines } = await run('write me a cover letter', { env: {}, fetch: vi.fn() });
+        expect(code).toBe(0);
+        expect(lines).toEqual([]);
     });
 
     it('parseHookInput accepts only JSON objects', () => {

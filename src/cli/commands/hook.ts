@@ -1,6 +1,10 @@
 import type { RulebookConfig } from '../../types.js';
-import { readConfigFile, runGate } from '../../core/typesafe/gate.js';
-import { promptHookAnswer, resolvePromptHookConfig } from '../../core/typesafe/prompt-hook.js';
+import { readConfigFile, resolveProjectDescription, runGate } from '../../core/typesafe/gate.js';
+import {
+    promptHookAnswer,
+    resolvePromptHookConfig,
+    resolveScopeConfig,
+} from '../../core/typesafe/prompt-hook.js';
 
 /**
  * `rulebook hook <event>` — entry point for the Claude Code hooks rulebook
@@ -53,7 +57,8 @@ export interface HookCommandOptions {
 /**
  * UserPromptSubmit: run the Jev entry gate on the prompt and hand the routing
  * to the model as `additionalContext`, or block a high-confidence OS
- * scheduling request. The gate call is capped at `gate.promptHook.deadlineMs`.
+ * scheduling request (or an off-topic one, under `gate.scope.onOffTopic:
+ * "block"`). The gate call is capped at `gate.promptHook.deadlineMs`.
  */
 async function promptGate(input: HookInput, ctx: HookContext): Promise<object | null> {
     const cfg = resolvePromptHookConfig(ctx.config);
@@ -65,6 +70,8 @@ async function promptGate(input: HookInput, ctx: HookContext): Promise<object | 
     const expired = new Promise<null>((resolve) => {
         timer = setTimeout(() => resolve(null), cfg.deadlineMs);
     });
+    // Read once: the description Jev sees is the one the scope lines quote.
+    let description: string | null = null;
     const gate = runGate({
         projectRoot: ctx.projectRoot,
         prompt,
@@ -72,6 +79,8 @@ async function promptGate(input: HookInput, ctx: HookContext): Promise<object | 
         fetch: ctx.fetch,
         deadlineMs: cfg.deadlineMs,
         loadConfig: async () => ctx.config,
+        loadDescription: async () =>
+            (description = await resolveProjectDescription(ctx.projectRoot, ctx.config)),
         source: 'hook',
     });
     // runGate honours the deadline itself; the race is the backstop for a
@@ -79,7 +88,11 @@ async function promptGate(input: HookInput, ctx: HookContext): Promise<object | 
     const result = await Promise.race([gate, expired]).finally(() => clearTimeout(timer));
     if (!result) return null;
 
-    const answer = promptHookAnswer(result, cfg);
+    const answer = promptHookAnswer(
+        result,
+        cfg,
+        description ? { ...resolveScopeConfig(ctx.config), description } : undefined
+    );
     switch (answer.kind) {
         case 'block':
             return { decision: 'block', reason: answer.reason };

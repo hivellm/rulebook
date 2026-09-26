@@ -35,9 +35,10 @@ under "Jev routing (rulebook prompt hook)": act on that routing and do not call
 the gate again. Only when no hook routing is in context, send the prompt —
 verbatim — through `rulebook_gate {prompt, notes?}` yourself. Either way,
 rulebook sends Jev (TypeSafe's System One model) a short project description
-(config, tasks, open questions, installed skills, subagent types, the routing
-table in section 2) plus the prompt, and asks one question per decision the
-main session would otherwise guess:
+(config; a one-line summary from `gate.scope.description`, else `package.json`,
+else the README's first prose paragraph; tasks, open questions, installed
+skills, subagent types, the routing table in section 2) plus the prompt, and
+asks one question per decision the main session would otherwise guess:
 
 | Decision | Question | Routing field |
 |----------|----------|---------------|
@@ -49,6 +50,7 @@ main session would otherwise guess:
 | `skill` | Which installed skill applies? (omitted when none are installed) | `skill` |
 | `parallel` | Does it split into independent parts with disjoint files? | `parallel` |
 | `needs_operator_decision` | Does it leave an outcome-changing choice only the operator can make? | `needsOperatorDecision` |
+| `in_project_scope` | Is it about this project? (omitted when nothing describes the project) | `inProjectScope` |
 | `risk_destructive_git` | Does it imply a destructive git operation? | `risk.destructiveGit` |
 | `risk_os_scheduling` | Does it imply OS-level scheduling? | `risk.osScheduling` |
 | `risk_secrets` | Does it involve API keys, tokens, passwords, or `.env` files? | `risk.secrets` |
@@ -73,6 +75,8 @@ Act on `routing` directly:
 - `parallel` — true: split into independent subagents with disjoint files.
 - `needsOperatorDecision` — true: ask before acting (`rulebook_task
   {action:"ask"}` when a task exists; otherwise one direct question).
+- `inProjectScope` — false: the prompt looks off-topic for this project;
+  confirm with the operator before acting.
 - `risk.destructiveGit` / `risk.osScheduling` / `risk.secrets` — true: the
   Tier 1 prohibitions (destructive git, OS-level scheduling) and the rule never
   to read, print, or log secrets apply. Refuse the step, or get explicit
@@ -86,9 +90,13 @@ advisory — it never blocks. Call it once per operator prompt, from the main
 session only: subagents do not call the gate; they receive `routing` in their
 brief. Disable it with `RULEBOOK_GATE=off`.
 
-The prompt hook has one blocking case: Jev puts `risk_os_scheduling` at or
+The prompt hook always blocks one case: Jev puts `risk_os_scheduling` at or
 above `gate.promptHook.blockThreshold` (default 0.9) — OS-level scheduling is
-never allowed — and the prompt stops with a reason. Destructive git and secrets
+never allowed — and the prompt stops with a reason. An off-topic prompt
+(`in_project_scope` at or below `gate.scope.offTopicBelow`, default 0.15)
+follows `gate.scope.onOffTopic`: `ask` (default) opens the context with a line
+to confirm with the operator before acting, `block` stops the prompt; above
+that and up to 0.3 it is only a warning line. Destructive git and secrets
 never block there (the operator's own prompt is the authorization); they, and
 any risk from 0.5 up that does not block, arrive as warning lines in the
 context. The hook is fail-open: no key, gate disabled, timeout

@@ -308,7 +308,7 @@ CLI equivalents: `rulebook learn promote <id> skill`, `rulebook skills list --ca
 
 ## Entry gate (v7.4, `rulebook_gate`)
 
-The main session calls `rulebook_gate` first with every operator prompt. Rulebook sends Jev (TypeSafe's System One model) one request: a JSON description of the project plus the prompt, and 11 questions — one per decision the session would otherwise guess. The answers come back as a `routing` to act on. The gate is advisory: it never throws and never blocks, and it is called once per operator prompt, never by subagents.
+The main session calls `rulebook_gate` first with every operator prompt. Rulebook sends Jev (TypeSafe's System One model) one request: a JSON description of the project plus the prompt, and up to 12 questions — one per decision the session would otherwise guess. The answers come back as a `routing` to act on. The gate is advisory: it never throws and never blocks, and it is called once per operator prompt, never by subagents.
 
 | Input | Meaning |
 |-------|---------|
@@ -316,9 +316,11 @@ The main session calls `rulebook_gate` first with every operator prompt. Ruleboo
 | `notes` (optional) | what you want decided |
 | `projectId` (optional) | workspace project override |
 
-**What Jev sees** (`stateBytes` reports the size, at most 8 KB): project id/version/languages/agents mode/task backend from `rulebook.json`; the active task and up to 15 tasks (titles ≤ 60 chars); up to 5 open decision requests; up to 5 skill candidates; up to 20 installed skills (enabled ids plus `.claude/skills/<dir>`); the eight subagent types; the model routing table; the prompt (≤ 4096 chars, then `[…truncated by rulebook]`) and notes (≤ 1024). Over 6.5 KB, rulebook drops notes, then trims skills to 10, tasks to 8, skill candidates, open questions to 2, and the prompt to 2048 chars, in that order.
+**What Jev sees** (`stateBytes` reports the size, at most 8 KB): project id/version/languages/agents mode/task backend from `rulebook.json`; a one-line project description (≤ 400 chars, below); the active task and up to 15 tasks (titles ≤ 60 chars); up to 5 open decision requests; up to 5 skill candidates; up to 20 installed skills (enabled ids plus `.claude/skills/<dir>`); the eight subagent types; the model routing table; the prompt (≤ 4096 chars, then `[…truncated by rulebook]`) and notes (≤ 1024). Over 6.5 KB, rulebook drops notes, then trims skills to 10, tasks to 8, skill candidates, open questions to 2, the project description to 200 chars, and the prompt to 2048 chars, in that order.
 
-**Questions**: `kind`, `needs_task`, `existing_task` (omitted when there are no tasks), `model`, `agent`, `skill` (omitted when no skills are installed), `parallel`, `needs_operator_decision`, `risk_destructive_git`, `risk_os_scheduling`, `risk_secrets`.
+**Questions**: `kind`, `needs_task`, `existing_task` (omitted when there are no tasks), `model`, `agent`, `skill` (omitted when no skills are installed), `parallel`, `needs_operator_decision`, `in_project_scope` (omitted when there is no project description), `risk_destructive_git`, `risk_os_scheduling`, `risk_secrets`.
+
+**Project scope**: `in_project_scope` asks whether the prompt is about the project in `project.description` (its code, docs, tooling, tasks, or workflow), in the same single request. The description comes from the first source that has one: `gate.scope.description` in `rulebook.json`, then `description` in `package.json`, then the first prose paragraph of `README.md` (headings, badge lines, HTML, tables and code fences are skipped); whitespace is collapsed and it is clipped to 400 chars. A missing or unreadable source counts as none. With no description — or with `gate.scope.enabled: false` — the question is not asked and `routing.inProjectScope` is `null`, exactly as before. Otherwise `routing.inProjectScope` is `true` at `≥ 0.7`, `false` at `≤ 0.3` (the instruction then says "Off-topic for this project — confirm with the operator before acting."), and `null` in between, listed in `undecided`.
 
 **Thresholds**: a choice is decided at `confidence ≥ 0.6`; a yes/no at `≥ 0.7` (true) or `≤ 0.3` (false), undecided in between; a risk flag is true at `≥ 0.5` and never undecided. Undecided fields are `null` in `routing` and listed in `undecided`. Post-rules: `small-fix` ⇒ `needsTask:false`; a decided existing task ⇒ `needsTask:true`; `answer-to-open-question` with no decided task picks the task owning the first open question; an undecided `model` with a decided agent follows the routing table (architect/code-reviewer/security-reviewer → fable, researcher → haiku, else opus).
 
@@ -326,7 +328,7 @@ The main session calls `rulebook_gate` first with every operator prompt. Ruleboo
 { "success": true, "available": true, "model": "jev-1.13.0",
   "routing": { "kind": "task-work", "needsTask": true, "existingTaskId": "phase1_add-auth",
                "model": "opus", "agentType": "implementer", "skill": "languages/typescript",
-               "parallel": false, "needsOperatorDecision": false,
+               "parallel": false, "needsOperatorDecision": false, "inProjectScope": true,
                "risk": { "destructiveGit": false, "osScheduling": false, "secrets": false } },
   "undecided": [], "decisions": [ { "id": "kind", "primitive": "choice", "answer": "task_work",
                                     "probability": 0.91, "confidence": 0.89, "decided": true } ],
@@ -366,7 +368,9 @@ The entry is identified by the `jev-gate` signature: it is upserted once (a seco
 
 **What the model sees**: `{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"…"}}`, where the context (at most 1024 bytes) is the line `Jev routing (rulebook prompt hook) — do not call rulebook_gate again for this prompt`, the gate's `instruction`, and one warning line per risk flag at or above 0.5 that does not block.
 
-**Block rule**: only when Jev is available and `risk_os_scheduling` is at or above `gate.promptHook.blockThreshold` does the hook answer `{"decision":"block","reason":…}` — OS-level scheduling is never allowed (Tier 1); the reason names the rule and how to turn the hook off. Destructive git and secrets never block here: the operator's own prompt is the authorization, so they become warnings that point to the Git safety and secrets rules. The MCP tool and `rulebook gate` never block.
+**Block rule**: when Jev is available and `risk_os_scheduling` is at or above `gate.promptHook.blockThreshold`, the hook answers `{"decision":"block","reason":…}` — OS-level scheduling is never allowed (Tier 1); the reason names the rule and how to turn the hook off. Destructive git and secrets never block here: the operator's own prompt is the authorization, so they become warnings that point to the Git safety and secrets rules. The MCP tool and `rulebook gate` never block.
+
+**Off-topic rule** (only when the project has a description): when `in_project_scope` is at or below `gate.scope.offTopicBelow`, the hook applies `gate.scope.onOffTopic`. `ask` (default) keeps the prompt and makes the first context line `Confirm with the operator before acting: this prompt looks unrelated to this project "<first 80 chars of the description>" (Jev in_project_scope p=…)`; `block` answers `{"decision":"block","reason":…}` with a reason that quotes the description and names `gate.scope.onOffTopic`. Above `offTopicBelow` and up to 0.3 the context only gains a `Warning: possibly off-topic …` line. In all three cases the hook's line replaces the gate's generic off-topic sentence. The OS-scheduling block is checked first and wins.
 
 **Config** (`.rulebook/rulebook.json`):
 
@@ -375,6 +379,10 @@ The entry is identified by the `jev-gate` signature: it is upserted once (a seco
 | `gate.promptHook.enabled` | `true` | install and run the hook; always off when `integrations.typesafe.enabled` is `false` |
 | `gate.promptHook.deadlineMs` | `5000` | deadline for the whole gate call inside the hook, clamped to 1000–8500 ms; the settings `timeout` is `ceil(deadlineMs / 1000) + 3` seconds |
 | `gate.promptHook.blockThreshold` | `0.9` | `risk_os_scheduling` probability that blocks, clamped to 0.5–1 |
+| `gate.scope.enabled` | `true` | ask `in_project_scope` when a description exists; `false` never asks it |
+| `gate.scope.description` | — | project description for the scope question; overrides `package.json` and `README.md` |
+| `gate.scope.offTopicBelow` | `0.15` | `in_project_scope` probability at or below which `onOffTopic` applies, clamped to 0–0.3 |
+| `gate.scope.onOffTopic` | `ask` | `ask`: confirm-with-the-operator line first in the context; `block`: stop the prompt |
 
 **Fail-open**: no key, `RULEBOOK_GATE=off`, TypeSafe opted out, the hook disabled, a timeout, a network or HTTP error, a bad response, unreadable or non-JSON stdin, an empty prompt, a missing CLI, or any thrown error → exit 0 with no output, and the prompt goes through unchanged. The hook always exits 0.
 

@@ -105,6 +105,29 @@ The gate above was advisory: the main session had to remember to call
   one blocking case and fail-open behaviour. Two wording trims keep the
   always-loaded context inside 1600 tokens.
 
+### Added — the gate asks whether a prompt belongs to this project
+
+The gate routed every prompt but never asked whether it was about this
+project at all, so an unrelated request still got a task, a subagent and a
+model.
+
+- A one-line project description joins the gate state: `gate.scope.description`
+  in `rulebook.json`, else `package.json` `description`, else the first prose
+  paragraph of `README.md`; clipped to 400 chars (trimmed to 200, before the
+  prompt, when the state is over budget). No description → nothing changes.
+- New yes/no question `in_project_scope` in the same single Jev request (up to
+  12 questions) and routing field `inProjectScope` (true ≥ 0.7, false ≤ 0.3,
+  else null). The instruction says "Off-topic for this project — confirm with
+  the operator before acting." when it is false; `rulebook gate` shows an
+  "in scope" row.
+- Prompt hook: `in_project_scope` ≤ `gate.scope.offTopicBelow` (default 0.15,
+  clamped 0–0.3) applies `gate.scope.onOffTopic` — `ask` (default) opens the
+  context with a confirm-with-the-operator line; `block` stops the prompt with
+  a reason quoting the description and naming the key. Up to 0.3 it is only a
+  warning line. The OS-scheduling block still wins.
+- Config `gate.scope` (`enabled`, `description`, `offTopicBelow`,
+  `onOffTopic`); orchestration spec section 3 gains the table row.
+
 ### Changed — TypeSafe ships by default
 
 The v7.3 opt-in prompt is gone: `rulebook init`, `update` and `claude` enable

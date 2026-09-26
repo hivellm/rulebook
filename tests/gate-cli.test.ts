@@ -76,6 +76,25 @@ describe('rulebook gate CLI', () => {
         expect(out).toMatch(/Jev gate — available \(jev-1\.13\.0/);
         expect(out).toMatch(/kind\s+small-fix/);
         expect(out).toMatch(/→ Jev routing:/);
+        // No project description → the scope question was not asked.
+        expect(out).toMatch(/in scope\s+—/);
+    });
+
+    it('shows the "in scope" row when the project has a description', async () => {
+        await fs.writeFile(
+            path.join(root, 'package.json'),
+            JSON.stringify({ description: 'CLI that standardises AI agent rules' })
+        );
+        await gateCommand('write me a cover letter', {
+            cwd: root,
+            env: { TYPESAFE_API_KEY: FAKE_KEY },
+            fetch: jevFetch() as never,
+            log,
+        });
+        const out = lines.join('\n');
+        // The mock answers every yes/no question with 0.05 → off-topic.
+        expect(out).toMatch(/in scope\s+no/);
+        expect(out).toMatch(/Off-topic for this project — confirm with the operator/);
     });
 
     it('without a key: unavailable, instructions always printed, exit 0', async () => {

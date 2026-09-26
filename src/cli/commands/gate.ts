@@ -107,6 +107,10 @@ function renderResult(r: GateResult, log: (line: string) => void): void {
             ['skill', rt.skill ?? '—'],
             ['parallel', yn(rt.parallel)],
             ['operator decision', yn(rt.needsOperatorDecision)],
+            [
+                'in scope',
+                r.decisions.some((d) => d.id === 'in_project_scope') ? yn(rt.inProjectScope) : '—',
+            ],
             ['risk', risks.length > 0 ? risks.join(', ') : 'none'],
             ['undecided', r.undecided.length > 0 ? r.undecided.join(', ') : '—'],
         ];
