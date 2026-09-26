@@ -12,7 +12,7 @@ import {
     writeFileSync,
 } from 'fs';
 import { dirname, join, resolve } from 'path';
-import { z } from 'zod';
+import { z } from 'zod/v3'; // same type copy as the MCP SDK — see tools/context.ts
 import { ConfigManager } from '../core/state/config-manager.js';
 import { SkillsManager, getDefaultTemplatesPath } from '../core/skills/skills-manager.js';
 import { resolveTaskBackend } from '../core/tasks/task-manager.js';

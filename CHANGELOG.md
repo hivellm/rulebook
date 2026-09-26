@@ -213,6 +213,16 @@ set. The key itself is never written by rulebook.
   `rulebook gate` log exactly as before. Listing tasks no longer creates
   `.rulebook/tasks` or `.rulebook/archive` (a legacy archive still migrates).
 
+### Security
+
+- `@modelcontextprotocol/sdk` 1.22.0 → 1.26.0, the first release outside all
+  three high-severity advisories npm audit reported: GHSA-345p-7cg4-v4c7
+  (cross-client data leak via shared server/transport reuse, CVSS 7.1),
+  GHSA-w48q-cv73-mx4w (DNS-rebinding protection off by default) and
+  GHSA-8r9q-7v3j-jr4g (ReDoS). The MCP modules now import `zod/v3`, the same
+  type declarations the SDK uses; bare `zod` resolved to a second copy and
+  made `tsc` run out of memory on every `registerTool` call.
+
 ### Changed — model routing in shipped agents, workflows and skills
 
 - Agent definitions (`templates/agents/*.md`): architect, code-reviewer,

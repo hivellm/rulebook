@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3'; // same type copy as the MCP SDK — see tools/context.ts
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ToolContext } from './context.js';
 
