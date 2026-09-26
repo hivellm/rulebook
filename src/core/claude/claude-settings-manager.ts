@@ -25,6 +25,9 @@ import { PROMPT_HOOK_DEFAULTS, promptHookTimeoutSec } from '../typesafe/prompt-h
  *   reverses F-002 ("zero hot-path hooks") on purpose: it is fail-open, bounded
  *   by a deadline plus a settings `timeout`, and blocks only a high-confidence
  *   OS-scheduling request. It still never denies or reroutes orchestration.
+ * - v7.4: one opt-in PreToolUse hook (`jev-gate.sh tool`) that asks Jev about
+ *   risky tool calls after cheap deterministic checks. Fail-open, bounded by a
+ *   deadline plus a settings `timeout`; answers deny/ask, never allow.
  * - The full-autonomy permission profile (F-011): `defaultMode: acceptEdits`
  *   plus a broad allow list so the model never stalls on permission prompts.
  *   Rulebook only ADDS rules and only sets defaultMode when absent — user
@@ -53,6 +56,11 @@ export interface ClaudeSettingsDesire {
     jevPromptGate?: boolean;
     /** Deadline the prompt hook runs with (`gate.promptHook.deadlineMs`); sets its `timeout`. Default 5000. */
     jevPromptGateDeadlineMs?: number;
+    /**
+     * v7.4: install the opt-in PreToolUse tool gate (`.claude/hooks/jev-gate.sh
+     * tool`) with this matcher and `timeout` (seconds). Absent removes it.
+     */
+    jevToolGate?: { matcher: string; timeoutSec: number };
     /** Apply the full-autonomy permission profile (v7 default). */
     fullAutonomyPermissions?: boolean;
     /** Set CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 (feature enable, never enforcement). */
@@ -120,9 +128,15 @@ export const GUARD_SCRIPT = 'protect-task-scaffolding.sh';
 export const OS_SCHEDULING_GUARD_SIGNATURE = 'no-os-scheduling';
 export const OS_SCHEDULING_GUARD_SCRIPT = 'no-os-scheduling.sh';
 export const OS_SCHEDULING_GUARD_MATCHER = 'Bash|Edit|Write';
-/** v7.4: Jev gate hook wrapper (UserPromptSubmit `prompt`). */
-export const JEV_GATE_SIGNATURE = 'jev-gate';
+/**
+ * v7.4: Jev gate hook wrapper. One script, two entries told apart by the
+ * argument: `jev-gate.sh prompt` (UserPromptSubmit) and `jev-gate.sh tool`
+ * (PreToolUse). Each signature matches only its own entry, so toggling one
+ * never strips the other.
+ */
 export const JEV_GATE_SCRIPT = 'jev-gate.sh';
+export const JEV_GATE_SIGNATURE = `${JEV_GATE_SCRIPT} prompt`;
+export const JEV_TOOL_GATE_SIGNATURE = `${JEV_GATE_SCRIPT} tool`;
 
 /**
  * Every hook signature rulebook has ever wired. All are removed on sync
@@ -178,7 +192,7 @@ export async function applyClaudeSettings(
     if (desire.osSchedulingGuard) {
         await installGuardScript(projectRoot, OS_SCHEDULING_GUARD_SCRIPT);
     }
-    if (desire.jevPromptGate) {
+    if (desire.jevPromptGate || desire.jevToolGate) {
         await installGuardScript(projectRoot, JEV_GATE_SCRIPT);
     }
 
@@ -205,6 +219,7 @@ export async function applyClaudeSettings(
         removeHook(existing.hooks, event, GUARD_SIGNATURE);
         removeHook(existing.hooks, event, OS_SCHEDULING_GUARD_SIGNATURE);
         removeHook(existing.hooks, event, JEV_GATE_SIGNATURE);
+        removeHook(existing.hooks, event, JEV_TOOL_GATE_SIGNATURE);
     }
 
     // Optional guard 1 (PreToolUse Edit|Write, path-only): task scaffolding.
@@ -242,6 +257,20 @@ export async function applyClaudeSettings(
             JEV_GATE_SIGNATURE,
             `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${JEV_GATE_SCRIPT} prompt`,
             promptHookTimeoutSec(desire.jevPromptGateDeadlineMs ?? PROMPT_HOOK_DEFAULTS.deadlineMs)
+        );
+    }
+
+    // Opt-in PreToolUse tool gate, after the guard entries: Claude Code runs
+    // matching hooks in parallel, so the wrapper runs the OS-scheduling guard
+    // itself before asking Jev.
+    if (desire.jevToolGate) {
+        upsertHook(
+            existing.hooks,
+            'PreToolUse',
+            desire.jevToolGate.matcher,
+            JEV_TOOL_GATE_SIGNATURE,
+            `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${JEV_GATE_SCRIPT} tool`,
+            desire.jevToolGate.timeoutSec
         );
     }
 
@@ -317,9 +346,10 @@ function upsertHook(
 }
 
 /**
- * Remove only the Jev prompt-gate entry from an existing settings.json,
- * leaving everything else as it is. Used when TypeSafe is turned off after
- * settings were applied. Returns whether the file changed.
+ * Remove only the Jev gate entries (prompt hook and tool gate) from an
+ * existing settings.json, leaving everything else as it is. Used when
+ * TypeSafe is turned off after settings were applied. Returns whether the
+ * file changed.
  */
 export async function removeJevPromptGate(projectRoot: string): Promise<boolean> {
     const settingsPath = getClaudeSettingsPath(projectRoot);
@@ -333,7 +363,10 @@ export async function removeJevPromptGate(projectRoot: string): Promise<boolean>
     }
     if (!settings.hooks) return false;
     const snapshot = JSON.stringify(settings.hooks);
-    for (const event of MANAGED_EVENTS) removeHook(settings.hooks, event, JEV_GATE_SIGNATURE);
+    for (const event of MANAGED_EVENTS) {
+        removeHook(settings.hooks, event, JEV_GATE_SIGNATURE);
+        removeHook(settings.hooks, event, JEV_TOOL_GATE_SIGNATURE);
+    }
     if (JSON.stringify(settings.hooks) === snapshot) return false; // no entry: leave the file alone
     pruneEmptyHooks(settings.hooks);
     if (Object.keys(settings.hooks).length === 0) delete settings.hooks;

@@ -6,10 +6,16 @@ import {
     systemOne,
     resolveTypesafeKey,
     redact,
+    redactSecrets,
     TypesafeError,
     TYPESAFE_URL,
     type SystemOneRequest,
 } from '../src/core/typesafe/client';
+import {
+    buildToolGateState,
+    ENV_FILE_PREVIEW,
+    summarizeToolCall,
+} from '../src/core/typesafe/tool-gate';
 
 const FAKE_KEY = 'ts_secret123';
 
@@ -231,6 +237,86 @@ describe('systemOne client', () => {
 
     it('redact() masks ts_ keys and Bearer credentials', () => {
         expect(redact(`key ${FAKE_KEY} and Bearer abc.def`)).toBe('key *** and Bearer ***');
+    });
+});
+
+describe('redactSecrets', () => {
+    const cases: Array<[string, string, string]> = [
+        ['sk- key', 'OPENAI sk-proj-abcDEF1234567890xyz', 'sk-proj-abcDEF1234567890xyz'],
+        [
+            'ghp_ token',
+            'git clone https://ghp_abc123def456ghi@github.com/x/y',
+            'ghp_abc123def456ghi',
+        ],
+        [
+            'github_pat_ token',
+            'use github_pat_11ABCDEFG0123456789_abcdef',
+            'github_pat_11ABCDEFG0123456789_abcdef',
+        ],
+        [
+            'AWS key id',
+            'aws configure set aws_access_key_id AKIAIOSFODNN7EXAMPLE',
+            'AKIAIOSFODNN7EXAMPLE',
+        ],
+        ['Slack token', 'curl -d token=xoxb-1234-5678-abcdefgh', 'xoxb-1234-5678-abcdefgh'],
+        [
+            'PEM private key',
+            '-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA7\n-----END RSA PRIVATE KEY-----',
+            'MIIEpAIBAAKCAQEA7',
+        ],
+        ['KEY assignment', 'export STRIPE_KEY=rk_live_value123', 'rk_live_value123'],
+        ['TOKEN assignment', 'NPM_TOKEN="npm-value-456" npm publish', 'npm-value-456'],
+        ['SECRET in JSON', '{"clientSecret": "s3cr3t-json"}', 's3cr3t-json'],
+        ['PASSWORD assignment', 'DB_PASSWORD: hunter2hunter2', 'hunter2hunter2'],
+        ['ts_ key (redact)', `key ${FAKE_KEY}`, FAKE_KEY],
+        ['Bearer (redact)', 'Authorization: Bearer ghp_abc123def456', 'ghp_abc123def456'],
+    ];
+
+    it.each(cases)('masks a %s', (_label, text, secret) => {
+        const out = redactSecrets(text);
+        expect(out).not.toContain(secret);
+        expect(out).toMatch(/\*\*\*|\[private key redacted\]/);
+    });
+
+    it('masks a PEM block with no END line to the end of the text', () => {
+        const out = redactSecrets('before -----BEGIN PRIVATE KEY-----\nMIIBVgIBADANBg');
+        expect(out).toBe('before [private key redacted]');
+    });
+
+    it('leaves ordinary text and comparisons alone', () => {
+        const text = 'npm run build && git commit -m "fix: token parser" && if (key === other) x()';
+        expect(redactSecrets(text)).toBe(text);
+    });
+
+    it('redact() keeps its narrower behaviour', () => {
+        expect(redact('API_KEY=abc sk-proj-abcDEF1234567890xyz')).toBe(
+            'API_KEY=abc sk-proj-abcDEF1234567890xyz'
+        );
+    });
+
+    it('a .env file preview is never sent to Jev', () => {
+        const root = path.resolve(os.tmpdir(), 'rb-env-preview');
+        const summary = summarizeToolCall(
+            {
+                tool_name: 'Write',
+                tool_input: { file_path: path.join(root, '.env.local'), content: 'API_KEY=xyz' },
+            },
+            root
+        )!;
+        expect(summary.preview).toBe(ENV_FILE_PREVIEW);
+        expect(summary.file).toBe('.env.local');
+        const state = JSON.stringify(buildToolGateState(null, null, summary));
+        expect(state).not.toContain('xyz');
+
+        const edit = summarizeToolCall(
+            {
+                tool_name: 'Edit',
+                tool_input: { file_path: '.env', old_string: 'A=1', new_string: 'TOKEN=xyz' },
+            },
+            root
+        )!;
+        expect(edit.preview).toBe(ENV_FILE_PREVIEW);
+        expect(JSON.stringify(edit)).not.toContain('xyz');
     });
 });
 

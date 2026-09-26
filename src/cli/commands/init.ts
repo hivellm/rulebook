@@ -432,19 +432,30 @@ export async function initCommand(options: {
                     await import('../../core/claude/claude-settings-manager.js');
                 const { resolvePromptHookConfig } =
                     await import('../../core/typesafe/prompt-hook.js');
+                const { resolveToolHookConfig, toolHookTimeoutSec } =
+                    await import('../../core/typesafe/tool-gate.js');
                 // v7: two optional PreToolUse guards + full-autonomy permissions.
                 // v7.4: plus the fail-open Jev prompt hook (UserPromptSubmit)
-                // while TypeSafe is on and gate.promptHook.enabled is not false.
+                // while TypeSafe is on and gate.promptHook.enabled is not false,
+                // and the opt-in Jev tool gate (PreToolUse, gate.toolHook.enabled).
                 // No Stop/SessionStart hooks, no orchestration enforcement (P0).
                 // Stale v5/v6 entries are stripped on sync.
                 const rulebookCfg = await configManager.loadConfig();
                 const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
                 const promptHook = resolvePromptHookConfig(rulebookCfg);
+                const toolHook = resolveToolHookConfig(rulebookCfg);
                 await applyClaudeSettings(cwd, {
                     taskScaffoldingGuard: true,
                     osSchedulingGuard: true,
                     jevPromptGate: options.typesafe !== false && promptHook.enabled,
                     jevPromptGateDeadlineMs: promptHook.deadlineMs,
+                    jevToolGate:
+                        options.typesafe !== false && toolHook.enabled
+                            ? {
+                                  matcher: toolHook.matcher,
+                                  timeoutSec: toolHookTimeoutSec(toolHook.deadlineMs),
+                              }
+                            : undefined,
                     fullAutonomyPermissions: true,
                     teamsEnv: multiAgentEnabled,
                 });

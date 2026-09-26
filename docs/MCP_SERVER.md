@@ -364,7 +364,7 @@ The main session no longer has to remember to call the gate: a Claude Code `User
                  "timeout": 8 } ] } ] } }
 ```
 
-The entry is identified by the `jev-gate` signature: it is upserted once (a second run leaves the file byte-identical), user hooks on the same event stay untouched and in order, and the entry is removed when the hook is turned off. The wrapper finds the CLI (`rulebook` on `PATH`, then `$CLAUDE_PROJECT_DIR/node_modules/.bin/rulebook`) and runs `rulebook hook prompt-gate` with the hook JSON on stdin; without a CLI it exits 0 silently.
+The entry is identified by its command (`jev-gate.sh prompt`): it is upserted once (a second run leaves the file byte-identical), user hooks on the same event stay untouched and in order, and the entry is removed when the hook is turned off. The wrapper finds the CLI (`rulebook` on `PATH`, then `$CLAUDE_PROJECT_DIR/node_modules/.bin/rulebook`) and runs `rulebook hook prompt-gate` with the hook JSON on stdin; without a CLI it exits 0 silently.
 
 **What the model sees**: `{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"…"}}`, where the context (at most 1024 bytes) is the line `Jev routing (rulebook prompt hook) — do not call rulebook_gate again for this prompt`, the gate's `instruction`, and one warning line per risk flag at or above 0.5 that does not block.
 
@@ -389,6 +389,54 @@ The entry is identified by the `jev-gate` signature: it is upserted once (a seco
 **Decision log**: with `features.logging` on, hook calls are logged to `.rulebook/logs/gate.jsonl` like any other gate call, with `"source": "hook"` (the MCP tool writes `"mcp"`, the CLI `"cli"`).
 
 **Turn it off**: set `"gate": {"promptHook": {"enabled": false}}` in `rulebook.json` and run `rulebook update` (the entry is removed), or opt out of TypeSafe with `--no-typesafe` (also removes it). `RULEBOOK_GATE=off` silences it for one environment without touching settings.
+
+### Tool-call gate (v7.4, `PreToolUse`, opt-in)
+
+The prompt hook judges what the operator asked for; the tool-call gate judges what an agent is about to do. A Claude Code `PreToolUse` hook asks Jev a few yes/no questions about each matched tool call and answers `deny` or `ask` with a reason — or nothing, so the normal permission flow applies. It never answers `allow`: your permission rules still decide everything it lets through. Off by default.
+
+**Install**: with `"gate": {"toolHook": {"enabled": true}}` in `rulebook.json`, `rulebook init`, `update` and `claude` add one `PreToolUse` entry after the rulebook guard entries (same `.claude/hooks/jev-gate.sh`, argument `tool`):
+
+```json
+{ "matcher": "Bash|Edit|Write",
+  "hooks": [ { "type": "command",
+               "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/jev-gate.sh tool",
+               "timeout": 4 } ] }
+```
+
+Each Jev entry is identified by its command (`jev-gate.sh prompt`, `jev-gate.sh tool`), so turning one on or off never touches the other; the entry is upserted once (a second run leaves the file byte-identical), user hooks stay untouched, and it is removed when the gate is turned off or TypeSafe is opted out.
+
+**Order, cheapest first** (Claude Code runs matching hooks in parallel, so the order lives inside this one hook):
+
+1. The wrapper runs the installed `no-os-scheduling.sh` guard on the same payload; its `deny` is printed as-is and the CLI is never called.
+2. Tools outside `matcher` get no answer.
+3. A deterministic destructive-git check on Bash commands — `git reset --hard`, `push --force` / `-f` / `--force-with-lease`, `clean -f`, `checkout -- .`, `restore .`, `stash` (not `list`/`show`), `branch -D`, anchored to a git invocation — answers `ask` citing CLAUDE.md "Git safety". No key or Jev call needed.
+4. The cache (below); a hit answers with no request.
+5. One Jev request within the deadline.
+
+**What Jev sees** (at most 3072 bytes): project id and languages, the active task (id + title), the Tier 1 rules (destructive git without authorization, OS scheduling, hook bypass such as `--no-verify`, reading or printing secrets, stubs/TODOs), and a summary of the call — Bash: the command (≤ 1024 chars); Edit: the file (relative when inside the project), old/new sizes and a `new_string` preview (≤ 512); Write: the file, content size and a preview (≤ 512); other tools: the file and a JSON preview of the input. Over budget, the preview, then the command, then the path are cut.
+
+**Criteria** (each a yes/no probability that the call is fine, one request): `safe_reversible`, `no_secret_exposure`, `follows_project_rules`, and `in_task_scope` when a task is in progress. Below `denyBelow` (0.5) → `deny`; below `askBelow` (0.7) → `ask`; `in_task_scope` never goes past `ask`. The most severe criterion wins, and the reason lists each failing criterion with its probability (`safe_reversible p=0.30 (may destroy work or be hard to undo)`).
+
+**Redaction**: every summary string goes through `redactSecrets()` — `redact()` (TypeSafe keys, `Bearer …`) plus `sk-…`, `ghp_…`/`github_pat_…`, `AKIA…`, `xox?-…`, PEM private-key blocks and the value of any `*KEY*`/`*TOKEN*`/`*SECRET*`/`*PASSWORD*` assignment — before it is clipped. The content of `.env*` files is never sent: the preview reads `[env file — not sent]`.
+
+**Cache**: `.rulebook/cache/tool-gate.json` (ignored by the `/.rulebook/*` gitignore rule), keyed by sha256 of tool + redacted summary + active task id + question-set version; each entry holds the decision, the probabilities and the time. Entries live `cacheTtlMs` (15 min); the newest 200 are kept; the file is written atomically (temp file + rename), and an unreadable file counts as empty. Only Jev answers are cached — never a fail-open result.
+
+**Latency**: everything after the destructive-git check (task list, cache, Jev) runs within `deadlineMs` (default 2000 ms); the settings `timeout` is `ceil(deadlineMs / 1000) + 2` seconds.
+
+**Config** (`.rulebook/rulebook.json`):
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `gate.toolHook.enabled` | `false` | install and run the gate; always off when `integrations.typesafe.enabled` is `false` |
+| `gate.toolHook.matcher` | `Bash\|Edit\|Write` | `PreToolUse` matcher (a tool-name regex), also applied inside the hook |
+| `gate.toolHook.denyBelow` | `0.5` | a criterion below this denies (`in_task_scope`: asks); clamped 0–1 and never above `askBelow` |
+| `gate.toolHook.askBelow` | `0.7` | a criterion below this asks; clamped 0–1 |
+| `gate.toolHook.deadlineMs` | `2000` | clamped to 500–5000 ms |
+| `gate.toolHook.cacheTtlMs` | `900000` | cache lifetime; `0` never reuses an answer |
+
+**Fail-open**: no key, `RULEBOOK_GATE=off`, TypeSafe opted out, the gate disabled, a timeout, a network or HTTP error, a bad response, unreadable stdin, a missing CLI, or any thrown error → exit 0 with no output. The destructive-git `ask` needs no key, so it works without Jev.
+
+**Decision log**: with `features.logging` on, each decision appends one line to `.rulebook/logs/tool-gate.jsonl` — a 16-hex summary hash, tool name, decision, per-criterion probabilities, `cached`, `elapsedMs` (plus `precheck` or `error` when relevant); never the command text, file content or key. The newest 500 lines are kept.
 
 ## Error Handling
 

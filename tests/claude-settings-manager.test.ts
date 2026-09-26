@@ -236,6 +236,114 @@ describe('claude-settings-manager (v7)', () => {
         });
     });
 
+    describe('Jev tool gate (PreToolUse, v7.4)', () => {
+        const TOOL = { matcher: 'Bash|Edit|Write', timeoutSec: 4 };
+        const ALL_DESIRE = { ...V7_DESIRE, osSchedulingGuard: true, jevToolGate: TOOL };
+        const TOOL_COMMAND = `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${JEV_GATE_SCRIPT} tool`;
+        const PROMPT_COMMAND = `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${JEV_GATE_SCRIPT} prompt`;
+
+        async function readSettings() {
+            return JSON.parse(await fs.readFile(getClaudeSettingsPath(projectRoot), 'utf-8'));
+        }
+        const toolEntries = (list: Array<{ hooks: Array<{ command: string }> }>) =>
+            list.filter((e) => e.hooks.some((h) => h.command === TOOL_COMMAND));
+
+        it('upserts one PreToolUse entry after the guards, with matcher and timeout, idempotently', async () => {
+            await applyClaudeSettings(projectRoot, ALL_DESIRE);
+            const before = await fs.readFile(getClaudeSettingsPath(projectRoot), 'utf-8');
+            const list = (await readSettings()).hooks.PreToolUse;
+            expect(list).toHaveLength(3);
+            expect(list[0].hooks[0].command).toContain(GUARD_SCRIPT);
+            expect(list[1].hooks[0].command).toContain('no-os-scheduling.sh');
+            expect(list[2]).toEqual({
+                matcher: 'Bash|Edit|Write',
+                hooks: [{ type: 'command', command: TOOL_COMMAND, timeout: 4 }],
+            });
+            const buf = await fs.readFile(path.join(projectRoot, '.claude/hooks', JEV_GATE_SCRIPT));
+            expect(buf.includes(0x0d)).toBe(false);
+
+            const r2 = await applyClaudeSettings(projectRoot, ALL_DESIRE);
+            expect(r2.changed).toBe(false);
+            expect(await fs.readFile(r2.path, 'utf-8')).toBe(before);
+        });
+
+        it('uses a custom matcher; a second run reports changed: false', async () => {
+            const desire = { ...ALL_DESIRE, jevToolGate: { matcher: 'Bash', timeoutSec: 4 } };
+            await applyClaudeSettings(projectRoot, desire);
+            const entries = toolEntries((await readSettings()).hooks.PreToolUse);
+            expect(entries).toHaveLength(1);
+            expect(entries[0].matcher).toBe('Bash');
+            expect((await applyClaudeSettings(projectRoot, desire)).changed).toBe(false);
+        });
+
+        it('keeps user PreToolUse hooks first and unchanged', async () => {
+            const target = getClaudeSettingsPath(projectRoot);
+            await fs.mkdir(path.dirname(target), { recursive: true });
+            const userEntry = {
+                matcher: 'Bash',
+                hooks: [{ type: 'command', command: 'bash my-bash-hook.sh' }],
+            };
+            await fs.writeFile(
+                target,
+                JSON.stringify({ hooks: { PreToolUse: [userEntry] } }, null, 2) + '\n'
+            );
+            await applyClaudeSettings(projectRoot, ALL_DESIRE);
+            await applyClaudeSettings(projectRoot, ALL_DESIRE);
+            const list = (await readSettings()).hooks.PreToolUse;
+            expect(list[0]).toEqual(userEntry);
+            expect(toolEntries(list)).toHaveLength(1);
+            expect(list[list.length - 1].hooks[0].command).toBe(TOOL_COMMAND);
+        });
+
+        it('is removed when disabled, leaving the guards', async () => {
+            await applyClaudeSettings(projectRoot, ALL_DESIRE);
+            await applyClaudeSettings(projectRoot, { ...ALL_DESIRE, jevToolGate: undefined });
+            const list = (await readSettings()).hooks.PreToolUse;
+            expect(toolEntries(list)).toHaveLength(0);
+            expect(list).toHaveLength(2);
+        });
+
+        it('prompt and tool entries are independent: toggling one never removes the other', async () => {
+            const both = { ...ALL_DESIRE, jevPromptGate: true };
+            await applyClaudeSettings(projectRoot, both);
+            let s = await readSettings();
+            expect(s.hooks.UserPromptSubmit[0].hooks[0].command).toBe(PROMPT_COMMAND);
+            expect(toolEntries(s.hooks.PreToolUse)).toHaveLength(1);
+
+            await applyClaudeSettings(projectRoot, { ...both, jevToolGate: undefined });
+            s = await readSettings();
+            expect(s.hooks.UserPromptSubmit[0].hooks[0].command).toBe(PROMPT_COMMAND);
+            expect(toolEntries(s.hooks.PreToolUse)).toHaveLength(0);
+
+            await applyClaudeSettings(projectRoot, { ...both, jevPromptGate: false });
+            s = await readSettings();
+            expect(s.hooks.UserPromptSubmit).toBeUndefined();
+            expect(toolEntries(s.hooks.PreToolUse)).toHaveLength(1);
+            // The tool gate alone still installs the wrapper script.
+            await fs.access(path.join(projectRoot, '.claude/hooks', JEV_GATE_SCRIPT));
+        });
+
+        it('an existing phase-2 install (prompt entry only) stays idempotent', async () => {
+            const target = getClaudeSettingsPath(projectRoot);
+            const promptOnly = { ...V7_DESIRE, osSchedulingGuard: true, jevPromptGate: true };
+            await applyClaudeSettings(projectRoot, promptOnly);
+            const before = await fs.readFile(target, 'utf-8');
+            const r2 = await applyClaudeSettings(projectRoot, promptOnly);
+            expect(r2.changed).toBe(false);
+            expect(await fs.readFile(target, 'utf-8')).toBe(before);
+            expect(toolEntries((await readSettings()).hooks.PreToolUse)).toHaveLength(0);
+        });
+
+        it('removeJevPromptGate (TypeSafe opted out) drops both Jev entries only', async () => {
+            await applyClaudeSettings(projectRoot, { ...ALL_DESIRE, jevPromptGate: true });
+            expect(await removeJevPromptGate(projectRoot)).toBe(true);
+            const s = await readSettings();
+            expect(s.hooks.UserPromptSubmit).toBeUndefined();
+            expect(toolEntries(s.hooks.PreToolUse)).toHaveLength(0);
+            expect(s.hooks.PreToolUse).toHaveLength(2);
+        });
+    });
+
     describe('full-autonomy permissions (F-011 — acceptance check 6)', () => {
         it('adds the full allow set and defaultMode acceptEdits when absent', async () => {
             await applyClaudeSettings(projectRoot, V7_DESIRE);

@@ -104,6 +104,18 @@ context. The hook is fail-open: no key, gate disabled, timeout
 no output, and the prompt goes through unchanged. Turn it off with
 `gate.promptHook.enabled: false` in `rulebook.json` or `--no-typesafe`.
 
+An opt-in tool-call gate (`gate.toolHook.enabled: true`) is a `PreToolUse`
+hook (`jev-gate.sh tool` → `rulebook hook tool-gate`) on `Bash|Edit|Write`
+that checks what agents do, not what the operator asked. Cheap checks come
+first: the OS-scheduling guard's deny, then destructive git (`ask`, citing
+Git safety) with no Jev call. Otherwise Jev gets one redacted summary of the
+call (no `.env` content) and answers `safe_reversible`, `no_secret_exposure`,
+`follows_project_rules` and, with an active task, `in_task_scope`: below 0.5
+the call is denied, below 0.7 the operator is asked (scope only ever asks).
+Answers are cached for 15 minutes; the deadline is 2000 ms; any failure lets
+the call through. It never answers `allow`. A denied call gets a reason:
+take a safer route or ask the operator; never work around the gate.
+
 When `features.logging` is on, each gate decision is appended as one JSON line
 to `.rulebook/logs/gate.jsonl` (prompt hash, routing, usage, elapsed time) — no
 prompt text, no key.

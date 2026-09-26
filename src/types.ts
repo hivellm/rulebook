@@ -219,8 +219,8 @@ export interface RulebookConfig {
             askedAt?: string;
         };
     };
-    // Jev gate hooks (v7.4). Resolved (defaults + clamps) by resolvePromptHookConfig()
-    // and resolveScopeConfig() in src/core/typesafe/prompt-hook.ts.
+    // Jev gate hooks (v7.4). promptHook and scope are resolved (defaults + clamps) by
+    // resolvePromptHookConfig() and resolveScopeConfig() in src/core/typesafe/prompt-hook.ts.
     gate?: {
         // UserPromptSubmit hook that runs the entry gate on every prompt.
         promptHook?: {
@@ -234,6 +234,16 @@ export interface RulebookConfig {
             description?: string; // default: package.json description, then README.md's first prose paragraph
             offTopicBelow?: number; // in_project_scope ≤ this → onOffTopic; default 0.15, clamped 0–0.3
             onOffTopic?: 'ask' | 'block'; // default 'ask'
+        };
+        // PreToolUse tool-call gate (opt-in). Resolved by resolveToolHookConfig()
+        // in src/core/typesafe/tool-gate.ts.
+        toolHook?: {
+            enabled?: boolean; // default false; always off when integrations.typesafe.enabled === false
+            matcher?: string; // PreToolUse matcher; default 'Bash|Edit|Write'
+            denyBelow?: number; // criterion p < this → deny; default 0.5, clamped 0–1 and ≤ askBelow
+            askBelow?: number; // criterion p < this → ask; default 0.7, clamped 0–1
+            deadlineMs?: number; // default 2000, clamped 500–5000
+            cacheTtlMs?: number; // default 900000 (15 min), clamped 0–86400000
         };
     };
     // MCP server configuration

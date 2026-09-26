@@ -5,6 +5,7 @@ import {
     resolvePromptHookConfig,
     resolveScopeConfig,
 } from '../../core/typesafe/prompt-hook.js';
+import { runToolGate } from '../../core/typesafe/tool-gate.js';
 
 /**
  * `rulebook hook <event>` — entry point for the Claude Code hooks rulebook
@@ -14,12 +15,12 @@ import {
  * disabled or unavailable gate, or any thrown error produce no output, so the
  * prompt (or tool call) goes through unchanged.
  *
- * Events: `prompt-gate` (UserPromptSubmit). New events add a handler to
+ * Events: `prompt-gate` (UserPromptSubmit), `tool-gate` (PreToolUse). New events add a handler to
  * HOOK_HANDLERS; stdin parsing, project-root and config resolution, output
  * and fail-open handling are shared.
  */
 
-export const HOOK_EVENTS = ['prompt-gate'] as const;
+export const HOOK_EVENTS = ['prompt-gate', 'tool-gate'] as const;
 export type HookEvent = (typeof HOOK_EVENTS)[number];
 
 /** The Claude Code hook payload: common fields plus event-specific ones. */
@@ -29,6 +30,9 @@ export interface HookInput {
     session_id?: string;
     /** UserPromptSubmit */
     prompt?: string;
+    /** PreToolUse */
+    tool_name?: string;
+    tool_input?: unknown;
     [key: string]: unknown;
 }
 
@@ -112,8 +116,33 @@ async function promptGate(input: HookInput, ctx: HookContext): Promise<object | 
     }
 }
 
+/**
+ * PreToolUse (opt-in, `gate.toolHook.enabled`): the destructive-git check,
+ * then the cache, then one Jev request within `gate.toolHook.deadlineMs`.
+ * Answers `deny` or `ask` with a reason, never `allow` — a passing call gets
+ * no answer and the normal permission flow applies.
+ */
+async function toolGate(input: HookInput, ctx: HookContext): Promise<object | null> {
+    const verdict = await runToolGate({
+        projectRoot: ctx.projectRoot,
+        input,
+        config: ctx.config,
+        env: ctx.env,
+        fetch: ctx.fetch,
+    });
+    if (verdict.decision === 'none') return null;
+    return {
+        hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            permissionDecision: verdict.decision,
+            permissionDecisionReason: verdict.reason,
+        },
+    };
+}
+
 const HOOK_HANDLERS: Record<HookEvent, HookHandler> = {
     'prompt-gate': promptGate,
+    'tool-gate': toolGate,
 };
 
 function isHookEvent(event: string): event is HookEvent {

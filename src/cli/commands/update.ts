@@ -407,18 +407,29 @@ export async function updateSingleProject(
         const { applyClaudeSettings } =
             await import('../../core/claude/claude-settings-manager.js');
         const { resolvePromptHookConfig } = await import('../../core/typesafe/prompt-hook.js');
+        const { resolveToolHookConfig, toolHookTimeoutSec } =
+            await import('../../core/typesafe/tool-gate.js');
         // v7: two optional PreToolUse guards + full-autonomy permissions; v7.4
         // adds the fail-open Jev prompt hook (UserPromptSubmit) while TypeSafe
-        // is on and gate.promptHook.enabled is not false. Every retired v5/v6
-        // hook entry is stripped on sync (LEGACY_SIGNATURES).
+        // is on and gate.promptHook.enabled is not false, and the opt-in Jev
+        // tool gate (PreToolUse) under gate.toolHook.enabled. Every retired
+        // v5/v6 hook entry is stripped on sync (LEGACY_SIGNATURES).
         const rulebookCfg = await configManager.loadConfig();
         const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
         const promptHook = resolvePromptHookConfig(rulebookCfg);
+        const toolHook = resolveToolHookConfig(rulebookCfg);
         const settingsResult = await applyClaudeSettings(cwd, {
             taskScaffoldingGuard: true,
             osSchedulingGuard: true,
             jevPromptGate: options.typesafe !== false && promptHook.enabled,
             jevPromptGateDeadlineMs: promptHook.deadlineMs,
+            jevToolGate:
+                options.typesafe !== false && toolHook.enabled
+                    ? {
+                          matcher: toolHook.matcher,
+                          timeoutSec: toolHookTimeoutSec(toolHook.deadlineMs),
+                      }
+                    : undefined,
             fullAutonomyPermissions: true,
             teamsEnv: multiAgentEnabled,
         });

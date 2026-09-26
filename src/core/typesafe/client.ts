@@ -94,6 +94,32 @@ export function redact(text: string): string {
     return text.replace(/Bearer\s+\S+/gi, 'Bearer ***').replace(/\bts_[A-Za-z0-9_-]{4,}/g, '***');
 }
 
+/**
+ * `redact()` plus common credential shapes, for text rulebook sends to Jev
+ * (the tool gate's call summary): OpenAI/Anthropic-style `sk-…` keys, GitHub
+ * tokens (`ghp_…` and siblings, `github_pat_…`), AWS access key ids, Slack
+ * tokens, PEM private-key blocks (to the end of the text when the END line is
+ * missing), and the value of any assignment whose name contains KEY, TOKEN,
+ * SECRET or PASSWORD (`API_KEY=…`, `"password": "…"`).
+ */
+export function redactSecrets(text: string): string {
+    return redact(text)
+        .replace(
+            /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
+            '[private key redacted]'
+        )
+        .replace(/\bsk-[A-Za-z0-9_-]{8,}/g, 'sk-***')
+        .replace(/\bgithub_pat_[A-Za-z0-9_]{8,}/g, 'github_pat_***')
+        .replace(/\bgh[pousr]_[A-Za-z0-9]{8,}/g, 'gh*_***')
+        .replace(/\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g, 'AKIA***')
+        .replace(/\bxox[abprs]-[A-Za-z0-9-]{8,}/g, 'xox*-***')
+        .replace(
+            // Bounded name parts keep the scan linear on long identifier runs.
+            /([A-Za-z0-9_.-]{0,40}(?:key|token|secret|password)[A-Za-z0-9_.-]{0,40}["']?\s*[:=](?![=>])\s*)(["']?)[^\s"',;&|]+/gi,
+            '$1$2***'
+        );
+}
+
 /** `redact()` plus the literal key, for keys that do not look like `ts_…`. */
 function scrub(text: string, apiKey: string): string {
     return redact(text.split(apiKey).join('***'));

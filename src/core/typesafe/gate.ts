@@ -771,8 +771,7 @@ export async function appendGateLog(
     source?: GateLogSource
 ): Promise<void> {
     try {
-        const dir = path.join(projectRoot, rulebookDir, 'logs');
-        const file = path.join(dir, 'gate.jsonl');
+        const file = path.join(projectRoot, rulebookDir, 'logs', 'gate.jsonl');
         const line = JSON.stringify({
             ts: new Date().toISOString(),
             ...(source ? { source } : {}),
@@ -786,19 +785,31 @@ export async function appendGateLog(
             elapsedMs: result.elapsedMs,
             stateBytes: result.stateBytes,
         });
-        await mkdir(dir, { recursive: true });
-        if (existsSync(file)) {
-            const lines = (await readFile(file, 'utf-8')).split('\n').filter(Boolean);
-            if (lines.length >= GATE_LOG_MAX_LINES) {
-                const keep = lines.slice(lines.length - GATE_LOG_MAX_LINES + 1);
-                await writeFile(file, [...keep, line].join('\n') + '\n', 'utf-8');
-                return;
-            }
-        }
-        await appendFile(file, line + '\n', 'utf-8');
+        await appendCappedLine(file, line);
     } catch {
         // best effort
     }
+}
+
+/**
+ * Append one line to a JSONL log, keeping the newest `maxLines` (default
+ * 500). Creates the directory. Throws on I/O errors; callers swallow them.
+ */
+export async function appendCappedLine(
+    file: string,
+    line: string,
+    maxLines: number = GATE_LOG_MAX_LINES
+): Promise<void> {
+    await mkdir(path.dirname(file), { recursive: true });
+    if (existsSync(file)) {
+        const lines = (await readFile(file, 'utf-8')).split('\n').filter(Boolean);
+        if (lines.length >= maxLines) {
+            const keep = lines.slice(lines.length - maxLines + 1);
+            await writeFile(file, [...keep, line].join('\n') + '\n', 'utf-8');
+            return;
+        }
+    }
+    await appendFile(file, line + '\n', 'utf-8');
 }
 
 // ── Run ──────────────────────────────────────────────────────────────────

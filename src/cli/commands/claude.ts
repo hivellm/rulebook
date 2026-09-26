@@ -46,17 +46,29 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
 
         // v7: two optional PreToolUse guards + the full-autonomy permission
         // profile; v7.4 adds the fail-open Jev prompt hook (UserPromptSubmit)
-        // while TypeSafe is on and gate.promptHook.enabled is not false. No
+        // while TypeSafe is on and gate.promptHook.enabled is not false, and the
+        // opt-in Jev tool gate (PreToolUse) under gate.toolHook.enabled. No
         // hooks on Stop/SessionStart, no orchestration enforcement (P0). Stale
         // v5/v6 entries self-heal on sync via LEGACY_SIGNATURES.
         const { readConfigFile } = await import('../../core/typesafe/gate.js');
         const { resolvePromptHookConfig } = await import('../../core/typesafe/prompt-hook.js');
-        const promptHook = resolvePromptHookConfig(await readConfigFile(cwd));
+        const { resolveToolHookConfig, toolHookTimeoutSec } =
+            await import('../../core/typesafe/tool-gate.js');
+        const rulebookCfg = await readConfigFile(cwd);
+        const promptHook = resolvePromptHookConfig(rulebookCfg);
+        const toolHook = resolveToolHookConfig(rulebookCfg);
         await applyClaudeSettings(cwd, {
             taskScaffoldingGuard: true,
             osSchedulingGuard: true,
             jevPromptGate: options.typesafe !== false && promptHook.enabled,
             jevPromptGateDeadlineMs: promptHook.deadlineMs,
+            jevToolGate:
+                options.typesafe !== false && toolHook.enabled
+                    ? {
+                          matcher: toolHook.matcher,
+                          timeoutSec: toolHookTimeoutSec(toolHook.deadlineMs),
+                      }
+                    : undefined,
             fullAutonomyPermissions: true,
             statusLine: true,
             defaultModel,

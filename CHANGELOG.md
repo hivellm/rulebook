@@ -128,6 +128,41 @@ model.
 - Config `gate.scope` (`enabled`, `description`, `offTopicBelow`,
   `onOffTopic`); orchestration spec section 3 gains the table row.
 
+### Added — opt-in tool-call gate (`PreToolUse`)
+
+The prompt hook judges what the operator asked for, not what an agent then
+runs or writes; past it, only two keyword guards stood between a subagent and
+a destructive command or a printed secret.
+
+- New hidden event `rulebook hook tool-gate` behind `jev-gate.sh tool`, off
+  by default (`gate.toolHook.enabled: true` turns it on). Cheap checks first:
+  the wrapper runs the installed OS-scheduling guard and returns its `deny`
+  as-is; a deterministic destructive-git check (`reset --hard`, force push,
+  `clean -f`, `checkout -- .`, `restore .`, `stash`, `branch -D`) answers
+  `ask` citing Git safety. Neither calls Jev.
+- Otherwise one Jev request per call: a redacted summary (command ≤ 1024
+  chars, file path, edit sizes, preview ≤ 512 chars; `.env*` content never
+  sent) plus project id, languages, active task and the Tier 1 rules, at most
+  3072 bytes; yes/no criteria `safe_reversible`, `no_secret_exposure`,
+  `follows_project_rules`, and `in_task_scope` with an active task. Below
+  `denyBelow` (0.5) → `deny`, below `askBelow` (0.7) → `ask`, scope capped
+  at `ask`; the reason lists each failing criterion with its probability. It
+  never answers `allow`, so permission rules are unchanged.
+- `redactSecrets()` in the TypeSafe client: `redact()` plus `sk-…`, GitHub,
+  AWS and Slack tokens, PEM private keys and `*KEY*`/`*TOKEN*`/`*SECRET*`/
+  `*PASSWORD*` assignment values.
+- Deadline `gate.toolHook.deadlineMs` (2000 ms, settings `timeout` = deadline
+  + 2 s); cache `.rulebook/cache/tool-gate.json` (15 min, 200 entries, atomic
+  writes, Jev answers only); decisions in `.rulebook/logs/tool-gate.jsonl`
+  with `features.logging` (summary hash, never the command or content).
+  Fail-open on every error path.
+- Installer: one `PreToolUse` entry (`matcher` from `gate.toolHook.matcher`,
+  default `Bash|Edit|Write`) after the guard entries; removed when disabled
+  or TypeSafe is opted out. The two Jev entries are now matched by their
+  command (`jev-gate.sh prompt` / `jev-gate.sh tool`), so toggling one never
+  strips the other; existing prompt-hook installs stay byte-identical.
+- Docs: `docs/MCP_SERVER.md` "Tool-call gate"; orchestration spec section 3.
+
 ### Changed — TypeSafe ships by default
 
 The v7.3 opt-in prompt is gone: `rulebook init`, `update` and `claude` enable
