@@ -3,7 +3,6 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
-    "defaultMode": "acceptEdits",
     "allow": [
       "Bash(*)",
       "Read(*)",
@@ -16,8 +15,23 @@
       "WebSearch",
       "TodoWrite",
       "mcp__rulebook",
-      "mcp__cortex"
-    ]
+      "mcp__cortex",
+      "Bash(git -C e:/HiveLLM/Rulebook status --short)",
+      "Bash(git -C e:/HiveLLM/Rulebook branch -a)",
+      "Bash(git -C e:/HiveLLM/Rulebook tag --sort=-v:refname)",
+      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\(p.name, p.version\\)\")",
+      "Bash(node -e \"const s=require\\('./package.json'\\).scripts;console.log\\(JSON.stringify\\(s,null,1\\)\\)\")",
+      "Bash(node dist/index.js update --dry-run --yes)",
+      "Bash(node -e ' *)",
+      "Bash(rm -f /tmp/probe.mts; cd e:/HiveLLM/Rulebook && npx vitest run tests/config-manager.test.ts tests/gitignore-rulebook-block.test.ts 2>&1 | grep -E \"×|✓ tests|Tests |Test Files\" | head -20)",
+      "Bash(echo \"coverage exit code: $?\")",
+      "Bash(cp .gitignore /tmp/gi-1)",
+      "Bash(rm -f /tmp/gi-1)",
+      "Bash(sed 's/^[^\\\\t]*\\\\t[^\\\\t]*\\\\t//')",
+      "Bash(codespell --skip=\"*.lock,*.json,*.map,*.yaml,*.yml,*.csv,*.bib,target,node_modules,.git,dist,venv,build,benchmarks,coverage,templates\" --ignore-words-list=\"crate,ser,deser,upToDate,optIn,shouldBe,Bloc,thirdparty\")",
+      "Bash(gh pr *)"
+    ],
+    "defaultMode": "acceptEdits"
   },
   "enabledMcpjsonServers": [
     "rulebook"
@@ -30,6 +44,26 @@
           {
             "type": "command",
             "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/protect-task-scaffolding.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/no-os-scheduling.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/jev-gate.sh prompt",
+            "timeout": 8
           }
         ]
       }
