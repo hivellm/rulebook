@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
@@ -301,6 +301,14 @@ describe('promptHookAnswer — project scope', () => {
 describe('rulebook hook prompt-gate', () => {
     let root: string;
 
+    // The gate imports its task sources lazily. Under vitest the first import
+    // is an on-demand transform that, on a loaded machine, can outlast a short
+    // deadline — load them before any test's clock starts.
+    beforeAll(async () => {
+        await import('../src/core/tasks/task-manager');
+        await import('../src/core/tasks/learn-manager');
+    });
+
     beforeEach(async () => {
         root = await fs.mkdtemp(path.join(os.tmpdir(), 'rb-prompt-hook-'));
     });
@@ -465,6 +473,53 @@ describe('rulebook hook prompt-gate', () => {
         expect(JSON.parse(raw.trim()).source).toBe('hook');
         expect(raw).not.toContain('secret prompt text');
         expect(raw).not.toContain(FAKE_KEY);
+    });
+
+    it('an answer arriving after the deadline is never logged late', async () => {
+        await writeConfig({
+            gate: { promptHook: { deadlineMs: 1000 } },
+            features: { logging: true },
+        });
+        // A fetch that ignores its abort signal and answers only when released.
+        let release: () => void = () => undefined;
+        const late = vi.fn(
+            (_url: string, init: RequestInit) =>
+                new Promise<Response>((resolve) => {
+                    const req = JSON.parse(init.body as string);
+                    release = () =>
+                        resolve(
+                            new Response(
+                                JSON.stringify({
+                                    model: 'jev-1.13.0',
+                                    answers: answersFor(req.questions),
+                                    usage: { input_tokens: 1, output_tokens: 1 },
+                                }),
+                                { status: 200 }
+                            )
+                        );
+                })
+        );
+        const { code, lines } = await run('secret prompt text', { fetch: late });
+        expect({ code, lines }).toEqual({ code: 0, lines: [] });
+        expect(late).toHaveBeenCalledTimes(1);
+
+        const logFile = path.join(root, '.rulebook', 'logs', 'gate.jsonl');
+        const before = await fs.readFile(logFile, 'utf-8').catch(() => '');
+        const filesBefore = (await fs.readdir(root, { recursive: true })).sort();
+        release();
+        await new Promise((r) => setTimeout(r, 200));
+        expect(await fs.readFile(logFile, 'utf-8').catch(() => '')).toBe(before);
+        expect((await fs.readdir(root, { recursive: true })).sort()).toEqual(filesBefore);
+
+        const entries = before
+            .trim()
+            .split('\n')
+            .filter(Boolean)
+            .map((l) => JSON.parse(l));
+        expect(entries).toHaveLength(1);
+        expect(entries[0]).toMatchObject({ source: 'hook', available: false, reason: 'timeout' });
+        expect(before).not.toContain('secret prompt text');
+        expect(before).not.toContain(FAKE_KEY);
     });
 
     async function writeDescription(description: string) {

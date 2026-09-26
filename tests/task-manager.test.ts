@@ -121,6 +121,11 @@ describe('TaskManager', () => {
     });
 
     describe('listTasks', () => {
+        it('returns [] without creating tasks/ or archive/', async () => {
+            expect(await taskManager.listTasks(true)).toEqual([]);
+            await expect(fs.access(join(testDir, '.rulebook'))).rejects.toThrow();
+        });
+
         it('should return empty array when no tasks exist', async () => {
             await taskManager.initialize();
             const tasks = await taskManager.listTasks();

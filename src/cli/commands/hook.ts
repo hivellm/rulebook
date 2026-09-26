@@ -1,5 +1,11 @@
 import type { RulebookConfig } from '../../types.js';
-import { readConfigFile, resolveProjectDescription, runGate } from '../../core/typesafe/gate.js';
+import {
+    appendGateLog,
+    gateTimeoutResult,
+    readConfigFile,
+    resolveProjectDescription,
+    runGateUnlogged,
+} from '../../core/typesafe/gate.js';
 import {
     promptHookAnswer,
     resolvePromptHookConfig,
@@ -70,13 +76,14 @@ async function promptGate(input: HookInput, ctx: HookContext): Promise<object | 
     const prompt = typeof input.prompt === 'string' ? input.prompt : '';
     if (!prompt.trim()) return null;
 
+    const t0 = Date.now();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const expired = new Promise<null>((resolve) => {
         timer = setTimeout(() => resolve(null), cfg.deadlineMs);
     });
     // Read once: the description Jev sees is the one the scope lines quote.
     let description: string | null = null;
-    const gate = runGate({
+    const gate = runGateUnlogged({
         projectRoot: ctx.projectRoot,
         prompt,
         env: ctx.env,
@@ -88,9 +95,24 @@ async function promptGate(input: HookInput, ctx: HookContext): Promise<object | 
         source: 'hook',
     });
     // runGate honours the deadline itself; the race is the backstop for a
-    // fetch that ignores its abort signal.
-    const result = await Promise.race([gate, expired]).finally(() => clearTimeout(timer));
-    if (!result) return null;
+    // fetch that ignores its abort signal. The raced run only reads: its log
+    // line is written here, and only when it won, so a run that loses never
+    // writes into the project after the hook has returned.
+    const run = await Promise.race([gate, expired]).finally(() => clearTimeout(timer));
+    if (!run) {
+        if (ctx.config?.features?.logging === true) {
+            await appendGateLog(
+                ctx.projectRoot,
+                ctx.config.rulebookDir ?? '.rulebook',
+                prompt,
+                gateTimeoutResult(t0),
+                'hook'
+            );
+        }
+        return null;
+    }
+    await run.writeLog();
+    const result = run.result;
 
     const answer = promptHookAnswer(
         result,

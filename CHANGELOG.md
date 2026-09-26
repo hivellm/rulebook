@@ -198,6 +198,20 @@ set. The key itself is never written by rulebook.
   only behind the same detection guard as the rest of the Claude Code setup.
 - `rulebook_gate` in a project without `.rulebook/` created a default
   `rulebook.json` and a gate log; it now creates nothing.
+- The tool gate never writes into the project after its deadline. When the
+  backstop timer won, the losing Jev call kept running and still wrote the
+  cache and the `tool-gate.jsonl` line after the hook had returned. The raced
+  work now only reads; the cache and the log line are written after the race
+  and only when the work won, and an expired deadline logs one `error:
+  "timeout"` line on time. Listing learnings no longer creates
+  `.rulebook/learnings`.
+- The prompt hook never logs after its deadline. Same pattern: a Jev answer
+  arriving after `gate.promptHook.deadlineMs` still appended its line to
+  `gate.jsonl`. The raced gate run now writes nothing; the hook writes the
+  line only when the gate finished first, and an expired deadline logs one
+  `reason: "timeout"` line (`source: "hook"`) on time. `rulebook_gate` and
+  `rulebook gate` log exactly as before. Listing tasks no longer creates
+  `.rulebook/tasks` or `.rulebook/archive` (a legacy archive still migrates).
 
 ### Changed — model routing in shipped agents, workflows and skills
 

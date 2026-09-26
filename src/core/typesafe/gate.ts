@@ -855,13 +855,38 @@ export function isGateDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
     return env.RULEBOOK_GATE?.trim().toLowerCase() === 'off';
 }
 
-/** Run the gate end to end. Never throws. */
+/** A gate run whose decision log line has not been written yet. */
+export interface GateRun {
+    result: GateResult;
+    /** Appends the decision log line when `features.logging` is on; never throws. */
+    writeLog: () => Promise<void>;
+}
+
+/** The result a caller logs when its own deadline expired before the gate answered. */
+export function gateTimeoutResult(t0: number): GateResult {
+    return unavailable('timeout', t0);
+}
+
+/** Run the gate end to end, then write its log line. Never throws. */
 export async function runGate(opts: RunGateOptions): Promise<GateResult> {
+    const run = await runGateUnlogged(opts);
+    await run.writeLog();
+    return run.result;
+}
+
+/**
+ * Run the gate without writing anything into the project: the log line is
+ * left to `writeLog`, so a caller that races this against its own deadline
+ * writes only when the gate finished first (the losing run keeps going until
+ * the process exits). Never throws.
+ */
+export async function runGateUnlogged(opts: RunGateOptions): Promise<GateRun> {
+    const nothingToLog = async (): Promise<void> => undefined;
     const t0 = Date.now();
     const env = opts.env ?? process.env;
     const deadlineMs = opts.deadlineMs ?? GATE_DEADLINE_MS;
 
-    if (isGateDisabled(env)) return unavailable('disabled', t0);
+    if (isGateDisabled(env)) return { result: unavailable('disabled', t0), writeLog: nothingToLog };
 
     let config: Partial<RulebookConfig> | null = null;
     try {
@@ -870,13 +895,22 @@ export async function runGate(opts: RunGateOptions): Promise<GateResult> {
         config = null;
     }
     // The operator's explicit opt-out of the TypeSafe integration covers the gate too.
-    if (config?.integrations?.typesafe?.enabled === false) return unavailable('disabled', t0);
+    if (config?.integrations?.typesafe?.enabled === false) {
+        return { result: unavailable('disabled', t0), writeLog: nothingToLog };
+    }
 
     const { key } = await resolveTypesafeKey(opts.projectRoot, env);
     if (!key) {
         const show = opts.alwaysShowInstructions || !tokenInstructionsShown;
         tokenInstructionsShown = true;
-        return unavailable('no-key', t0, show ? { instructions: typesafeTokenInstructions() } : {});
+        return {
+            result: unavailable(
+                'no-key',
+                t0,
+                show ? { instructions: typesafeTokenInstructions() } : {}
+            ),
+            writeLog: nothingToLog,
+        };
     }
 
     const sources = await loadGateSources(opts.projectRoot, config, opts);
@@ -918,14 +952,12 @@ export async function runGate(opts: RunGateOptions): Promise<GateResult> {
         result = unavailable(reason, t0, { detail, stateBytes: bytes });
     }
 
-    if (config?.features?.logging === true) {
-        await appendGateLog(
-            opts.projectRoot,
-            config.rulebookDir ?? '.rulebook',
-            opts.prompt,
-            result,
-            opts.source
-        );
-    }
-    return result;
+    const logging = config?.features?.logging === true;
+    const rulebookDir = config?.rulebookDir ?? '.rulebook';
+    return {
+        result,
+        writeLog: logging
+            ? () => appendGateLog(opts.projectRoot, rulebookDir, opts.prompt, result, opts.source)
+            : nothingToLog,
+    };
 }
