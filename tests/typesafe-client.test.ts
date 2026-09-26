@@ -318,6 +318,24 @@ describe('redactSecrets', () => {
             ['API_KEY = ', ' next'],
         ],
         ['single-quoted PASSWORD', "PASSWORD='p w0rd' cmd", 'w0rd', ['PASSWORD=', ' cmd']],
+        [
+            '--password value before ;',
+            'mysql --password hunter2xyz; curl https://x',
+            'hunter2xyz',
+            ['mysql --password ***;', ' curl https://x'],
+        ],
+        [
+            '--token= value before &&',
+            'cli login --token=abc123xyz&& npm test',
+            'abc123xyz',
+            ['cli login --token=***&&', ' npm test'],
+        ],
+        [
+            '--api-key value before |',
+            'tool --api-key k3yv4lue|grep ok',
+            'k3yv4lue',
+            ['tool --api-key ***|', 'grep ok'],
+        ],
     ];
 
     it.each(kept)('masks a %s and keeps the rest', (_label, text, secret, parts) => {

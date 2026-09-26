@@ -647,4 +647,46 @@ describe.skipIf(!hasBash())('jev-gate.sh fail-open (wrapper)', () => {
         expect(r.status).toBe(0);
         expect(JSON.parse(r.stdout.trim())).toEqual({ from: 'local', args: 'hook prompt-gate' });
     });
+
+    /** A rulebook-repo checkout: package.json named @hivehub/rulebook + a fake dist/index.js. */
+    async function rulebookRepo(name: string): Promise<string> {
+        await fs.writeFile(
+            path.join(root, 'package.json'),
+            JSON.stringify({ name, version: '0.0.0' }, null, 2)
+        );
+        await fs.mkdir(path.join(root, 'dist'), { recursive: true });
+        await fs.writeFile(
+            path.join(root, 'dist', 'index.js'),
+            "console.log(JSON.stringify({ from: 'dist', args: process.argv.slice(2).join(' ') }));\n"
+        );
+        // `node` on PATH without re-adding a directory that holds a rulebook shim.
+        const nodeBin = path.join(root, 'nodebin');
+        await fakeCli(path.join(nodeBin, 'node'), `exec "${process.execPath}" "$@"`);
+        return nodeBin;
+    }
+
+    it("in the rulebook repo itself, runs the repo's dist/index.js", async () => {
+        const nodeBin = await rulebookRepo('@hivehub/rulebook');
+        const r = runWrapper('prompt', nodeBin);
+        expect(r.status).toBe(0);
+        expect(JSON.parse(r.stdout.trim())).toEqual({ from: 'dist', args: 'hook prompt-gate' });
+    });
+
+    it('a project whose package.json is not @hivehub/rulebook does not run its dist', async () => {
+        const nodeBin = await rulebookRepo('some-other-app');
+        const r = runWrapper('prompt', nodeBin);
+        expect(r.status).toBe(0);
+        expect(r.stdout).toBe('');
+    });
+
+    it('node_modules/.bin still wins over the rulebook repo dist', async () => {
+        const nodeBin = await rulebookRepo('@hivehub/rulebook');
+        await fakeCli(
+            path.join(root, 'node_modules', '.bin', 'rulebook'),
+            'echo "{\\"from\\":\\"local\\",\\"args\\":\\"$*\\"}"'
+        );
+        const r = runWrapper('prompt', nodeBin);
+        expect(r.status).toBe(0);
+        expect(JSON.parse(r.stdout.trim())).toEqual({ from: 'local', args: 'hook prompt-gate' });
+    });
 });

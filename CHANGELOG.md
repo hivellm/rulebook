@@ -168,6 +168,11 @@ a destructive command or a printed secret.
   `--api-key`/`--token` flag values and whole quoted assignment values; the
   destructive-git check also catches `push +refspec`, quoted `-C`/`-c`
   values and `checkout -- ./` / `restore ./`.
+- In the rulebook repo itself (`package.json` named `@hivehub/rulebook`, no
+  `node_modules/.bin/rulebook`) `jev-gate.sh` runs `node dist/index.js` before
+  falling back to `PATH`, so a stale global shim no longer silences the prompt
+  gate there; `redactSecrets()` stops an unquoted flag value at `;`, `&`, `|`
+  and `,`, keeping the command separator and the next command.
 - Docs: `docs/MCP_SERVER.md` "Tool-call gate"; orchestration spec section 3.
 
 ### Changed — TypeSafe ships by default

@@ -5,7 +5,8 @@
 #   jev-gate.sh tool     PreToolUse       → `rulebook hook tool-gate` (opt-in)
 #
 # Reads the hook JSON from stdin once, finds the rulebook CLI (the project's
-# node_modules/.bin first, then PATH), and hands the payload to it. Fail-open:
+# node_modules/.bin first, then the repo's own dist/index.js when the project is
+# @hivehub/rulebook itself, then PATH), and hands the payload to it. Fail-open:
 # the wrapper always exits 0; an unknown argument or a missing CLI prints
 # nothing, and a failing CLI's error output is dropped.
 #
@@ -30,15 +31,21 @@ case "${1:-}" in
   *) exit 0 ;;
 esac
 
-if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/rulebook" ]; then
-  cli="$CLAUDE_PROJECT_DIR/node_modules/.bin/rulebook"
+# In the rulebook repo itself (package.json named @hivehub/rulebook) there is no
+# node_modules/.bin/rulebook: run the repo's own build, not a global shim.
+dir="${CLAUDE_PROJECT_DIR:-}"
+if [ -n "$dir" ] && [ -x "$dir/node_modules/.bin/rulebook" ]; then
+  cli=("$dir/node_modules/.bin/rulebook")
+elif [ -n "$dir" ] && [ -f "$dir/dist/index.js" ] && command -v node >/dev/null 2>&1 &&
+  grep -q '"name"[[:space:]]*:[[:space:]]*"@hivehub/rulebook"' "$dir/package.json" 2>/dev/null; then
+  cli=(node "$dir/dist/index.js")
 elif command -v rulebook >/dev/null 2>&1; then
-  cli="rulebook"
+  cli=(rulebook)
 else
   exit 0
 fi
 
 # A broken CLI (a stale global shim, a crash) must not fail the hook: its
 # stderr is dropped and the wrapper always exits 0. Stdout passes through.
-"$cli" hook "$event" <<<"$input" 2>/dev/null
+"${cli[@]}" hook "$event" <<<"$input" 2>/dev/null
 exit 0

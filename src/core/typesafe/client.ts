@@ -119,7 +119,7 @@ export function redactSecrets(text: string): string {
         .replace(/\b([a-z][a-z0-9+.-]{0,20}:\/\/[^\s:@/]+:)[^\s@/]+@/gi, '$1***@')
         .replace(/((?:^|\s)(?:-u|--user)(?:\s+|=)["']?[^\s:"']+:)[^\s"']+/g, '$1***')
         .replace(
-            /((?:^|\s)--(?:password|passwd|secret[\w-]*|api-?key|token)(?:\s+|=))(?:"[^"\n]*"|'[^'\n]*'|[^\s"']+)/gi,
+            /((?:^|\s)--(?:password|passwd|secret[\w-]*|api-?key|token)(?:\s+|=))(?:"[^"\n]*"|'[^'\n]*'|[^\s"',;&|]+)/gi,
             '$1***'
         )
         .replace(
