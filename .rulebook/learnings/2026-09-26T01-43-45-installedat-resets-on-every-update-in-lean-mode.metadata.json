@@ -1,0 +1,12 @@
+{
+  "id": "2026-09-26T01-43-45-installedat-resets-on-every-update-in-lean-mode",
+  "title": "installedAt resets on every update in lean mode",
+  "content": "update.ts:490-492 recovers installedAt by matching \"Generated at:\" in AGENTS.md. Only the full generator writes that line (generator.ts:41); lean is the default, so the match fails and installedAt falls back to new Date(). Fix: carry existingConfig.installedAt forward instead of parsing AGENTS.md.",
+  "source": "manual",
+  "tags": [
+    "analysis:rulebook-simplification"
+  ],
+  "createdAt": "2026-09-26T01:43:45.724Z",
+  "occurrences": 1,
+  "lastSeenAt": "2026-09-26T01:43:45.724Z"
+}
