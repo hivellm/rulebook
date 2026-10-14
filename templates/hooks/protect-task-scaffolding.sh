@@ -6,7 +6,14 @@
 # are created, with their content, by `rulebook_task` (MCP) or
 # `rulebook task create` — never by hand. Editing them once the task exists is always allowed.
 set -euo pipefail
-input="$(cat)"
+# Builtin read, no `cat` fork. `-N` reads in blocks (bash 4.1+); `-d ''` reads a
+# pipe one byte per call, so it is only the fallback for bash 3.2 (macOS).
+input=""
+if (( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 1) )); then
+  IFS= read -r -N 100000000 input || true
+else
+  IFS= read -r -d '' input || true
+fi
 
 allow() {
   echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
@@ -19,8 +26,11 @@ case "$input" in
   *) allow ;;
 esac
 
-# Extract the target path (first "file_path" in the payload), normalize slashes.
-fp="$(printf '%s' "$input" | sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
+# Extract the target path (the tool_input key — keys inside string values are
+# escaped), normalize slashes. Builtin regex, no subprocess.
+FP_RE='"file_path"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)"'
+fp=""
+if [[ $input =~ $FP_RE ]]; then fp="${BASH_REMATCH[1]}"; fi
 fp="${fp//\\\\/\/}"
 fp="${fp//\\//}"
 
