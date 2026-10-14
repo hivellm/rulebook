@@ -129,6 +129,13 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 path: z.string().optional().describe('file path → routes to its project'),
                 projectId: projectIdSchema,
             },
+            // delete removes a task; other actions add or edit records under .rulebook/
+            annotations: {
+                readOnlyHint: false,
+                destructiveHint: true,
+                idempotentHint: false,
+                openWorldHint: false,
+            },
         },
         async (args) => {
             try {
@@ -321,6 +328,13 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 path: z.string().optional().describe('file path → routes to its project'),
                 projectId: projectIdSchema,
             },
+            // update overwrites a decision; promote may overwrite a skill file
+            annotations: {
+                readOnlyHint: false,
+                destructiveHint: true,
+                idempotentHint: false,
+                openWorldHint: false,
+            },
         },
         async (args) => {
             try {
@@ -458,6 +472,13 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 action: z.enum(['start', 'end']),
                 summary: z.string().optional().describe('end: session summary'),
                 projectId: projectIdSchema,
+            },
+            // end prepends a summary to PLANS.md; rotated history is archived, not dropped
+            annotations: {
+                readOnlyHint: false,
+                destructiveHint: false,
+                idempotentHint: false,
+                openWorldHint: false,
             },
         },
         async (args) => {
@@ -638,6 +659,13 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 enabledOnly: z.boolean().optional(),
                 projectId: projectIdSchema,
             },
+            // enable/disable toggle rulebook.json; repeating one changes nothing
+            annotations: {
+                readOnlyHint: false,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: false,
+            },
         },
         async (args) => {
             try {
@@ -720,6 +748,8 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
             title: 'Rulebook Rules',
             description: 'List project rules (user-authored canonical + path-scoped language)',
             inputSchema: { projectId: projectIdSchema },
+            // reads rule files only
+            annotations: { readOnlyHint: true, openWorldHint: false },
         },
         async (args) => {
             try {
@@ -750,6 +780,13 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 prompt: z.string().describe('operator prompt verbatim'),
                 notes: z.string().optional().describe('what you want decided'),
                 projectId: projectIdSchema,
+            },
+            // sends the prompt to TypeSafe (external) and appends to a local ledger
+            annotations: {
+                readOnlyHint: false,
+                destructiveHint: false,
+                idempotentHint: false,
+                openWorldHint: true,
             },
         },
         async (args) => {
@@ -791,6 +828,8 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 action: z.enum(['list', 'status', 'tasks']),
                 status: z.enum(['pending', 'in-progress', 'completed', 'blocked']).optional(),
             },
+            // reads workspace state only
+            annotations: { readOnlyHint: true, openWorldHint: false },
         },
         async (args) => {
             try {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { promises as fs } from 'fs';
+import { promises as fs, readFileSync } from 'fs';
 import path from 'path';
 import os from 'os';
 
@@ -39,100 +39,148 @@ describe('claude-mcp', () => {
     });
 
     describe('configureMcpJson', () => {
-        it('should create .mcp.json when it does not exist', async () => {
+        // Generated entries pin the installed version (F-013), never @latest.
+        const version = JSON.parse(
+            readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8')
+        ).version;
+        const PINNED = ['-y', `--package=@hivehub/rulebook@${version}`, 'rulebook-mcp'];
+
+        async function writeMcp(servers: Record<string, unknown>): Promise<string> {
+            const mcpJsonPath = path.join(testDir, '.mcp.json');
+            await fs.writeFile(mcpJsonPath, JSON.stringify({ mcpServers: servers }, null, 2));
+            return mcpJsonPath;
+        }
+
+        async function readServers(): Promise<Record<string, any>> {
+            const raw = await fs.readFile(path.join(testDir, '.mcp.json'), 'utf8');
+            return JSON.parse(raw).mcpServers;
+        }
+
+        it('should create .mcp.json with the pinned entry when it does not exist', async () => {
             await configureMcpJson(testDir);
 
-            const mcpJsonPath = path.join(testDir, '.mcp.json');
-            const content = JSON.parse(await fs.readFile(mcpJsonPath, 'utf8'));
-
-            expect(content.mcpServers).toBeDefined();
-            expect(content.mcpServers.rulebook).toEqual({
-                command: 'npx',
-                args: ['-y', '--package=@hivehub/rulebook@latest', 'rulebook-mcp'],
-            });
+            expect((await readServers()).rulebook).toEqual({ command: 'npx', args: PINNED });
         });
 
         it('should merge into existing .mcp.json without replacing other entries', async () => {
-            const mcpJsonPath = path.join(testDir, '.mcp.json');
-            const existingConfig = {
-                mcpServers: {
-                    'other-server': {
-                        command: 'node',
-                        args: ['other-server.js'],
-                    },
-                },
-            };
-            await fs.writeFile(mcpJsonPath, JSON.stringify(existingConfig, null, 2));
+            await writeMcp({ 'other-server': { command: 'node', args: ['other-server.js'] } });
 
             await configureMcpJson(testDir);
 
-            const content = JSON.parse(await fs.readFile(mcpJsonPath, 'utf8'));
+            const servers = await readServers();
+            expect(servers['other-server']).toEqual({ command: 'node', args: ['other-server.js'] });
+            expect(servers.rulebook).toEqual({ command: 'npx', args: PINNED });
+        });
 
-            // Should keep existing entry
-            expect(content.mcpServers['other-server']).toEqual({
-                command: 'node',
-                args: ['other-server.js'],
+        it('should rewrite a legacy --project-root entry to the pinned form', async () => {
+            await writeMcp({
+                rulebook: {
+                    command: 'npx',
+                    args: [
+                        '-y',
+                        '--package=@hivehub/rulebook@latest',
+                        'rulebook-mcp',
+                        '--project-root',
+                        testDir,
+                    ],
+                },
             });
 
-            // Should add rulebook entry without --project-root
+            const result = await configureMcpJson(testDir);
+
+            expect(result).toBe(false);
+            expect((await readServers()).rulebook.args).toEqual(PINNED);
+        });
+
+        it('should rewrite a slim @latest entry to the pinned form', async () => {
+            await writeMcp({
+                rulebook: {
+                    command: 'npx',
+                    args: ['-y', '--package=@hivehub/rulebook@latest', 'rulebook-mcp'],
+                },
+            });
+
+            expect(await configureMcpJson(testDir)).toBe(false);
+            expect((await readServers()).rulebook).toEqual({ command: 'npx', args: PINNED });
+        });
+
+        it('should rewrite a legacy full-CLI mcp-server entry, keeping --workspace and extra keys', async () => {
+            await writeMcp({
+                rulebook: {
+                    type: 'stdio',
+                    command: 'npx',
+                    args: ['-y', '@hivehub/rulebook@latest', 'mcp-server', '--workspace'],
+                },
+                other: { command: 'npx', args: ['-y', 'other-mcp@latest'] },
+            });
+
+            await configureMcpJson(testDir);
+
+            const servers = await readServers();
+            expect(servers.rulebook).toEqual({
+                type: 'stdio',
+                command: 'npx',
+                args: [...PINNED, '--workspace'],
+            });
+            // Non-rulebook servers keep their own @latest.
+            expect(servers.other).toEqual({ command: 'npx', args: ['-y', 'other-mcp@latest'] });
+        });
+
+        it('should move an older pin to the installed version', async () => {
+            await writeMcp({
+                rulebook: {
+                    command: 'npx',
+                    args: ['-y', '--package=@hivehub/rulebook@7.0.0', 'rulebook-mcp'],
+                },
+            });
+
+            await configureMcpJson(testDir);
+
+            expect((await readServers()).rulebook.args).toEqual(PINNED);
+        });
+
+        it('should leave a user-customised rulebook entry alone', async () => {
+            const custom = { command: 'node', args: ['/opt/rulebook/dist/mcp/rulebook-server.js'] };
+            const mcpJsonPath = await writeMcp({ rulebook: custom });
+            const before = await fs.readFile(mcpJsonPath, 'utf8');
+
+            expect(await configureMcpJson(testDir, true)).toBe(false);
+            expect(await fs.readFile(mcpJsonPath, 'utf8')).toBe(before);
+        });
+
+        it('should not rewrite an entry that is already pinned', async () => {
+            const mcpJsonPath = await writeMcp({ rulebook: { command: 'npx', args: PINNED } });
+            const before = await fs.readFile(mcpJsonPath, 'utf8');
+
+            expect(await configureMcpJson(testDir)).toBe(false);
+            expect(await fs.readFile(mcpJsonPath, 'utf8')).toBe(before);
+        });
+
+        it('should run the local build inside the rulebook repo itself (F-018)', async () => {
+            await fs.writeFile(
+                path.join(testDir, 'package.json'),
+                JSON.stringify({ name: '@hivehub/rulebook', version })
+            );
+
+            await configureMcpJson(testDir);
+
+            expect((await readServers()).rulebook).toEqual({
+                command: 'node',
+                args: ['./dist/mcp/rulebook-server.js'],
+            });
+        });
+
+        it('should write another MCP config file when given its path', async () => {
+            const cursorPath = path.join(testDir, '.cursor', 'mcp.json');
+            await fs.mkdir(path.dirname(cursorPath), { recursive: true });
+
+            await configureMcpJson(testDir, true, cursorPath);
+
+            const content = JSON.parse(await fs.readFile(cursorPath, 'utf8'));
             expect(content.mcpServers.rulebook).toEqual({
                 command: 'npx',
-                args: ['-y', '--package=@hivehub/rulebook@latest', 'rulebook-mcp'],
+                args: [...PINNED, '--workspace'],
             });
-        });
-
-        it('should upgrade existing rulebook entry with legacy --project-root', async () => {
-            const mcpJsonPath = path.join(testDir, '.mcp.json');
-            const existingConfig = {
-                mcpServers: {
-                    rulebook: {
-                        command: 'npx',
-                        args: [
-                            '-y',
-                            '--package=@hivehub/rulebook@latest',
-                            'rulebook-mcp',
-                            '--project-root',
-                            testDir,
-                        ],
-                    },
-                },
-            };
-            await fs.writeFile(mcpJsonPath, JSON.stringify(existingConfig, null, 2));
-
-            const result = await configureMcpJson(testDir);
-
-            expect(result).toBe(false);
-            const content = JSON.parse(await fs.readFile(mcpJsonPath, 'utf8'));
-            // Args should now be simplified (no --project-root)
-            expect(content.mcpServers.rulebook.args).toEqual([
-                '-y',
-                '--package=@hivehub/rulebook@latest',
-                'rulebook-mcp',
-            ]);
-        });
-
-        it('should not modify existing rulebook entry that already uses simplified args', async () => {
-            const mcpJsonPath = path.join(testDir, '.mcp.json');
-            const existingConfig = {
-                mcpServers: {
-                    rulebook: {
-                        command: 'npx',
-                        args: ['-y', '--package=@hivehub/rulebook@latest', 'rulebook-mcp'],
-                    },
-                },
-            };
-            await fs.writeFile(mcpJsonPath, JSON.stringify(existingConfig, null, 2));
-
-            const result = await configureMcpJson(testDir);
-
-            expect(result).toBe(false);
-            const content = JSON.parse(await fs.readFile(mcpJsonPath, 'utf8'));
-            // Should remain unchanged
-            expect(content.mcpServers.rulebook.args).toEqual([
-                '-y',
-                '--package=@hivehub/rulebook@latest',
-                'rulebook-mcp',
-            ]);
         });
 
         it('should handle .mcp.json with no mcpServers key', async () => {

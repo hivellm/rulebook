@@ -10,6 +10,8 @@ export async function mcpInitCommand(options?: { workspace?: boolean }): Promise
     const { existsSync, readFileSync, writeFileSync, statSync } = await import('fs');
     const { join, dirname } = await import('path');
     const { createConfigManager } = await import('../../core/state/config-manager.js');
+    // One writer for every rulebook MCP entry (pinned version, never @latest).
+    const { configureMcpJson } = await import('../../core/claude/claude-mcp.js');
 
     try {
         const cwd = process.cwd();
@@ -23,31 +25,14 @@ export async function mcpInitCommand(options?: { workspace?: boolean }): Promise
                 process.exit(1);
             }
 
-            const mcpArgs = ['-y', '@hivehub/rulebook@latest', 'mcp-server', '--workspace'];
-            const mcpEntry = { command: 'npx', args: mcpArgs };
-
             const cursorDir = join(cwd, '.cursor');
             if (existsSync(cursorDir)) {
-                const mcpJsonPath = join(cursorDir, 'mcp.json');
-                let mcpConfig: any = { mcpServers: {} };
-                if (existsSync(mcpJsonPath)) {
-                    mcpConfig = JSON.parse(readFileSync(mcpJsonPath, 'utf8'));
-                }
-                mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
-                mcpConfig.mcpServers.rulebook = mcpEntry;
-                writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+                await configureMcpJson(cwd, true, join(cursorDir, 'mcp.json'));
                 console.log(chalk.green('✓ Workspace MCP initialized'));
                 console.log(chalk.gray(`  • Updated .cursor/mcp.json with --workspace flag`));
             }
 
-            const mcpJsonPath = join(cwd, '.mcp.json');
-            let mcpConfig: any = { mcpServers: {} };
-            if (existsSync(mcpJsonPath)) {
-                mcpConfig = JSON.parse(readFileSync(mcpJsonPath, 'utf8'));
-            }
-            mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
-            mcpConfig.mcpServers.rulebook = mcpEntry;
-            writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+            await configureMcpJson(cwd, true);
 
             console.log(chalk.green('✓ Workspace MCP initialized'));
             console.log(
@@ -91,21 +76,7 @@ export async function mcpInitCommand(options?: { workspace?: boolean }): Promise
 
         const cursorDir = join(projectRoot, '.cursor');
         if (existsSync(cursorDir)) {
-            const mcpJsonPath = join(cursorDir, 'mcp.json');
-            let mcpConfig: any = { mcpServers: {} };
-
-            if (existsSync(mcpJsonPath)) {
-                const raw = readFileSync(mcpJsonPath, 'utf8');
-                mcpConfig = JSON.parse(raw);
-            }
-
-            mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
-            mcpConfig.mcpServers.rulebook = {
-                command: 'npx',
-                args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
-            };
-
-            writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+            await configureMcpJson(projectRoot, false, join(cursorDir, 'mcp.json'));
             console.log(chalk.green('✓ Rulebook MCP initialized'));
             console.log(chalk.gray(`  • Updated .rulebook with MCP configuration`));
             console.log(chalk.gray(`  • Updated .cursor/mcp.json`));

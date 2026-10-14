@@ -245,14 +245,14 @@ rulebook workspace init
 rulebook mcp init --workspace
 ```
 
-This creates a single `.mcp.json` with the `--workspace` flag:
+This creates a single `.mcp.json` with the `--workspace` flag, pinned to the installed rulebook version (`rulebook update` moves the pin):
 
 ```json
 {
   "mcpServers": {
     "rulebook": {
       "command": "npx",
-      "args": ["-y", "@hivehub/rulebook@latest", "mcp-server", "--workspace"]
+      "args": ["-y", "--package=@hivehub/rulebook@7.5.0", "rulebook-mcp", "--workspace"]
     }
   }
 }

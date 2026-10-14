@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { spawn } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
+import os from 'os';
 import path from 'path';
+import { buildRulebookMcpEntry } from '../src/core/claude/claude-mcp';
 
 /**
  * v7 CI acceptance checks (docs/analysis/v7-performance/05-budget-and-metrics.md).
@@ -13,6 +15,9 @@ import path from 'path';
  * Requires `npm run build` first; skipped when dist/ is absent.
  */
 const SERVER = path.join(process.cwd(), 'dist', 'mcp', 'rulebook-server.js');
+// F-019: probe the launch command rulebook generates for this repo, not a
+// hand-written one, so a regression of the generated form fails here.
+const LAUNCH = buildRulebookMcpEntry(process.cwd());
 const MCP_TOOL_BUDGET = 8;
 // v7.0 shipped at ~3.2 KB. v7.2 adds the decision-request surface to
 // rulebook_task (ask|answer|questions + 7 terse params) rather than an extra
@@ -24,7 +29,10 @@ const MCP_TOOL_BUDGET = 8;
 // (6 × 40 B = 240 B, not ours): measured 5109 = 4869 + 240, so the ceiling moves by that.
 // v7.5: create takes the task content (why/what/items/impact) so tasks are born complete
 // (measured 5550 = 5109 + 441; ceiling = measured + 2 %).
-const MCP_SCHEMA_BYTES_BUDGET = 5660;
+// v7.5: tool annotations (read-only/destructive/idempotent/open-world hints, F-037) are
+// client metadata, not input schema; they add 584 B (measured 6134 = 5550 + 584;
+// ceiling = measured + 2 %).
+const MCP_SCHEMA_BYTES_BUDGET = 6260;
 // Node process startup dominates; generous CI-safe ceiling (Linux ~150ms,
 // Windows ~300ms). Regressions to full-CLI loading (~450ms+) still fail.
 const MCP_INIT_MS_BUDGET = 2000;
@@ -39,7 +47,7 @@ interface McpProbe {
 function probeServer(): Promise<McpProbe> {
     return new Promise((resolve, reject) => {
         const t0 = Date.now();
-        const p = spawn('node', [SERVER], { cwd: process.cwd() });
+        const p = spawn(LAUNCH.command, LAUNCH.args, { cwd: process.cwd() });
         let buf = '';
         let initMs = -1;
         let serverVersion = '';
@@ -103,4 +111,21 @@ describe.skipIf(!existsSync(SERVER))('v7 MCP budgets (acceptance checks 3 + 5)',
         expect(probe.initMs).toBeGreaterThan(0);
         expect(probe.initMs).toBeLessThanOrEqual(MCP_INIT_MS_BUDGET);
     }, 20000);
+});
+
+describe('generated MCP launch command (F-013, F-019)', () => {
+    it('pins the installed version for other projects and never uses @latest', () => {
+        const pkg = JSON.parse(readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8'));
+        const entry = buildRulebookMcpEntry(path.join(os.tmpdir(), 'not-the-rulebook-repo'));
+
+        expect(entry).toEqual({
+            command: 'npx',
+            args: ['-y', `--package=@hivehub/rulebook@${pkg.version}`, 'rulebook-mcp'],
+        });
+        expect(entry.args.join(' ')).not.toMatch(/@latest|mcp-server/);
+    });
+
+    it('runs the local build in the rulebook repo itself (F-018)', () => {
+        expect(LAUNCH).toEqual({ command: 'node', args: ['./dist/mcp/rulebook-server.js'] });
+    });
 });

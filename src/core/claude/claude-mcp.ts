@@ -9,6 +9,7 @@
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
+import { readFileSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { fileExists, readFile, writeFile, ensureDir } from '../../utils/file-system.js';
 import { WorkspaceManager } from '../workspace/workspace-manager.js';
@@ -33,30 +34,87 @@ export async function isClaudeCodeInstalled(homeDir?: string): Promise<boolean> 
     return fileExists(claudeDir);
 }
 
-/**
- * Build the MCP server args array.
- * Does NOT include --project-root; the MCP server discovers the project
- * via walk-up (`findRulebookConfig(process.cwd())`), which is portable
- * across machines and OS.
- */
-function buildMcpServerArgs(workspace?: boolean): string[] {
-    const args = ['-y', '--package=@hivehub/rulebook@latest', 'rulebook-mcp'];
-    if (workspace) args.push('--workspace');
-    return args;
+const RULEBOOK_PACKAGE = '@hivehub/rulebook';
+
+/** An MCP server entry as `.mcp.json` and `.cursor/mcp.json` store it. */
+export interface McpServerEntry {
+    command: string;
+    args: string[];
+}
+
+/** Root of the installed package: src/core/claude/ and dist/core/claude/ sit three levels below it. */
+export function getRulebookPackageRoot(): string {
+    return join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+}
+
+/** The installed rulebook version, which generated entries pin. */
+export function getInstalledRulebookVersion(): string {
+    const pkgPath = join(getRulebookPackageRoot(), 'package.json');
+    return (JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version: string }).version;
+}
+
+function isRulebookRepo(projectRoot: string): boolean {
+    try {
+        const pkg = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf-8'));
+        return pkg.name === RULEBOOK_PACKAGE;
+    } catch {
+        return false;
+    }
 }
 
 /**
- * Configure .mcp.json at project root with rulebook MCP server entry.
- * If .mcp.json already exists, merges without replacing existing entries.
- * Uses simplified args without --project-root (the MCP server discovers
- * the project via cwd walk-up, which is portable across machines).
- * If an existing entry contains legacy --project-root args, they are
- * upgraded to the simplified form.
- * When `workspace` is true, adds --workspace flag to the args.
+ * The one builder of rulebook MCP entries (`.mcp.json`, `.cursor/mcp.json`,
+ * legacy migration). The entry is pinned to the installed version, never
+ * `@latest`: every session runs the same known build and no session
+ * re-installs at release time (F-013/F-015). No --project-root: the server
+ * finds the project via cwd walk-up, which is portable across machines.
+ * In the rulebook repo itself the entry runs the local build: there npx
+ * skips its cache for the same-named package and runs whatever global
+ * `rulebook-mcp` is on PATH, possibly a stale one (F-018).
  */
-export async function configureMcpJson(projectRoot: string, workspace?: boolean): Promise<boolean> {
-    const mcpJsonPath = join(projectRoot, '.mcp.json');
+export function buildRulebookMcpEntry(
+    projectRoot: string,
+    workspace?: boolean,
+    version: string = getInstalledRulebookVersion()
+): McpServerEntry {
+    const tail = workspace ? ['--workspace'] : [];
+    if (isRulebookRepo(projectRoot)) {
+        return { command: 'node', args: ['./dist/mcp/rulebook-server.js', ...tail] };
+    }
+    return {
+        command: 'npx',
+        args: ['-y', `--package=${RULEBOOK_PACKAGE}@${version}`, 'rulebook-mcp', ...tail],
+    };
+}
 
+/**
+ * True for an entry rulebook generated: npx running @hivehub/rulebook at any
+ * version, in the slim `rulebook-mcp` or the legacy `mcp-server` form. Only
+ * these are rewritten; anything else (e.g. `node <path>`) is the user's.
+ */
+function isGeneratedRulebookEntry(entry: { command?: unknown; args?: unknown }): boolean {
+    return (
+        entry.command === 'npx' &&
+        Array.isArray(entry.args) &&
+        entry.args.some(
+            (a) => typeof a === 'string' && /^(--package=)?@hivehub\/rulebook(@|$)/.test(a)
+        )
+    );
+}
+
+/**
+ * Add or refresh the `rulebook` entry in an MCP config file: `.mcp.json` at
+ * the project root unless `mcpJsonPath` names another (`.cursor/mcp.json`).
+ * Other servers are never touched. An existing generated entry (`@latest`,
+ * legacy `mcp-server`, `--project-root`, an older pin) is rewritten to the
+ * pinned form, keeping its `--workspace` flag and any extra keys; a
+ * user-customised entry is left alone. Returns true only when the entry was added.
+ */
+export async function configureMcpJson(
+    projectRoot: string,
+    workspace?: boolean,
+    mcpJsonPath: string = join(projectRoot, '.mcp.json')
+): Promise<boolean> {
     let mcpConfig: { mcpServers?: Record<string, unknown> } = { mcpServers: {} };
 
     if (await fileExists(mcpJsonPath)) {
@@ -71,29 +129,24 @@ export async function configureMcpJson(projectRoot: string, workspace?: boolean)
 
     mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
 
-    const expectedArgs = buildMcpServerArgs(workspace);
+    const existing = mcpConfig.mcpServers.rulebook as
+        { command?: unknown; args?: unknown[] } | undefined;
 
-    if (mcpConfig.mcpServers.rulebook) {
-        const existing = mcpConfig.mcpServers.rulebook as { args?: string[] };
-        const hasLegacyProjectRoot = existing.args?.includes('--project-root');
-        // v6 entries boot the full CLI ('mcp-server'); v7 uses the slim
-        // standalone rulebook-mcp bin — upgrade in place.
-        const hasLegacyEntrypoint = existing.args?.includes('mcp-server');
-        // Upgrade: add --workspace if now in workspace mode but entry lacks it
-        const needsWorkspaceFlag = workspace && !existing.args?.includes('--workspace');
-
-        if (hasLegacyProjectRoot || hasLegacyEntrypoint || needsWorkspaceFlag) {
-            existing.args = expectedArgs;
+    if (existing) {
+        if (!isGeneratedRulebookEntry(existing)) return false;
+        const expected = buildRulebookMcpEntry(
+            projectRoot,
+            workspace || existing.args?.includes('--workspace')
+        );
+        const current = JSON.stringify([existing.command, existing.args]);
+        if (current !== JSON.stringify([expected.command, expected.args])) {
+            mcpConfig.mcpServers.rulebook = { ...existing, ...expected };
             await writeFile(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
         }
-
         return false; // Entry already existed (possibly upgraded)
     }
 
-    mcpConfig.mcpServers.rulebook = {
-        command: 'npx',
-        args: expectedArgs,
-    };
+    mcpConfig.mcpServers.rulebook = buildRulebookMcpEntry(projectRoot, workspace);
 
     await writeFile(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
     return true;
