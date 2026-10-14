@@ -357,6 +357,7 @@ rulebook init --minimal          # Essentials only
 rulebook init --lean             # AGENTS.md as a <3KB index
 rulebook update                  # Update to the latest rules
 rulebook doctor                  # Health checks (file sizes, broken imports, stale state)
+rulebook doctor --perf           # Read-only cost report: hooks (p50/p90), CLI, MCP, leftovers, Codex (--json, --days N)
 rulebook claude                  # Apply the recommended Claude Code setup
 rulebook gate "<prompt>"         # Jev routing for a prompt (--json for the full result)
 rulebook gate --check            # Key found? One cheap live call (--strict exits 2 if unavailable)

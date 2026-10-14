@@ -140,7 +140,13 @@ program
 program
     .command('doctor')
     .description('Run rulebook health checks (file sizes, broken imports, stale state)')
-    .action(doctorCommand);
+    .option(
+        '--perf',
+        'Read-only per-call cost report: hooks with p50/p90 from transcripts, CLI resolution, MCP launch and live servers, leftovers, Codex'
+    )
+    .option('--json', 'Print the full report as JSON')
+    .option('--days <n>', 'Transcript window for hook timing (with --perf)', '3')
+    .action((options) => doctorCommand(options));
 
 program
     .command('config')

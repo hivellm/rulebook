@@ -37,6 +37,18 @@ To confirm everything is wired up:
 rulebook doctor          # health checks: file sizes, broken imports, stale state
 ```
 
+When sessions feel slow, see where the per-call time goes. `--perf` changes nothing; it
+lists every hook (user, project, local, plugins, Codex) with its owner and p50/p90 from
+the last N days of Claude Code transcripts, how the hook wrapper finds the rulebook CLI
+(and a broken global link), the MCP launch form and live servers per host, stale PID
+files, leftover v5/v6 files and Codex trust. Each warning comes with one suggested fix.
+
+```bash
+rulebook doctor --perf             # human report
+rulebook doctor --perf --days 7    # widen the transcript window (default 3)
+rulebook doctor --perf --json      # the full structure, for scripts
+```
+
 ---
 
 ## Spec → implement a feature (the full loop)
