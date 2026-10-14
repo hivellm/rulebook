@@ -38,7 +38,7 @@ rulebook task list --project frontend
 rulebook task list --all-projects
 
 # Create task in specific project
-rulebook task create my-task --project backend
+rulebook task create phase1_my-task --project backend \n  --why "<why, 20+ chars>" --what "<what changes>" --item "<step>"
 
 # Update all projects at once
 rulebook update

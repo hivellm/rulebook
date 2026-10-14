@@ -22,7 +22,9 @@ const MCP_TOOL_BUDGET = 8;
 // description or input schema can trip this check — re-measure before moving the ceiling.
 // MCP SDK 1.26 adds `"execution":{"taskSupport":"forbidden"}` to every registered tool
 // (6 × 40 B = 240 B, not ours): measured 5109 = 4869 + 240, so the ceiling moves by that.
-const MCP_SCHEMA_BYTES_BUDGET = 5140;
+// v7.5: create takes the task content (why/what/items/impact) so tasks are born complete
+// (measured 5550 = 5109 + 441; ceiling = measured + 2 %).
+const MCP_SCHEMA_BYTES_BUDGET = 5660;
 // Node process startup dominates; generous CI-safe ceiling (Linux ~150ms,
 // Windows ~300ms). Regressions to full-CLI loading (~450ms+) still fail.
 const MCP_INIT_MS_BUDGET = 2000;

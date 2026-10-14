@@ -58,7 +58,7 @@ AI coding agents produce inconsistent, error-prone code without clear guidelines
 | **Universal rules** | `AGENTS.md` + `CLAUDE.md` generated from one source — read natively by any AGENTS.md-aware agent |
 | **Quality gates** | Pre-commit (lint, type-check, format) + pre-push (build, tests) hooks — language-aware, cross-platform |
 | **Spec-driven tasks** | OpenSpec-compatible tasks with a docs + tests tail — check it or archive with a one-line waiver |
-| **6 MCP tools** | `rulebook_task` / `_memory` / `_session` / `_skill` / `_rules` / `_gate` (+ `_workspace` in workspace mode) — action-parameterized, ~4.9 KB of schemas total |
+| **6 MCP tools** | `rulebook_task` / `_memory` / `_session` / `_skill` / `_rules` / `_gate` (+ `_workspace` in workspace mode) — action-parameterized, ~5.5 KB of schemas total |
 | **Lean by design** | One path-only guard hook, full-autonomy permissions, no content regexes, no ceremony for small fixes |
 | **28 languages** | Auto-detected with confidence scores; language-specific templates and CI/CD workflows |
 
@@ -95,7 +95,7 @@ CLAUDE.md (thin, ~100 lines)
 Spec-driven development in an OpenSpec-compatible format — phase-prefixed task IDs, a mandatory tail (docs + tests + verify), and automatic archival.
 
 ```bash
-rulebook task create phase1_add-auth    # Create task with structure
+rulebook task create phase1_add-auth --why "<why, 20+ chars>" --what "<what>" --item "<step>"   # Create a complete task
 rulebook task list                       # See pending work
 rulebook task validate phase1_add-auth   # Check format
 rulebook task archive phase1_add-auth    # Archive when done
@@ -358,7 +358,7 @@ rulebook gate "<prompt>"         # Jev routing for a prompt (--json for the full
 rulebook gate --check            # Key found? One cheap live call (--strict exits 2 if unavailable)
 
 # Tasks
-rulebook task create <task-id>   # Create (phase-prefixed: phase1_add-auth)
+rulebook task create <task-id> --why .. --what .. --item ..   # Create a complete task (or --from <file.json>)
 rulebook task list               # List active tasks
 rulebook task archive <task-id>  # Archive a completed task
 rulebook task ask <task-id> -q "<question>" -o "<A — trade-off>" -r "<A>"   # File a decision request (task → blocked)

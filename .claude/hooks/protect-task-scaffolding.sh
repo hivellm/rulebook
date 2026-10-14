@@ -3,8 +3,8 @@
 #
 # PATH-ONLY by design (F-009): no content inspection, no regexes over code.
 # The single rule: `.rulebook/tasks/<id>/proposal.md` and `.metadata.json`
-# are created by `rulebook_task` (MCP) or `rulebook task create` —
-# never by hand. Editing them once the task exists is always allowed.
+# are created, with their content, by `rulebook_task` (MCP) or
+# `rulebook task create` — never by hand. Editing them once the task exists is always allowed.
 set -euo pipefail
 input="$(cat)"
 
@@ -27,7 +27,7 @@ fp="${fp//\\//}"
 case "$fp" in
   *.rulebook/tasks/*/proposal.md|*.rulebook/tasks/*/.metadata.json)
     if [[ ! -f "$fp" ]]; then
-      echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Task scaffolding is created via rulebook_task (MCP) or `rulebook task create`, not by hand. Once the task exists, editing its files is allowed."}}'
+      echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Tasks are created with their content (why, what, items) via rulebook_task (MCP) or `rulebook task create`, not by hand. Once the task exists, editing its files is allowed."}}'
       exit 0
     fi
     ;;

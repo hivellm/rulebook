@@ -1,4 +1,4 @@
-import type { RulebookTask, TaskValidationResult } from './task-manager.js';
+import type { RulebookTask, TaskContent, TaskValidationResult } from './task-manager.js';
 import type { AskQuestionInput, TaskQuestion } from './task-questions.js';
 
 /**
@@ -17,7 +17,8 @@ export interface TaskBackend {
     validateTaskId(taskId: string): { valid: boolean; error?: string };
     extractPhase(taskId: string): { phase: number; subletter: string };
 
-    createTask(taskId: string): Promise<void>;
+    /** v7.5: a task is created with its content — there is no empty scaffold. */
+    createTask(taskId: string, content: TaskContent): Promise<void>;
     listTasks(includeArchived?: boolean): Promise<RulebookTask[]>;
     loadTask(taskId: string, archived?: boolean): Promise<RulebookTask | null>;
     showTask(taskId: string): Promise<RulebookTask | null>;

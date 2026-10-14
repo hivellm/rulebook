@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 7.5.0
+
+### Changed — tasks are created with their content
+
+- `rulebook_task {action:"create"}` now takes `why` (20+ characters), `what`,
+  `items` (the checklist) and an optional `impact`, and writes a complete
+  proposal.md and tasks.md (items numbered 1.1…1.N, plus the mandatory tail) in
+  that one call. No more half-filled tasks with placeholder text.
+- `rulebook task create <id>` takes the same content: `--why`, `--what`,
+  repeatable `--item`, `--impact-specs/-code/-breaking/-benefit`, or
+  `--from <file.json>` (flags override the file).
+- Missing or invalid content fails with every problem listed at once, and
+  nothing is left on disk: files are written to a temp folder, validated, then
+  moved into place. The GitHub backend renders the same content.
+- **Breaking:** `create` without content is rejected (MCP and CLI); there is no
+  empty-scaffold path any more. Generated docs, skills and the scaffolding
+  guard now say "create with content".
+
 ## [7.4.0] - 2026-09-26
 
 ### Changed — the main session orchestrates; subagents do the work

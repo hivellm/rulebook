@@ -15,48 +15,47 @@ The Rulebook MCP Server provides programmatic access to task management function
 
 ### `rulebook_task_create`
 
-Create a new Rulebook task with OpenSpec-compatible format.
+Create a new Rulebook task, complete, in one call (v7.5: there is no empty scaffold).
+In the consolidated v7 tool this is `rulebook_task {action:"create", ...}`.
 
 **Input Schema:**
 ```typescript
 {
-  taskId: string;                    // Task ID in kebab-case (e.g., add-feature-name)
-  proposal?: {                        // Optional proposal content
-    why: string;                      // Why this change is needed (minimum 20 characters)
-    whatChanges: string;              // Description of what will change
-    impact?: {                        // Optional impact analysis
-      affectedSpecs?: string[];       // List of affected specifications
-      affectedCode?: string[];        // List of affected code files/modules
-      breakingChange: boolean;        // Whether this is a breaking change
-      userBenefit: string;           // User benefit description
-    };
+  taskId: string;                     // phase-prefixed, e.g. phase1_add-auth
+  why: string;                        // Why this change is needed (minimum 20 characters)
+  what: string;                       // What will change
+  items: string[];                    // Checklist items → tasks.md 1.1…1.N (at least one)
+  impact?: {
+    specs?: string;                   // Affected specs (default "none")
+    code?: string;                    // Affected code (default "none")
+    breaking?: boolean | string;      // true → YES, false/absent → NO, text used as written
+    benefit?: string;                 // User benefit (default "none")
   };
 }
 ```
 
-**Output Schema:**
+Missing `why`/`what`/`items` fails with every missing field named; nothing is written.
+proposal.md gets Why / What Changes / Impact; tasks.md gets `## 1. Implementation`
+plus the mandatory `## 2. Tail` items.
+
+**Output:**
 ```typescript
-{
-  success: boolean;                   // Whether task creation succeeded
-  taskId: string;                    // Created task ID
-  message: string;                    // Success or error message
-  path?: string;                      // Path to created task directory
-}
+{ taskId: string; message: 'created'; items: number }
 ```
 
 **Example:**
 ```json
 {
-  "taskId": "add-user-authentication",
-  "proposal": {
-    "why": "Users need secure authentication to access protected resources",
-    "whatChanges": "Add JWT-based authentication system with login and registration endpoints",
-    "impact": {
-      "affectedSpecs": ["auth/spec.md"],
-      "affectedCode": ["src/auth/", "src/middleware/"],
-      "breakingChange": false,
-      "userBenefit": "Secure user authentication and session management"
-    }
+  "action": "create",
+  "taskId": "phase1_add-user-authentication",
+  "why": "Users need secure authentication to access protected resources",
+  "what": "Add JWT-based authentication with login and registration endpoints",
+  "items": ["Login endpoint", "Registration endpoint", "Auth middleware"],
+  "impact": {
+    "specs": "auth/spec.md",
+    "code": "src/auth/, src/middleware/",
+    "breaking": false,
+    "benefit": "Secure user authentication and session management"
   }
 }
 ```
@@ -462,27 +461,17 @@ Common error scenarios:
 
 ```typescript
 // Using MCP client
-const result = await mcpClient.callTool('rulebook_task_create', {
-  taskId: 'add-feature-x',
-  proposal: {
-    why: 'Users need feature X to improve productivity',
-    whatChanges: 'Add feature X with Y and Z capabilities',
-    impact: {
-      affectedSpecs: ['features/spec.md'],
-      affectedCode: ['src/features/'],
-      breakingChange: false,
-      userBenefit: 'Improved productivity and user experience'
-    }
-  }
+const result = await mcpClient.callTool('rulebook_task', {
+  action: 'create',
+  taskId: 'phase1_add-feature-x',
+  why: 'Users need feature X to improve productivity',
+  what: 'Add feature X with Y and Z capabilities',
+  items: ['Implement Y', 'Implement Z'],
+  impact: { specs: 'features/spec.md', code: 'src/features/', breaking: false }
 });
 
 console.log(result.structuredContent);
-// {
-//   success: true,
-//   taskId: 'add-feature-x',
-//   message: 'Task add-feature-x created successfully',
-//   path: 'rulebook/tasks/add-feature-x'
-// }
+// { taskId: 'phase1_add-feature-x', message: 'created', items: 2 }
 ```
 
 ### Listing Tasks with Filters

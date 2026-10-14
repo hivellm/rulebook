@@ -15,7 +15,19 @@ vi.mock('child_process', async (importOriginal) => {
 });
 
 import { GitHubTaskBackend } from '../src/core/tasks/github-backend.js';
-import { resolveTaskBackend, TaskManager } from '../src/core/tasks/task-manager.js';
+import {
+    renderProposal,
+    renderTasks,
+    resolveTaskBackend,
+    TaskManager,
+} from '../src/core/tasks/task-manager.js';
+
+/** v7.5: tasks are created with their content. */
+const TASK_CONTENT = {
+    why: 'Test task created with its content in one call',
+    what: 'Exercise the task store',
+    items: ['First step'],
+};
 
 /** Calls recorded as argv arrays, without the trailing node-style callback. */
 function calls(): string[][] {
@@ -104,7 +116,9 @@ describe('GitHubTaskBackend', () => {
     describe('createTask', () => {
         it('rejects a task id without a phase prefix before touching gh', async () => {
             const backend = new GitHubTaskBackend();
-            await expect(backend.createTask('no-phase-prefix')).rejects.toThrow(/phase prefix/);
+            await expect(backend.createTask('no-phase-prefix', TASK_CONTENT)).rejects.toThrow(
+                /phase prefix/
+            );
             expect(execFileMock).not.toHaveBeenCalled();
         });
 
@@ -112,7 +126,7 @@ describe('GitHubTaskBackend', () => {
             ghReplies('[]', '');
             const backend = new GitHubTaskBackend({ repo: 'acme/widgets' });
 
-            await backend.createTask('phase2_new-thing');
+            await backend.createTask('phase2_new-thing', TASK_CONTENT);
 
             const create = calls().find((c) => c[1] === 'create')!;
             expect(create).toContain('--title');
@@ -127,13 +141,26 @@ describe('GitHubTaskBackend', () => {
             expect(body).toContain('# Proposal: phase2_new-thing');
             // The mandatory tail must be scaffolded exactly as on the file side.
             expect(body).toContain('Run tests and confirm they pass');
+            // v7.5: the issue carries the same rendered content as the file backend.
+            expect(body).toContain(renderProposal('phase2_new-thing', TASK_CONTENT).trim());
+            expect(body).toContain(renderTasks(TASK_CONTENT.items).trim());
+        });
+
+        it('v7.5: rejects missing content before touching gh', async () => {
+            const backend = new GitHubTaskBackend();
+            await expect(
+                backend.createTask('phase2_bare', { why: '', what: '', items: [] })
+            ).rejects.toThrow(/why is required; what is required; items needs/);
+            expect(execFileMock).not.toHaveBeenCalled();
         });
 
         it('refuses to create a task whose issue already exists', async () => {
             ghReplies(JSON.stringify([OPEN_ISSUE]));
             const backend = new GitHubTaskBackend();
 
-            await expect(backend.createTask('phase1_demo')).rejects.toThrow(/already exists/);
+            await expect(backend.createTask('phase1_demo', TASK_CONTENT)).rejects.toThrow(
+                /already exists/
+            );
         });
     });
 

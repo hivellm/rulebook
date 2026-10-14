@@ -15,8 +15,9 @@ Use Rulebook's task system for spec-driven development. Create a task BEFORE imp
 
 ## Workflow
 
-1. Create the task: `rulebook task create <task-id>` (or `rulebook_task` via MCP)
-2. Write `proposal.md`, `tasks.md`, and spec deltas
+1. Create the task with its content in one call: `rulebook_task {action:"create", taskId, why, what, items, impact}`
+   via MCP, or `rulebook task create <task-id> --why .. --what .. --item ..` — proposal.md and tasks.md are written complete
+2. Add spec deltas (`specs/<module>/spec.md`) when the change has requirements
 3. Validate: `rulebook task validate <task-id>`
 4. Implement, checking off `tasks.md` items in order
 5. Archive when done: `rulebook task archive <task-id>`

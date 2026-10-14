@@ -87,6 +87,7 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
             title: 'Rulebook Tasks',
             description:
                 'Manage rulebook tasks. action: create|list|show|update|archive|validate|delete|ask|answer|questions. ' +
+                'create needs why/what/items so the task is born complete. ' +
                 'ask = a decision the spec does not settle and you cannot make: blocks the task, returns an operator form. ' +
                 'blocked requires an open question or blockedBy.',
             inputSchema: {
@@ -107,6 +108,17 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 includeArchived: z.boolean().optional(),
                 skipValidation: z.boolean().optional(),
                 tailWaiver: z.string().optional().describe('archive: why the tail does not apply'),
+                why: z.string().optional().describe('create: >=20 chars'),
+                what: z.string().optional().describe('create'),
+                items: z.array(z.string()).optional().describe('create: checklist'),
+                impact: z
+                    .object({
+                        specs: z.string().optional(),
+                        code: z.string().optional(),
+                        breaking: z.union([z.boolean(), z.string()]).optional(),
+                        benefit: z.string().optional(),
+                    })
+                    .optional(),
                 question: z.string().optional().describe('ask: what must be decided'),
                 context: z.string().optional().describe('ask: why undecidable'),
                 options: z.array(z.string()).optional().describe('ask: "Label — trade-off"'),
@@ -137,9 +149,24 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 const { ASK_INSTRUCTION, openQuestions, renderOperatorPrompt } =
                     await import('../../core/tasks/task-questions.js');
                 switch (args.action) {
-                    case 'create':
-                        await tm.createTask(args.taskId!);
-                        return ok({ taskId: args.taskId, message: 'created' });
+                    case 'create': {
+                        const items = (args.items ?? []).filter((i) => i.trim());
+                        const missing = [
+                            !args.why?.trim() && 'why',
+                            !args.what?.trim() && 'what',
+                            items.length === 0 && 'items',
+                        ].filter(Boolean);
+                        if (missing.length > 0) {
+                            return fail(`create requires ${missing.join(', ')}`);
+                        }
+                        await tm.createTask(args.taskId!, {
+                            why: args.why!,
+                            what: args.what!,
+                            items,
+                            impact: args.impact,
+                        });
+                        return ok({ taskId: args.taskId, message: 'created', items: items.length });
+                    }
                     case 'list': {
                         const tasks = await tm.listTasks(args.includeArchived || false);
                         const filtered = args.status

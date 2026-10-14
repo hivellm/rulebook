@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
+import type { TaskCreateOptions } from './cli/commands/task.js';
 import {
     initCommand,
     validateCommand,
@@ -163,10 +164,22 @@ const taskCommand = program.command('task').description('Manage Rulebook tasks')
 
 taskCommand
     .command('create <task-id>')
-    .description('Create a new task')
+    .description('Create a new task with its content (why, what, checklist items)')
+    .option('--why <text>', 'Why the change is needed (20+ characters)')
+    .option('--what <text>', 'What will change')
+    .option(
+        '--item <text>',
+        'Checklist item (repeatable)',
+        (value: string, previous: string[] = []) => [...previous, value]
+    )
+    .option('--impact-specs <text>', 'Affected specs')
+    .option('--impact-code <text>', 'Affected code')
+    .option('--impact-breaking <yes|no|text>', 'Breaking change')
+    .option('--impact-benefit <text>', 'User benefit')
+    .option('--from <file>', 'JSON file with { why, what, items, impact }; flags override it')
     .option('--project <name>', 'Target a specific workspace project')
-    .action((taskId: string, options: { project?: string }) =>
-        taskCreateCommand(taskId, { project: options.project })
+    .action((taskId: string, options: TaskCreateOptions & { project?: string }) =>
+        taskCreateCommand(taskId, options, { project: options.project })
     );
 
 taskCommand
