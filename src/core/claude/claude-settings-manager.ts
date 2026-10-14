@@ -1,4 +1,5 @@
 import path from 'path';
+import { existsSync } from 'fs';
 import {
     readFile,
     writeFile,
@@ -164,11 +165,54 @@ export const LEGACY_SIGNATURES = [
     'update-check',
 ];
 
-/** Events rulebook may have written to in any past version. */
-const MANAGED_EVENTS = ['PreToolUse', 'SessionStart', 'Stop', 'UserPromptSubmit'] as const;
+/** Hook scripts rulebook ships today (installed into `.claude/hooks/`). */
+const CURRENT_HOOK_SCRIPTS = [GUARD_SCRIPT, OS_SCHEDULING_GUARD_SCRIPT, JEV_GATE_SCRIPT];
+
+/** Signatures of the entries rulebook re-upserts on every sync. */
+const CURRENT_SIGNATURES = [
+    GUARD_SIGNATURE,
+    OS_SCHEDULING_GUARD_SIGNATURE,
+    JEV_GATE_SIGNATURE,
+    JEV_TOOL_GATE_SIGNATURE,
+];
+
+/** `.claude/hooks/<file>` references in a hook command (any quoting/prefix). */
+const HOOK_SCRIPT_REF = /\.claude[\\/]+hooks[\\/]+([\w.-]+)/g;
+
+/** True when `command` calls a retired rulebook hook (whole-name match). */
+export function isRetiredRulebookHook(command: string): boolean {
+    return LEGACY_SIGNATURES.some((name) =>
+        new RegExp(`(^|[^\\w-])${name.replace(/[-.]/g, '\\$&')}([^\\w-]|$)`).test(command)
+    );
+}
+
+/**
+ * True when `command` is a rulebook hook: a retired one, or one that runs a
+ * script rulebook ships today from `.claude/hooks/`. Anything else is the
+ * user's and is never touched.
+ */
+export function isRulebookHook(command: string): boolean {
+    if (isRetiredRulebookHook(command)) return true;
+    for (const m of command.matchAll(HOOK_SCRIPT_REF)) {
+        if (CURRENT_HOOK_SCRIPTS.includes(m[1])) return true;
+    }
+    return false;
+}
+
+/** True when `command` runs a `.claude/hooks/` script that is not on disk. */
+function callsMissingScript(projectRoot: string, command: string): boolean {
+    for (const m of command.matchAll(HOOK_SCRIPT_REF)) {
+        if (!existsSync(path.join(projectRoot, '.claude', 'hooks', m[1]))) return true;
+    }
+    return false;
+}
 
 export function getClaudeSettingsPath(projectRoot: string): string {
     return path.join(projectRoot, '.claude', 'settings.json');
+}
+
+export function getClaudeLocalSettingsPath(projectRoot: string): string {
+    return path.join(projectRoot, '.claude', 'settings.local.json');
 }
 
 export function getHookScriptPath(projectRoot: string, scriptName: string): string {
@@ -177,12 +221,16 @@ export function getHookScriptPath(projectRoot: string, scriptName: string): stri
 
 /**
  * Merge the rulebook-owned entries into an existing settings.json, or create
- * the file if absent. Returns the final path and whether anything changed.
+ * the file if absent. Every event is managed: retired rulebook entries and
+ * rulebook entries whose script is missing are stripped from settings.json
+ * and settings.local.json; non-rulebook entries are never touched. Returns
+ * the final path, whether settings.json changed, and each removed rulebook
+ * entry (`<file> <event>: <command>`; a re-upserted entry is not a removal).
  */
 export async function applyClaudeSettings(
     projectRoot: string,
     desire: ClaudeSettingsDesire
-): Promise<{ path: string; changed: boolean }> {
+): Promise<{ path: string; changed: boolean; removedHooks: string[] }> {
     const settingsPath = getClaudeSettingsPath(projectRoot);
     await ensureDir(path.dirname(settingsPath));
 
@@ -210,17 +258,15 @@ export async function applyClaudeSettings(
 
     existing.hooks = existing.hooks ?? {};
     existing.env = existing.env ?? {};
+    const ownedBefore = rulebookHookCommands(existing.hooks);
 
-    // Strip every retired rulebook hook from every managed event.
-    for (const event of MANAGED_EVENTS) {
-        for (const legacy of LEGACY_SIGNATURES) {
-            removeHook(existing.hooks, event, legacy);
-        }
-        removeHook(existing.hooks, event, GUARD_SIGNATURE);
-        removeHook(existing.hooks, event, OS_SCHEDULING_GUARD_SIGNATURE);
-        removeHook(existing.hooks, event, JEV_GATE_SIGNATURE);
-        removeHook(existing.hooks, event, JEV_TOOL_GATE_SIGNATURE);
-    }
+    // Strip every retired rulebook hook and every current one (re-upserted
+    // below when desired) from every event.
+    stripHooks(
+        existing.hooks,
+        (command) =>
+            isRetiredRulebookHook(command) || CURRENT_SIGNATURES.some((s) => command.includes(s))
+    );
 
     // Optional guard 1 (PreToolUse Edit|Write, path-only): task scaffolding.
     if (desire.taskScaffoldingGuard) {
@@ -304,6 +350,16 @@ export async function applyClaudeSettings(
         existing.model = desire.defaultModel;
     }
 
+    // A rulebook entry whose script is gone fails on every run: drop it.
+    stripHooks(
+        existing.hooks,
+        (command) => isRulebookHook(command) && callsMissingScript(projectRoot, command)
+    );
+    const ownedAfter = new Set(rulebookHookCommands(existing.hooks));
+    const removedHooks = ownedBefore
+        .filter((entry) => !ownedAfter.has(entry))
+        .map((entry) => `settings.json ${entry}`);
+
     // Collapse empty containers so we don't leave noise behind.
     pruneEmptyHooks(existing.hooks);
     if (existing.hooks && Object.keys(existing.hooks).length === 0) delete existing.hooks;
@@ -314,7 +370,85 @@ export async function applyClaudeSettings(
     if (changed) {
         await writeFile(settingsPath, after);
     }
-    return { path: settingsPath, changed };
+
+    // settings.local.json: rulebook never writes entries here, but retired or
+    // broken rulebook entries copied into it would run on every event too.
+    const local = await stripLocalRulebookHooks(projectRoot);
+    removedHooks.push(...local.map((entry) => `settings.local.json ${entry}`));
+
+    return { path: settingsPath, changed, removedHooks };
+}
+
+/**
+ * Strip retired rulebook hook entries, and rulebook entries whose script is
+ * missing, from `.claude/settings.local.json` (every event). Current, working
+ * entries and every non-rulebook entry are left alone. The file is rewritten
+ * only when something was removed. Returns `<event>: <command>` per removal.
+ */
+export async function stripLocalRulebookHooks(projectRoot: string): Promise<string[]> {
+    const localPath = getClaudeLocalSettingsPath(projectRoot);
+    if (!(await fileExists(localPath))) return [];
+    let settings: SettingsShape;
+    try {
+        settings = JSON.parse(await readFile(localPath)) as SettingsShape;
+    } catch {
+        return []; // not ours to repair
+    }
+    if (!settings.hooks || typeof settings.hooks !== 'object') return [];
+    const removed = stripHooks(
+        settings.hooks,
+        (command) =>
+            isRetiredRulebookHook(command) ||
+            (isRulebookHook(command) && callsMissingScript(projectRoot, command))
+    );
+    if (removed.length === 0) return [];
+    pruneEmptyHooks(settings.hooks);
+    if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
+    await writeFile(localPath, JSON.stringify(settings, null, 2) + '\n');
+    return removed;
+}
+
+/** `<event>: <command>` for every rulebook hook command, in order. */
+function rulebookHookCommands(hooks: NonNullable<SettingsShape['hooks']>): string[] {
+    const out: string[] = [];
+    for (const [event, list] of Object.entries(hooks)) {
+        if (!Array.isArray(list)) continue;
+        for (const entry of list) {
+            for (const h of entry?.hooks ?? []) {
+                if (typeof h?.command === 'string' && isRulebookHook(h.command)) {
+                    out.push(`${event}: ${h.command}`);
+                }
+            }
+        }
+    }
+    return out;
+}
+
+/**
+ * Remove every command hook matching `predicate` from every event (entries
+ * left empty are dropped). Returns `<event>: <command>` per removal.
+ */
+function stripHooks(
+    hooks: NonNullable<SettingsShape['hooks']>,
+    predicate: (command: string) => boolean
+): string[] {
+    const removed: string[] = [];
+    for (const [event, list] of Object.entries(hooks)) {
+        if (!Array.isArray(list)) continue;
+        for (const entry of list) {
+            if (!entry || !Array.isArray(entry.hooks)) continue;
+            entry.hooks = entry.hooks.filter((h) => {
+                const drop =
+                    h?.type === 'command' && typeof h.command === 'string' && predicate(h.command);
+                if (drop) removed.push(`${event}: ${h.command}`);
+                return !drop;
+            });
+        }
+        hooks[event] = list.filter(
+            (entry) => !entry || !Array.isArray(entry.hooks) || entry.hooks.length > 0
+        );
+    }
+    return removed;
 }
 
 function upsertHook(
@@ -362,32 +496,16 @@ export async function removeJevPromptGate(projectRoot: string): Promise<boolean>
         throw new Error(`Existing ${settingsPath} is not valid JSON`);
     }
     if (!settings.hooks) return false;
-    const snapshot = JSON.stringify(settings.hooks);
-    for (const event of MANAGED_EVENTS) {
-        removeHook(settings.hooks, event, JEV_GATE_SIGNATURE);
-        removeHook(settings.hooks, event, JEV_TOOL_GATE_SIGNATURE);
-    }
-    if (JSON.stringify(settings.hooks) === snapshot) return false; // no entry: leave the file alone
+    const removed = stripHooks(
+        settings.hooks,
+        (command) =>
+            command.includes(JEV_GATE_SIGNATURE) || command.includes(JEV_TOOL_GATE_SIGNATURE)
+    );
+    if (removed.length === 0) return false; // no entry: leave the file alone
     pruneEmptyHooks(settings.hooks);
     if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
     await writeFile(settingsPath, JSON.stringify(settings, null, 2) + '\n');
     return true;
-}
-
-function removeHook(
-    hooks: NonNullable<SettingsShape['hooks']>,
-    event: string,
-    signature: string
-): void {
-    const list = hooks[event] as HookEntry[] | undefined;
-    if (!list) return;
-    for (let i = list.length - 1; i >= 0; i--) {
-        const entry = list[i];
-        entry.hooks = entry.hooks.filter(
-            (h) => !(h.type === 'command' && h.command.includes(signature))
-        );
-        if (entry.hooks.length === 0) list.splice(i, 1);
-    }
 }
 
 function pruneEmptyHooks(hooks: NonNullable<SettingsShape['hooks']>): void {

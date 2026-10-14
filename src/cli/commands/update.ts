@@ -26,6 +26,24 @@ function getRulebookVersion(): string {
     }
 }
 
+/**
+ * What this release ships, for the legacy cleanup: the package templates, the
+ * default skills, and agent rendering for the project's primary language.
+ */
+async function legacyCleanupOptions(
+    language: string | undefined
+): Promise<import('../../core/migration/v6-cleanup.js').V6CleanupOptions> {
+    const { getTemplatesDir, resolveAgentPlaceholders, substituteAgentPlaceholders } =
+        await import('../../core/generators/generator.js');
+    const { DEFAULT_DEV_SKILLS } = await import('../../core/claude/claude-mcp.js');
+    const placeholders = resolveAgentPlaceholders(language);
+    return {
+        templatesDir: getTemplatesDir(),
+        shippedSkills: DEFAULT_DEV_SKILLS,
+        renderAgent: (template) => substituteAgentPlaceholders(template, placeholders),
+    };
+}
+
 /** Update a single project at the given root directory. */
 export interface ConfigRebuildInput {
     version: string;
@@ -93,24 +111,40 @@ export async function updateSingleProject(
     // v7: --dry-run prints the migration plan and exits before ANY write.
     if (options.dryRun) {
         const { planV6Cleanup } = await import('../../core/migration/v6-cleanup.js');
-        const plan = await planV6Cleanup(cwd);
+        const dryDetection = await detectProject(cwd);
+        const plan = await planV6Cleanup(
+            cwd,
+            await legacyCleanupOptions(dryDetection.languages[0]?.language)
+        );
         console.log(chalk.bold.blue('\n🔎 rulebook update --dry-run (no files were changed)\n'));
         console.log(chalk.bold('Would regenerate (lean v7):'));
         console.log(chalk.gray('  • CLAUDE.md, AGENTS.md, .rulebook/specs/* (lowercase names)'));
         console.log(
-            chalk.gray('  • .claude/settings.json — strip retired hooks, apply autonomy profile')
+            chalk.gray(
+                '  • .claude/settings.json + settings.local.json — strip retired/broken rulebook hooks, apply autonomy profile'
+            )
         );
         console.log(chalk.gray('  • .mcp.json — slim rulebook-mcp entrypoint'));
         if (plan.remove.length > 0) {
-            console.log(chalk.bold(`\nWould remove ${plan.remove.length} retired file(s):`));
+            console.log(
+                chalk.bold(
+                    `\nWould move ${plan.remove.length} retired file(s) to .rulebook/backup/:`
+                )
+            );
             for (const p of plan.remove) console.log(chalk.gray(`  - ${p}`));
+        }
+        if (plan.refresh.length > 0) {
+            console.log(chalk.bold(`\nWould refresh ${plan.refresh.length} agent/skill file(s):`));
+            for (const r of plan.refresh) console.log(chalk.gray(`  - ${r.path}`));
         }
         if (plan.rename.length > 0) {
             console.log(chalk.bold(`\nWould rename ${plan.rename.length} spec(s) to lowercase:`));
             for (const r of plan.rename) console.log(chalk.gray(`  - ${r.from} → ${r.to}`));
         }
         if (plan.preserved.length > 0) {
-            console.log(chalk.bold(`\nKept (look user-authored — no rulebook marker):`));
+            console.log(
+                chalk.bold(`\nEdited, kept (content differs from every rulebook release):`)
+            );
             for (const p of plan.preserved) console.log(chalk.gray(`  · ${p}`));
         }
         console.log(chalk.gray('\nRun without --dry-run to apply.\n'));
@@ -438,6 +472,16 @@ export async function updateSingleProject(
                 chalk.gray(`  • .claude/settings.json refreshed (v7 lean hooks + permissions)`)
             );
         }
+        if (settingsResult.removedHooks.length > 0) {
+            console.log(
+                chalk.gray(
+                    `  • removed ${settingsResult.removedHooks.length} retired/broken rulebook hook entr${settingsResult.removedHooks.length === 1 ? 'y' : 'ies'}:`
+                )
+            );
+            for (const entry of settingsResult.removedHooks) {
+                console.log(chalk.gray(`    - ${entry}`));
+            }
+        }
     } catch (err) {
         console.log(
             chalk.gray(
@@ -567,30 +611,42 @@ export async function updateSingleProject(
     await configManager.saveConfig(rulebookConfig);
     configSpinner.succeed('.rulebook configuration updated');
 
-    // v6 → v7 cleanup: remove rulebook-owned retired files, normalize spec names.
+    // Legacy cleanup: move unedited v5/v6 leftovers (legacy catalogue) to
+    // .rulebook/backup/, refresh shipped agents/skills, normalize spec names.
     try {
         const { planV6Cleanup, applyV6Cleanup } =
             await import('../../core/migration/v6-cleanup.js');
-        const plan = await planV6Cleanup(cwd);
-        if (plan.remove.length > 0 || plan.rename.length > 0) {
-            const { removed, renamed } = await applyV6Cleanup(cwd, plan);
-            if (removed.length > 0) {
-                console.log(
-                    chalk.gray(`  • v7 cleanup: removed ${removed.length} retired file(s)`)
-                );
-            }
-            if (renamed.length > 0) {
-                console.log(
-                    chalk.gray(`  • v7 cleanup: normalized ${renamed.length} spec name(s)`)
-                );
-            }
-            if (plan.preserved.length > 0) {
-                console.log(
-                    chalk.gray(
-                        `  · ${plan.preserved.length} retired-name file(s) kept (user-authored)`
-                    )
-                );
-            }
+        const plan = await planV6Cleanup(
+            cwd,
+            await legacyCleanupOptions(detection.languages[0]?.language)
+        );
+        const { removed, renamed, refreshed, backupDir } = await applyV6Cleanup(cwd, plan);
+        if (removed.length > 0) {
+            console.log(
+                chalk.gray(
+                    `  • legacy cleanup: moved ${removed.length} retired rulebook file(s) to ${backupDir}/`
+                )
+            );
+            for (const p of removed) console.log(chalk.gray(`    - ${p}`));
+        }
+        if (refreshed.length > 0) {
+            console.log(
+                chalk.gray(`  • legacy cleanup: refreshed ${refreshed.length} agent/skill file(s)`)
+            );
+            for (const p of refreshed) console.log(chalk.gray(`    - ${p}`));
+        }
+        if (renamed.length > 0) {
+            console.log(
+                chalk.gray(`  • legacy cleanup: normalized ${renamed.length} spec name(s)`)
+            );
+        }
+        if (plan.preserved.length > 0) {
+            console.log(
+                chalk.yellow(
+                    `  · ${plan.preserved.length} rulebook file(s) edited, kept (review and delete by hand if obsolete):`
+                )
+            );
+            for (const p of plan.preserved) console.log(chalk.yellow(`    - ${p} (edited, kept)`));
         }
     } catch {
         // cleanup is best-effort — never block an update

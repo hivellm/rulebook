@@ -440,7 +440,7 @@ describe('claude-mcp', () => {
                 path.join(projectDir, '.claude', 'agents', 'implementer.md'),
                 'utf8'
             );
-            expect(content).toContain('production-quality typescript code');
+            expect(content).toContain('production-quality TypeScript code');
             expect(content).toContain('Follow kebab-case naming');
             expect(content).toContain('Run vitest');
             expect(content).not.toContain('{{language}}');

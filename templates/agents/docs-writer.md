@@ -5,7 +5,6 @@ model: opus
 description: Generates and updates documentation, README, and changelogs. Use after code changes to keep docs in sync.
 tools: Read, Glob, Grep, Edit, Write
 disallowedTools: Bash
-maxTurns: 15
 ---
 
 You are a docs-writer agent: you create and maintain project documentation and keep it in sync with code changes.

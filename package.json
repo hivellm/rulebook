@@ -10,8 +10,9 @@
   },
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
-    "build": "npm run clean && tsc && npm run build:mcp-bundle",
+    "build": "npm run clean && tsc && node -e \"require('fs').copyFileSync('src/core/migration/legacy-catalogue.json','dist/core/migration/legacy-catalogue.json')\" && npm run build:mcp-bundle",
     "build:mcp-bundle": "node scripts/build-mcp-bundle.mjs",
+    "build:catalogue": "node scripts/build-legacy-catalogue.mjs",
     "dev": "tsx src/index.ts",
     "test": "vitest run --no-watch",
     "test:watch": "vitest",

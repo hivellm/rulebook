@@ -763,6 +763,33 @@ export function generateDelegationSection(config: ProjectConfig): string {
     return lines.join('\n');
 }
 
+/** Proper names for detected language ids, used in agent text. */
+const LANGUAGE_DISPLAY_NAMES: Record<string, string> = {
+    typescript: 'TypeScript',
+    javascript: 'JavaScript',
+    python: 'Python',
+    rust: 'Rust',
+    go: 'Go',
+    java: 'Java',
+    csharp: 'C#',
+    cpp: 'C++',
+    c: 'C',
+    ruby: 'Ruby',
+    php: 'PHP',
+    swift: 'Swift',
+    kotlin: 'Kotlin',
+    dart: 'Dart',
+    elixir: 'Elixir',
+    scala: 'Scala',
+    erlang: 'Erlang',
+    haskell: 'Haskell',
+    julia: 'Julia',
+    lua: 'Lua',
+    r: 'R',
+    solidity: 'Solidity',
+    zig: 'Zig',
+};
+
 /**
  * Resolve placeholder values from project config.
  */
@@ -811,7 +838,9 @@ export function resolveAgentPlaceholders(
     const langKey = primaryLang.toLowerCase();
 
     return {
-        '{{language}}': primaryLang,
+        // Detection yields lowercase ids ("typescript"); agents read better
+        // with the language's proper name ("TypeScript").
+        '{{language}}': LANGUAGE_DISPLAY_NAMES[langKey] ?? primaryLang,
         '{{framework}}': 'none',
         '{{test_framework}}': testFrameworkMap[langKey] || 'the project test framework',
         '{{file_naming}}': fileNamingMap[langKey] || 'kebab-case',

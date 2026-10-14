@@ -15,6 +15,7 @@ import { fileExists, readFile, writeFile, ensureDir } from '../../utils/file-sys
 import { WorkspaceManager } from '../workspace/workspace-manager.js';
 import { resolveAgentPlaceholders, substituteAgentPlaceholders } from '../generators/generator.js';
 import { detectProject } from '../detect/detector.js';
+import { isCatalogued } from '../migration/legacy-catalogue.js';
 
 export interface ClaudeCodeSetupResult {
     detected: boolean;
@@ -196,7 +197,7 @@ export async function installClaudeCodeSkills(
  * skills duplicate native harness capabilities (F-010) and are opt-in via
  * `rulebook skills` management.
  */
-const DEFAULT_DEV_SKILLS: readonly string[] = ['analysis', 'spec'];
+export const DEFAULT_DEV_SKILLS: readonly string[] = ['analysis', 'spec'];
 
 export async function installDevSkills(
     projectRoot: string,
@@ -223,10 +224,18 @@ export async function installDevSkills(
         if (!(await fileExists(skillFile))) continue;
 
         const targetSkillDir = join(skillsTargetDir, entry.name);
+        const targetFile = join(targetSkillDir, 'SKILL.md');
+        // An installed copy the user edited (not any shipped version) is kept.
+        if (await fileExists(targetFile)) {
+            const installedContent = await readFile(targetFile);
+            if (!isCatalogued(`.claude/skills/${entry.name}/SKILL.md`, installedContent)) {
+                continue;
+            }
+        }
         await ensureDir(targetSkillDir);
 
         const content = await readFile(skillFile);
-        await writeFile(join(targetSkillDir, 'SKILL.md'), content);
+        await writeFile(targetFile, content);
         installed.push(entry.name);
     }
 
