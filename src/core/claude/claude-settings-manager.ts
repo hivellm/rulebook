@@ -55,7 +55,7 @@ export interface ClaudeSettingsDesire {
      * every prompt (`.claude/hooks/jev-gate.sh prompt`). False/absent removes it.
      */
     jevPromptGate?: boolean;
-    /** Deadline the prompt hook runs with (`gate.promptHook.deadlineMs`); sets its `timeout`. Default 5000. */
+    /** Deadline the prompt hook runs with (`gate.promptHook.deadlineMs`); sets its `timeout`. Default 1500. */
     jevPromptGateDeadlineMs?: number;
     /**
      * v7.4: install the opt-in PreToolUse tool gate (`.claude/hooks/jev-gate.sh

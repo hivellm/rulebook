@@ -170,7 +170,7 @@ describe('claude-settings-manager (v7)', () => {
             await applyClaudeSettings(projectRoot, JEV_DESIRE);
             const content = await readSettings();
             expect(content.hooks.UserPromptSubmit).toEqual([
-                { hooks: [{ type: 'command', command: JEV_COMMAND, timeout: 8 }] },
+                { hooks: [{ type: 'command', command: JEV_COMMAND, timeout: 3 }] },
             ]);
             const buf = await fs.readFile(path.join(projectRoot, '.claude/hooks', JEV_GATE_SCRIPT));
             expect(buf.length).toBeGreaterThan(0);
@@ -183,7 +183,7 @@ describe('claude-settings-manager (v7)', () => {
                 jevPromptGateDeadlineMs: 8500,
             });
             const content = await readSettings();
-            expect(content.hooks.UserPromptSubmit[0].hooks[0].timeout).toBe(12);
+            expect(content.hooks.UserPromptSubmit[0].hooks[0].timeout).toBe(10);
         });
 
         it('is idempotent: a second apply leaves the file byte-identical', async () => {

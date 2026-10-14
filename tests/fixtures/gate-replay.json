@@ -1,0 +1,1405 @@
+{
+  "description": "Routing shapes of the Jev gate decisions logged in .rulebook/logs/gate.jsonl (rulebook repo and UzPainter, 2026-09-26 to 2026-10-14): routing and undecided only, no prompts. Replayed by tests/gate-replay.test.ts.",
+  "decisions": [
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T02:18:03.124Z",
+      "source": null,
+      "routing": {
+        "kind": "task-work",
+        "needsTask": true,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": null,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T02:18:03.706Z",
+      "source": null,
+      "routing": {
+        "kind": "setup-or-config",
+        "needsTask": true,
+        "existingTaskId": null,
+        "needsOperatorDecision": true,
+        "inProjectScope": null,
+        "risk": {
+          "destructiveGit": true,
+          "osScheduling": true,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "skill",
+        "parallel"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T02:28:27.498Z",
+      "source": null,
+      "routing": {
+        "kind": "question-or-analysis",
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": null,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "needs_task",
+        "existing_task"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T02:31:54.854Z",
+      "source": null,
+      "routing": {
+        "kind": null,
+        "needsTask": true,
+        "existingTaskId": "phase1_gate-review-fixes",
+        "needsOperatorDecision": null,
+        "inProjectScope": null,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "skill",
+        "parallel",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T02:37:45.996Z",
+      "source": null,
+      "routing": {
+        "kind": "task-work",
+        "needsTask": true,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": null,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "existing_task",
+        "parallel",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T03:29:07.079Z",
+      "source": "mcp",
+      "routing": {
+        "kind": "question-or-analysis",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": null,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "skill",
+        "needs_operator_decision",
+        "in_project_scope"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T03:37:04.636Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": true,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_task",
+        "parallel"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T03:37:15.453Z",
+      "source": "hook",
+      "routing": {
+        "kind": "unclear",
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "needs_task",
+        "model",
+        "agent",
+        "skill"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T03:46:05.273Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": null,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "agent",
+        "skill",
+        "needs_operator_decision",
+        "in_project_scope"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T03:51:48.106Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": true,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_task",
+        "model",
+        "agent",
+        "skill",
+        "parallel"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T03:52:00.653Z",
+      "source": "hook",
+      "routing": {
+        "kind": "small-fix",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": true,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "skill",
+        "parallel"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T03:52:37.839Z",
+      "source": "hook",
+      "routing": {
+        "kind": "small-fix",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "skill",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T03:52:57.171Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "model",
+        "agent",
+        "skill"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:03:33.810Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "model",
+        "agent",
+        "skill",
+        "parallel"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:03:48.341Z",
+      "source": "hook",
+      "routing": {
+        "kind": "unclear",
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "needs_task",
+        "agent",
+        "skill"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:04:51.533Z",
+      "source": "hook",
+      "routing": {
+        "kind": "question-or-analysis",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": true,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "model",
+        "agent",
+        "skill"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:05:41.191Z",
+      "source": "hook",
+      "routing": {
+        "kind": "unclear",
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": null,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "needs_task",
+        "agent",
+        "skill",
+        "needs_operator_decision",
+        "in_project_scope"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:12:17.453Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_task",
+        "skill",
+        "parallel"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:12:25.677Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_task",
+        "skill",
+        "parallel"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:13:44.703Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": true,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_task",
+        "model",
+        "agent",
+        "skill"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:15:55.210Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": true,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:16:17.546Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": true
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_task",
+        "agent",
+        "skill",
+        "parallel",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:16:25.261Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_task"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:16:53.312Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "model",
+        "agent",
+        "skill",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:19:47.177Z",
+      "source": "hook",
+      "routing": {
+        "kind": "small-fix",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "skill",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:20:21.715Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:20:27.637Z",
+      "source": "hook",
+      "routing": {
+        "kind": "unclear",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "skill"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:22:26.252Z",
+      "source": "hook",
+      "routing": {
+        "kind": "unclear",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "skill",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:28:22.104Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_task",
+        "model",
+        "agent",
+        "skill",
+        "parallel",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:28:46.130Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_task",
+        "agent",
+        "skill"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:37:49.831Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_task",
+        "model",
+        "agent",
+        "skill",
+        "parallel",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:38:12.100Z",
+      "source": "hook",
+      "routing": {
+        "kind": "unclear",
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "needs_task",
+        "agent",
+        "skill"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:55:31.845Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_task",
+        "skill"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:59:43.387Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "agent",
+        "skill",
+        "parallel"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T04:59:55.753Z",
+      "source": "hook",
+      "routing": {
+        "kind": "unclear",
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "needs_task",
+        "model",
+        "agent",
+        "skill"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-09-26T05:01:51.395Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_task",
+        "model",
+        "agent",
+        "skill",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T06:21:22.211Z",
+      "source": "hook",
+      "routing": {
+        "kind": "unclear",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": null,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "parallel",
+        "needs_operator_decision",
+        "in_project_scope"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T06:26:32.939Z",
+      "source": "hook",
+      "routing": {
+        "kind": "small-fix",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "agent",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T06:26:33.926Z",
+      "source": "hook",
+      "routing": {
+        "kind": "small-fix",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "agent",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T06:26:34.769Z",
+      "source": "hook",
+      "routing": {
+        "kind": "small-fix",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "agent",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T06:26:35.864Z",
+      "source": "hook",
+      "routing": {
+        "kind": "small-fix",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "agent"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T06:58:14.101Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "model",
+        "agent",
+        "skill",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T07:01:40.947Z",
+      "source": "hook",
+      "routing": {
+        "kind": "unclear",
+        "needsTask": true,
+        "existingTaskId": "phase0_multi-session-performance-analysis",
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "model",
+        "agent",
+        "skill",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T07:16:30.520Z",
+      "source": "hook",
+      "routing": {
+        "kind": "unclear",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": null,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "existing_task",
+        "model",
+        "needs_operator_decision",
+        "in_project_scope"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T07:19:26.132Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": true,
+        "existingTaskId": "phase0_multi-session-performance-analysis",
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "model",
+        "agent",
+        "skill",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T07:25:52.163Z",
+      "source": "hook",
+      "routing": {
+        "kind": "question-or-analysis",
+        "needsTask": true,
+        "existingTaskId": "phase0_multi-session-performance-analysis",
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "parallel"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T07:25:53.023Z",
+      "source": "hook",
+      "routing": {
+        "kind": "question-or-analysis",
+        "needsTask": true,
+        "existingTaskId": "phase0_multi-session-performance-analysis",
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "parallel"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T07:25:53.824Z",
+      "source": "hook",
+      "routing": {
+        "kind": "question-or-analysis",
+        "needsTask": true,
+        "existingTaskId": "phase0_multi-session-performance-analysis",
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "parallel"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T07:28:41.758Z",
+      "source": "hook",
+      "routing": {
+        "kind": "question-or-analysis",
+        "needsTask": true,
+        "existingTaskId": "phase0_multi-session-performance-analysis",
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "model",
+        "agent",
+        "parallel",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T07:37:10.023Z",
+      "source": "hook",
+      "routing": {
+        "kind": "task-work",
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "needs_task",
+        "skill"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T07:41:32.810Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": true,
+        "existingTaskId": "phase1_task-create-with-content",
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "skill",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T07:53:01.271Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": true,
+        "existingTaskId": "phase4_v750-release",
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "model",
+        "agent",
+        "parallel"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T07:54:05.069Z",
+      "source": "hook",
+      "routing": {
+        "kind": "task-work",
+        "needsTask": true,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "skill",
+        "parallel",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "rulebook",
+      "ts": "2026-10-14T07:57:33.266Z",
+      "source": "hook",
+      "routing": {
+        "kind": null,
+        "needsTask": true,
+        "existingTaskId": "phase2_orchestration-by-judgment",
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "model",
+        "agent",
+        "skill",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "uzpainter",
+      "ts": "2026-10-10T03:14:20.145Z",
+      "source": "mcp",
+      "routing": {
+        "kind": null,
+        "needsTask": true,
+        "existingTaskId": "phase2_docs-architecture",
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "skill",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "uzpainter",
+      "ts": "2026-10-11T01:46:37.313Z",
+      "source": "mcp",
+      "routing": {
+        "kind": "question-or-analysis",
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "needs_task",
+        "parallel"
+      ]
+    },
+    {
+      "project": "uzpainter",
+      "ts": "2026-10-11T02:49:17.672Z",
+      "source": "mcp",
+      "routing": {
+        "kind": null,
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "kind",
+        "needs_task",
+        "existing_task",
+        "skill",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "uzpainter",
+      "ts": "2026-10-13T02:15:58.142Z",
+      "source": "mcp",
+      "routing": {
+        "kind": "question-or-analysis",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "skill",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "uzpainter",
+      "ts": "2026-10-13T04:01:39.626Z",
+      "source": "mcp",
+      "routing": {
+        "kind": "question-or-analysis",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "parallel"
+      ]
+    },
+    {
+      "project": "uzpainter",
+      "ts": "2026-10-13T04:07:34.784Z",
+      "source": "mcp",
+      "routing": {
+        "kind": "task-work",
+        "needsTask": true,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "uzpainter",
+      "ts": "2026-10-13T05:04:32.124Z",
+      "source": "mcp",
+      "routing": {
+        "kind": "question-or-analysis",
+        "needsTask": false,
+        "existingTaskId": null,
+        "needsOperatorDecision": false,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "parallel"
+      ]
+    },
+    {
+      "project": "uzpainter",
+      "ts": "2026-10-13T05:14:50.900Z",
+      "source": "mcp",
+      "routing": {
+        "kind": "task-work",
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": true,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "needs_task",
+        "skill",
+        "parallel",
+        "needs_operator_decision"
+      ]
+    },
+    {
+      "project": "uzpainter",
+      "ts": "2026-10-13T09:01:15.752Z",
+      "source": "mcp",
+      "routing": {
+        "kind": "question-or-analysis",
+        "needsTask": null,
+        "existingTaskId": null,
+        "needsOperatorDecision": null,
+        "inProjectScope": false,
+        "risk": {
+          "destructiveGit": false,
+          "osScheduling": false,
+          "secrets": false
+        }
+      },
+      "undecided": [
+        "needs_task",
+        "parallel",
+        "needs_operator_decision"
+      ]
+    }
+  ]
+}

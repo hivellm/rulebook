@@ -4,6 +4,7 @@ import path from 'path';
 import os from 'os';
 import { hookCommand, parseHookInput } from '../src/cli/commands/hook';
 import {
+    classifiablePrompt,
     promptHookAnswer,
     promptHookTimeoutSec,
     resolvePromptHookConfig,
@@ -101,7 +102,7 @@ describe('resolvePromptHookConfig', () => {
     it('applies defaults', () => {
         expect(resolvePromptHookConfig(null)).toEqual({
             enabled: true,
-            deadlineMs: 5000,
+            deadlineMs: 1500,
             blockThreshold: 0.9,
         });
     });
@@ -126,9 +127,42 @@ describe('resolvePromptHookConfig', () => {
         ).toBe(false);
     });
 
-    it('timeout outlives the deadline', () => {
-        expect(promptHookTimeoutSec(5000)).toBe(8);
-        expect(promptHookTimeoutSec(8500)).toBe(12);
+    it('timeout outlives the deadline: 3 s for the 1.5 s default', () => {
+        expect(promptHookTimeoutSec(1500)).toBe(3);
+        expect(promptHookTimeoutSec(5000)).toBe(6);
+        expect(promptHookTimeoutSec(8500)).toBe(10);
+    });
+});
+
+describe('classifiablePrompt', () => {
+    it('machine-generated inputs → null (no Jev call)', () => {
+        for (const prompt of [
+            '<task-notification>\n<task-id>a1</task-id>\n<status>completed</status>\n</task-notification>',
+            '  <agent-message from="implementer">done</agent-message>',
+            '<cross-session-message session="x">hello</cross-session-message>',
+            '<local-command-stdout>Set model to `claude-opus-5-5`</local-command-stdout>',
+            '<system-reminder>ctx</system-reminder>\n<task-notification><status>completed</status></task-notification>',
+        ]) {
+            expect(classifiablePrompt(prompt), prompt).toBeNull();
+        }
+    });
+
+    it('strips IDE and system blocks before classifying', () => {
+        const prompt =
+            '<ide_opened_file>The user opened the file e:\\x\\CHANGELOG.md in the IDE.</ide_opened_file>\n' +
+            '<ide_selection>const a = 1;\nconst b = 2;</ide_selection>\n' +
+            '<system-reminder>remember the rules</system-reminder>\n' +
+            '<browser_instruction>[Browser disconnected]</browser_instruction>\n' +
+            'did you add a guardrail for a missing key?';
+        expect(classifiablePrompt(prompt)).toBe('did you add a guardrail for a missing key?');
+    });
+
+    it('only blocks or whitespace → null; a typed prompt passes through trimmed', () => {
+        expect(classifiablePrompt('<ide_opened_file>f</ide_opened_file>  ')).toBeNull();
+        expect(classifiablePrompt('   ')).toBeNull();
+        expect(classifiablePrompt('  fix the <b>tag</b> parser ')).toBe(
+            'fix the <b>tag</b> parser'
+        );
     });
 });
 
@@ -183,6 +217,19 @@ describe('promptHookAnswer', () => {
         expect(a.additionalContext.startsWith(PROMPT_HOOK_HEADER)).toBe(true);
         expect(a.additionalContext).toMatch(/Warning: secrets/);
         expect(a.additionalContext).not.toContain('�');
+    });
+
+    it('no routing (too undecided) and no warning → none; a risk still warns', () => {
+        expect(promptHookAnswer(gateResult({}, ''), { blockThreshold: 0.9 })).toEqual({
+            kind: 'none',
+        });
+        const a = promptHookAnswer(gateResult({ risk_secrets: 0.8 }, ''), { blockThreshold: 0.9 });
+        expect(a.kind).toBe('context');
+        if (a.kind !== 'context') return;
+        expect(a.additionalContext.split('\n')).toEqual([
+            PROMPT_HOOK_HEADER,
+            expect.stringMatching(/^Warning: secrets/),
+        ]);
     });
 });
 
@@ -464,6 +511,65 @@ describe('rulebook hook prompt-gate', () => {
             code: 0,
             lines: [],
         });
+    });
+
+    it('agent notifications and cross-session messages → no output, no Jev call', async () => {
+        const fetchMock = jevFetch();
+        for (const prompt of [
+            '<task-notification>\n<task-id>a29</task-id>\n<status>completed</status>\n<summary>Agent "x" finished</summary>\n</task-notification>',
+            '<agent-message from="tester">all green</agent-message>',
+            '<cross-session-message from="other">ping</cross-session-message>',
+        ]) {
+            expect(await run(prompt, { fetch: fetchMock })).toEqual({ code: 0, lines: [] });
+        }
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('sends the prompt without IDE blocks, and only the hook question set', async () => {
+        const fetchMock = jevFetch({ kind: { choice: 'small_fix' } });
+        const { lines } = await run(
+            '<ide_opened_file>The user opened the file e:\\p\\CHANGELOG.md in the IDE.</ide_opened_file>\nfix the typo in the changelog',
+            { fetch: fetchMock }
+        );
+        const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+        expect(body.state.prompt).toBe('fix the typo in the changelog');
+        expect(Object.keys(body.questions).sort()).toEqual(
+            [
+                'kind',
+                'needs_task',
+                'needs_operator_decision',
+                'risk_destructive_git',
+                'risk_os_scheduling',
+                'risk_secrets',
+            ].sort()
+        );
+        for (const field of ['skills', 'agents', 'routing', 'skillCandidates']) {
+            expect(body.state).not.toHaveProperty(field);
+        }
+        const ctx: string = JSON.parse(lines[0]).hookSpecificOutput.additionalContext;
+        expect(ctx).toMatch(/Jev routing: kind=small-fix, needsTask=no\./);
+        expect(ctx).not.toMatch(/model=|agent=|skill=|parallel=|Ask the operator/);
+    });
+
+    it('three or more undecided fields → no output', async () => {
+        const fetchMock = jevFetch({
+            kind: { confidence: 0.3 },
+            needs_task: { noul: 0.5 },
+            needs_operator_decision: { noul: 0.5 },
+        });
+        expect(await run('hmm', { fetch: fetchMock })).toEqual({ code: 0, lines: [] });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('asks the operator only when Jev decided a decision is needed', async () => {
+        const unclear = await run('do the thing', {
+            fetch: jevFetch({ kind: { choice: 'unclear' } }),
+        });
+        expect(unclear.lines[0]).not.toMatch(/Ask the operator/);
+        const needs = await run('drop the old table or migrate it?', {
+            fetch: jevFetch({ needs_operator_decision: { noul: 0.9 } }),
+        });
+        expect(needs.lines[0]).toMatch(/Ask the operator/);
     });
 
     it('a throwing fetch still exits 0 with no output', async () => {

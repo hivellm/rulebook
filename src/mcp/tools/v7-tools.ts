@@ -795,19 +795,16 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 const { existsSync } = await import('fs');
                 const { join } = await import('path');
                 const { runGate } = await import('../../core/typesafe/gate.js');
-                // ConfigManager.loadConfig() writes a default rulebook.json and
-                // the file task backend creates tasks/ + archive/ when missing;
-                // the gate must create nothing in a project without them.
+                // ConfigManager.loadConfig() writes a default rulebook.json when
+                // missing; the gate must create nothing in a project without one.
+                // Tasks come from the gate's own read-only, metadata-only listing.
                 const hasConfig = existsSync(join(root, '.rulebook', 'rulebook.json'));
-                const hasRulebookDir = existsSync(join(root, '.rulebook'));
                 const result = await runGate({
                     projectRoot: root,
                     prompt: args.prompt,
                     notes: args.notes,
                     loadConfig: async () =>
                         hasConfig ? (await getConfigMgr(args.projectId)).loadConfig() : null,
-                    listTasks: async () =>
-                        hasRulebookDir ? (await getTaskMgr(args.projectId)).listTasks(false) : [],
                     source: 'mcp',
                 });
                 return ok({ ...result });

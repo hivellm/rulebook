@@ -7,6 +7,7 @@ import {
     runGateUnlogged,
 } from '../../core/typesafe/gate.js';
 import {
+    classifiablePrompt,
     promptHookAnswer,
     resolvePromptHookConfig,
     resolveScopeConfig,
@@ -73,8 +74,10 @@ export interface HookCommandOptions {
 async function promptGate(input: HookInput, ctx: HookContext): Promise<object | null> {
     const cfg = resolvePromptHookConfig(ctx.config);
     if (!cfg.enabled) return null;
-    const prompt = typeof input.prompt === 'string' ? input.prompt : '';
-    if (!prompt.trim()) return null;
+    // Machine-generated inputs (agent notifications, cross-session messages)
+    // get no answer and cost no Jev call; IDE/system blocks are not the request.
+    const prompt = classifiablePrompt(typeof input.prompt === 'string' ? input.prompt : '');
+    if (prompt === null) return null;
 
     const t0 = Date.now();
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -93,6 +96,7 @@ async function promptGate(input: HookInput, ctx: HookContext): Promise<object | 
         loadDescription: async () =>
             (description = await resolveProjectDescription(ctx.projectRoot, ctx.config)),
         source: 'hook',
+        questionSet: 'hook',
     });
     // runGate honours the deadline itself; the race is the backstop for a
     // fetch that ignores its abort signal. The raced run only reads: its log

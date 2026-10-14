@@ -4,6 +4,7 @@ import path from 'path';
 import os from 'os';
 import { z } from 'zod';
 import {
+    appendCappedLine,
     buildGateState,
     buildGateQuestions,
     interpretAnswers,
@@ -14,12 +15,13 @@ import {
     stateBytes,
     STATE_CAPS,
     TRUNCATION_MARKER,
+    type GateRouting,
     type GateSources,
 } from '../src/core/typesafe/gate';
 import type { Question } from '../src/core/typesafe/client';
 import { registerV7Tools } from '../src/mcp/tools/v7-tools';
 import { ConfigManager } from '../src/core/state/config-manager';
-import { resolveTaskBackend } from '../src/core/tasks/task-manager';
+import { listTaskSummaries, resolveTaskBackend } from '../src/core/tasks/task-manager';
 import type { ToolContext } from '../src/mcp/tools/context';
 
 const FAKE_KEY = 'ts_fake_gate_key_000';
@@ -165,6 +167,171 @@ describe('gate state', () => {
         expect(full.skill).toMatchObject({
             criteria: { 'languages/typescript': 'languages typescript' },
         });
+    });
+
+    it('hook set: no model/agent/skill/parallel questions and no state for them', () => {
+        const state = buildGateState(
+            sources({ projectDescription: 'A CLI' }),
+            'hello',
+            undefined,
+            'hook'
+        );
+        for (const field of ['skills', 'agents', 'routing', 'skillCandidates']) {
+            expect(state).not.toHaveProperty(field);
+        }
+        expect(Object.keys(buildGateQuestions(state, 'hook')).sort()).toEqual(
+            [
+                'kind',
+                'needs_task',
+                'existing_task',
+                'needs_operator_decision',
+                'in_project_scope',
+                'risk_destructive_git',
+                'risk_os_scheduling',
+                'risk_secrets',
+            ].sort()
+        );
+    });
+});
+
+describe('renderInstruction', () => {
+    const routing = (over: Partial<GateRouting> = {}): GateRouting => ({
+        kind: 'small-fix',
+        needsTask: false,
+        existingTaskId: null,
+        model: null,
+        agentType: null,
+        skill: null,
+        parallel: null,
+        needsOperatorDecision: false,
+        inProjectScope: null,
+        risk: { destructiveGit: false, osScheduling: false, secrets: false },
+        ...over,
+    });
+    const ASK = /Ask the operator/;
+
+    it('asks only when needsOperatorDecision is true — not for an undecided or unclear kind', () => {
+        for (const set of ['full', 'hook'] as const) {
+            const r = (over: Partial<GateRouting>, undecided: string[] = []) =>
+                renderInstruction({ available: true, routing: routing(over), undecided }, [], set);
+            expect(r({ kind: null }, ['kind'])).not.toMatch(ASK);
+            expect(r({ kind: 'unclear' })).not.toMatch(ASK);
+            expect(r({ needsOperatorDecision: null }, ['needs_operator_decision'])).not.toMatch(
+                ASK
+            );
+            expect(r({ needsOperatorDecision: true })).toMatch(ASK);
+        }
+    });
+
+    it('hook set: names only kind and needsTask; empty at 3+ undecided', () => {
+        const hook = (undecided: string[]) =>
+            renderInstruction({ available: true, routing: routing(), undecided }, [], 'hook');
+        expect(hook([])).toBe('Jev routing: kind=small-fix, needsTask=no.');
+        expect(hook(['kind', 'needs_task'])).toMatch(/^Jev routing: .*Undecided: kind, needs_task/);
+        expect(hook(['kind', 'needs_task', 'needs_operator_decision'])).toBe('');
+        // The full set (rulebook_gate) always renders.
+        expect(
+            renderInstruction(
+                {
+                    available: true,
+                    routing: routing(),
+                    undecided: ['kind', 'needs_task', 'model'],
+                },
+                [],
+                'full'
+            )
+        ).toMatch(/model=undecided/);
+    });
+});
+
+describe('task listing for the gate', () => {
+    let root: string;
+
+    beforeEach(async () => {
+        root = await fs.mkdtemp(path.join(os.tmpdir(), 'rb-gate-tasks-'));
+    });
+
+    afterEach(async () => {
+        await fs.rm(root, { recursive: true, force: true });
+    });
+
+    async function task(id: string, metadata?: unknown, base = '.rulebook/tasks') {
+        const dir = path.join(root, base, id);
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(path.join(dir, 'proposal.md'), '# Proposal\n' + 'x'.repeat(5000));
+        if (metadata !== undefined) {
+            await fs.writeFile(path.join(dir, '.metadata.json'), JSON.stringify(metadata));
+        }
+    }
+
+    it('reads id, status and questions from .metadata.json only', async () => {
+        await task('phase1_a', {
+            status: 'blocked',
+            questions: [{ id: 'q1', question: 'Which?', status: 'open' }],
+        });
+        await task('phase1_b');
+        const list = await listTaskSummaries(root);
+        expect(list.sort((a, b) => a.id.localeCompare(b.id))).toEqual([
+            {
+                id: 'phase1_a',
+                title: 'phase1_a',
+                status: 'blocked',
+                questions: [{ id: 'q1', question: 'Which?', status: 'open' }],
+            },
+            { id: 'phase1_b', title: 'phase1_b', status: 'pending' },
+        ]);
+        expect(await listTaskSummaries(path.join(root, 'nowhere'))).toEqual([]);
+    });
+
+    it('runGate lists tasks this way and never migrates a legacy archive', async () => {
+        await task('phase1_a', { status: 'in-progress' });
+        await task('2026-01-01-phase0_old', { status: 'completed' }, '.rulebook/tasks/archive');
+        const fetchMock = jevFetch();
+        await runGate({
+            projectRoot: root,
+            prompt: 'continue',
+            env: KEY_ENV,
+            fetch: fetchMock as never,
+        });
+        const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+        expect(body.state.tasks.list).toEqual([
+            { id: 'phase1_a', title: 'phase1_a', status: 'in-progress' },
+        ]);
+        expect(existsSync(path.join(root, '.rulebook', 'tasks', 'archive'))).toBe(true);
+        expect(existsSync(path.join(root, '.rulebook', 'archive'))).toBe(false);
+    });
+});
+
+describe('appendCappedLine', () => {
+    let root: string;
+
+    beforeEach(async () => {
+        root = await fs.mkdtemp(path.join(os.tmpdir(), 'rb-gate-log-'));
+    });
+
+    afterEach(async () => {
+        await fs.rm(root, { recursive: true, force: true });
+    });
+
+    const read = async (file: string) =>
+        (await fs.readFile(file, 'utf-8')).split('\n').filter(Boolean);
+
+    it('appends without trimming while the file is under maxLines × 1 KiB', async () => {
+        const file = path.join(root, 'logs', 'x.jsonl');
+        for (let i = 0; i < 8; i++) await appendCappedLine(file, `{"i":${i}}`, 5);
+        expect(await read(file)).toHaveLength(8);
+    });
+
+    it('cuts back to the newest maxLines once the file passes the size budget', async () => {
+        const file = path.join(root, 'x.jsonl');
+        const pad = 'p'.repeat(600);
+        for (let i = 0; i < 9; i++) await appendCappedLine(file, `{"i":${i},"p":"${pad}"}`, 5);
+        const lines = await read(file);
+        expect(lines.length).toBeLessThanOrEqual(9);
+        expect(lines.length).toBeGreaterThanOrEqual(5);
+        expect(JSON.parse(lines[lines.length - 1]).i).toBe(8);
+        // 9 × ~615 B > 5 KiB: at least one trim happened, keeping the newest.
+        expect(JSON.parse(lines[0]).i).toBeGreaterThan(0);
     });
 });
 
@@ -703,7 +870,13 @@ describe('rulebook_gate MCP tool', () => {
     it('returns success:true with routing when Jev answers', async () => {
         process.env.TYPESAFE_API_KEY = FAKE_KEY;
         vi.stubGlobal('fetch', jevFetch({ existing_task: { choice: 'phase1_login' } }));
-        await fs.mkdir(path.join(root, '.rulebook')); // a rulebook project: tasks are listed
+        // A rulebook project: the gate lists its tasks from their metadata.
+        const task = path.join(root, '.rulebook', 'tasks', 'phase1_login');
+        await fs.mkdir(task, { recursive: true });
+        await fs.writeFile(
+            path.join(task, '.metadata.json'),
+            JSON.stringify({ status: 'in-progress' })
+        );
         const { handlers } = register();
         const res = await handlers.get('rulebook_gate')!({ prompt: 'continue login' });
         const body = JSON.parse(res.content[0].text);

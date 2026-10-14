@@ -7,7 +7,9 @@ import {
     renameSync,
     rmSync,
     statSync,
+    type Dirent,
 } from 'fs';
+import { readdir, readFile } from 'fs/promises';
 import { promisify } from 'util';
 import { join } from 'path';
 import {
@@ -965,6 +967,45 @@ export class TaskManager implements TaskBackend {
         // Update tasks README index
         await this.updateReadme();
     }
+}
+
+/** What the Jev gate needs from a task: no proposal, checklist, design or specs. */
+export type TaskSummary = Pick<RulebookTask, 'id' | 'title' | 'status' | 'questions'>;
+
+/**
+ * Active tasks of the file backend from their `.metadata.json` alone (id from
+ * the folder name, status and decision requests from the metadata), for the
+ * per-prompt gate. Read-only: never creates folders and never runs
+ * migrateArchive. A missing or invalid metadata file reads as `pending`.
+ */
+export async function listTaskSummaries(
+    projectRoot: string,
+    rulebookDir: string = '.rulebook'
+): Promise<TaskSummary[]> {
+    const tasksPath = join(projectRoot, rulebookDir, TASKS_DIR);
+    let entries: Dirent[];
+    try {
+        entries = await readdir(tasksPath, { withFileTypes: true });
+    } catch {
+        return [];
+    }
+    const dirs = entries.filter((e) => e.isDirectory() && e.name !== ARCHIVE_DIR);
+    return Promise.all(
+        dirs.map(async ({ name }): Promise<TaskSummary> => {
+            const task: TaskSummary = { id: name, title: name, status: 'pending' };
+            try {
+                const metadata = JSON.parse(
+                    await readFile(join(tasksPath, name, '.metadata.json'), 'utf-8')
+                );
+                if (metadata.status) task.status = metadata.status;
+                const questions = parseQuestions(metadata.questions);
+                if (questions.length > 0) task.questions = questions;
+            } catch {
+                // no metadata, or invalid: pending
+            }
+            return task;
+        })
+    );
 }
 
 export function createTaskManager(
