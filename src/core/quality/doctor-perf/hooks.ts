@@ -24,6 +24,8 @@ import type {
 interface RawHook {
     type?: unknown;
     command?: unknown;
+    /** Claude Code `if` filter: a permission rule checked before the hook spawns. */
+    if?: unknown;
     timeout?: unknown;
     async?: unknown;
 }
@@ -188,6 +190,7 @@ export function entriesFromHooks(
                     ...(meta.plugin ? { plugin: meta.plugin } : {}),
                     event,
                     matcher,
+                    ...(typeof hook.if === 'string' && hook.if ? { ifRule: hook.if } : {}),
                     command,
                     type: typeof hook.type === 'string' ? hook.type : 'command',
                     owner: sig ? 'rulebook' : ownerFor(meta.source),
@@ -378,7 +381,8 @@ export function buildHookChecks(
         }
         if (!e.blocking) continue;
         const reasons: string[] = [];
-        const everyTool = TOOL_EVENTS.has(e.event) && (e.matcher === '' || e.matcher === '*');
+        const everyTool =
+            TOOL_EVENTS.has(e.event) && !e.ifRule && (e.matcher === '' || e.matcher === '*');
         if (everyTool) reasons.push('blocks every tool call (matcher *)');
         const silent = e.owner !== 'rulebook' && t?.alwaysSilent === true;
         if (silent) reasons.push(`printed {} or nothing in all ${t!.outputRuns} runs`);

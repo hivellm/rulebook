@@ -642,6 +642,61 @@ describe('doctor --perf on a clean project', () => {
         expect(check(report, 'cli-jev-gate')[0].status).toBe('ok');
     });
 
+    // 7.5 shape: the Codex rules block lives in AGENTS.override.md, and the
+    // scaffolding guard only spawns behind an `if` filter.
+    it('accepts the 7.5 Codex block and if-filtered guards without warnings', async () => {
+        const root = path.join(tmp, 'v75');
+        const home = path.join(tmp, 'home3');
+        await write(path.join(home, '.codex', 'config.toml'), '');
+        await write(path.join(root, 'AGENTS.md'), '# rules\n');
+        await write(
+            path.join(root, 'AGENTS.override.md'),
+            '<!-- RULEBOOK-CODEX:START\n## Rulebook rules (Codex)\nRULEBOOK-CODEX:END -->\n\n# Mine\n'
+        );
+        await write(path.join(root, '.claude', 'hooks', 'protect-task-scaffolding.sh'), '');
+        const guard = 'bash $CLAUDE_PROJECT_DIR/.claude/hooks/protect-task-scaffolding.sh';
+        await write(
+            path.join(root, '.claude', 'settings.json'),
+            JSON.stringify({
+                hooks: {
+                    PreToolUse: [
+                        {
+                            matcher: 'Edit|Write',
+                            hooks: [
+                                {
+                                    type: 'command',
+                                    if: 'Edit(**/.rulebook/tasks/**)',
+                                    command: guard,
+                                },
+                                {
+                                    type: 'command',
+                                    if: 'Write(**/.rulebook/tasks/**)',
+                                    command: guard,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            })
+        );
+        const report = await runPerfDoctor({
+            projectRoot: root,
+            homeDir: home,
+            pathEnv: '',
+            listProcesses: null,
+        });
+
+        const override = report.codex.checks.find((c) => c.id === 'codex-agents-override');
+        expect(override?.status).toBe('ok');
+        expect(override?.message).toContain('RULEBOOK-CODEX');
+        expect(report.hooks.entries.map((e) => e.ifRule)).toEqual([
+            'Edit(**/.rulebook/tasks/**)',
+            'Write(**/.rulebook/tasks/**)',
+        ]);
+        expect(report.hooks.checks.filter((c) => c.status === 'warn')).toEqual([]);
+        expect(formatPerfReport(report)).toContain('if Write(**/.rulebook/tasks/**)');
+    });
+
     function check(r: PerfReport, id: string) {
         return r.cli.checks.filter((c) => c.id === id);
     }

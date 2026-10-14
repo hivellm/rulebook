@@ -1,7 +1,7 @@
 {
   "version": "7.5.0",
   "installedAt": "2026-09-26T02:17:12.538Z",
-  "updatedAt": "2026-10-14T09:54:55.340Z",
+  "updatedAt": "2026-10-14T12:21:36.212Z",
   "projectId": "Rulebook",
   "mode": "full",
   "features": {
@@ -23,6 +23,10 @@
     "cliResponse": 180000,
     "testRun": 600000
   },
+  "languages": [
+    "typescript"
+  ],
+  "modules": [],
   "agentsMode": "lean",
   "gitPushMode": "auto",
   "orchestration": "judgment",
@@ -43,9 +47,5 @@
     ],
     "disabled": [],
     "order": []
-  },
-  "languages": [
-    "typescript"
-  ],
-  "modules": []
+  }
 }

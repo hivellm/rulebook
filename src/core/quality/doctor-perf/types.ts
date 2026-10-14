@@ -51,6 +51,8 @@ export interface HookEntryInfo {
     event: string;
     /** Tool matcher; '' when absent (matches everything). */
     matcher: string;
+    /** Claude Code `if` filter, a permission rule such as an Edit(...) path rule: the hook only spawns when it matches. */
+    ifRule?: string;
     command: string;
     /** Hook type (`command`, `prompt`, …). */
     type: string;
