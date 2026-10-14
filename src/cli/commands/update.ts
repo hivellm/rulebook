@@ -60,9 +60,58 @@ export interface ConfigRebuildInput {
 }
 
 /**
- * The config `rulebook update` saves. It REPLACES the persisted config, so
- * anything that must survive an update is carried forward explicitly here —
- * `installedAt` (now only when absent), `integrations` and `permissions` among them.
+ * Every top-level key of RulebookConfig. `satisfies` makes the compiler reject
+ * this list when the interface gains or loses a key, so a new setting cannot be
+ * dropped by `rulebook update` without anyone noticing.
+ */
+const RULEBOOK_CONFIG_KEYS = {
+    version: true,
+    installedAt: true,
+    updatedAt: true,
+    projectId: true,
+    mode: true,
+    features: true,
+    coverageThreshold: true,
+    language: true,
+    outputLanguage: true,
+    cliTools: true,
+    maxParallelTasks: true,
+    timeouts: true,
+    languages: true,
+    modules: true,
+    modular: true,
+    rulebookDir: true,
+    agentsMode: true,
+    gitPushMode: true,
+    orchestration: true,
+    monorepo: true,
+    tasks: true,
+    integrations: true,
+    gate: true,
+    permissions: true,
+    mcp: true,
+    multiAgent: true,
+    skills: true,
+    agentFramework: true,
+    referenceSource: true,
+} as const satisfies Record<keyof RulebookConfig, true>;
+
+/** The known RulebookConfig keys set in `config`; keys no release reads any more are dropped. */
+function knownConfigKeys(config: Partial<RulebookConfig>): Partial<RulebookConfig> {
+    const kept: Record<string, unknown> = {};
+    for (const key of Object.keys(RULEBOOK_CONFIG_KEYS)) {
+        const value = (config as Record<string, unknown>)[key];
+        if (value !== undefined) kept[key] = value;
+    }
+    return kept as Partial<RulebookConfig>;
+}
+
+/**
+ * The config `rulebook update` saves. It REPLACES the persisted config: every
+ * known key the project already set is carried forward (`gate`, `multiAgent`,
+ * `tasks`, `mcp`, `orchestration`, ...), then the fields update owns are
+ * recomputed — `installedAt` only when absent, `integrations` and `permissions`
+ * from this update's decisions. Keys that are not in RulebookConfig are dropped.
  */
 export function rebuildConfigOnUpdate(
     existing: Partial<RulebookConfig>,
@@ -72,6 +121,7 @@ export function rebuildConfigOnUpdate(
     const integrations = input.integrations ?? existing.integrations;
     const permissions = input.permissions ?? existing.permissions;
     return {
+        ...knownConfigKeys(existing),
         version: input.version,
         installedAt: existing.installedAt || now,
         updatedAt: now,
@@ -89,12 +139,7 @@ export function rebuildConfigOnUpdate(
             testRun: 600000,
         },
         gitPushMode: input.gitPushMode,
-        ...(existing.skills ? { skills: existing.skills } : {}),
-        ...(input.leanMode
-            ? { agentsMode: 'lean' as const }
-            : existing.agentsMode
-              ? { agentsMode: existing.agentsMode }
-              : {}),
+        ...(input.leanMode ? { agentsMode: 'lean' as const } : {}),
         ...(integrations ? { integrations } : {}),
         ...(permissions ? { permissions } : {}),
     };

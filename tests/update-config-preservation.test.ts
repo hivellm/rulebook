@@ -88,4 +88,72 @@ describe('rebuildConfigOnUpdate', () => {
         expect(c.permissions).toEqual({ autoApprove: true });
         expect('permissions' in rebuildConfigOnUpdate(EXISTING, input())).toBe(false);
     });
+
+    // Regression (v7.5): the rebuild listed its keys by hand and dropped gate,
+    // multiAgent, tasks, mcp and orchestration — an update silently turned the
+    // opt-in Jev prompt hook (gate.promptHook.enabled) off again.
+    it('carries forward every key the project set', () => {
+        const userSet: Partial<RulebookConfig> = {
+            ...EXISTING,
+            orchestration: 'orchestrator',
+            gate: {
+                promptHook: { enabled: true, deadlineMs: 2000, blockThreshold: 0.8 },
+                scope: { enabled: false, onOffTopic: 'block' },
+                toolHook: { enabled: true, matcher: 'Bash' },
+            },
+            multiAgent: { enabled: true },
+            tasks: { backend: 'github', repo: 'acme/demo', label: 'rb' },
+            mcp: { enabled: true, tasksDir: 'work/tasks', archiveDir: 'work/archive' },
+            permissions: { autoApprove: false },
+            integrations: { typesafe: { enabled: true, askedAt: '2026-02-01T00:00:00.000Z' } },
+            rulebookDir: '.rb',
+            languages: ['typescript'],
+            modular: false,
+            skills: { enabled: ['languages/typescript'], disabled: ['core/rulebook'] },
+            monorepo: { detected: true, tool: 'pnpm', packages: ['packages/a'] },
+            agentFramework: { projectType: 'web-app', modelAssignment: { core: 'fable' } },
+            referenceSource: { enabled: true, path: '../ref' },
+        };
+        const c = rebuildConfigOnUpdate(userSet, input());
+        for (const key of [
+            'orchestration',
+            'gate',
+            'multiAgent',
+            'tasks',
+            'mcp',
+            'permissions',
+            'integrations',
+            'rulebookDir',
+            'languages',
+            'modular',
+            'skills',
+            'monorepo',
+            'agentFramework',
+            'referenceSource',
+        ] as const) {
+            expect(c[key], key).toEqual(userSet[key]);
+        }
+        expect(c.gate?.promptHook?.enabled).toBe(true);
+    });
+
+    it('still recomputes the fields update owns', () => {
+        const c = rebuildConfigOnUpdate(
+            { ...EXISTING, mode: 'minimal', gitPushMode: 'auto', agentsMode: 'full' },
+            input({ gitPushMode: 'prompt' })
+        );
+        expect(c.mode).toBe('full');
+        expect(c.gitPushMode).toBe('prompt');
+        expect(c.agentsMode).toBe('lean');
+        expect(c.features).toEqual(FEATURES);
+        expect(
+            rebuildConfigOnUpdate({ agentsMode: 'full' }, input({ leanMode: false })).agentsMode
+        ).toBe('full');
+    });
+
+    it('drops keys that are not part of RulebookConfig', () => {
+        const legacy = { ...EXISTING, lightMode: true, ralph: { enabled: true } };
+        const c = rebuildConfigOnUpdate(legacy as Partial<RulebookConfig>, input());
+        expect('lightMode' in c).toBe(false);
+        expect('ralph' in c).toBe(false);
+    });
 });
