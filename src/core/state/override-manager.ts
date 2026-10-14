@@ -26,13 +26,21 @@ export function overrideExists(projectRoot: string): boolean {
 // Rulebook therefore keeps a small, marked block at the top of the override and
 // regenerates it on init/update; everything outside the markers is the user's
 // and is never touched.
+//
+// The whole block is ONE HTML comment (`<!-- RULEBOOK-CODEX:START …` through
+// `RULEBOOK-CODEX:END -->`). Codex sends the file's raw text, comment included;
+// Claude Code, which imports the override from CLAUDE.md, strips HTML comments
+// from memory files, so its sessions don't pay for rules CLAUDE.md already has.
+// The text inside must therefore never contain `-->`.
 
 export const CODEX_BLOCK_START = '<!-- RULEBOOK-CODEX:START';
-export const CODEX_BLOCK_END = '<!-- RULEBOOK-CODEX:END -->';
+export const CODEX_BLOCK_END = 'RULEBOOK-CODEX:END -->';
 export const CODEX_BLOCK_TEMPLATE = 'agents-override-codex.md';
-// The block, its line ending, and the one blank separator line sync adds.
+// The block, its line ending, and the one blank separator line sync adds. Also
+// matches the v7.5.0 form, whose end marker was a separate
+// `<!-- RULEBOOK-CODEX:END -->` comment, so sync replaces that block in place.
 const CODEX_BLOCK_RE =
-    /<!-- RULEBOOK-CODEX:START[\s\S]*?<!-- RULEBOOK-CODEX:END -->[^\S\r\n]*(?:\r?\n)?(?:\r?\n)?/;
+    /<!-- RULEBOOK-CODEX:START[\s\S]*?RULEBOOK-CODEX:END -->[^\S\r\n]*(?:\r?\n)?(?:\r?\n)?/;
 
 /** The override's content without rulebook's Codex block. */
 export function stripCodexBlock(content: string): string {

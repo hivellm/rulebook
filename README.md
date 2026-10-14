@@ -85,8 +85,10 @@ main session delegates every task, stays available as an opt-in
 Codex reads `AGENTS.override.md` *instead of* `AGENTS.md` when both exist in a
 folder, so `init`/`update` keep a small rulebook block (~300 tokens) at the top
 of `AGENTS.override.md`, between `RULEBOOK-CODEX:START/END` markers; your own
-rules below it are never touched. Claude Code imports the override too, so it
-sees that block as well. Rulebook's `.claude/hooks` guards do not run in Codex:
+rules below it are never touched. The block is one HTML comment: Codex reads the
+file raw and sees it, while Claude Code, which imports the override from
+`CLAUDE.md`, strips HTML comments and so doesn't load the same rules twice.
+Rulebook's `.claude/hooks` guards do not run in Codex:
 Codex runs project hooks only after you trust them, and its tools are named
 differently (`exec_command`, `apply_patch`, … rather than `Bash`, `Edit`,
 `Write`), so a hook matcher written for Claude never fires there. Check what

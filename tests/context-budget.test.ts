@@ -35,7 +35,8 @@ import type { ProjectConfig } from '../src/types.js';
  * Counts what Claude Code actually injects into a session of a project that
  * `rulebook init` + `update` set up (tiktoken cl100k, as in the ledger):
  * - CLAUDE.md with HTML comments stripped and `@imports` expanded — the import
- *   pulls in AGENTS.override.md with its RULEBOOK-CODEX block;
+ *   pulls in AGENTS.override.md, whose RULEBOOK-CODEX block is one HTML comment
+ *   and so drops out (checked against a real Claude Code session's transcript);
  * - CLAUDE.local.md (the init stub);
  * - every always-on `.claude/rules/*.md` (no `paths:` frontmatter), from every
  *   generator: typesafe.md, mcp-tool-reference.md, the language rules;
@@ -49,14 +50,17 @@ import type { ProjectConfig } from '../src/types.js';
  * Budgets are measured values plus headroom. Moving one needs a new
  * measurement and a line in the comment, never a silent bump.
  */
-// Measured 1,448 (judgment) / 1,423 (orchestrator) at v7.5.0: CLAUDE.md with
-// the imported override 1,081/1,056 (the RULEBOOK-CODEX block is ~290 of it),
+// Measured 1,448 (judgment) / 1,423 (orchestrator) at v7.5.0, when the
+// RULEBOOK-CODEX block was visible to Claude Code (277/266 of it). Since the block
+// is an HTML comment (phase5): 1,192/1,178 — CLAUDE.md with the imported
+// override 825/811 (the override is the shipped placeholder template, ~53),
 // CLAUDE.local.md 42, always-on rules 196 (typesafe.md + mcp-tool-reference.md),
 // skill listing 70, deferred MCP names 59. Ceiling = judgment + ~10 %.
-const CLAUDE_ALWAYS_ON_BUDGET = 1600;
+const CLAUDE_ALWAYS_ON_BUDGET = 1320;
 // Agents are opt-in, but projects upgraded from v5/v6 keep them (update refreshes
 // them): the 11 shipped agents add 463 listing tokens, measured 1,911/1,886 at
-// v7.5.0. Ceiling = the 7.5.0 target for an upgraded project (08-execution-plan,
+// v7.5.0, 1,655/1,641 since the Codex block is a comment (phase5). Ceiling =
+// the 7.5.0 target for an upgraded project (08-execution-plan,
 // "Rulebook always-on tokens, upgraded project ≤ 2.1 k"), ~10 % above it.
 const CLAUDE_WITH_AGENTS_BUDGET = 2100;
 // Per prompt, only with gate.promptHook.enabled: the hook's context is capped at
@@ -65,10 +69,12 @@ const CLAUDE_WITH_AGENTS_BUDGET = 2100;
 // v7.5.0. Ceiling = measured + ~9 %.
 const PROMPT_HOOK_CONTEXT_BUDGET = 260;
 // Codex. A default project has AGENTS.override.md, which Codex reads INSTEAD of
-// AGENTS.md: RULEBOOK-CODEX block + override stub, measured 351 (judgment) / 340
-// (orchestrator) at v7.5.0. Without an override Codex reads the lean AGENTS.md,
-// measured 784/796. Ceilings = measured + ~10 %.
-const CODEX_OVERRIDE_BUDGET = 390;
+// AGENTS.md, raw (HTML comments included): RULEBOOK-CODEX block + override stub,
+// measured 351 (judgment) / 340 (orchestrator) at v7.5.0; 385/374 at phase5 —
+// +21 for the shipped placeholder template (init wrote a shorter fallback
+// before), +13 for the block's "in force" note. Without an override Codex reads
+// the lean AGENTS.md, measured 784/796. Ceilings = measured + ~10 %.
+const CODEX_OVERRIDE_BUDGET = 425;
 const CODEX_AGENTS_MD_BUDGET = 870;
 
 const config: ProjectConfig = {
@@ -122,7 +128,10 @@ describe('v7 context budget (F-001)', () => {
         it('Claude Code session start stays within the always-on budget', async () => {
             const { parts, total, why } = await measure();
             // Every source the budget is meant to cover is present and counted.
-            expect(parts.claudeMd).toContain('Rulebook rules (Codex)');
+            // The override's own text arrives through the import; its Codex
+            // block (an HTML comment) does not.
+            expect(parts.claudeMd).toContain('Project-Specific Overrides');
+            expect(parts.claudeMd).not.toContain('Rulebook rules (Codex)');
             expect(parts.rules).toContain('# TypeSafe (Jev)');
             expect(parts.rules).toContain('# MCP tool reference');
             expect(parts.listing).toMatch(/^- analysis: /m);
