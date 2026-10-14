@@ -11,7 +11,11 @@ import os from 'os';
  */
 
 const { applyClaudeSettingsMock } = vi.hoisted(() => ({
-    applyClaudeSettingsMock: vi.fn(async (..._args: unknown[]) => undefined),
+    applyClaudeSettingsMock: vi.fn(async (..._args: unknown[]) => ({
+        path: '',
+        changed: false,
+        warnings: [] as string[],
+    })),
 }));
 
 vi.mock('../src/core/claude/claude-mcp.js', () => ({
