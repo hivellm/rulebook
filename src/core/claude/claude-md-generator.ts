@@ -29,6 +29,23 @@ export const CLAUDE_MD_SENTINEL_END = '<!-- RULEBOOK:END -->';
 export const CLAUDE_MD_TEMPLATE_NAME = 'claude-md.md';
 
 /**
+ * The `CLAUDE.local.md` stub `rulebook init` writes when the file is absent.
+ * Claude Code loads it every session, so the context budget counts it.
+ */
+export const CLAUDE_LOCAL_MD_STUB = [
+    '# CLAUDE.local.md',
+    '',
+    '<!-- Personal per-project overrides. Not committed to version control. -->',
+    '<!-- Loaded alongside CLAUDE.md with the same priority. -->',
+    '',
+    '# Add your personal preferences below. Examples:',
+    '# - Preferred test data or sandbox URLs',
+    '# - Personal tooling shortcuts',
+    '# - Debugging tips specific to your machine',
+    '',
+].join('\n');
+
+/**
  * Marker substrings on `@import` lines that may be conditionally included
  * depending on file presence in the project root.
  */

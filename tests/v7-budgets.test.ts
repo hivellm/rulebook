@@ -8,9 +8,10 @@ import { buildRulebookMcpEntry } from '../src/core/claude/claude-mcp';
 /**
  * v7 CI acceptance checks (docs/analysis/v7-performance/05-budget-and-metrics.md).
  *
- * Checks 1 (file token budget), 2 (hook audit), 4 (orchestration freedom, P0)
- * and 6 (autonomy profile) live in context-budget.test.ts and
- * claude-settings-manager.test.ts. This file covers check 3 (MCP schema
+ * Checks 1 (injected-context budget), 4 (orchestration freedom, P0) and 6
+ * (autonomy profile) live in context-budget.test.ts and
+ * claude-settings-manager.test.ts, check 2 (hook audit) in
+ * hook-spawn-budget.test.ts. This file covers check 3 (MCP schema
  * budget) and check 5 (startup benchmark) against the built slim server.
  * Requires `npm run build` first; skipped when dist/ is absent.
  */

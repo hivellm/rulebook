@@ -411,20 +411,10 @@ export async function initCommand(options: {
                 const { ensureGitignoreEntries } = await import('../../utils/gitignore.js');
                 const localMdPath = path.join(cwd, 'CLAUDE.local.md');
                 if (!existsSync(localMdPath)) {
-                    const stub = [
-                        '# CLAUDE.local.md',
-                        '',
-                        '<!-- Personal per-project overrides. Not committed to version control. -->',
-                        '<!-- Loaded alongside CLAUDE.md with the same priority. -->',
-                        '',
-                        '# Add your personal preferences below. Examples:',
-                        '# - Preferred test data or sandbox URLs',
-                        '# - Personal tooling shortcuts',
-                        '# - Debugging tips specific to your machine',
-                        '',
-                    ].join('\n');
+                    const { CLAUDE_LOCAL_MD_STUB } =
+                        await import('../../core/claude/claude-md-generator.js');
                     const { writeFile: wf } = await import('../../utils/file-system.js');
-                    await wf(localMdPath, stub);
+                    await wf(localMdPath, CLAUDE_LOCAL_MD_STUB);
                     console.log(
                         chalk.gray('  • created CLAUDE.local.md (personal overrides, gitignored)')
                     );
