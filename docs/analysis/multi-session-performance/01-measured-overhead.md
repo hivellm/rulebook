@@ -62,6 +62,24 @@ rulebook is the slowest hook minus the slowest non-rulebook hook on the same cal
 - **Numbers (harness, median):** outer bash `-c true` 73–81 ms; two nested shells (how the guards run)
   104–120 ms; `x="$(cat)"` on 1.5 KB stdin 125–128 ms vs builtin `read` 75–91 ms; guard fast path
   134–141 ms; same guard in exec form (one bash, no outer shell) 92–103 ms.
+- **Caveat found while fixing it:** `read -r -d ''` reads a pipe one byte per call — 30 KB costs
+  +70 ms, 400 KB +730 ms, worse than `$(cat)`. `read -r -N <big>` reads in blocks (1.1 MB in
+  141 ms vs 2,240 ms) and needs bash ≥ 4.1, so the guards keep `-d ''` only as the bash 3.2 fallback.
+- **After `phase1_guard-prefilter-fix` (2026-10-14, same harness method, median of 3, HEAD → fixed):**
+
+  | Payload | `no-os-scheduling.sh` | `protect-task-scaffolding.sh` |
+  |---|---:|---:|
+  | Bash, plain | 128 → 84 ms | — |
+  | Bash, prose description ("Look at the working tree") | 311 → 88 ms | — |
+  | Bash, heredoc with "; at 1024" | 210 ms, **deny** → 84 ms, pass | — |
+  | Edit, code | 118 → 88 ms | 117 → 83 ms |
+  | Edit, prose " at " | 356 → 100 ms | 120 → 87 ms |
+  | Write, 30 KB prose | 317 → 97 ms | 119 → 82 ms |
+  | Write, new `proposal.md` | 131 → 91 ms | 220 → 140 ms (deny) |
+
+  Payload corpus (`tests/fixtures/guard-payloads/corpus.json`, 55 cases): HEAD 3 false denials and 2
+  missed denials; fixed 0 and 0, fast path on 35 of 36 ordinary payloads (97 %). Since
+  `phase2_guards-to-permissions` neither script runs on an ordinary Bash/Edit/Write call.
 - **Confidence:** high. **Rulebook-attributable:** yes.
 
 ## F-004 — Claude Code can enforce both guards without spawning anything
