@@ -112,12 +112,8 @@ export async function initOverride(projectRoot: string): Promise<boolean> {
     const overridePath = getOverridePath(projectRoot);
     if (existsSync(overridePath)) return false;
 
-    const templatePath = path.join(
-        path.dirname(path.dirname(new URL(import.meta.url).pathname)),
-        'templates',
-        'core',
-        'agents-override.md'
-    );
+    const { getTemplatesDir } = await import('../generators/generator.js');
+    const templatePath = path.join(getTemplatesDir(), 'core', 'agents-override.md');
 
     let templateContent = '';
     if (await fileExists(templatePath)) {
