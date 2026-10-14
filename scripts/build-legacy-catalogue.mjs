@@ -9,10 +9,11 @@
  * catalogue → safe to move to .rulebook/backup/ or refresh) from one the
  * user edited (unknown hash → kept and reported).
  *
- * Usage: node scripts/build-legacy-catalogue.mjs [--out <file>]
- * Needs the git tags (v5.0.0 and later); HEAD is added under its
- * package.json version when that version has no tag. Run it when a release
- * is tagged, and commit the JSON — the build only copies it into dist/.
+ * Usage: npm run build:catalogue  (node scripts/build-legacy-catalogue.mjs [--out <file>])
+ * Needs the git tags (v5.0.0 and later); untagged releases are listed in
+ * UNTAGGED_RELEASES, and HEAD (the templates being shipped) is included too.
+ * Run it whenever a shipped template changes or a release is cut, and commit
+ * the JSON — the build only copies it into dist/.
  *
  * How each release projected templates (read from the tags' generators):
  * - rules: templates/rules/<f>.md copied verbatim to .rulebook/rules/<f>.md
@@ -41,6 +42,10 @@ import { fileURLToPath } from 'url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HASH_LENGTH = 12;
 const MIN_VERSION = [5, 0, 0];
+/** Releases published without a git tag → the commit they were cut from. */
+const UNTAGGED_RELEASES = {
+    'v7.4.0': '1035321', // Merge pull request #30 from hivellm/release/v7.4.0
+};
 
 const outArg = process.argv.indexOf('--out');
 const OUT =
@@ -138,7 +143,8 @@ function agentVariants(template) {
                 '{{file_naming}}': FILE_NAMING[id] || 'kebab-case',
             };
             let result = template;
-            for (const [key, value] of Object.entries(values)) result = result.replaceAll(key, value);
+            for (const [key, value] of Object.entries(values))
+                result = result.replaceAll(key, value);
             out.add(result);
         }
     }
@@ -231,8 +237,11 @@ function releaseRefs() {
             return 0;
         });
     const refs = tags.map((t) => ({ ref: t, label: t }));
-    const headVersion = `v${JSON.parse(git('show', 'HEAD:package.json')).version}`;
-    if (!tags.includes(headVersion)) refs.push({ ref: 'HEAD', label: headVersion });
+    for (const [label, commit] of Object.entries(UNTAGGED_RELEASES)) {
+        if (!tags.includes(label)) refs.push({ ref: commit, label });
+    }
+    // The templates this build ships, so a current install counts as unedited.
+    refs.push({ ref: 'HEAD', label: 'HEAD' });
     return refs;
 }
 

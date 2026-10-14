@@ -79,6 +79,37 @@ describe('legacy catalogue', () => {
         expect(isCatalogued('.rulebook/specs/QUALITY_ENFORCEMENT.md', content)).toBe(true);
     });
 
+    it('covers the templates this build ships (run `npm run build:catalogue` after editing one)', () => {
+        const templates = getTemplatesDir();
+        const stale: string[] = [];
+        const check = (rel: string, content: string) => {
+            if (!isCatalogued(rel, content)) stale.push(rel);
+        };
+        const placeholders = resolveAgentPlaceholders('typescript');
+        for (const f of readdirSync(path.join(templates, 'agents')).filter((f) =>
+            f.endsWith('.md')
+        )) {
+            const t = readFileSync(path.join(templates, 'agents', f), 'utf-8');
+            check(`.claude/agents/${f}`, substituteAgentPlaceholders(t, placeholders));
+        }
+        for (const name of DEFAULT_DEV_SKILLS) {
+            const t = readFileSync(
+                path.join(templates, 'skills', 'dev', name, 'SKILL.md'),
+                'utf-8'
+            );
+            check(`.claude/skills/${name}/SKILL.md`, t);
+        }
+        for (const f of ['protect-task-scaffolding.sh', 'no-os-scheduling.sh', 'jev-gate.sh']) {
+            check(`.claude/hooks/${f}`, readFileSync(path.join(templates, 'hooks', f), 'utf-8'));
+        }
+        for (const f of readdirSync(path.join(templates, 'rules')).filter((f) =>
+            f.endsWith('.md')
+        )) {
+            check(`.claude/rules/${f}`, readFileSync(path.join(templates, 'rules', f), 'utf-8'));
+        }
+        expect(stale).toEqual([]);
+    });
+
     it('knows the rust-substituted v7.4 implementer agent', () => {
         expect(
             isCatalogued('.claude/agents/implementer.md', fixture('implementer.v7.4-rust.md'))
