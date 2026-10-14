@@ -435,7 +435,7 @@ export async function initCommand(options: {
             }
 
             try {
-                const { applyClaudeSettings } =
+                const { applyClaudeSettings, decideAutoApprove } =
                     await import('../../core/claude/claude-settings-manager.js');
                 const { resolvePromptHookConfig } =
                     await import('../../core/typesafe/prompt-hook.js');
@@ -446,7 +446,10 @@ export async function initCommand(options: {
                 // while TypeSafe is on and gate.promptHook.enabled is true (opt-in, v7.5),
                 // and the opt-in Jev tool gate (PreToolUse, gate.toolHook.enabled).
                 // No Stop/SessionStart hooks, no orchestration enforcement (P0).
-                // Stale v5/v6 entries are stripped on sync.
+                // Stale v5/v6 entries are stripped on sync. v7.5: OS scheduling
+                // as permissions.deny rules; Bash/Edit/Write auto-approval per
+                // permissions.autoApprove (recorded as true when absent).
+                const autoApprove = await decideAutoApprove(configManager);
                 const rulebookCfg = await configManager.loadConfig();
                 const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
                 const promptHook = resolvePromptHookConfig(rulebookCfg);
@@ -464,6 +467,7 @@ export async function initCommand(options: {
                               }
                             : undefined,
                     fullAutonomyPermissions: true,
+                    autoApprove,
                     teamsEnv: multiAgentEnabled,
                 });
                 for (const warning of settingsResult.warnings) {

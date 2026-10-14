@@ -6,15 +6,16 @@ import os from 'os';
 import {
     applyClaudeSettings,
     GUARD_SCRIPT,
+    OS_SCHEDULING_DENY_RULES,
     OS_SCHEDULING_GUARD_SCRIPT,
-    OS_SCHEDULING_GUARD_MATCHER,
 } from '../src/core/claude/claude-settings-manager';
 
 /**
  * v7.3 — Tier 1 #7: no OS-level scheduling.
  *
  * The guard script is exercised for real through bash (skipped where bash is
- * absent); the settings wiring is exercised through applyClaudeSettings.
+ * absent); the settings wiring (v7.5: permissions.deny rules, the script kept
+ * for the tool gate) is exercised through applyClaudeSettings.
  */
 
 const SCRIPT = path.join(process.cwd(), 'templates', 'hooks', OS_SCHEDULING_GUARD_SCRIPT);
@@ -28,12 +29,14 @@ function hasBash(): boolean {
     }
 }
 
+/** `none` = the guard printed nothing: no decision, the normal permission flow applies. */
 function runGuard(payload: object): { decision: string; reason: string } {
     const raw = execFileSync('bash', [SCRIPT], {
         input: JSON.stringify(payload),
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
     });
+    if (raw.trim() === '') return { decision: 'none', reason: '' };
     const parsed = JSON.parse(raw.trim()) as {
         hookSpecificOutput: { permissionDecision: string; permissionDecisionReason?: string };
     };
@@ -92,8 +95,8 @@ describe.skipIf(!hasBash())('no-os-scheduling guard script', () => {
     ];
 
     for (const command of allowed) {
-        it(`allows: ${command}`, () => {
-            expect(runGuard(bash(command)).decision).toBe('allow');
+        it(`passes without a decision: ${command}`, () => {
+            expect(runGuard(bash(command)).decision).toBe('none');
         });
     }
 
@@ -106,18 +109,18 @@ describe.skipIf(!hasBash())('no-os-scheduling guard script', () => {
         expect(runGuard(write('/home/dev/.config/systemd/user/sync.timer')).decision).toBe('deny');
     });
 
-    it('allows writes to application code and docs', () => {
-        expect(runGuard(write('src/jobs/scheduler.ts')).decision).toBe('allow');
-        expect(runGuard(write('docs/cron.md')).decision).toBe('allow');
-        expect(runGuard(write('/tmp/backup.timer.md')).decision).toBe('allow');
+    it('passes writes to application code and docs', () => {
+        expect(runGuard(write('src/jobs/scheduler.ts')).decision).toBe('none');
+        expect(runGuard(write('docs/cron.md')).decision).toBe('none');
+        expect(runGuard(write('/tmp/backup.timer.md')).decision).toBe('none');
     });
 
-    it('allows a payload with no command and no path', () => {
-        expect(runGuard({ tool_name: 'Read', tool_input: {} }).decision).toBe('allow');
+    it('passes a payload with no command and no path', () => {
+        expect(runGuard({ tool_name: 'Read', tool_input: {} }).decision).toBe('none');
     });
 });
 
-describe('no-os-scheduling guard wiring (applyClaudeSettings)', () => {
+describe('no-os-scheduling wiring (applyClaudeSettings, v7.5)', () => {
     let projectRoot: string;
     const BOTH = { taskScaffoldingGuard: true, osSchedulingGuard: true };
 
@@ -129,22 +132,21 @@ describe('no-os-scheduling guard wiring (applyClaudeSettings)', () => {
         await fs.rm(projectRoot, { recursive: true, force: true });
     });
 
-    it('adds a Bash|Edit|Write PreToolUse entry next to the task guard', async () => {
+    async function read(p: string) {
+        return JSON.parse(await fs.readFile(p, 'utf-8'));
+    }
+
+    it('writes the deny rules and wires no PreToolUse scheduling hook', async () => {
         const result = await applyClaudeSettings(projectRoot, BOTH);
-        const content = JSON.parse(await fs.readFile(result.path, 'utf-8'));
-        const entries = content.hooks.PreToolUse as Array<{
-            matcher: string;
-            hooks: Array<{ command: string }>;
-        }>;
-        expect(entries).toHaveLength(2);
-        const guard = entries.find((e) => e.matcher === OS_SCHEDULING_GUARD_MATCHER)!;
-        expect(guard.hooks[0].command).toContain(OS_SCHEDULING_GUARD_SCRIPT);
-        expect(entries.find((e) => e.matcher === 'Edit|Write')!.hooks[0].command).toContain(
-            GUARD_SCRIPT
-        );
+        const content = await read(result.path);
+        expect(content.permissions.deny).toEqual([...OS_SCHEDULING_DENY_RULES]);
+        const entries = content.hooks.PreToolUse as Array<{ hooks: Array<{ command: string }> }>;
+        expect(entries).toHaveLength(1);
+        expect(entries[0].hooks.every((h) => h.command.includes(GUARD_SCRIPT))).toBe(true);
+        expect(JSON.stringify(content.hooks)).not.toContain(OS_SCHEDULING_GUARD_SCRIPT);
     });
 
-    it('installs the script with LF endings', async () => {
+    it('still installs the script (run by the opt-in tool gate) with LF endings', async () => {
         await applyClaudeSettings(projectRoot, BOTH);
         const buf = await fs.readFile(
             path.join(projectRoot, '.claude/hooks', OS_SCHEDULING_GUARD_SCRIPT)
@@ -159,7 +161,8 @@ describe('no-os-scheduling guard wiring (applyClaudeSettings)', () => {
         expect(again.changed).toBe(false);
 
         await applyClaudeSettings(projectRoot, { taskScaffoldingGuard: true });
-        const after = JSON.parse(await fs.readFile(again.path, 'utf-8'));
+        const after = await read(again.path);
+        expect(after.permissions).toBeUndefined();
         expect(after.hooks.PreToolUse).toHaveLength(1);
         expect(after.hooks.PreToolUse[0].matcher).toBe('Edit|Write');
     });

@@ -253,6 +253,12 @@ export interface RulebookConfig {
             cacheTtlMs?: number; // default 900000 (15 min), clamped 0–86400000
         };
     };
+    // Claude Code permissions (v7.5). Until 7.4 the PreToolUse guards answered
+    // "allow" on every passing call, auto-approving Bash/Edit/Write; that is now
+    // explicit `permissions.allow` rules written while autoApprove is true.
+    permissions?: {
+        autoApprove?: boolean; // default true; `rulebook update` asks once (interactive) and records it
+    };
     // MCP server configuration
     mcp?: {
         enabled?: boolean;

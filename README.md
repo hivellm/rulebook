@@ -201,13 +201,28 @@ harness on demand. Promotion never overwrites an existing skill.
 
 A single `PreToolUse` hook blocks forbidden patterns at the tool level — before edits reach disk: `deferred`/`skip`/`later`/`TODO` in tasks.md, stubs/placeholders/`HACK`/`FIXME` in source, and manual task-file creation in `.rulebook/tasks/`. Cross-platform (Node.js, no `jq` dependency), and short-circuits in pure bash so a normal edit costs ~one process spawn.
 
-A second guard, `no-os-scheduling`, enforces Tier 1 prohibition #7: scheduling
-lives in the application, never in the OS. It denies `Bash` commands that
-create or install OS schedules (`crontab -e`, `at`, `systemctl enable … .timer`,
-`launchctl load`, `schtasks /create`, `Register-ScheduledTask`) and
-`Edit`/`Write` targets under scheduler directories (`/etc/cron*`,
-`LaunchAgents/`, `*.timer`). Reads like `crontab -l` or `systemctl status`
-pass; a keyword prefilter keeps everything else on the fast path.
+Tier 1 prohibition #7 — scheduling lives in the application, never in the OS —
+is enforced by `permissions.deny` rules in `.claude/settings.json` (since 7.5),
+which Claude Code checks in-process, so ordinary calls spawn nothing: `Bash`
+(`crontab`, `at`, `batch`, `systemctl … .timer`, `systemd-run --on-…`,
+`launchctl load|bootstrap|enable|submit|kickstart`, `schtasks`), `PowerShell`
+(`Register-/New-/Set-/Enable-ScheduledTask`, `Register-ScheduledJob`,
+`schtasks`) and `Edit` path rules for scheduler files (`/etc/cron*`,
+`/var/spool/cron`, `LaunchAgents/*.plist`, systemd `*.timer`), which Claude Code
+also applies to `Write`, `>` redirects and `tee`. Rules match each subcommand
+from its start, so prose never trips them; they also block read-only forms
+(`crontab -l`, `schtasks /query`) and do not see `sudo …`, `sh -c '…'` or
+`cp` into a scheduler directory. The `no-os-scheduling.sh` script, which covers
+those forms, stays installed for the opt-in tool gate.
+
+The task-scaffolding guard only spawns for files under `.rulebook/tasks/`
+(hook `if` rules), and neither guard approves anything: a passing call prints
+no decision. Until 7.4 both answered `allow`, which auto-approved Bash, Edit
+and Write; that is now explicit — `permissions.autoApprove` in
+`.rulebook/rulebook.json` (default `true`) writes `Bash(*)`, `Edit(*)` and
+`Write(*)` allow rules (deny rules still win). `rulebook update` asks once,
+interactively, when the field is absent; `--yes` keeps `true`. Set it to
+`false` to get Claude Code's permission prompts back.
 
 ### Multi-project workspace
 
@@ -292,12 +307,13 @@ It installs the MCP server entry and the Rulebook-specific skills, then layers t
 
 | Applied | Detail |
 |---------|--------|
-| Hooks | Path-only `PreToolUse` guards (task scaffolding, `no-os-scheduling`); with TypeSafe on, the opt-in, fail-open Jev prompt hook on `UserPromptSubmit` and tool-call gate on `PreToolUse` — nothing on Stop/SessionStart, no content regexes |
-| Full-autonomy permissions | `defaultMode: acceptEdits` + broad allow list (Bash/Edit/Write/Agent/WebFetch/…) — ~0 permission prompts for routine work |
+| Hooks | Path-only `PreToolUse` task-scaffolding guard, spawned only for `.rulebook/tasks/**` (hook `if` rules); with TypeSafe on, the opt-in, fail-open Jev prompt hook on `UserPromptSubmit` and tool-call gate on `PreToolUse` — nothing on Stop/SessionStart, no content regexes |
+| Full-autonomy permissions | `defaultMode: acceptEdits` + broad allow list (Read/Agent/WebFetch/…, plus Bash/Edit/Write while `permissions.autoApprove` is `true`) — ~0 permission prompts for routine work |
+| Deny rules | OS-level scheduling (Tier 1 #7) as `permissions.deny` — `Bash`, `PowerShell` and `Edit` path rules |
 | `statusLine` | project dir + git branch + context meter (`ctx NN%`) |
 | `model` | cost-aware default (`opus`) |
 
-All settings are **additive and non-clobbering** — existing `permissions.allow`, a user-authored `statusLine`, and an explicit `model` are preserved. Requires Claude Code installed (`~/.claude`); otherwise it no-ops with a notice.
+All settings are **additive and non-clobbering** — existing `permissions.allow`/`deny` entries, a user-authored `statusLine`, and an explicit `model` are preserved; rulebook only ever removes its own exact rule strings (when `permissions.autoApprove` is turned off). Requires Claude Code installed (`~/.claude`); otherwise it no-ops with a notice.
 
 ---
 

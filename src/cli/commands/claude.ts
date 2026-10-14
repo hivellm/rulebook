@@ -9,7 +9,10 @@
 
 import chalk from 'chalk';
 import { setupClaudeCodeIntegration } from '../../core/claude/claude-mcp.js';
-import { applyClaudeSettings } from '../../core/claude/claude-settings-manager.js';
+import {
+    applyClaudeSettings,
+    resolveAutoApprove,
+} from '../../core/claude/claude-settings-manager.js';
 
 /**
  * Model written to .claude/settings.json (`model`) when none is set.
@@ -70,6 +73,7 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
                       }
                     : undefined,
             fullAutonomyPermissions: true,
+            autoApprove: resolveAutoApprove(rulebookCfg),
             statusLine: true,
             defaultModel,
         });

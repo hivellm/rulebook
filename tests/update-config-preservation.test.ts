@@ -5,7 +5,8 @@ import type { RulebookConfig } from '../src/types';
 /**
  * `rulebook update` replaces rulebook.json with a rebuilt config. The rebuild
  * must carry forward what the operator (or an earlier install) decided:
- * `installedAt` and `integrations` — a stored TypeSafe "no" included.
+ * `installedAt`, `integrations` — a stored TypeSafe "no" included — and
+ * `permissions` (the v7.5 auto-approve answer).
  */
 
 const FEATURES: RulebookConfig['features'] = {
@@ -72,5 +73,19 @@ describe('rebuildConfigOnUpdate', () => {
     it('adds no integrations key when there are none', () => {
         const c = rebuildConfigOnUpdate({ installedAt: EXISTING.installedAt }, input());
         expect('integrations' in c).toBe(false);
+    });
+
+    it('keeps a stored permissions.autoApprove answer (v7.5)', () => {
+        const c = rebuildConfigOnUpdate(
+            { ...EXISTING, permissions: { autoApprove: false } },
+            input()
+        );
+        expect(c.permissions).toEqual({ autoApprove: false });
+    });
+
+    it('takes permissions from the fresh read after the auto-approve decision', () => {
+        const c = rebuildConfigOnUpdate(EXISTING, input({ permissions: { autoApprove: true } }));
+        expect(c.permissions).toEqual({ autoApprove: true });
+        expect('permissions' in rebuildConfigOnUpdate(EXISTING, input())).toBe(false);
     });
 });

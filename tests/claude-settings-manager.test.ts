@@ -5,13 +5,21 @@ import os from 'os';
 import {
     applyClaudeSettings,
     getClaudeSettingsPath,
+    AUTO_APPROVE_PERMISSIONS,
+    AUTO_APPROVE_QUESTION,
+    decideAutoApprove,
     FULL_AUTONOMY_PERMISSIONS,
     GUARD_SCRIPT,
     JEV_GATE_SCRIPT,
+    OS_SCHEDULING_DENY_RULES,
+    OS_SCHEDULING_GUARD_SCRIPT,
     removeJevPromptGate,
+    resolveAutoApprove,
     resolveHookMain,
+    TASK_SCAFFOLDING_IF_RULES,
     type HookMainTarget,
 } from '../src/core/claude/claude-settings-manager';
+import type { RulebookConfig } from '../src/types';
 
 const V7_DESIRE = { taskScaffoldingGuard: true, fullAutonomyPermissions: true };
 /** A resolved prompt-hook entry, so these tests never look for a real install. */
@@ -379,10 +387,9 @@ describe('claude-settings-manager (v7)', () => {
             await applyClaudeSettings(projectRoot, ALL_DESIRE);
             const before = await fs.readFile(getClaudeSettingsPath(projectRoot), 'utf-8');
             const list = (await readSettings()).hooks.PreToolUse;
-            expect(list).toHaveLength(3);
+            expect(list).toHaveLength(2);
             expect(list[0].hooks[0].command).toContain(GUARD_SCRIPT);
-            expect(list[1].hooks[0].command).toContain('no-os-scheduling.sh');
-            expect(list[2]).toEqual({
+            expect(list[1]).toEqual({
                 matcher: 'Bash|Edit|Write',
                 hooks: [{ type: 'command', command: TOOL_COMMAND, timeout: 4 }],
             });
@@ -427,7 +434,7 @@ describe('claude-settings-manager (v7)', () => {
             await applyClaudeSettings(projectRoot, { ...ALL_DESIRE, jevToolGate: undefined });
             const list = (await readSettings()).hooks.PreToolUse;
             expect(toolEntries(list)).toHaveLength(0);
-            expect(list).toHaveLength(2);
+            expect(list).toHaveLength(1);
         });
 
         it('prompt and tool entries are independent: toggling one never removes the other', async () => {
@@ -476,7 +483,7 @@ describe('claude-settings-manager (v7)', () => {
             const s = await readSettings();
             expect(s.hooks.UserPromptSubmit).toBeUndefined();
             expect(toolEntries(s.hooks.PreToolUse)).toHaveLength(0);
-            expect(s.hooks.PreToolUse).toHaveLength(2);
+            expect(s.hooks.PreToolUse).toHaveLength(1);
         });
     });
 
@@ -518,6 +525,258 @@ describe('claude-settings-manager (v7)', () => {
             expect(after.permissions.allow.filter((r: string) => r === 'Bash(*)')).toHaveLength(1);
             expect(after.permissions.deny).toContain('WebFetch(domain:evil.com)');
             expect(after.env.MY_CUSTOM).toBe('value');
+        });
+    });
+
+    describe('v7.5 guards to permissions', () => {
+        const GUARD_COMMAND = `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${GUARD_SCRIPT}`;
+        const FULL = {
+            taskScaffoldingGuard: true,
+            osSchedulingGuard: true,
+            fullAutonomyPermissions: true,
+            autoApprove: true,
+        };
+
+        async function readSettings() {
+            return JSON.parse(await fs.readFile(getClaudeSettingsPath(projectRoot), 'utf-8'));
+        }
+        async function writeSettings(value: unknown) {
+            const target = getClaudeSettingsPath(projectRoot);
+            await fs.mkdir(path.dirname(target), { recursive: true });
+            await fs.writeFile(target, JSON.stringify(value, null, 2) + '\n');
+        }
+
+        it('gates the scaffolding guard with one `if` handler per tool', async () => {
+            await applyClaudeSettings(projectRoot, FULL);
+            expect((await readSettings()).hooks.PreToolUse).toEqual([
+                {
+                    matcher: 'Edit|Write',
+                    hooks: [
+                        {
+                            type: 'command',
+                            if: 'Edit(**/.rulebook/tasks/**)',
+                            command: GUARD_COMMAND,
+                        },
+                        {
+                            type: 'command',
+                            if: 'Write(**/.rulebook/tasks/**)',
+                            command: GUARD_COMMAND,
+                        },
+                    ],
+                },
+            ]);
+            expect(TASK_SCAFFOLDING_IF_RULES).toEqual([
+                'Edit(**/.rulebook/tasks/**)',
+                'Write(**/.rulebook/tasks/**)',
+            ]);
+        });
+
+        it('deny rules: Bash, PowerShell and Edit paths — never Write(path)', () => {
+            for (const rule of [
+                'Bash(crontab *)',
+                'Bash(at *)',
+                'Bash(batch *)',
+                'Bash(schtasks *)',
+                'Bash(systemctl *.timer*)',
+                'Bash(systemd-run *--on-*)',
+                'Bash(launchctl load *)',
+                'PowerShell(Register-ScheduledTask *)',
+                'PowerShell(Register-ScheduledJob *)',
+                'Edit(//etc/cron*/**)',
+                'Edit(//var/spool/cron/**)',
+                'Edit(//etc/systemd/**/*.timer)',
+                'Edit(~/.config/systemd/user/*.timer)',
+            ]) {
+                expect(OS_SCHEDULING_DENY_RULES).toContain(rule);
+            }
+            for (const rule of OS_SCHEDULING_DENY_RULES) {
+                expect(rule).toMatch(/^(Bash|PowerShell|Edit)\(.+\)$/);
+                if (rule.startsWith('Edit(')) expect(rule).toMatch(/^Edit\((\/\/|~\/)/);
+            }
+            expect(new Set(OS_SCHEDULING_DENY_RULES).size).toBe(OS_SCHEDULING_DENY_RULES.length);
+        });
+
+        it('autoApprove true: Bash/Edit/Write allow rules, acceptEdits when absent', async () => {
+            await applyClaudeSettings(projectRoot, FULL);
+            const { permissions } = await readSettings();
+            for (const rule of [...AUTO_APPROVE_PERMISSIONS, ...FULL_AUTONOMY_PERMISSIONS]) {
+                expect(permissions.allow).toContain(rule);
+            }
+            expect(permissions.deny).toEqual([...OS_SCHEDULING_DENY_RULES]);
+            expect(permissions.defaultMode).toBe('acceptEdits');
+        });
+
+        it('autoApprove false: no Bash/Edit/Write allow rules and no defaultMode set', async () => {
+            await applyClaudeSettings(projectRoot, { ...FULL, autoApprove: false });
+            const { permissions } = await readSettings();
+            for (const rule of AUTO_APPROVE_PERMISSIONS) {
+                expect(permissions.allow).not.toContain(rule);
+            }
+            for (const rule of FULL_AUTONOMY_PERMISSIONS) {
+                expect(permissions.allow).toContain(rule);
+            }
+            expect(permissions.defaultMode).toBeUndefined();
+        });
+
+        it('toggling autoApprove removes only rulebook-owned rules; user entries stay in order', async () => {
+            await writeSettings({
+                permissions: {
+                    defaultMode: 'acceptEdits',
+                    allow: ['Bash(npm test *)', 'Bash(*)', 'mcp__custom'],
+                    deny: ['Read(./.env)'],
+                    ask: ['Bash(git push *)'],
+                },
+            });
+            await applyClaudeSettings(projectRoot, FULL);
+            let { permissions } = await readSettings();
+            expect(permissions.allow.slice(0, 3)).toEqual([
+                'Bash(npm test *)',
+                'Bash(*)',
+                'mcp__custom',
+            ]);
+            expect(permissions.deny).toEqual(['Read(./.env)', ...OS_SCHEDULING_DENY_RULES]);
+
+            await applyClaudeSettings(projectRoot, { ...FULL, autoApprove: false });
+            ({ permissions } = await readSettings());
+            expect(permissions.allow).toEqual([
+                'Bash(npm test *)',
+                'mcp__custom',
+                ...FULL_AUTONOMY_PERMISSIONS,
+            ]);
+            expect(permissions.ask).toEqual(['Bash(git push *)']);
+            expect(permissions.defaultMode).toBe('acceptEdits'); // user value, never removed
+
+            await applyClaudeSettings(projectRoot, { ...FULL, osSchedulingGuard: false });
+            ({ permissions } = await readSettings());
+            expect(permissions.deny).toEqual(['Read(./.env)']);
+        });
+
+        it('autoApprove absent leaves Bash/Edit/Write entries as they are', async () => {
+            await writeSettings({ permissions: { allow: ['Bash(*)'] } });
+            await applyClaudeSettings(projectRoot, { ...FULL, autoApprove: undefined });
+            const { permissions } = await readSettings();
+            expect(permissions.allow).toContain('Bash(*)');
+            expect(permissions.allow).not.toContain('Edit(*)');
+        });
+
+        it('migrates a 7.4 settings.json: scheduling hook out, deny rules in, allow list unchanged', async () => {
+            const allow74 = [
+                'Bash(*)',
+                'Read(*)',
+                'Edit(*)',
+                'Write(*)',
+                'Glob(*)',
+                'Grep(*)',
+                'Agent(*)',
+                'WebFetch(*)',
+                'WebSearch',
+                'TodoWrite',
+                'mcp__rulebook',
+            ];
+            await writeSettings({
+                hooks: {
+                    PreToolUse: [
+                        {
+                            matcher: 'Bash',
+                            hooks: [{ type: 'command', command: 'bash my-hook.sh' }],
+                        },
+                        {
+                            matcher: 'Edit|Write',
+                            hooks: [{ type: 'command', command: GUARD_COMMAND }],
+                        },
+                        {
+                            matcher: 'Bash|Edit|Write',
+                            hooks: [
+                                {
+                                    type: 'command',
+                                    command: `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${OS_SCHEDULING_GUARD_SCRIPT}`,
+                                },
+                            ],
+                        },
+                    ],
+                },
+                permissions: { allow: allow74, defaultMode: 'acceptEdits' },
+            });
+
+            const r1 = await applyClaudeSettings(projectRoot, FULL);
+            expect(r1.changed).toBe(true);
+            const s = await readSettings();
+            expect(JSON.stringify(s.hooks)).not.toContain(OS_SCHEDULING_GUARD_SCRIPT);
+            expect(s.hooks.PreToolUse).toHaveLength(2);
+            expect(s.hooks.PreToolUse[0]).toEqual({
+                matcher: 'Bash',
+                hooks: [{ type: 'command', command: 'bash my-hook.sh' }],
+            });
+            expect(s.hooks.PreToolUse[1].hooks.map((h: { if: string }) => h.if)).toEqual([
+                ...TASK_SCAFFOLDING_IF_RULES,
+            ]);
+            expect(s.permissions.allow).toEqual(allow74);
+            expect(s.permissions.deny).toEqual([...OS_SCHEDULING_DENY_RULES]);
+
+            const before = await fs.readFile(getClaudeSettingsPath(projectRoot), 'utf-8');
+            const r2 = await applyClaudeSettings(projectRoot, FULL);
+            expect(r2.changed).toBe(false);
+            expect(await fs.readFile(r2.path, 'utf-8')).toBe(before);
+        });
+    });
+
+    describe('permissions.autoApprove decision (rulebook.json)', () => {
+        function fakeConfig(initial: Partial<RulebookConfig>) {
+            let config = { ...initial } as RulebookConfig;
+            const updates: Array<Partial<RulebookConfig>> = [];
+            return {
+                updates,
+                get config() {
+                    return config;
+                },
+                async loadConfig() {
+                    return config;
+                },
+                async updateConfig(u: Partial<RulebookConfig>) {
+                    updates.push(u);
+                    config = { ...config, ...u };
+                    return config;
+                },
+            };
+        }
+
+        it('resolveAutoApprove defaults to true and honours a stored false', () => {
+            expect(resolveAutoApprove(null)).toBe(true);
+            expect(resolveAutoApprove({})).toBe(true);
+            expect(resolveAutoApprove({ permissions: { autoApprove: false } })).toBe(false);
+        });
+
+        it('a stored answer is returned without asking or writing', async () => {
+            const cm = fakeConfig({ permissions: { autoApprove: false } });
+            let asked = false;
+            const ask = async () => {
+                asked = true;
+                return true;
+            };
+            expect(await decideAutoApprove(cm, ask)).toBe(false);
+            expect(asked).toBe(false);
+            expect(cm.updates).toHaveLength(0);
+        });
+
+        it('absent + interactive: asks once and records the answer', async () => {
+            const cm = fakeConfig({});
+            expect(await decideAutoApprove(cm, async () => false)).toBe(false);
+            expect(cm.config.permissions).toEqual({ autoApprove: false });
+            // Asked once: the next run reads the stored answer.
+            expect(await decideAutoApprove(cm, async () => true)).toBe(false);
+            expect(cm.updates).toHaveLength(1);
+        });
+
+        it('absent + --yes / non-interactive: true, recorded', async () => {
+            const cm = fakeConfig({});
+            expect(await decideAutoApprove(cm)).toBe(true);
+            expect(cm.config.permissions).toEqual({ autoApprove: true });
+        });
+
+        it('asks the documented question', () => {
+            expect(AUTO_APPROVE_QUESTION).toBe(
+                "Rulebook's guards auto-approved Bash/Edit/Write until 7.4. Keep that?"
+            );
         });
     });
 

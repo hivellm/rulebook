@@ -11,6 +11,7 @@ import {
 } from '../../utils/file-system.js';
 import { getTemplatesDir } from '../generators/generator.js';
 import { PROMPT_HOOK_DEFAULTS, promptHookTimeoutSec } from '../typesafe/prompt-hook.js';
+import type { RulebookConfig } from '../../types.js';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
@@ -22,10 +23,16 @@ const execFileAsync = promisify(execFile);
  *
  * - ONE optional PreToolUse guard (`protect-task-scaffolding`) — path-only,
  *   protects `.rulebook/tasks/` scaffolding from manual creation. No content
- *   inspection (P0: no hook may deny or reroute orchestration).
- * - v7.3: a second optional PreToolUse guard (`no-os-scheduling`) on
- *   Bash|Edit|Write. A keyword prefilter keeps it off the hot path; it denies
- *   only commands/paths that create OS schedules (Tier 1 #7).
+ *   inspection (P0: no hook may deny or reroute orchestration). v7.5: each
+ *   handler carries an `if` rule, so Claude Code spawns it only for task files.
+ * - v7.3: no OS-level scheduling (Tier 1 #7). v7.5: enforced in-process by
+ *   `permissions.deny` rules (OS_SCHEDULING_DENY_RULES) instead of a
+ *   PreToolUse script on every Bash/Edit/Write call; the script stays
+ *   installed for the opt-in tool gate.
+ * - v7.5: `permissions.allow` rules for Bash/Edit/Write (AUTO_APPROVE_PERMISSIONS)
+ *   per `permissions.autoApprove` in rulebook.json. Until 7.4 the guards
+ *   answered "allow" on every passing call, which auto-approved those tools;
+ *   that choice is now explicit. Deny rules still win over them.
  * - v7.4: one optional UserPromptSubmit hook (`jev-gate`) that runs the Jev
  *   entry gate on every prompt and injects its routing as context. This
  *   reverses F-002 ("zero hot-path hooks") on purpose: it is fail-open, bounded
@@ -38,8 +45,9 @@ const execFileAsync = promisify(execFile);
  *   deadline plus a settings `timeout`; answers deny/ask, never allow.
  * - The full-autonomy permission profile (F-011): `defaultMode: acceptEdits`
  *   plus a broad allow list so the model never stalls on permission prompts.
- *   Rulebook only ADDS rules and only sets defaultMode when absent — user
- *   permissions are never removed or tightened.
+ *   Rulebook only sets defaultMode when absent and only ever removes its own
+ *   exact rule strings (autoApprove off, scheduling guard off) — entries the
+ *   user wrote are never removed.
  * - Optional statusLine / default model, set only when absent.
  * - `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` when multi-agent is enabled
  *   (enables the native feature; nothing enforces how it is used).
@@ -52,11 +60,17 @@ export interface ClaudeSettingsDesire {
     /** Install the path-only PreToolUse guard for task scaffolding. */
     taskScaffoldingGuard?: boolean;
     /**
-     * v7.3: install the PreToolUse guard that denies OS-level scheduling
-     * (crontab/at, systemd timers, launchd, Task Scheduler) on Bash and
-     * scheduler paths on Edit|Write. Scheduling belongs in the application.
+     * v7.3: deny OS-level scheduling (crontab/at, systemd timers, launchd,
+     * Task Scheduler) on Bash/PowerShell and scheduler paths on Edit/Write.
+     * v7.5: written as `permissions.deny` rules; the guard script is still
+     * installed for the opt-in tool gate. False/absent removes the rules.
      */
     osSchedulingGuard?: boolean;
+    /**
+     * v7.5: true adds AUTO_APPROVE_PERMISSIONS to `permissions.allow`, false
+     * removes them; absent leaves them as they are.
+     */
+    autoApprove?: boolean;
     /**
      * v7.4: install the UserPromptSubmit hook that runs the Jev entry gate on
      * every prompt (v7.5: `node <hook-main.js> prompt-gate`, exec form).
@@ -84,13 +98,12 @@ export interface ClaudeSettingsDesire {
 
 /**
  * Full-autonomy permission profile (docs/analysis/v7-performance/, draft 6.4).
- * Additive only — merged into whatever the user already allows.
+ * Additive only — merged into whatever the user already allows. Bash, Edit
+ * and Write live in AUTO_APPROVE_PERMISSIONS (v7.5), governed by
+ * `permissions.autoApprove`.
  */
 export const FULL_AUTONOMY_PERMISSIONS: readonly string[] = [
-    'Bash(*)',
     'Read(*)',
-    'Edit(*)',
-    'Write(*)',
     'Glob(*)',
     'Grep(*)',
     'Agent(*)',
@@ -99,6 +112,97 @@ export const FULL_AUTONOMY_PERMISSIONS: readonly string[] = [
     'TodoWrite',
     'mcp__rulebook',
 ];
+
+/**
+ * v7.5: the explicit form of what the guards' "allow" answer did until 7.4.
+ * Tool-wide rules (`Tool(*)` equals the bare tool name). These exact strings
+ * are rulebook-owned — rulebook has written them since 7.0 — so they are
+ * added or removed by `permissions.autoApprove`; any other entry is kept.
+ */
+export const AUTO_APPROVE_PERMISSIONS: readonly string[] = ['Bash(*)', 'Edit(*)', 'Write(*)'];
+
+/**
+ * v7.5: Tier 1 #7 (no OS-level scheduling) as `permissions.deny` rules,
+ * evaluated in-process by Claude Code — no spawn per tool call, and deny wins
+ * over every allow rule and hook "allow". Bash/PowerShell rules match each
+ * subcommand from its start (prose in arguments never matches). File paths
+ * use `Edit(...)`: Claude Code checks file writes, `>` redirects and `tee`
+ * against Edit rules and never consults `Write(path)` rules. `//` anchors at
+ * the filesystem root, `~/` at the home directory. Known gaps (the opt-in tool
+ * gate still runs the script): `sudo …`, a full program path, `sh -c '…'`,
+ * `powershell -c "…"` from Bash, and `cp`/`mv` into scheduler directories.
+ * Read-only forms are denied too (`crontab -l`, `schtasks /query`).
+ */
+export const OS_SCHEDULING_DENY_RULES: readonly string[] = [
+    'Bash(crontab *)',
+    'Bash(at *)',
+    'Bash(batch *)',
+    'Bash(systemctl *.timer*)',
+    'Bash(systemd-run *--on-*)',
+    'Bash(launchctl load *)',
+    'Bash(launchctl bootstrap *)',
+    'Bash(launchctl enable *)',
+    'Bash(launchctl submit *)',
+    'Bash(launchctl kickstart *)',
+    'Bash(schtasks *)',
+    'PowerShell(schtasks *)',
+    'PowerShell(Register-ScheduledTask *)',
+    'PowerShell(New-ScheduledTask *)',
+    'PowerShell(Set-ScheduledTask *)',
+    'PowerShell(Enable-ScheduledTask *)',
+    'PowerShell(Register-ScheduledJob *)',
+    'Edit(//etc/crontab)',
+    'Edit(//etc/cron*/**)',
+    'Edit(//etc/anacrontab)',
+    'Edit(//var/spool/cron/**)',
+    'Edit(//**/LaunchAgents/*.plist)',
+    'Edit(//**/LaunchDaemons/*.plist)',
+    'Edit(//etc/systemd/**/*.timer)',
+    'Edit(//usr/lib/systemd/**/*.timer)',
+    'Edit(~/.config/systemd/user/*.timer)',
+];
+
+/**
+ * v7.5: the scaffolding guard's handlers, one `if` rule each. Claude Code
+ * matches an `if` rule against one tool only — `Edit(...)` does not fire for
+ * the Write tool (verified with Claude Code 2.1.291) — so each tool gets its
+ * own handler. Here `Write(...)` is right: it is a hook filter, not a
+ * permission rule.
+ */
+export const TASK_SCAFFOLDING_IF_RULES: readonly string[] = [
+    'Edit(**/.rulebook/tasks/**)',
+    'Write(**/.rulebook/tasks/**)',
+];
+
+/** `permissions.autoApprove` from rulebook.json; absent means true (7.4 behaviour). */
+export function resolveAutoApprove(config: Partial<RulebookConfig> | null | undefined): boolean {
+    return config?.permissions?.autoApprove ?? true;
+}
+
+/**
+ * Decide `permissions.autoApprove` once and record it in rulebook.json. A
+ * stored answer is returned as is. Otherwise `ask` (an interactive prompt) is
+ * used when given; without it — `--yes`, non-interactive, `init` — the answer
+ * is true, which keeps the behaviour rulebook had until 7.4.
+ */
+export async function decideAutoApprove(
+    configManager: {
+        loadConfig(): Promise<RulebookConfig>;
+        updateConfig(updates: Partial<RulebookConfig>): Promise<RulebookConfig>;
+    },
+    ask?: () => Promise<boolean>
+): Promise<boolean> {
+    const config = await configManager.loadConfig();
+    const stored = config?.permissions?.autoApprove;
+    if (typeof stored === 'boolean') return stored;
+    const autoApprove = ask ? await ask() : true;
+    await configManager.updateConfig({ permissions: { ...config?.permissions, autoApprove } });
+    return autoApprove;
+}
+
+/** The consent question `rulebook update` asks once (interactive only). */
+export const AUTO_APPROVE_QUESTION =
+    "Rulebook's guards auto-approved Bash/Edit/Write until 7.4. Keep that?";
 
 /**
  * Portable statusLine: "<dir> | <branch> | ctx NN%".
@@ -114,6 +218,8 @@ export const STATUS_LINE_COMMAND =
 
 interface HookCommand {
     type: 'command';
+    /** Permission-rule filter: Claude Code spawns the handler only on a match. */
+    if?: string;
     command: string;
     /** Exec form: `command` is spawned directly with these arguments, no shell. */
     args?: string[];
@@ -124,12 +230,18 @@ interface HookEntry {
     matcher?: string;
     hooks: HookCommand[];
 }
+interface PermissionsShape {
+    allow?: string[];
+    deny?: string[];
+    defaultMode?: string;
+    [k: string]: unknown;
+}
 interface SettingsShape {
     env?: Record<string, string>;
     hooks?: {
         [k: string]: HookEntry[] | undefined;
     };
-    permissions?: { allow?: string[]; defaultMode?: string; [k: string]: unknown };
+    permissions?: PermissionsShape;
     statusLine?: { type: string; command: string };
     model?: string;
     [k: string]: unknown;
@@ -137,10 +249,13 @@ interface SettingsShape {
 
 export const GUARD_SIGNATURE = 'protect-task-scaffolding';
 export const GUARD_SCRIPT = 'protect-task-scaffolding.sh';
-/** v7.3: second optional guard — no OS-level scheduling (Tier 1 #7). */
+/**
+ * v7.3: no OS-level scheduling (Tier 1 #7). v7.5: no longer wired on
+ * PreToolUse (OS_SCHEDULING_DENY_RULES replace it; the signature strips the
+ * old entry on sync); the script is run by `jev-gate.sh tool`.
+ */
 export const OS_SCHEDULING_GUARD_SIGNATURE = 'no-os-scheduling';
 export const OS_SCHEDULING_GUARD_SCRIPT = 'no-os-scheduling.sh';
-export const OS_SCHEDULING_GUARD_MATCHER = 'Bash|Edit|Write';
 /**
  * v7.4: Jev gate hook wrapper. One script, two entries told apart by the
  * argument: `jev-gate.sh prompt` (UserPromptSubmit) and `jev-gate.sh tool`
@@ -282,7 +397,11 @@ export const LEGACY_SIGNATURES = [
 /** Hook scripts rulebook ships today (installed into `.claude/hooks/`). */
 const CURRENT_HOOK_SCRIPTS = [GUARD_SCRIPT, OS_SCHEDULING_GUARD_SCRIPT, JEV_GATE_SCRIPT];
 
-/** Signatures of the entries rulebook re-upserts on every sync. */
+/**
+ * Signatures of current rulebook entries: stripped on every sync, then
+ * re-upserted when desired (no-os-scheduling never is since 7.5 — listing it
+ * strips the old entry).
+ */
 const CURRENT_SIGNATURES = [
     GUARD_SIGNATURE,
     OS_SCHEDULING_GUARD_SIGNATURE,
@@ -393,28 +512,21 @@ export async function applyClaudeSettings(
             isRetiredRulebookHook(command) || CURRENT_SIGNATURES.some((s) => command.includes(s))
     );
 
-    // Optional guard 1 (PreToolUse Edit|Write, path-only): task scaffolding.
+    // Optional guard (PreToolUse Edit|Write, path-only): task scaffolding.
+    // One handler per tool, each gated by an `if` rule, so the script only
+    // spawns for files under .rulebook/tasks/.
     if (desire.taskScaffoldingGuard) {
-        upsertHook(
-            existing.hooks,
-            'PreToolUse',
-            'Edit|Write',
-            GUARD_SIGNATURE,
-            `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${GUARD_SCRIPT}`
-        );
-    }
-
-    // Optional guard 2 (PreToolUse Bash|Edit|Write): no OS-level scheduling.
-    // Keyword prefilter, then a handful of anchored patterns — cheap, and the
-    // only way to stop `crontab -e` before it runs.
-    if (desire.osSchedulingGuard) {
-        upsertHook(
-            existing.hooks,
-            'PreToolUse',
-            OS_SCHEDULING_GUARD_MATCHER,
-            OS_SCHEDULING_GUARD_SIGNATURE,
-            `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${OS_SCHEDULING_GUARD_SCRIPT}`
-        );
+        const command = `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${GUARD_SCRIPT}`;
+        const list = (existing.hooks.PreToolUse ?? []) as HookEntry[];
+        list.push({
+            matcher: 'Edit|Write',
+            hooks: TASK_SCAFFOLDING_IF_RULES.map((rule) => ({
+                type: 'command' as const,
+                if: rule,
+                command,
+            })),
+        });
+        existing.hooks.PreToolUse = list;
     }
 
     // Optional UserPromptSubmit hook: the Jev entry gate on every prompt.
@@ -458,20 +570,28 @@ export async function applyClaudeSettings(
         existing.env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1';
     }
 
-    // Full-autonomy permissions — additive, never tightening.
+    // Permissions. Rulebook-owned rules are exact strings (like hook
+    // signatures): only those are ever added or removed; user entries stay.
+    const permissions: PermissionsShape = existing.permissions ?? {};
+    syncOwnedRules(
+        permissions,
+        'deny',
+        OS_SCHEDULING_DENY_RULES,
+        desire.osSchedulingGuard === true
+    );
+    if (desire.autoApprove !== undefined) {
+        syncOwnedRules(permissions, 'allow', AUTO_APPROVE_PERMISSIONS, desire.autoApprove);
+    }
+    // Full-autonomy permissions — additive, never tightening. defaultMode is
+    // only set when absent, and not when the operator declined auto-approval.
     if (desire.fullAutonomyPermissions) {
-        const permissions = existing.permissions ?? {};
-        const current = Array.isArray(permissions.allow) ? permissions.allow : [];
-        const merged = [...current];
-        for (const rule of FULL_AUTONOMY_PERMISSIONS) {
-            if (!merged.includes(rule)) merged.push(rule);
-        }
-        permissions.allow = merged;
-        if (!permissions.defaultMode) {
+        syncOwnedRules(permissions, 'allow', FULL_AUTONOMY_PERMISSIONS, true);
+        if (!permissions.defaultMode && desire.autoApprove !== false) {
             permissions.defaultMode = 'acceptEdits';
         }
-        existing.permissions = permissions;
     }
+    if (Object.keys(permissions).length > 0) existing.permissions = permissions;
+    else delete existing.permissions;
 
     // statusLine — only set when absent, never clobber a user-authored one.
     if (desire.statusLine && !existing.statusLine) {
@@ -657,6 +777,33 @@ export async function removeJevPromptGate(projectRoot: string): Promise<boolean>
     if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
     await writeFile(settingsPath, JSON.stringify(settings, null, 2) + '\n');
     return true;
+}
+
+/**
+ * Add (`wanted`) or remove the given rulebook-owned rules in
+ * `permissions[key]`, keeping every other entry and its order. A list this
+ * removes the last entry from is dropped.
+ */
+function syncOwnedRules(
+    permissions: PermissionsShape,
+    key: 'allow' | 'deny',
+    rules: readonly string[],
+    wanted: boolean
+): void {
+    const current = Array.isArray(permissions[key]) ? permissions[key] : undefined;
+    if (wanted) {
+        const merged = [...(current ?? [])];
+        for (const rule of rules) {
+            if (!merged.includes(rule)) merged.push(rule);
+        }
+        permissions[key] = merged;
+        return;
+    }
+    if (!current) return;
+    const kept = current.filter((rule) => !rules.includes(rule));
+    if (kept.length === current.length) return;
+    if (kept.length > 0) permissions[key] = kept;
+    else delete permissions[key];
 }
 
 function pruneEmptyHooks(hooks: NonNullable<SettingsShape['hooks']>): void {

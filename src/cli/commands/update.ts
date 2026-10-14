@@ -54,13 +54,15 @@ export interface ConfigRebuildInput {
     gitPushMode: RulebookConfig['gitPushMode'];
     /** `integrations` as persisted after the TypeSafe decision of this update. */
     integrations?: RulebookConfig['integrations'];
+    /** `permissions` as persisted after the auto-approve decision of this update. */
+    permissions?: RulebookConfig['permissions'];
     now?: string;
 }
 
 /**
  * The config `rulebook update` saves. It REPLACES the persisted config, so
  * anything that must survive an update is carried forward explicitly here —
- * `installedAt` (now only when absent) and `integrations` among them.
+ * `installedAt` (now only when absent), `integrations` and `permissions` among them.
  */
 export function rebuildConfigOnUpdate(
     existing: Partial<RulebookConfig>,
@@ -68,6 +70,7 @@ export function rebuildConfigOnUpdate(
 ): RulebookConfig {
     const now = input.now ?? new Date().toISOString();
     const integrations = input.integrations ?? existing.integrations;
+    const permissions = input.permissions ?? existing.permissions;
     return {
         version: input.version,
         installedAt: existing.installedAt || now,
@@ -93,6 +96,7 @@ export function rebuildConfigOnUpdate(
               ? { agentsMode: existing.agentsMode }
               : {}),
         ...(integrations ? { integrations } : {}),
+        ...(permissions ? { permissions } : {}),
     };
 }
 
@@ -462,16 +466,35 @@ export async function updateSingleProject(
     }
 
     try {
-        const { applyClaudeSettings } =
+        const { applyClaudeSettings, decideAutoApprove, AUTO_APPROVE_QUESTION } =
             await import('../../core/claude/claude-settings-manager.js');
         const { resolvePromptHookConfig } = await import('../../core/typesafe/prompt-hook.js');
         const { resolveToolHookConfig, toolHookTimeoutSec } =
             await import('../../core/typesafe/tool-gate.js');
-        // v7: two optional PreToolUse guards + full-autonomy permissions; v7.4
+        // v7: the scaffolding guard + full-autonomy permissions; v7.4
         // adds the fail-open Jev prompt hook (UserPromptSubmit) while TypeSafe
         // is on and gate.promptHook.enabled is true (opt-in, v7.5), and the opt-in Jev
-        // tool gate (PreToolUse) under gate.toolHook.enabled. Every retired
+        // tool gate (PreToolUse) under gate.toolHook.enabled. v7.5: OS
+        // scheduling as permissions.deny rules, and the Bash/Edit/Write
+        // auto-approval the guards used to grant asked once and recorded
+        // (permissions.autoApprove; --yes or no TTY keeps it). Every retired
         // v5/v6 hook entry is stripped on sync (LEGACY_SIGNATURES).
+        const ask =
+            !options.yes && process.stdin.isTTY
+                ? async (): Promise<boolean> => {
+                      const inquirer = (await import('inquirer')).default;
+                      const { keep } = await inquirer.prompt([
+                          {
+                              type: 'confirm',
+                              name: 'keep',
+                              message: AUTO_APPROVE_QUESTION,
+                              default: true,
+                          },
+                      ]);
+                      return keep === true;
+                  }
+                : undefined;
+        const autoApprove = await decideAutoApprove(configManager, ask);
         const rulebookCfg = await configManager.loadConfig();
         const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
         const promptHook = resolvePromptHookConfig(rulebookCfg);
@@ -489,6 +512,7 @@ export async function updateSingleProject(
                       }
                     : undefined,
             fullAutonomyPermissions: true,
+            autoApprove,
             teamsEnv: multiAgentEnabled,
         });
         if (settingsResult.changed) {
@@ -631,6 +655,7 @@ export async function updateSingleProject(
         features: rulebookFeatures,
         gitPushMode: resolvedPushMode,
         integrations: persistedConfig.integrations,
+        permissions: persistedConfig.permissions,
     });
 
     await configManager.saveConfig(rulebookConfig);

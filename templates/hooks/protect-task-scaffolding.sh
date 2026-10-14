@@ -5,6 +5,11 @@
 # The single rule: `.rulebook/tasks/<id>/proposal.md` and `.metadata.json`
 # are created, with their content, by `rulebook_task` (MCP) or
 # `rulebook task create` — never by hand. Editing them once the task exists is always allowed.
+#
+# v7.5: the settings entry gates each handler with an `if` rule
+# (Edit(**/.rulebook/tasks/**), Write(**/.rulebook/tasks/**)), so Claude Code
+# spawns this script only for task files. A passing call prints nothing — the
+# guard never approves anything; the normal permission flow decides.
 set -euo pipefail
 # Builtin read, no `cat` fork. `-N` reads in blocks (bash 4.1+); `-d ''` reads a
 # pipe one byte per call, so it is only the fallback for bash 3.2 (macOS).
@@ -15,15 +20,10 @@ else
   IFS= read -r -d '' input || true
 fi
 
-allow() {
-  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
-  exit 0
-}
-
 # Fast path: payload doesn't mention the tasks dir at all.
 case "$input" in
   *'.rulebook/tasks/'*|*'.rulebook\\tasks\\'*) ;;
-  *) allow ;;
+  *) exit 0 ;;
 esac
 
 # Extract the target path (the tool_input key — keys inside string values are
@@ -43,4 +43,4 @@ case "$fp" in
     ;;
 esac
 
-allow
+exit 0

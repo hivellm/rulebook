@@ -9,7 +9,10 @@
 # v7.5: only tool_input.command and tool_input.file_path are inspected — never
 # the description, the edit text or the file contents — and heredoc bodies are
 # skipped, so prose never reaches the patterns. Bash builtins only, no
-# subprocess. RULEBOOK_GUARD_TRACE=1 reports the path taken on stderr.
+# subprocess. A passing call prints nothing — no decision, so the normal
+# permission flow applies. RULEBOOK_GUARD_TRACE=1 reports the path on stderr.
+# Since 7.5 Claude Code settings enforce the same rule with permissions.deny
+# entries; this script serves the opt-in tool gate (`jev-gate.sh tool`).
 set -uo pipefail
 # Builtin read, no `cat` fork. `-N` reads in blocks (bash 4.1+); `-d ''` reads a
 # pipe one byte per call, so it is only the fallback for bash 3.2 (macOS).
@@ -28,7 +31,6 @@ trace() {
 
 pass() {
   trace "$1"
-  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
   exit 0
 }
 
