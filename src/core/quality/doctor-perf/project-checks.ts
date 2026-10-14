@@ -273,12 +273,31 @@ export async function inspectCodex(ctx: {
         return section;
     }
 
-    if (agentsOverride.exists && agentsMd.exists) {
+    // 7.5: rulebook keeps a RULEBOOK-CODEX rules block at the top of the override
+    // for Codex, so the shadowing is handled; only an override without it loses the rules.
+    let hasCodexBlock = false;
+    if (agentsOverride.exists) {
+        try {
+            hasCodexBlock = (
+                await fs.readFile(path.join(ctx.projectRoot, 'AGENTS.override.md'), 'utf-8')
+            ).includes('RULEBOOK-CODEX:START');
+        } catch {
+            hasCodexBlock = false;
+        }
+    }
+    if (agentsOverride.exists && agentsMd.exists && hasCodexBlock) {
+        checks.push({
+            id: 'codex-agents-override',
+            status: 'ok',
+            message:
+                'Codex reads AGENTS.override.md instead of AGENTS.md; it carries the RULEBOOK-CODEX rules block, so Codex gets the rulebook rules',
+        });
+    } else if (agentsOverride.exists && agentsMd.exists) {
         checks.push({
             id: 'codex-agents-override',
             status: 'warn',
             message: `AGENTS.override.md shadows AGENTS.md for Codex: it reads only the override (${agentsOverride.bytes} B); AGENTS.md (${agentsMd.bytes} B) never reaches it`,
-            action: 'keep everything Codex must know in AGENTS.override.md, or remove the override',
+            action: 'run `rulebook update` to add the RULEBOOK-CODEX rules block to AGENTS.override.md, or remove the override',
         });
     } else {
         checks.push({

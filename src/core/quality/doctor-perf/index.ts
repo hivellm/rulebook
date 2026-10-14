@@ -148,9 +148,14 @@ function inventoryLine(e: HookEntryInfo): string {
           : '(none recorded)';
     const mode = e.async ? 'async' : 'blocking';
     const timeout = e.timeoutSec !== null ? ` ${e.timeoutSec}s` : '';
+    const filter = e.ifRule
+        ? `
+  ${''.padEnd(17)} if ${e.ifRule}`
+        : '';
     return (
         `  ${e.event.padEnd(17)} ${(e.matcher || '(all)').padEnd(16)} ${sourceLabel(e).padEnd(22)} ` +
-        `${(mode + timeout).padEnd(13)} ${timing.padEnd(36)} ${shortCommand(e.command, 64)}`
+        `${(mode + timeout).padEnd(13)} ${timing.padEnd(36)} ${shortCommand(e.command, 64)}` +
+        filter
     );
 }
 
