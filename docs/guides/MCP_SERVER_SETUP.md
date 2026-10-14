@@ -5,25 +5,56 @@ This guide explains how to set up and use the Rulebook MCP Server for task manag
 ## Prerequisites
 
 - Node.js 20+ installed
-- Rulebook installed (`npm install -g @hivellm/rulebook` or local installation)
+- Rulebook installed (`npm install -g @hivehub/rulebook` or local installation)
 - Cursor IDE or other MCP-compatible client
 
 ## Installation
 
 ### Option 1: Using npx (Recommended)
 
-No installation needed. The server runs directly from npm:
+`rulebook init`, `rulebook update` and `rulebook mcp init` write this entry to
+`.mcp.json`, pinned to the installed rulebook version (never `@latest`, so every
+session runs the same build and none re-installs after a release). `rulebook
+update` moves the pin and rewrites older `@latest` or `mcp-server` entries; a
+rulebook entry you changed by hand (for example `node <path>`) is left alone.
+
+```json
+{
+  "mcpServers": {
+    "rulebook": {
+      "command": "npx",
+      "args": ["-y", "--package=@hivehub/rulebook@7.5.0", "rulebook-mcp"]
+    }
+  }
+}
+```
+
+### Fast path (opt-in, this machine only)
+
+npx costs about 1 s and 4 processes per session. Running the installed server
+with `node` takes 1 process and 0.1–0.3 s, but its absolute path only works on
+your machine, so it is not written to the checked-in `.mcp.json`:
 
 ```bash
-# Test the server
-npx @hivellm/rulebook@latest mcp-server
+npm install -g @hivehub/rulebook   # a stable install path
+rulebook mcp init --fast           # in the project folder
 ```
+
+This registers `node <install>/dist/mcp/rulebook-server.bundle.js` (the
+single-file build; `rulebook-server.js` when the bundle is absent) in Claude
+Code's **local** scope with `claude mcp add --scope local`. Local scope applies
+to this machine and project only and overrides the `.mcp.json` entry of the
+same name. If the `claude` CLI is not on PATH, the command prints the exact
+`claude mcp add …` line to run. It also prints the `~/.codex/config.toml`
+snippet for Codex; rulebook does not edit that file. `rulebook update`
+re-registers the entry when it points at a removed install or another version.
+Undo with `claude mcp remove --scope local rulebook`.
 
 ### Option 2: Local Installation
 
 ```bash
 # Install Rulebook locally
-npm install @hivellm/rulebook
+npm install @hivehub/rulebook
 
 # Build the project
 npm run build

@@ -44,10 +44,10 @@ interface McpProbe {
     schemaBytes: number;
 }
 
-function probeServer(): Promise<McpProbe> {
+function probeServer(command: string, args: string[]): Promise<McpProbe> {
     return new Promise((resolve, reject) => {
         const t0 = Date.now();
-        const p = spawn(LAUNCH.command, LAUNCH.args, { cwd: process.cwd() });
+        const p = spawn(command, args, { cwd: process.cwd() });
         let buf = '';
         let initMs = -1;
         let serverVersion = '';
@@ -102,7 +102,7 @@ function probeServer(): Promise<McpProbe> {
 
 describe.skipIf(!existsSync(SERVER))('v7 MCP budgets (acceptance checks 3 + 5)', () => {
     it('slim server stays within tool-count, schema-bytes and init budgets', async () => {
-        const probe = await probeServer();
+        const probe = await probeServer(LAUNCH.command, LAUNCH.args);
 
         const pkg = JSON.parse(readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8'));
         expect(probe.serverVersion).toBe(pkg.version);
@@ -111,6 +111,22 @@ describe.skipIf(!existsSync(SERVER))('v7 MCP budgets (acceptance checks 3 + 5)',
         expect(probe.initMs).toBeGreaterThan(0);
         expect(probe.initMs).toBeLessThanOrEqual(MCP_INIT_MS_BUDGET);
     }, 20000);
+});
+
+// The single-file bundle (`npm run build:mcp-bundle`) the fast path launches:
+// same tools, same version lookup (its import.meta.url rewrite), same budgets.
+const BUNDLE = path.join(process.cwd(), 'dist', 'mcp', 'rulebook-server.bundle.js');
+describe.skipIf(!existsSync(BUNDLE) || !existsSync(SERVER))('bundled MCP server', () => {
+    it('serves the same tools as the unbundled server within the same budgets', async () => {
+        const bundled = await probeServer('node', [BUNDLE]);
+        const unbundled = await probeServer('node', [SERVER]);
+
+        const pkg = JSON.parse(readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8'));
+        expect(bundled.serverVersion).toBe(pkg.version);
+        expect(bundled.toolCount).toBe(unbundled.toolCount);
+        expect(bundled.schemaBytes).toBe(unbundled.schemaBytes);
+        expect(bundled.initMs).toBeLessThanOrEqual(MCP_INIT_MS_BUDGET);
+    }, 40000);
 });
 
 describe('generated MCP launch command (F-013, F-019)', () => {

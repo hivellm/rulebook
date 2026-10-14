@@ -327,7 +327,11 @@ MCP tools over stdio transport. Zero configuration after `rulebook mcp init`.
 
 ```bash
 rulebook mcp init    # One-time setup — configures .mcp.json automatically
+rulebook mcp init --fast   # Optional: machine-local `node` entry, 1 process, ~0.1–0.3 s start
 ```
+
+The `.mcp.json` entry pins the installed version (`rulebook update` moves it).
+See [MCP Server Setup](docs/guides/MCP_SERVER_SETUP.md) for the fast path.
 
 | Tool | Actions |
 |------|---------|

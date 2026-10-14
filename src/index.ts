@@ -417,7 +417,11 @@ mcpCommand
     .command('init')
     .description('Initialize MCP configuration in .rulebook and .cursor/mcp.json')
     .option('--workspace', 'Configure MCP for workspace mode (multi-project)')
-    .action((options: { workspace?: boolean }) => mcpInitCommand(options));
+    .option(
+        '--fast',
+        'Register `node <installed server>` in Claude Code local scope (this machine only) and print the Codex snippet'
+    )
+    .action((options: { workspace?: boolean; fast?: boolean }) => mcpInitCommand(options));
 
 program
     .command('mcp-server')

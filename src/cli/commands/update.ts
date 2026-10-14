@@ -629,6 +629,15 @@ export async function updateSingleProject(
                     )
                 );
             }
+            // Machine-local fast-path entry (`rulebook mcp init --fast`): re-point
+            // it when its server file is gone or belongs to another version.
+            const { refreshLocalFastEntry } = await import('../../core/claude/mcp-fast-path.js');
+            const fast = await refreshLocalFastEntry(cwd);
+            if (fast.status === 'updated') {
+                console.log(chalk.gray(`  • MCP fast path re-pointed to ${fast.serverPath}`));
+            } else if (fast.status === 'manual') {
+                console.log(chalk.yellow(`  • MCP fast path is stale; run: ${fast.manualCommand}`));
+            }
         } else {
             claudeSpinner.info('Claude Code not detected (skipped)');
         }
