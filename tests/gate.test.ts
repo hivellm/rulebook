@@ -694,10 +694,10 @@ describe('rulebook_gate MCP tool', () => {
         return { handlers, configs };
     }
 
-    it('is registered with a terse "call first" description', () => {
+    it('is registered with a terse on-demand description', () => {
         const { handlers, configs } = register();
         expect(handlers.has('rulebook_gate')).toBe(true);
-        expect(configs.get('rulebook_gate')!.description).toMatch(/^Call FIRST/);
+        expect(configs.get('rulebook_gate')!.description).toMatch(/^On demand/);
     });
 
     it('returns success:true with routing when Jev answers', async () => {

@@ -10,9 +10,11 @@ import {
     replaceEmbeddedWithReferences,
 } from './migrator.js';
 import {
+    findUserOrchestrationSection,
     generateClaudeMd,
     getClaudeMdPath,
     hasV2Sentinels,
+    replaceOrchestrationSection,
     writeClaudeMd,
     CLAUDE_MD_SENTINEL_END,
 } from './claude/claude-md-generator.js';
@@ -163,6 +165,11 @@ export interface MergeClaudeMdResult {
      * Null when mode !== 'migrate'.
      */
     overridePath: string | null;
+    /**
+     * True when the existing block's `## Orchestration` section was edited by
+     * the user and was kept instead of regenerated (mode 'replace' only).
+     */
+    keptOrchestration?: boolean;
 }
 
 /**
@@ -173,6 +180,9 @@ export interface MergeClaudeMdResult {
  * - **create**: file does not exist → write the generated block.
  * - **replace**: file already has `RULEBOOK:START v5.3.0` sentinels → in-place
  *   block replacement, preserving everything outside the sentinels verbatim.
+ *   An `## Orchestration` section the user edited inside the block is kept
+ *   (v7.5, F-031); a section rulebook shipped is regenerated for the
+ *   project's orchestration mode.
  * - **migrate**: file exists without sentinels (legacy v5.2) → the entire
  *   legacy file is appended into `AGENTS.override.md` inside the existing
  *   `OVERRIDE:START/END` sentinels (so it survives every future
@@ -203,9 +213,19 @@ export async function mergeClaudeMd(projectRoot: string): Promise<MergeClaudeMdR
         // must stay aligned with CLAUDE_MD_SENTINEL_START's prefix semantics.
         const generated = await generateClaudeMd(projectRoot);
         const blockRegex = /<!--\s*RULEBOOK:START v[\s\S]*?<!--\s*RULEBOOK:END\s*-->/;
-        const merged = existing.replace(blockRegex, extractGeneratedBlock(generated));
+        const userSection = await findUserOrchestrationSection(
+            existing.match(blockRegex)?.[0] ?? ''
+        );
+        let block = extractGeneratedBlock(generated);
+        if (userSection) block = replaceOrchestrationSection(block, userSection);
+        const merged = existing.replace(blockRegex, () => block);
         const written = await writeClaudeMd(projectRoot, merged);
-        return { ...written, mode: 'replace', overridePath: null };
+        return {
+            ...written,
+            mode: 'replace',
+            overridePath: null,
+            keptOrchestration: userSection !== null,
+        };
     }
 
     // Legacy v5.2 CLAUDE.md without sentinels.

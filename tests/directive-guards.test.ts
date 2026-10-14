@@ -23,8 +23,9 @@ import type { ProjectConfig } from '../src/types.js';
  *   because rulebook blessed `git worktree` with no placement or teardown
  *   rules attached.
  * - Communication clauses (phase13): plain wording and short answers.
- * - Orchestrator directive (v7.4): the main session delegates every task to a
- *   model-routed subagent, monitors it, and keeps the CHANGELOG.
+ * - Orchestration directive (v7.5): judgment by default — small, local work in
+ *   the main session, delegation when it pays — and the v7.4 orchestrator
+ *   protocol as an explicit opt-in; model routing per call in both.
  */
 
 const config: ProjectConfig = {
@@ -160,72 +161,103 @@ describe('directive guards', () => {
         });
     });
 
-    describe('orchestrator directive (v7.4)', () => {
-        it('CLAUDE.md makes the main session an orchestrator with model routing', async () => {
-            const claudeMd = await generateClaudeMd(projectRoot);
-            const section = claudeMd.slice(
-                claudeMd.indexOf('## Orchestration'),
-                claudeMd.indexOf('## Rulebook')
-            );
+    describe('orchestration directive (v7.5: judgment by default, orchestrator opt-in)', () => {
+        const section = (claudeMd: string) =>
+            claudeMd.slice(claudeMd.indexOf('## Orchestration'), claudeMd.indexOf('## Rulebook'));
 
-            expect(section).toMatch(/main session never does the work itself/i);
-            expect(section).toMatch(/delegate each task to one subagent/i);
-            expect(section).toMatch(/model set\s+per call/i);
-            expect(section).toMatch(/Fable 5\.1 architecture, hard bugs, review/);
-            expect(section).toMatch(/Opus 5\.5 edits, tests, docs,\s+refactors/);
-            expect(section).toMatch(/never Fable for simple work/);
-            expect(section).toMatch(/Haiku 4\.5 research, summaries/);
-            expect(section).toMatch(/read reports, not files/i);
-            expect(section).toMatch(/archive\s+their task/i);
-            expect(section).toMatch(/pause\/restart stalled agents/i);
-            expect(section).toContain('CHANGELOG');
-            expect(section).toContain('.rulebook/specs/orchestration.md');
-            // The v7.0–v7.3 "your call" line must be gone.
-            expect(claudeMd).not.toMatch(/Rulebook never blocks or\s+mandates orchestration/);
+        async function useOrchestrator(): Promise<void> {
+            await fs.mkdir(path.join(projectRoot, '.rulebook'), { recursive: true });
+            await fs.writeFile(
+                path.join(projectRoot, '.rulebook', 'rulebook.json'),
+                JSON.stringify({ orchestration: 'orchestrator' })
+            );
+        }
+
+        it('CLAUDE.md (judgment) gives visible criteria, reasons and model routing', async () => {
+            const s = section(await generateClaudeMd(projectRoot));
+
+            expect(s).toMatch(/Do small, local work yourself \(files in context, ~3 or fewer/);
+            expect(s).toMatch(/2\+ independent parts with disjoint files \(in parallel\)/);
+            expect(s).toMatch(/broad exploration, long work, or past ~150k context/);
+            expect(s).toMatch(/for context and parallelism, not speed/);
+            expect(s).toMatch(/Brief fully \(files, decisions\)/);
+            expect(s).toMatch(/Fable 5\.1 architecture, hard bugs, review/);
+            expect(s).toMatch(/Opus 5\.5 edits, tests, docs/);
+            expect(s).toMatch(/Haiku 4\.5 research/);
+            expect(s).toMatch(/CHANGELOG per PR\/release, not per task/);
+            expect(s).toContain('.rulebook/specs/orchestration.md');
+            expect(s).not.toMatch(/never does the work itself/i);
+            expect(s).not.toMatch(/Rulebook never blocks or\s+mandates orchestration/);
         });
 
-        it('AGENTS.md (lean) carries the directive and indexes the orchestration spec', async () => {
-            const agentsMd = await generateLeanAgents(config, projectRoot);
+        it('CLAUDE.md (orchestrator) keeps the v7.4 delegation text minus its contradictions', async () => {
+            await useOrchestrator();
+            const s = section(await generateClaudeMd(projectRoot));
 
-            expect(agentsMd).toMatch(/main session never does the work itself/i);
-            expect(agentsMd).toMatch(/one subagent per task/i);
-            expect(agentsMd).toMatch(/read reports, not files/i);
-            expect(agentsMd).toMatch(/subagents archive their task/i);
-            expect(agentsMd).toMatch(/pause\/restart stalled\s+agents/i);
-            expect(agentsMd).toContain('CHANGELOG');
-            expect(agentsMd).toContain(
+            expect(s).toMatch(/main session never does the work itself/i);
+            expect(s).toMatch(/delegate each task to one subagent/i);
+            expect(s).toMatch(/model set per call/i);
+            expect(s).toMatch(/Fable 5\.1 architecture, hard bugs, review/);
+            expect(s).toMatch(/Opus 5\.5 edits, tests, docs, refactors/);
+            expect(s).toMatch(/never Fable for simple work/);
+            expect(s).toMatch(/Haiku 4\.5 research, summaries/);
+            expect(s).toMatch(/read reports, not files/i);
+            expect(s).toMatch(/archive their tracked task/i);
+            expect(s).toMatch(/pause\/restart stalled agents/i);
+            // F-023: the main session's own edits are named; no per-task review.
+            expect(s).toMatch(/own edits: CHANGELOG, commits/);
+            expect(s).not.toMatch(/review, then update/);
+        });
+
+        it('AGENTS.md (lean) carries the mode and indexes the orchestration spec', async () => {
+            const judgment = await generateLeanAgents(config, projectRoot);
+            expect(judgment).toMatch(/Orchestration by judgment/);
+            expect(judgment).toMatch(/small, local work directly/i);
+            expect(judgment).toMatch(/context and parallelism, not speed/i);
+            expect(judgment).not.toMatch(/never does the work itself/i);
+            expect(judgment).toContain(
                 '- `/.rulebook/specs/orchestration.md` — orchestration & model routing'
             );
-            expect(agentsMd).not.toMatch(/orchestration is the model's choice/i);
+
+            await useOrchestrator();
+            const orchestrator = await generateLeanAgents(config, projectRoot);
+            expect(orchestrator).toMatch(/main session never does the work itself/i);
+            expect(orchestrator).toMatch(/one subagent per task/i);
+            expect(orchestrator).toMatch(/read reports, not files/i);
+            expect(orchestrator).toMatch(/subagents archive\s+their tracked task/i);
+            expect(orchestrator).toMatch(/pause\/restart stalled agents/i);
+            expect(orchestrator).toContain('CHANGELOG');
+            expect(orchestrator).not.toMatch(/orchestration is the model's choice/i);
         });
 
-        it('orchestration spec carries the full protocol and is written to specs/', async () => {
+        it('orchestration spec (judgment) explains when to delegate and why', async () => {
             const spec = await generateCoreRules('orchestration');
 
             expect(spec.trim().startsWith('<!-- ORCHESTRATION:START -->')).toBe(true);
             expect(spec.trim().endsWith('<!-- ORCHESTRATION:END -->')).toBe(true);
-            expect(spec).toMatch(/never executes the work itself/i);
-            expect(spec).toMatch(/Delegate every task to a subagent/i);
+            expect(spec).toMatch(/Mode: `judgment` \(the default\)/);
+            expect(spec).toMatch(/about 3 or fewer will change/);
+            expect(spec).toMatch(
+                /2\+ independent parts with disjoint files — run them in parallel/
+            );
+            expect(spec).toMatch(/a main context past ~150k tokens/);
+            expect(spec).toMatch(/it does not make work faster/);
+            expect(spec).toMatch(/~20–40k tokens of\s+fresh context/);
             expect(spec).toMatch(/\*\*Fable 5\.1\*\* \| Architecture, complex bugs, code review/);
             expect(spec).toMatch(/\*\*Opus 5\.5\*\* \| Edits, tests, documentation, refactoring/);
             expect(spec).toMatch(/\*\*Haiku 4\.5\*\* \| Research, summaries/);
-            expect(spec).toMatch(/Never use Fable for simple work/);
             expect(spec).toMatch(/Specify the model in every agent call/);
-            expect(spec).toMatch(/One subagent per task/);
-            expect(spec).toMatch(/Run independent subagents in parallel/);
-            expect(spec).toMatch(/Read the subagent's report, never the files/);
+            expect(spec).toMatch(/Prefer a narrow installed agent/);
             expect(spec).toMatch(/check each `tasks\.md` item as it is completed/);
-            expect(spec).toMatch(/type-check → lint → tests/);
             expect(spec).toContain('rulebook_task {action:"archive"}');
             expect(spec).toMatch(/Pause or restart an agent that stalls/);
             expect(spec).toMatch(/TaskStop.*SendMessage/s);
-            expect(spec).toMatch(/Updates `CHANGELOG\.md`/);
-            // Small fixes are delegated too, but without the rulebook task cycle.
-            expect(spec).toMatch(/including small ones/);
-            expect(spec).toMatch(/small fix goes\s+out as a brief and comes back as a report/i);
             expect(spec).toMatch(
                 /When the work has a rulebook task \(multi-session or multi-phase/
             );
+            expect(spec).not.toMatch(/never executes the work itself/i);
+            expect(spec).not.toMatch(/Delegate every task|including small ones/i);
+            expect(spec).not.toContain('<!-- orchestration:');
 
             // generateModularAgents (via the lean generator) writes it unconditionally.
             await generateLeanAgents({ ...config, lightMode: true }, projectRoot);
@@ -234,6 +266,20 @@ describe('directive guards', () => {
                 'utf-8'
             );
             expect(written).toBe(spec.trim());
+        });
+
+        it('orchestration spec (orchestrator) keeps the full delegation protocol', async () => {
+            const spec = await generateCoreRules('orchestration', 'orchestrator');
+
+            expect(spec).toMatch(/Mode: `orchestrator` \(opt-in/);
+            expect(spec).toMatch(/never executes\s+the work itself/i);
+            expect(spec).toMatch(/A small fix goes out as a brief and comes\s+back as a report/);
+            expect(spec).toMatch(/One subagent per task/);
+            expect(spec).toMatch(/Run independent subagents in parallel/);
+            expect(spec).toMatch(/Read the subagent's report, never the files/);
+            expect(spec).toMatch(/own edits are the close-out/);
+            expect(spec).toMatch(/Never finish an abandoned task in the main session/);
+            expect(spec).not.toMatch(/including small ones/i);
         });
 
         it('MCP tool reference defers to the CLAUDE.md Orchestration section', async () => {
@@ -245,39 +291,30 @@ describe('directive guards', () => {
             expect(result.written).toBe(true);
 
             const ref = await fs.readFile(result.path, 'utf-8');
-            expect(ref).toMatch(/delegated per the\s+Orchestration section of CLAUDE\.md/);
+            expect(ref).toMatch(
+                /Who does the work follows the\s+Orchestration section of CLAUDE\.md/
+            );
             expect(ref).not.toMatch(/your call/i);
+            expect(ref).not.toMatch(/delegated per/i);
             expect(ref).toContain('| `mcp__rulebook__*` | `.mcp.json` |');
         });
     });
-    describe('entry gate (v7.4)', () => {
-        it('CLAUDE.md opens the Orchestration section with the gate rule', async () => {
-            const claudeMd = await generateClaudeMd(projectRoot);
-            const section = claudeMd.slice(
-                claudeMd.indexOf('## Orchestration'),
-                claudeMd.indexOf('## Rulebook')
-            );
-            const firstLine = section.split('\n')[1];
 
-            expect(firstLine).toMatch(
-                /^Gate first: act on Jev `routing` from the prompt hook, else/
-            );
-            // The model calls the gate by hand only when the hook injected nothing.
-            expect(section).toMatch(
-                /from the prompt hook, else from\s+`rulebook_gate \{prompt\}`; unavailable or undecided → these rules\./
-            );
-            // The gate precedes, and does not replace, the orchestrator directive.
-            expect(section.indexOf('Gate first')).toBeLessThan(
-                section.search(/main session never does the work itself/i)
-            );
+    describe('Jev gate is on demand (v7.5)', () => {
+        it('CLAUDE.md carries no gate-first or manual-fallback rule', async () => {
+            const claudeMd = await generateClaudeMd(projectRoot);
+            expect(claudeMd).not.toMatch(/Gate first/);
+            expect(claudeMd).not.toMatch(/rulebook_gate/);
         });
 
         it('orchestration spec documents the gate protocol as section 3', async () => {
             const spec = await generateCoreRules('orchestration');
 
-            expect(spec).toContain('## 3. Entry gate (Jev)');
+            expect(spec).toContain('## 3. Jev gate (opt-in, on demand)');
+            expect(spec).toMatch(/Nothing here runs by default/);
             expect(spec).toContain('rulebook_gate {prompt, notes?}');
-            expect(spec).toMatch(/short project description/);
+            expect(spec).toMatch(/is an on-demand\s+MCP tool/);
+            expect(spec).toMatch(/short\s+project description/);
             for (const id of [
                 'kind',
                 'needs_task',
@@ -309,28 +346,26 @@ describe('directive guards', () => {
             );
             // Acting on routing, fallback, and call discipline.
             expect(spec).toMatch(/`needsOperatorDecision` — true: ask before acting/);
+            expect(spec).toMatch(/an undecided or `unclear` `kind` is not a\s+reason to ask/);
             expect(spec).toContain('{action:"ask"}');
             expect(spec).toMatch(/Tier 1 prohibitions/);
             expect(spec).toMatch(/`available:false`[\s\S]*proceed under this spec/);
             expect(spec).toMatch(/advisory — it never blocks/);
-            expect(spec).toMatch(/once per operator prompt/);
+            expect(spec).toMatch(/at most once per operator prompt/);
             expect(spec).toContain('subagents do not call the gate');
             expect(spec).toContain('RULEBOOK_GATE=off');
-            // Prompt hook: runs the gate, injects routing, one blocking case, fail-open.
+            // Prompt hook: opt-in, injects routing, one blocking case, fail-open.
+            expect(spec).toMatch(/`gate\.promptHook\.enabled: true` in `rulebook\.json`/);
+            expect(spec).toMatch(/`\.claude\/hooks\/jev-gate\.sh\s+prompt`/);
+            expect(spec).toMatch(/act on that\s+routing and do not call the gate again/);
+            expect(spec).not.toMatch(/Only when no hook routing is in context/);
             expect(spec).toMatch(
-                /`UserPromptSubmit` hook \(`\.claude\/hooks\/jev-gate\.sh prompt`/
+                /`risk_os_scheduling` at or above `gate\.promptHook\.blockThreshold`/
             );
-            expect(spec).toMatch(/act on that routing and do not call\s+the gate again/);
-            expect(spec).toMatch(/Only when no hook routing is in context/);
-            expect(spec).toMatch(
-                /`risk_os_scheduling` at or\s+above `gate\.promptHook\.blockThreshold`/
-            );
-            expect(spec).toMatch(/Destructive git and secrets\s+never block there/);
+            expect(spec).toMatch(/Destructive git\s+and secrets never block there/);
             expect(spec).toMatch(/The hook is fail-open/);
-            expect(spec).toMatch(/`gate\.promptHook\.enabled: false`/);
             expect(spec).toMatch(/`features\.logging`[\s\S]*`\.rulebook\/logs\/gate\.jsonl`/);
             expect(spec).toMatch(/no\s+prompt text, no key/);
-            // Later sections renumbered 4–7.
             for (const h of [
                 '## 4. Delegation',
                 '## 5. Subagent contract',

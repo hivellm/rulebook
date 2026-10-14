@@ -766,7 +766,7 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
         }
     );
 
-    // ── rulebook_gate (v7.4 Jev entry gate) ──────────────────────────────
+    // ── rulebook_gate (v7.4 Jev gate; v7.5: on demand, no "call first") ──
     // Advisory: failure is a state (`available:false`), never an error. The
     // gate's own 8.5 s deadline finishes inside the server's 10 s guard.
     server.registerTool(
@@ -774,8 +774,8 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
         {
             title: 'Rulebook Gate',
             description:
-                'Call FIRST with every operator prompt. Jev decides kind, task, model, agent, ' +
-                'skill, parallelism, risk. Act on routing; unavailable/undecided → CLAUDE.md rules.',
+                'On demand: Jev routing for an operator prompt (kind, task, model, agent, ' +
+                'skill, parallelism, risk). Advisory; unavailable/undecided → CLAUDE.md rules.',
             inputSchema: {
                 prompt: z.string().describe('operator prompt verbatim'),
                 notes: z.string().optional().describe('what you want decided'),

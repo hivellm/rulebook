@@ -144,6 +144,8 @@ export interface ProjectConfig {
     modular?: boolean; // Enable modular /.rulebook directory structure
     rulebookDir?: string; // Custom rulebook directory (default: '.rulebook')
     agentsMode?: 'full' | 'lean'; // AGENTS.md generation mode: full (default) or lean (index-only)
+    // Orchestration text to render (v7.5); defaults to rulebook.json, else 'judgment'.
+    orchestration?: 'judgment' | 'orchestrator';
 }
 
 export interface RuleConfig {
@@ -196,6 +198,11 @@ export interface RulebookConfig {
     // `rulebook update` regenerates the spec with the project's chosen mode
     // instead of silently resetting it to 'manual'.
     gitPushMode?: 'manual' | 'prompt' | 'auto';
+    // Orchestration directive (v7.5). 'judgment' (default): the main session does
+    // small, local work itself and delegates when it pays. 'orchestrator' (opt-in):
+    // the v7.4 protocol — every task goes to a model-routed subagent. Rendered into
+    // CLAUDE.md, the lean AGENTS.md and specs/orchestration.md by init/update.
+    orchestration?: 'judgment' | 'orchestrator';
     // Monorepo configuration (v4.0)
     monorepo?: {
         detected?: boolean;

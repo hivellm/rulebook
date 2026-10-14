@@ -10,6 +10,7 @@ import {
     applyClaudeSettings,
     getClaudeSettingsPath,
 } from '../src/core/claude/claude-settings-manager.js';
+import { syncCodexBlock } from '../src/core/state/override-manager.js';
 import type { ProjectConfig } from '../src/types.js';
 
 /**
@@ -48,34 +49,37 @@ describe('v7 context budget (F-001)', () => {
         await fs.rm(projectRoot, { recursive: true, force: true });
     });
 
-    it('generated always-loaded context stays within the v7 file budget', async () => {
-        const claudeMd = await generateClaudeMd(projectRoot);
-        const agentsMd = await generateLeanAgents(config, projectRoot);
-        await generateRules(projectRoot, {
-            languages: [{ language: 'typescript', confidence: 1.0, indicators: [] }],
-        });
+    it.each(['judgment', 'orchestrator'] as const)(
+        'generated always-loaded context stays within the v7 file budget (%s mode)',
+        async (orchestration) => {
+            const claudeMd = await generateClaudeMd(projectRoot, { orchestration });
+            const agentsMd = await generateLeanAgents({ ...config, orchestration }, projectRoot);
+            await generateRules(projectRoot, {
+                languages: [{ language: 'typescript', confidence: 1.0, indicators: [] }],
+            });
 
-        const enc = encoding_for_model('gpt-4');
-        try {
-            let total = enc.encode(claudeMd).length + enc.encode(agentsMd).length;
-            total += enc.encode(
-                await fs.readFile(path.join(projectRoot, 'AGENTS.override.md'), 'utf-8')
-            ).length;
+            const enc = encoding_for_model('gpt-4');
+            try {
+                let total = enc.encode(claudeMd).length + enc.encode(agentsMd).length;
+                total += enc.encode(
+                    await fs.readFile(path.join(projectRoot, 'AGENTS.override.md'), 'utf-8')
+                ).length;
 
-            // Rules without paths: frontmatter are always loaded — count them.
-            const rulesDir = getRulesDir(projectRoot);
-            for (const f of await fs.readdir(rulesDir)) {
-                const content = await fs.readFile(path.join(rulesDir, f), 'utf-8');
-                if (!/^---\r?\n[\s\S]*?^paths:/m.test(content)) {
-                    total += enc.encode(content).length;
+                // Rules without paths: frontmatter are always loaded — count them.
+                const rulesDir = getRulesDir(projectRoot);
+                for (const f of await fs.readdir(rulesDir)) {
+                    const content = await fs.readFile(path.join(rulesDir, f), 'utf-8');
+                    if (!/^---\r?\n[\s\S]*?^paths:/m.test(content)) {
+                        total += enc.encode(content).length;
+                    }
                 }
-            }
 
-            expect(total).toBeLessThanOrEqual(FILE_CONTEXT_BUDGET);
-        } finally {
-            enc.free();
+                expect(total).toBeLessThanOrEqual(FILE_CONTEXT_BUDGET);
+            } finally {
+                enc.free();
+            }
         }
-    });
+    );
 
     it('every generated .claude/rules file is path-scoped (zero always-on rules)', async () => {
         await generateRules(projectRoot, {
@@ -111,13 +115,37 @@ describe('v7 context budget (F-001)', () => {
         expect(all).not.toMatch(/sequentially/i);
         // No blanket branch-switching ban (issue #20).
         expect(all).not.toMatch(/never switch branches on your own/i);
-        // v7.4 replaced the "never mandated" line with the orchestrator directive:
-        // the main session delegates every task to a subagent with an explicit model.
         expect(claudeMd).not.toMatch(/never blocks or\s+mandates orchestration/);
+
+        // v7.5 (C1, F-020..F-031): in the default judgment mode no generated text
+        // mandates or forbids delegation — it gives reasons and visible criteria.
+        // Covers everything a session can load: CLAUDE.md, AGENTS.md, the spec,
+        // and the Codex block in AGENTS.override.md.
+        await syncCodexBlock(projectRoot);
+        const judgmentText = [
+            all,
+            await fs.readFile(
+                path.join(projectRoot, '.rulebook', 'specs', 'orchestration.md'),
+                'utf-8'
+            ),
+            await fs.readFile(path.join(projectRoot, 'AGENTS.override.md'), 'utf-8'),
+        ].join('\n');
+        expect(judgmentText).toContain('Rulebook rules (Codex)');
+        for (const mandate of [
+            /never does the work itself/i,
+            /never executes the work itself/i,
+            /including small ones/i,
+            /Delegate every task/i,
+            /delegate each task/i,
+            /Gate first/i,
+            /else from\s+`rulebook_gate/i,
+        ]) {
+            expect(judgmentText).not.toMatch(mandate);
+        }
         for (const doc of [claudeMd, agentsMd]) {
-            expect(doc).toMatch(/main session never does the work itself/i);
-            expect(doc).toMatch(/one subagent/i);
-            expect(doc).toMatch(/model set\s+per\s+call/i);
+            expect(doc).toMatch(/small, local work/i);
+            expect(doc).toMatch(/context and parallelism, not speed/i);
+            expect(doc).toMatch(/model per call/i);
         }
 
         // Enforcement stays directive-only: no rulebook hook may deny or reroute
@@ -134,6 +162,24 @@ describe('v7 context budget (F-001)', () => {
                 expect(entry.matcher ?? '').not.toMatch(/\b(Agent|Task|SendMessage)\b/);
             }
         }
+    });
+
+    it('orchestrator mode is an explicit opt-in that carries the delegation directive', async () => {
+        await fs.mkdir(path.join(projectRoot, '.rulebook'), { recursive: true });
+        await fs.writeFile(
+            path.join(projectRoot, '.rulebook', 'rulebook.json'),
+            JSON.stringify({ orchestration: 'orchestrator' })
+        );
+        const claudeMd = await generateClaudeMd(projectRoot);
+        const agentsMd = await generateLeanAgents(config, projectRoot);
+        for (const doc of [claudeMd, agentsMd]) {
+            expect(doc).toMatch(/main session never does the work itself/i);
+            expect(doc).toMatch(/one subagent/i);
+            expect(doc).toMatch(/model set\s+per\s+call/i);
+            expect(doc).not.toMatch(/small, local work/i);
+        }
+        // Still no gate-first rule and no "small ones too" contradiction (F-023).
+        expect(claudeMd + agentsMd).not.toMatch(/Gate first|including small ones/i);
     });
 
     it('generated CLAUDE.md does not import AGENTS.md or rule essays', async () => {

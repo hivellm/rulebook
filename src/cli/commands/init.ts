@@ -377,6 +377,13 @@ export async function initCommand(options: {
                 if (result.backupPath) {
                     console.log(chalk.gray(`  - backup: ${path.relative(cwd, result.backupPath)}`));
                 }
+                if (result.keptOrchestration) {
+                    console.log(
+                        chalk.yellow(
+                            '  ! Kept your edited "## Orchestration" section in CLAUDE.md (not regenerated).'
+                        )
+                    );
+                }
                 if (result.mode === 'migrate' && result.overridePath) {
                     console.log(
                         chalk.yellow(
@@ -585,13 +592,16 @@ export async function initCommand(options: {
         }
 
         try {
-            const { initOverride } = await import('../../core/state/override-manager.js');
+            const { initOverride, syncCodexBlock } =
+                await import('../../core/state/override-manager.js');
             const created = await initOverride(cwd);
             if (created) {
                 console.log(
                     chalk.gray('  • AGENTS.override.md created (add project-specific rules here)')
                 );
             }
+            // Codex reads the override instead of AGENTS.md (F-034).
+            await syncCodexBlock(cwd);
         } catch {
             // Non-blocking
         }

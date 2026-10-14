@@ -307,7 +307,7 @@ CLI equivalents: `rulebook learn promote <id> skill`, `rulebook skills list --ca
 
 ## Entry gate (v7.4, `rulebook_gate`)
 
-The main session calls `rulebook_gate` first with every operator prompt. Rulebook sends Jev (TypeSafe's System One model) one request: a JSON description of the project plus the prompt, and up to 12 questions — one per decision the session would otherwise guess. The answers come back as a `routing` to act on. The gate is advisory: it never throws and never blocks, and it is called once per operator prompt, never by subagents.
+`rulebook_gate` is an on-demand tool (v7.5): the main session calls it when it wants Jev's routing for an operator prompt; no generated rule asks it to call the gate first or as a fallback. Rulebook sends Jev (TypeSafe's System One model) one request: a JSON description of the project plus the prompt, and up to 12 questions — one per decision the session would otherwise guess. The answers come back as a `routing` to act on. The gate is advisory: it never throws and never blocks, and it is called once per operator prompt, never by subagents.
 
 | Input | Meaning |
 |-------|---------|
@@ -352,7 +352,7 @@ The main session calls `rulebook_gate` first with every operator prompt. Ruleboo
 
 ### Prompt hook (v7.4, `UserPromptSubmit`)
 
-The main session no longer has to remember to call the gate: a Claude Code `UserPromptSubmit` hook runs it on every operator prompt and hands the routing to the model as context. The model calls `rulebook_gate` by hand only when no hook routing is in its context.
+The main session no longer has to remember to call the gate: a Claude Code `UserPromptSubmit` hook runs it on every operator prompt and hands the routing to the model as context. Without the hook there is no manual fallback: the model calls `rulebook_gate` only when it wants a routing.
 
 **Install**: `rulebook init`, `rulebook update` and `rulebook claude` copy `templates/hooks/jev-gate.sh` to `.claude/hooks/jev-gate.sh` and add one entry to `.claude/settings.json`:
 

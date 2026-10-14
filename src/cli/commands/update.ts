@@ -385,6 +385,18 @@ export async function updateSingleProject(
         if (claudeResult.backupPath) {
             console.log(chalk.gray(`  • backup: ${path.relative(cwd, claudeResult.backupPath)}`));
         }
+        if (claudeResult.keptOrchestration) {
+            console.log(
+                chalk.yellow(
+                    '  ! Kept your edited "## Orchestration" section in CLAUDE.md (not regenerated).'
+                )
+            );
+            console.log(
+                chalk.gray(
+                    '    Delete that section and re-run `rulebook update` to get the text for your `orchestration` mode.'
+                )
+            );
+        }
         if (claudeResult.mode === 'migrate' && claudeResult.overridePath) {
             console.log(
                 chalk.yellow(
@@ -406,6 +418,18 @@ export async function updateSingleProject(
         claudeUpdateSpinner.warn(
             `CLAUDE.md update skipped: ${err instanceof Error ? err.message : String(err)}`
         );
+    }
+
+    // Codex reads AGENTS.override.md instead of AGENTS.md (F-034): keep a small
+    // rulebook block at its top; the user's content below it is untouched.
+    try {
+        const { syncCodexBlock } = await import('../../core/state/override-manager.js');
+        const codex = await syncCodexBlock(cwd);
+        if (codex === 'added' || codex === 'updated') {
+            console.log(chalk.gray(`  • AGENTS.override.md: rulebook block for Codex ${codex}`));
+        }
+    } catch {
+        // non-fatal
     }
 
     try {

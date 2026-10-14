@@ -2,6 +2,12 @@ import path from 'path';
 import { existsSync } from 'fs';
 import { readFile, writeFile, fileExists, ensureDir } from '../../utils/file-system.js';
 import { getTemplatesDir } from '../generators/generator.js';
+import {
+    applyOrchestrationMode,
+    ORCHESTRATION_MODES,
+    readOrchestrationMode,
+    type OrchestrationMode,
+} from '../generators/orchestration-mode.js';
 
 /**
  * v5.3.0 CLAUDE.md generator.
@@ -46,6 +52,11 @@ export interface ClaudeMdGenerationOptions {
     taskBackend?: 'files' | 'github';
     /** Issue label used when taskBackend is 'github'. */
     taskLabel?: string;
+    /**
+     * Orchestration variant to render. Defaults to `orchestration` in the
+     * project's rulebook.json, else 'judgment'.
+     */
+    orchestration?: OrchestrationMode;
 }
 
 /**
@@ -97,7 +108,8 @@ export async function generateClaudeMd(
         options.taskBackend === undefined
             ? { ...options, ...(await readTaskConfig(projectRoot)) }
             : options;
-    const withTaskLine = template.replace(
+    const mode = options.orchestration ?? (await readOrchestrationMode(projectRoot));
+    const withTaskLine = applyOrchestrationMode(template, mode).replace(
         TASK_TRACKING_PLACEHOLDER,
         renderTaskTrackingLine(resolved)
     );
@@ -179,4 +191,93 @@ export async function writeClaudeMd(
  */
 export function hasV2Sentinels(content: string): boolean {
     return content.includes(CLAUDE_MD_SENTINEL_START) && content.includes(CLAUDE_MD_SENTINEL_END);
+}
+
+// ── User-edited Orchestration section (v7.5, F-031) ─────────────────────
+
+const ORCHESTRATION_HEADING = '## Orchestration';
+
+/**
+ * `## Orchestration` sections that earlier releases wrote into the CLAUDE.md
+ * block. Together with the current template in either mode they are the text
+ * rulebook owns; any other section text is the user's edit.
+ */
+const SHIPPED_ORCHESTRATION_SECTIONS = [
+    // v7.0.0 – v7.3.x
+    `## Orchestration
+Subagents, parallel dispatch, and teams are your call — fan out freely when work is
+parallel or context-heavy; work directly when it isn't. Rulebook never blocks or
+mandates orchestration.`,
+    // v7.4.0 pre-release builds
+    `## Orchestration
+Main session never does the work itself — delegate each task to one subagent, model set
+per call: Fable 5.1 architecture, hard bugs, review; Opus 5.5 edits, tests, docs,
+refactors (never Fable for simple work); Haiku 4.5 research, summaries. Plan first;
+parallelize independent agents; read reports, not files. Subagents check off and archive
+their task. Monitor; pause/restart stalled agents; review, then update the CHANGELOG.
+Details: \`.rulebook/specs/orchestration.md\`.`,
+    `## Orchestration
+Gate first: every operator prompt → \`rulebook_gate {prompt}\` (Jev);
+act on \`routing\`; unavailable or undecided → these rules. Main session never does the work itself — delegate each task to one subagent, model set
+per call: Fable 5.1 architecture, hard bugs, review; Opus 5.5 edits, tests, docs,
+refactors (never Fable for simple work); Haiku 4.5 research, summaries. Plan first;
+parallelize independent agents; read reports, not files. Subagents archive their task.
+Monitor; pause/restart stalled agents; review, then update the CHANGELOG.
+Details: \`.rulebook/specs/orchestration.md\`.`,
+    // v7.4.0
+    `## Orchestration
+Gate first: act on Jev \`routing\` from the prompt hook, else from
+\`rulebook_gate {prompt}\`; unavailable or undecided → these rules. Main session never does the work itself — delegate each task to one subagent, model set
+per call: Fable 5.1 architecture, hard bugs, review; Opus 5.5 edits, tests, docs,
+refactors (never Fable for simple work); Haiku 4.5 research, summaries. Plan first;
+parallelize independent agents; read reports, not files. Subagents archive their task.
+Monitor; pause/restart stalled agents; review, then update CHANGELOG.
+See \`.rulebook/specs/orchestration.md\`.`,
+];
+
+/**
+ * The `## Orchestration` section of a CLAUDE.md block, heading included, up to
+ * the next `## ` heading or the block's end sentinel. Null when absent.
+ */
+export function extractOrchestrationSection(content: string): string | null {
+    const lines = content.split('\n');
+    const start = lines.findIndex((line) => line.trim() === ORCHESTRATION_HEADING);
+    if (start === -1) return null;
+    let end = start + 1;
+    while (
+        end < lines.length &&
+        !lines[end].startsWith('## ') &&
+        !lines[end].includes(CLAUDE_MD_SENTINEL_END)
+    ) {
+        end++;
+    }
+    return lines.slice(start, end).join('\n').trimEnd();
+}
+
+/** Swap the `## Orchestration` section of `content` for `section`. */
+export function replaceOrchestrationSection(content: string, section: string): string {
+    const current = extractOrchestrationSection(content);
+    if (current === null) return content;
+    return content.replace(current, () => section);
+}
+
+const squash = (text: string): string => text.replace(/\s+/g, ' ').trim();
+
+/**
+ * The user's own Orchestration section in an existing CLAUDE.md block, or
+ * null when the block has none or carries text rulebook shipped (any release,
+ * either mode). `rulebook update` keeps a returned section instead of
+ * regenerating it, so an operator's orchestration choice survives updates.
+ */
+export async function findUserOrchestrationSection(block: string): Promise<string | null> {
+    const section = extractOrchestrationSection(block);
+    if (section === null) return null;
+    const template = await readClaudeMdTemplate();
+    const shipped = [
+        ...SHIPPED_ORCHESTRATION_SECTIONS,
+        ...ORCHESTRATION_MODES.map(
+            (mode) => extractOrchestrationSection(applyOrchestrationMode(template, mode)) ?? ''
+        ),
+    ].map(squash);
+    return shipped.includes(squash(section)) ? null : section;
 }
