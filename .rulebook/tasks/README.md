@@ -12,7 +12,7 @@
 | ⬚ | phase1_hook-entry-point | 0/8 | hook entry point |
 | ⬚ | phase1_mcp-launch-and-lifecycle | 0/8 | mcp launch and lifecycle |
 | ⬚ | phase1_prompt-gate-fixes | 0/10 | prompt gate fixes |
-| ⬚ | phase1_update-cleanup | 0/8 | update cleanup |
+| ⬚ | phase1_update-cleanup | 0/9 | update cleanup |
 
 ## phase2
 
