@@ -1,7 +1,7 @@
 # Proposal: phase2_mcp-fast-path
 
 ## Why
-Pinning removes version drift but npx still costs ~0.8–0.9 s and 3 extra processes per session; `node` + absolute path is 1 process and 234–310 ms, but a machine-specific path cannot live in the checked-in .mcp.json (docs/analysis/multi-session-performance/03-mcp-lifecycle.md F-013, options table). Blocked on operator decision Q4.
+Pinning removes version drift but npx still costs ~0.8–0.9 s and 3 extra processes per session; `node` + absolute path is 1 process and 234–310 ms, but a machine-specific path cannot live in the checked-in .mcp.json (docs/analysis/multi-session-performance/03-mcp-lifecycle.md F-013, options table). Operator decision Q4 (decided): pinned npx stays in the checked-in .mcp.json; the fast path is opt-in (`rulebook mcp init --fast`, Claude Code local scope).
 
 ## What Changes
 - Opt-in fast path: `node <installed>/dist/mcp/rulebook-server.js` written to local/user scope.
