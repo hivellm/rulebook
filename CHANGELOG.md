@@ -5,6 +5,180 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 7.5.0
+
+Performance release. Measured on 2026-10-14 with several Claude Code and Codex
+sessions open at once (`docs/analysis/multi-session-performance/`): v7.4 made
+small fixes cost 3.5–5.9× more model calls when delegated, ran a ~0.5–1 s prompt
+hook that only worked inside this repo, spawned two bash guards on every
+Bash/Edit/Write call, launched the MCP server through `npx … @latest` (4
+processes, ~1 s per session) and left 4–5 k tokens of v5/v6 rules behind on
+update. 7.5 removes each of these.
+
+**Upgrade notes (run `rulebook update`):**
+
+- Orchestration defaults to **judgment**. Set `"orchestration": "orchestrator"`
+  in `.rulebook/rulebook.json` to keep the v7.4 "delegate every task" protocol.
+- The Jev prompt hook is **off by default**. Set
+  `"gate": {"promptHook": {"enabled": true}}` to keep it; `rulebook_gate` stays
+  available on demand.
+- OS-level scheduling is now blocked by `permissions.deny` rules, so read-only
+  forms such as `crontab -l` and `schtasks /query` are denied too.
+- The guards' silent auto-approval of Bash/Edit/Write is now an explicit setting,
+  `permissions.autoApprove` (default true). `update` asks once.
+- `create` (MCP and CLI) requires the task content; see below.
+
+### Changed — orchestration by judgment
+
+- New default `orchestration: "judgment"`: the main session does small, local
+  work itself (files already in context, about 3 or fewer to change) and
+  delegates independent parts with disjoint files, broad exploration, long work,
+  or a main context past ~150 k tokens. The text says delegation buys context and
+  parallelism, not speed.
+- `"orchestrator"` keeps the v7.4 protocol as an opt-in, without its
+  contradictions (CHANGELOG and commits are the main session's own edits; small
+  fixes get a brief, no task).
+- Both modes: CHANGELOG per PR or release, one full diff review per PR, task
+  archive only for tracked tasks, full gate before a commit batch and push.
+- `rulebook update` keeps an `## Orchestration` section you edited and says so.
+- "Gate first" and the manual `rulebook_gate` fallback are gone from the
+  always-loaded text.
+
+### Changed — the Jev prompt hook is opt-in, faster and quieter
+
+- **Breaking:** off by default (`gate.promptHook.enabled: true` to turn it on).
+- It no longer runs on agent notifications, agent or cross-session messages, or
+  local command output, and strips IDE and system-reminder blocks before
+  classifying.
+- "Ask the operator" only when Jev decided an operator decision is needed: 6 % of
+  the logged prompts instead of 62 %. Nothing is injected when 3 or more routing
+  fields are undecided; the hook asks Jev fewer questions.
+- New `rulebook-hook` entry run as `node <rulebook>/dist/cli/hook-main.js
+  prompt-gate` with no bash and without loading the full CLI: 499 ms with the gate
+  on (was 929 ms), 91 ms with it off (was 401 ms). `init`, `update` and `claude`
+  resolve and check the entry; a broken install gives one warning per session
+  instead of failing silently on every prompt.
+- The gate reads only task metadata and never migrates archives on that path
+  (3 ms at 90 tasks, was ~170 ms); the decision log is appended without
+  re-reading it. Deadline 1.5 s, hook timeout 3 s.
+
+### Changed — the guards stop spawning on ordinary tool calls
+
+- **Breaking:** OS-level scheduling is blocked by `permissions.deny` rules in
+  `.claude/settings.json` (Bash, PowerShell and `Edit(...)` path rules) instead
+  of a bash script on every Bash/Edit/Write call.
+- The task-scaffolding guard only starts for files under `.rulebook/tasks/`
+  (hook `if` filters), and neither guard approves anything any more.
+- The old implicit auto-approval is explicit: `permissions.autoApprove` in
+  rulebook.json (default true) writes `Bash(*)`/`Edit(*)`/`Write(*)` allow rules;
+  set it to false to get permission prompts back.
+- The scheduling script (still used by the opt-in tool gate) reads only the
+  command and file path, so prose no longer causes false denials, and starts no
+  subprocess: ~85–100 ms per call instead of 120–360 ms.
+
+### Changed — MCP server launch and lifecycle
+
+- Generated MCP entries pin the installed version
+  (`npx -y --package=@hivehub/rulebook@<version> rulebook-mcp`) instead of
+  `@latest`. `rulebook update` rewrites old `@latest` and legacy `mcp-server`
+  entries and leaves other servers and hand-edited entries alone; `rulebook mcp
+  init` and the workspace migrator write the same entry.
+- The server exits as soon as its client closes stdin.
+- Every MCP tool declares read-only / destructive / idempotent / open-world
+  hints, so clients such as Codex can tell read-only calls from writes.
+
+### Added
+
+- `rulebook mcp init --fast`: registers `node <installed server>` in Claude
+  Code's local scope for this machine only (1 process, ~0.1–0.3 s start instead
+  of ~1 s and 4 processes through npx) and prints the Codex config snippet. The
+  build includes a single-file server bundle (~120 ms start instead of ~240 ms).
+- `rulebook doctor --perf [--json] [--days N]`: a read-only cost report — every
+  hook from user, project, local, plugin and Codex config with owner, matcher,
+  blocking/async and p50/p90 from recent transcripts; flags blocking hooks on
+  every tool call, hooks that always print `{}`, timeouts, a broken global CLI,
+  `@latest` MCP entries, live MCP servers per host, stale PID files, leftover
+  v5/v6 assets and Codex override shadowing. `rulebook doctor --json` too.
+- Codex: `init`/`update` keep a small rulebook rules block at the top of
+  `AGENTS.override.md`, because Codex reads the override instead of `AGENTS.md`.
+  The block is a single HTML comment: Codex sends the raw file to the model, while
+  Claude Code strips comments from the `@AGENTS.override.md` import, so Claude
+  sessions don't pay for it (always-on 1,448 → 1,192 tokens; budget lowered to
+  1,320). Verified with `codex debug prompt-input` and a real Claude Code session.
+
+### Fixed — `rulebook update` cleans up for real
+
+- Rules, agents, skills, commands, hooks and specs from any release since v5 are
+  recognised by content (a catalogue built from the release tags). Unedited
+  leftovers move to `.rulebook/backup/<timestamp>/`; files you edited are kept
+  and listed. Upgraded projects drop from 3.8–5.3 k to ~1.5 k rulebook tokens per
+  session.
+- Hooks are cleaned on every event and in `settings.local.json`: retired
+  rulebook entries and entries whose script is gone are removed; your own hooks
+  are never touched.
+- Shipped agents are refreshed when unedited, name the project's language
+  (a TypeScript repo no longer gets a "rust" implementer) and no longer cap
+  themselves with `maxTurns` (15–30 turns stopped agents mid-task).
+- `rulebook update` no longer drops `gate`, `multiAgent`, `tasks`, `mcp`,
+  `orchestration`, `rulebookDir`, `monorepo`, `agentFramework` or
+  `referenceSource` from rulebook.json (before, an update turned an opt-in
+  prompt hook off again and reset `"orchestrator"` to the default). The kept
+  keys are checked against `RulebookConfig` at compile time.
+- `rulebook update` saves what it detects: new languages, modules and their
+  skills land in `rulebook.json` (they used to be written early and then
+  overwritten by the config rebuild). Skills in `skills.disabled` stay off and a
+  custom `rulebookDir` is kept.
+- Skill discovery works again: the bundled templates path had stopped one
+  directory short since v5.7, so auto-detection, `rulebook skill` and the MCP
+  skill tool saw no shipped skills. Skills are read only from `SKILL.md` files
+  (generator templates such as `core/claude-md.md` are no longer listed as
+  skills), development skills have their own `dev` category and are never
+  auto-enabled, and ids come from the folder name (`languages/cpp` and
+  `languages/csharp` no longer collide with `languages/c`).
+- `CLAUDE.md` is backed up only when your text outside the generated block
+  changed since rulebook last wrote it, or when a legacy file is migrated; the
+  first update after `init` no longer leaves a backup.
+- `rulebook init` writes the shipped `AGENTS.override.md` template (the path was
+  resolved wrongly, a broken `/E:/…` path on Windows, so the inline fallback was
+  always used); the template no longer ships example rules agents would follow.
+- `.claude/hooks/no-os-scheduling.sh` and `jev-gate.sh` are installed only when
+  the opt-in tool gate (`gate.toolHook.enabled`) is on; otherwise `update`
+  removes an unedited copy and says so. A default install is back to 20 files
+  (`.rulebook/.update-check`, a cache, is no longer counted).
+- The generated `.gitignore` block ignores `/.claude/worktrees/` (Claude Code
+  agent worktrees), and the test suite no longer scans them.
+
+### Changed — budgets measure what is actually loaded
+
+- The context-budget test counts what Claude Code injects (CLAUDE.md without
+  comments and with `@imports` expanded, always-on rules, rulebook listing
+  lines, deferred MCP names): 1,192 tokens at 7.5 against a 1,320 budget
+  (2,100 with the opt-in agents). Codex gets its own budgets
+  (`AGENTS.override.md` 425, `AGENTS.md` 870) and the per-prompt hook context
+  has one (260).
+- A new test asserts 0 rulebook hook processes per ordinary Bash/Edit/Write call
+  in a generated project. P0 now rejects generated text that mandates *or*
+  forbids delegation.
+- `scripts/measure-overhead.mjs` uses the 7.5 method (`--rulebook <root>`
+  measures any build); `docs/analysis/v7-performance/05-budget-and-metrics.md`
+  has ledger rows v7.1.0 → v7.5.0.
+
+### Changed — tasks are created with their content
+
+- `rulebook_task {action:"create"}` now takes `why` (20+ characters), `what`,
+  `items` (the checklist) and an optional `impact`, and writes a complete
+  proposal.md and tasks.md (items numbered 1.1…1.N, plus the mandatory tail) in
+  that one call. No more half-filled tasks with placeholder text.
+- `rulebook task create <id>` takes the same content: `--why`, `--what`,
+  repeatable `--item`, `--impact-specs/-code/-breaking/-benefit`, or
+  `--from <file.json>` (flags override the file).
+- Missing or invalid content fails with every problem listed at once, and
+  nothing is left on disk: files are written to a temp folder, validated, then
+  moved into place. The GitHub backend renders the same content.
+- **Breaking:** `create` without content is rejected (MCP and CLI); there is no
+  empty-scaffold path any more. Generated docs, skills and the scaffolding
+  guard now say "create with content".
+
 ## [7.4.0] - 2026-09-26
 
 ### Changed — the main session orchestrates; subagents do the work

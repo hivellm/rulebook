@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { existsSync } from 'fs';
-import { appendFile, mkdir, readdir, readFile, writeFile } from 'fs/promises';
+import { appendFile, mkdir, readdir, readFile, stat, writeFile } from 'fs/promises';
 import path from 'path';
 import type { RulebookConfig } from '../../types.js';
 import { typesafeTokenInstructions } from '../claude/typesafe-integration.js';
@@ -166,10 +166,11 @@ export interface GateState {
         list: Array<{ id: string; title: string; status: string }>;
     };
     openQuestions: Array<{ taskId: string; id: string; question: string }>;
-    skillCandidates: Array<{ id: string; title: string; occurrences: number }>;
-    skills: string[];
-    agents: string[];
-    routing: typeof ROUTING_TABLE;
+    /** The next four only in the `full` question set: they serve its skill/agent/model questions. */
+    skillCandidates?: Array<{ id: string; title: string; occurrences: number }>;
+    skills?: string[];
+    agents?: string[];
+    routing?: typeof ROUTING_TABLE;
     prompt: string;
     notes?: string;
 }
@@ -202,7 +203,12 @@ const STATUS_ORDER: Record<string, number> = { 'in-progress': 0, blocked: 1, pen
  * (notes → skills → task list → skill candidates → open questions →
  * description → prompt) while it is over the soft budget.
  */
-export function buildGateState(sources: GateSources, prompt: string, notes?: string): GateState {
+export function buildGateState(
+    sources: GateSources,
+    prompt: string,
+    notes?: string,
+    set: GateQuestionSet = 'full'
+): GateState {
     const cfg = sources.config ?? {};
     const tasks = [...sources.tasks].sort(
         (a, b) => (STATUS_ORDER[a.status] ?? 3) - (STATUS_ORDER[b.status] ?? 3)
@@ -240,23 +246,29 @@ export function buildGateState(sources: GateSources, prompt: string, notes?: str
                     }))
             )
             .slice(0, STATE_CAPS.openQuestions),
-        skillCandidates: sources.skillCandidates.slice(0, STATE_CAPS.skillCandidates).map((c) => ({
-            id: c.id,
-            title: clip(c.title, STATE_CAPS.candidateTitle),
-            occurrences: c.occurrences ?? 1,
-        })),
-        skills: skills.slice(0, STATE_CAPS.skills),
-        agents: [...AGENT_TYPES],
-        routing: ROUTING_TABLE,
+        ...(set === 'full'
+            ? {
+                  skillCandidates: sources.skillCandidates
+                      .slice(0, STATE_CAPS.skillCandidates)
+                      .map((c) => ({
+                          id: c.id,
+                          title: clip(c.title, STATE_CAPS.candidateTitle),
+                          occurrences: c.occurrences ?? 1,
+                      })),
+                  skills: skills.slice(0, STATE_CAPS.skills),
+                  agents: [...AGENT_TYPES],
+                  routing: ROUTING_TABLE,
+              }
+            : {}),
         prompt: truncatePrompt(prompt, STATE_CAPS.prompt),
         ...(notes ? { notes: clip(notes, STATE_CAPS.notes) } : {}),
     };
 
     const trims: Array<() => void> = [
         () => delete state.notes,
-        () => (state.skills = state.skills.slice(0, STATE_CAPS.skillsTrimmed)),
+        () => (state.skills = state.skills?.slice(0, STATE_CAPS.skillsTrimmed)),
         () => (state.tasks.list = state.tasks.list.slice(0, STATE_CAPS.tasksTrimmed)),
-        () => (state.skillCandidates = []),
+        () => (state.skillCandidates &&= []),
         () => (state.openQuestions = state.openQuestions.slice(0, STATE_CAPS.openQuestionsTrimmed)),
         () => {
             if (state.project.description) {
@@ -308,10 +320,25 @@ function humanise(skillId: string): string {
 }
 
 /**
- * The 12-question set; `existing_task` and `skill` are omitted for empty
- * lists, `in_project_scope` when the state has no project description.
+ * `full`: every question (the `rulebook_gate` tool and `rulebook gate`).
+ * `hook`: the prompt hook's set — kind, needs_task, existing_task,
+ * needs_operator_decision, in_project_scope and the risks; no model, agent,
+ * skill or parallel questions, whose routing the model rarely used.
  */
-export function buildGateQuestions(state: GateState): Record<string, Question> {
+export type GateQuestionSet = 'full' | 'hook';
+
+/** Questions the `hook` set leaves out. */
+const FULL_ONLY_QUESTIONS = ['model', 'agent', 'skill', 'parallel'] as const;
+
+/**
+ * The 12-question set; `existing_task` and `skill` are omitted for empty
+ * lists, `in_project_scope` when the state has no project description, and
+ * model/agent/skill/parallel for the `hook` set.
+ */
+export function buildGateQuestions(
+    state: GateState,
+    set: GateQuestionSet = 'full'
+): Record<string, Question> {
     const q: Record<string, Question> = {};
     q.kind = {
         type: 'choice',
@@ -361,7 +388,7 @@ export function buildGateQuestions(state: GateState): Record<string, Question> {
             none: 'No subagent needed (a question the main session answers, or unclear)',
         },
     };
-    if (state.skills.length > 0) {
+    if (state.skills && state.skills.length > 0) {
         const criteria: Record<string, string> = {};
         for (const s of state.skills) criteria[s] = humanise(s);
         criteria.none = 'No installed skill applies';
@@ -414,6 +441,7 @@ export function buildGateQuestions(state: GateState): Record<string, Question> {
         type: 'noul',
         instructions: 'Does `prompt` involve API keys, tokens, passwords, or .env files?',
     };
+    if (set === 'hook') for (const id of FULL_ONLY_QUESTIONS) delete q[id];
     return q;
 }
 
@@ -560,28 +588,44 @@ const FALLBACK = 'proceed under CLAUDE.md Orchestration rules.';
 export const OFF_TOPIC_SENTENCE =
     'Off-topic for this project — confirm with the operator before acting.';
 
+/** With this many undecided fields or more, the hook set renders no routing at all. */
+export const SILENT_UNDECIDED = 3;
+
+/**
+ * The routing as one paragraph. "Ask the operator" only when Jev decided
+ * `needs_operator_decision` is true — an undecided or unclear kind is not a
+ * reason to stop. The `hook` set names only the fields it asked, and returns
+ * '' when SILENT_UNDECIDED or more are undecided: routing Jev could not make
+ * is noise in the model's context.
+ */
 export function renderInstruction(
     result: Pick<GateResult, 'available' | 'reason' | 'routing' | 'undecided'>,
-    derived: string[] = []
+    derived: string[] = [],
+    set: GateQuestionSet = 'full'
 ): string {
     if (!result.available) {
         return `Gate unavailable (${result.reason ?? 'unknown'}); ${FALLBACK}`;
     }
+    if (set === 'hook' && result.undecided.length >= SILENT_UNDECIDED) return '';
     const r = result.routing;
     const yn = (v: boolean | null) => (v === null ? 'undecided' : v ? 'yes' : 'no');
     const parts = [
         `kind=${r.kind ?? 'undecided'}`,
         `needsTask=${yn(r.needsTask)}${r.existingTaskId ? ` (reuse ${r.existingTaskId})` : ''}`,
-        `model=${r.model ?? 'undecided'}`,
-        `agent=${r.agentType ?? (result.undecided.includes('agent') ? 'undecided' : 'none')}`,
-        `skill=${r.skill ?? (result.undecided.includes('skill') ? 'undecided' : 'none')}`,
-        `parallel=${yn(r.parallel)}`,
     ];
+    if (set === 'full') {
+        parts.push(
+            `model=${r.model ?? 'undecided'}`,
+            `agent=${r.agentType ?? (result.undecided.includes('agent') ? 'undecided' : 'none')}`,
+            `skill=${r.skill ?? (result.undecided.includes('skill') ? 'undecided' : 'none')}`,
+            `parallel=${yn(r.parallel)}`
+        );
+    }
     const sentences = [`Jev routing: ${parts.join(', ')}.`];
     if (derived.length > 0)
         sentences.push(`Derived by rulebook post-rules: ${derived.join(', ')}.`);
     if (r.inProjectScope === false) sentences.push(OFF_TOPIC_SENTENCE);
-    if (r.needsOperatorDecision === true || r.kind === null || r.kind === 'unclear') {
+    if (r.needsOperatorDecision === true) {
         sentences.push(
             'Ask the operator before acting (rulebook_task {action:"ask"} when a task exists, otherwise one direct question).'
         );
@@ -709,23 +753,32 @@ export async function resolveProjectDescription(
 export async function loadGateSources(
     projectRoot: string,
     config: Partial<RulebookConfig> | null,
-    loaders: GateSourceLoaders = {}
+    loaders: GateSourceLoaders = {},
+    set: GateQuestionSet = 'full'
 ): Promise<GateSources> {
     const rulebookDir = config?.rulebookDir ?? '.rulebook';
     const hasRulebook = existsSync(path.join(projectRoot, rulebookDir));
 
+    // The file backend is read from task metadata only (id, status, questions)
+    // and never migrated here; a GitHub backend is listed through `gh`.
     const listTasks =
         loaders.listTasks ??
         (async (): Promise<TaskLike[]> => {
             if (!hasRulebook) return [];
-            const { resolveTaskBackend } = await import('../tasks/task-manager.js');
+            const { listTaskSummaries, resolveTaskBackend } =
+                await import('../tasks/task-manager.js');
+            if (config?.tasks?.backend !== 'github') {
+                return listTaskSummaries(projectRoot, rulebookDir);
+            }
             const backend = await resolveTaskBackend(projectRoot, rulebookDir);
             return backend.listTasks(false);
         });
     const tasks = await bounded(listTasks(), SOURCE_TIMEOUT_MS, []);
+    // Skills and skill candidates serve only the `full` set's skill question.
+    const full = set === 'full';
 
     let skillCandidates: GateSources['skillCandidates'] = [];
-    if (hasRulebook) {
+    if (hasRulebook && full) {
         try {
             const { LearnManager } = await import('../tasks/learn-manager.js');
             skillCandidates = await new LearnManager(projectRoot, rulebookDir).skillCandidates();
@@ -735,13 +788,15 @@ export async function loadGateSources(
     }
 
     let promotedSkills: string[] = [];
-    try {
-        const entries = await readdir(path.join(projectRoot, '.claude', 'skills'), {
-            withFileTypes: true,
-        });
-        promotedSkills = entries.filter((e) => e.isDirectory()).map((e) => e.name);
-    } catch {
-        // no promoted skills
+    if (full) {
+        try {
+            const entries = await readdir(path.join(projectRoot, '.claude', 'skills'), {
+                withFileTypes: true,
+            });
+            promotedSkills = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+        } catch {
+            // no promoted skills
+        }
     }
 
     const loadDescription =
@@ -761,7 +816,8 @@ export type GateLogSource = 'mcp' | 'cli' | 'hook';
 /**
  * One JSON line per gate call in `<rulebookDir>/logs/gate.jsonl` — source,
  * prompt hash, routing, usage, timing. Never the prompt text, never the key.
- * Kept to the newest 500 lines. Failures are swallowed: logging is best effort.
+ * Cut back to the newest 500 lines once the file passes 500 KiB
+ * (appendCappedLine). Failures are swallowed: logging is best effort.
  */
 export async function appendGateLog(
     projectRoot: string,
@@ -791,9 +847,14 @@ export async function appendGateLog(
     }
 }
 
+/** Average bytes per log line the size check allows before trimming. */
+const LOG_LINE_BUDGET_BYTES = 1024;
+
 /**
- * Append one line to a JSONL log, keeping the newest `maxLines` (default
- * 500). Creates the directory. Throws on I/O errors; callers swallow them.
+ * Append one line to a JSONL log without reading it. Only once the file
+ * passes `maxLines` × 1 KiB is it read and cut back to the newest `maxLines`
+ * (default 500) — one read per few hundred appends instead of one per append.
+ * Creates the directory. Throws on I/O errors; callers swallow them.
  */
 export async function appendCappedLine(
     file: string,
@@ -801,15 +862,12 @@ export async function appendCappedLine(
     maxLines: number = GATE_LOG_MAX_LINES
 ): Promise<void> {
     await mkdir(path.dirname(file), { recursive: true });
-    if (existsSync(file)) {
-        const lines = (await readFile(file, 'utf-8')).split('\n').filter(Boolean);
-        if (lines.length >= maxLines) {
-            const keep = lines.slice(lines.length - maxLines + 1);
-            await writeFile(file, [...keep, line].join('\n') + '\n', 'utf-8');
-            return;
-        }
-    }
     await appendFile(file, line + '\n', 'utf-8');
+    if ((await stat(file)).size <= maxLines * LOG_LINE_BUDGET_BYTES) return;
+    const lines = (await readFile(file, 'utf-8')).split('\n').filter(Boolean);
+    if (lines.length > maxLines) {
+        await writeFile(file, lines.slice(-maxLines).join('\n') + '\n', 'utf-8');
+    }
 }
 
 // ── Run ──────────────────────────────────────────────────────────────────
@@ -833,6 +891,8 @@ export interface RunGateOptions extends GateSourceLoaders {
     alwaysShowInstructions?: boolean;
     /** Recorded in the decision log line. */
     source?: GateLogSource;
+    /** Which questions to ask (default `full`); the prompt hook asks the `hook` set. */
+    questionSet?: GateQuestionSet;
 }
 
 function unavailable(reason: GateReason, t0: number, extra: Partial<GateResult> = {}): GateResult {
@@ -913,10 +973,11 @@ export async function runGateUnlogged(opts: RunGateOptions): Promise<GateRun> {
         };
     }
 
-    const sources = await loadGateSources(opts.projectRoot, config, opts);
-    const state = buildGateState(sources, opts.prompt, opts.notes);
+    const questionSet = opts.questionSet ?? 'full';
+    const sources = await loadGateSources(opts.projectRoot, config, opts, questionSet);
+    const state = buildGateState(sources, opts.prompt, opts.notes, questionSet);
     const bytes = stateBytes(state);
-    const questions = buildGateQuestions(state);
+    const questions = buildGateQuestions(state, questionSet);
 
     let result: GateResult;
     try {
@@ -942,7 +1003,7 @@ export async function runGateUnlogged(opts: RunGateOptions): Promise<GateRun> {
             stateBytes: bytes,
             usage: response.usage,
         };
-        result.instruction = renderInstruction(result, interpreted.derived);
+        result.instruction = renderInstruction(result, interpreted.derived, questionSet);
         result.elapsedMs = Date.now() - t0;
     } catch (error) {
         const reason: GateReason = error instanceof TypesafeError ? error.kind : 'bad-response';

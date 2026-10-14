@@ -10,6 +10,7 @@ import {
     initOverride,
     clearOverride,
 } from '../src/core/state/override-manager.js';
+import { getTemplatesDir } from '../src/core/generators/generator.js';
 
 let tmpDir: string;
 
@@ -122,6 +123,21 @@ describe('initOverride', () => {
             m.readFile(join(tmpDir, 'AGENTS.override.md'), 'utf-8')
         );
         expect(secondContent).toBe(firstContent);
+    });
+
+    it('writes the shipped templates/core/agents-override.md, not the fallback text', async () => {
+        await initOverride(tmpDir);
+        const { readFile } = await import('fs/promises');
+        const written = await readFile(join(tmpDir, 'AGENTS.override.md'), 'utf-8');
+        const template = await readFile(
+            join(getTemplatesDir(), 'core', 'agents-override.md'),
+            'utf-8'
+        );
+        expect(written).toBe(template);
+        expect(written).toContain('This file contains project-specific directives');
+        // Placeholder only: nothing for AGENTS.md to embed, no example rules an
+        // agent could mistake for real ones.
+        expect(await readOverrideContent(tmpDir)).toBe('');
     });
 
     it('created file contains OVERRIDE markers', async () => {

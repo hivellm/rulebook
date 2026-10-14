@@ -6,8 +6,9 @@
  * built-in cwd walk-up discovery (`findRulebookConfig(process.cwd())`).
  */
 
-import { isAbsolute } from 'path';
+import { dirname, isAbsolute } from 'path';
 import { fileExists, readFile, writeFile } from '../../utils/file-system.js';
+import { buildRulebookMcpEntry } from '../claude/claude-mcp.js';
 import { glob } from 'glob';
 
 export interface MigrationResult {
@@ -15,9 +16,6 @@ export interface MigrationResult {
     skippedFiles: string[];
     errors: string[];
 }
-
-/** The simplified args that replace any legacy --project-root variant. */
-const SIMPLIFIED_ARGS = ['-y', '@hivehub/rulebook@latest', 'mcp-server'];
 
 /**
  * Find and migrate .mcp.json files that contain absolute --project-root paths.
@@ -134,7 +132,11 @@ export async function migrateMcpJson(mcpJsonPath: string): Promise<boolean> {
 
         const value = entry.args[prIdx + 1];
         if (value && isAbsolute(value)) {
-            entry.args = SIMPLIFIED_ARGS;
+            // Same pinned entry `init`/`update` write (one writer, claude-mcp.ts).
+            Object.assign(
+                entry,
+                buildRulebookMcpEntry(dirname(mcpJsonPath), entry.args.includes('--workspace'))
+            );
             modified = true;
         }
     }

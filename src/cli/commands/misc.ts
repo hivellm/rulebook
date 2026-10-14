@@ -6,8 +6,19 @@ import { existsSync } from 'fs';
 import { RulebookConfig } from '../../types.js';
 import path from 'path';
 
-export async function doctorCommand(): Promise<void> {
+export async function doctorCommand(
+    options: { perf?: boolean; json?: boolean; days?: string } = {}
+): Promise<void> {
     const cwd = process.cwd();
+    if (options.perf) {
+        await doctorPerf(cwd, options);
+        return;
+    }
+    if (options.json) {
+        const { runDoctor } = await import('../../core/quality/doctor.js');
+        console.log(JSON.stringify(await runDoctor(cwd), null, 2));
+        return;
+    }
     const spinner = ora('Running rulebook doctor...').start();
     try {
         const { runDoctor } = await import('../../core/quality/doctor.js');
@@ -26,6 +37,43 @@ export async function doctorCommand(): Promise<void> {
         }
     } catch (error) {
         spinner.fail(`Doctor failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+}
+
+/** `rulebook doctor --perf`: read-only per-call cost report (hooks, CLI, MCP, leftovers, Codex). */
+async function doctorPerf(cwd: string, options: { json?: boolean; days?: string }): Promise<void> {
+    const days = options.days !== undefined ? Number(options.days) : undefined;
+    if (days !== undefined && (!Number.isInteger(days) || days <= 0)) {
+        console.error(chalk.red('--days must be a positive whole number'));
+        process.exitCode = 1;
+        return;
+    }
+    const spinner = options.json ? null : ora('Measuring hooks, MCP and CLI costs...').start();
+    try {
+        const { runPerfDoctor, formatPerfReport } =
+            await import('../../core/quality/doctor-perf/index.js');
+        const report = await runPerfDoctor({ projectRoot: cwd, days });
+        spinner?.stop();
+        if (options.json) {
+            console.log(JSON.stringify(report, null, 2));
+            return;
+        }
+        for (const line of formatPerfReport(report).split('\n')) {
+            const t = line.trimStart();
+            console.log(
+                t.startsWith('⚠')
+                    ? chalk.yellow(line)
+                    : t.startsWith('✔')
+                      ? chalk.green(line)
+                      : t.startsWith('→')
+                        ? chalk.cyan(line)
+                        : line
+            );
+        }
+    } catch (error) {
+        spinner?.fail('Doctor --perf failed');
+        console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+        process.exitCode = 1;
     }
 }
 

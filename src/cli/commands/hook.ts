@@ -7,6 +7,7 @@ import {
     runGateUnlogged,
 } from '../../core/typesafe/gate.js';
 import {
+    classifiablePrompt,
     promptHookAnswer,
     resolvePromptHookConfig,
     resolveScopeConfig,
@@ -15,7 +16,8 @@ import { runToolGate } from '../../core/typesafe/tool-gate.js';
 
 /**
  * `rulebook hook <event>` — entry point for the Claude Code hooks rulebook
- * installs (v7.4), called by `.claude/hooks/jev-gate.sh`. Reads the hook JSON
+ * installs (v7.4), called by the slim `rulebook-hook` entry (v7.5,
+ * hook-entry.ts) and by `.claude/hooks/jev-gate.sh`. Reads the hook JSON
  * from stdin, answers with at most one JSON object on stdout, and always
  * exits 0. Fail-open: an unknown event, unreadable or invalid stdin, a
  * disabled or unavailable gate, or any thrown error produce no output, so the
@@ -73,8 +75,10 @@ export interface HookCommandOptions {
 async function promptGate(input: HookInput, ctx: HookContext): Promise<object | null> {
     const cfg = resolvePromptHookConfig(ctx.config);
     if (!cfg.enabled) return null;
-    const prompt = typeof input.prompt === 'string' ? input.prompt : '';
-    if (!prompt.trim()) return null;
+    // Machine-generated inputs (agent notifications, cross-session messages)
+    // get no answer and cost no Jev call; IDE/system blocks are not the request.
+    const prompt = classifiablePrompt(typeof input.prompt === 'string' ? input.prompt : '');
+    if (prompt === null) return null;
 
     const t0 = Date.now();
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -93,6 +97,7 @@ async function promptGate(input: HookInput, ctx: HookContext): Promise<object | 
         loadDescription: async () =>
             (description = await resolveProjectDescription(ctx.projectRoot, ctx.config)),
         source: 'hook',
+        questionSet: 'hook',
     });
     // runGate honours the deadline itself; the race is the backstop for a
     // fetch that ignores its abort signal. The raced run only reads: its log
@@ -198,7 +203,8 @@ export function parseHookInput(raw: string): HookInput | null {
  * Run one hook event. Returns the process exit code, always 0: a hook must
  * never fail a prompt or tool call because rulebook could not decide.
  * Project root: `CLAUDE_PROJECT_DIR` (set by Claude Code for every hook),
- * else the payload's `cwd`, else `options.cwd`, else the process cwd.
+ * else the payload's `cwd` (Codex sets no CLAUDE_PROJECT_DIR), else
+ * `options.cwd`, else the process cwd.
  */
 export async function hookCommand(
     event: string,

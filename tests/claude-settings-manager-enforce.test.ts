@@ -5,18 +5,21 @@ import path from 'path';
 /**
  * Shell-level tests for the v7 path-only guard
  * (templates/hooks/protect-task-scaffolding.sh). The guard must:
- *  - allow everything that does not target task scaffolding paths
+ *  - stay silent (no decision — v7.5 never answers "allow") on everything
+ *    that does not target task scaffolding paths
  *  - deny creation of proposal.md/.metadata.json under .rulebook/tasks/
  *    when the file does not exist
  *  - never inspect content (no TODO/stub/placeholder denials — F-009)
  */
 const SCRIPT = path.join(process.cwd(), 'templates', 'hooks', 'protect-task-scaffolding.sh');
 
+/** `none` = the guard printed nothing: no decision, the normal permission flow applies. */
 function runGuard(payload: object): { decision: string; raw: string } {
     const raw = execFileSync('bash', [SCRIPT], {
         input: JSON.stringify(payload),
         encoding: 'utf-8',
     });
+    if (raw.trim() === '') return { decision: 'none', raw };
     const parsed = JSON.parse(raw);
     return { decision: parsed.hookSpecificOutput.permissionDecision, raw };
 }
@@ -27,7 +30,7 @@ describe('protect-task-scaffolding.sh (v7 path-only guard)', () => {
             tool_name: 'Write',
             tool_input: { file_path: 'src/index.ts', content: 'export const x = 1;' },
         });
-        expect(decision).toBe('allow');
+        expect(decision).toBe('none');
     });
 
     it('allows content containing TODO/stub/placeholder words (no content inspection)', () => {
@@ -38,7 +41,7 @@ describe('protect-task-scaffolding.sh (v7 path-only guard)', () => {
                 content: '<input placeholder="Search" /> // TODO handled by lint, stub here',
             },
         });
-        expect(decision).toBe('allow');
+        expect(decision).toBe('none');
     });
 
     it('denies creating a proposal.md that does not exist', () => {
@@ -72,7 +75,7 @@ describe('protect-task-scaffolding.sh (v7 path-only guard)', () => {
                 content: '- [ ] one item',
             },
         });
-        expect(decision).toBe('allow');
+        expect(decision).toBe('none');
     });
 
     it('allows editing an existing proposal.md', () => {
@@ -93,7 +96,7 @@ describe('protect-task-scaffolding.sh (v7 path-only guard)', () => {
                     new_string: 'still exists',
                 },
             });
-            expect(decision).toBe('allow');
+            expect(decision).toBe('none');
         } finally {
             fs.rmSync(dir, { recursive: true, force: true });
         }

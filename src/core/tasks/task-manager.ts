@@ -4,8 +4,12 @@ import {
     mkdirSync,
     readdirSync,
     readFileSync,
+    renameSync,
+    rmSync,
     statSync,
+    type Dirent,
 } from 'fs';
+import { readdir, readFile } from 'fs/promises';
 import { promisify } from 'util';
 import { join } from 'path';
 import {
@@ -84,31 +88,89 @@ export const MANDATORY_TAIL_ITEMS = [
 ] as const;
 
 /**
- * Scaffold for a new task's proposal.md. Shared with the GitHub backend so a
- * task created as an issue starts from the same shape as one created on disk.
+ * v7.5: what a task is created with. A task is born complete — there is no
+ * empty-scaffold path — so every backend renders these same files from it.
  */
-export function renderProposalTemplate(taskId: string): string {
+export interface TaskContent {
+    /** Why the change is needed (at least 20 characters). */
+    why: string;
+    /** What will change. */
+    what: string;
+    /** Implementation checklist items, numbered 1.1…1.N in tasks.md. */
+    items: string[];
+    impact?: {
+        specs?: string;
+        code?: string;
+        /** true → YES, false/absent → NO, a string is used as written. */
+        breaking?: boolean | string;
+        benefit?: string;
+    };
+}
+
+/**
+ * Every problem with a task's content, reported at once so the caller can fix
+ * them in a single retry. Empty array means the content is usable.
+ */
+export function validateTaskContent(content: Partial<TaskContent> | undefined): string[] {
+    const problems: string[] = [];
+    const why = typeof content?.why === 'string' ? content.why.trim() : '';
+    if (!why) problems.push('why is required');
+    else if (why.length < 20) problems.push('why must have at least 20 characters');
+    if (typeof content?.what !== 'string' || !content.what.trim()) {
+        problems.push('what is required');
+    }
+    const items = Array.isArray(content?.items) ? content.items : [];
+    if (!items.some((item) => typeof item === 'string' && item.trim())) {
+        problems.push('items needs at least one checklist item');
+    }
+    return problems;
+}
+
+/**
+ * proposal.md in the standard layout. Shared with the GitHub backend so a task
+ * created as an issue has the same shape as one created on disk.
+ */
+export function renderProposal(taskId: string, content: TaskContent): string {
+    const impact = content.impact ?? {};
+    const breaking =
+        typeof impact.breaking === 'string' && impact.breaking.trim()
+            ? impact.breaking.trim()
+            : impact.breaking === true
+              ? 'YES'
+              : 'NO';
     return `# Proposal: ${taskId}
 
 ## Why
-[Explain why this change is needed - minimum 20 characters]
+${content.why.trim()}
 
 ## What Changes
-[Describe what will change]
+${content.what.trim()}
 
 ## Impact
-- Affected specs: [list]
-- Affected code: [list]
-- Breaking change: YES/NO
-- User benefit: [describe]
+- Affected specs: ${impact.specs?.trim() || 'none'}
+- Affected code: ${impact.code?.trim() || 'none'}
+- Breaking change: ${breaking}
+- User benefit: ${impact.benefit?.trim() || 'none'}
 `;
 }
 
-/** Scaffold for a new task's tasks.md, mandatory tail included. */
-export function renderTasksTemplate(): string {
+/**
+ * tasks.md: the items numbered 1.1…1.N under `## 1. Implementation`, then the
+ * mandatory tail. A leading checkbox or number the caller already wrote
+ * ("- [ ] 1.3 Foo") is dropped so items are never double-numbered.
+ */
+export function renderTasks(items: string[]): string {
+    const lines = items
+        .map((item) =>
+            item
+                .trim()
+                .replace(/^-\s*\[[ xX]\]\s*/, '')
+                .replace(/^\d+(\.\d+)+\.?\s+/, '')
+        )
+        .filter(Boolean)
+        .map((item, i) => `- [ ] 1.${i + 1} ${item}`);
     return `## 1. Implementation
-- [ ] 1.1 First task
-- [ ] 1.2 Second task
+${lines.join('\n')}
 
 ${renderMandatoryTail(2)}`;
 }
@@ -301,9 +363,11 @@ export class TaskManager implements TaskBackend {
     }
 
     /**
-     * Create a new task
+     * Create a new task with its content (v7.5). The files are written to a
+     * temp dir, validated, then renamed into place, so a failed create leaves
+     * no task directory behind.
      */
-    async createTask(taskId: string): Promise<void> {
+    async createTask(taskId: string, content: TaskContent): Promise<void> {
         await this.initialize();
 
         // Validate phase naming convention
@@ -317,24 +381,46 @@ export class TaskManager implements TaskBackend {
             throw new Error(`Task ${taskId} already exists`);
         }
 
-        mkdirSync(taskPath, { recursive: true });
-        mkdirSync(join(taskPath, SPECS_DIR), { recursive: true });
+        const problems = validateTaskContent(content);
+        if (problems.length > 0) {
+            throw new Error(`Task ${taskId} not created: ${problems.join('; ')}`);
+        }
 
-        await writeFileAsync(join(taskPath, 'proposal.md'), renderProposalTemplate(taskId));
-
+        const proposal = renderProposal(taskId, content);
         // The MANDATORY tail items (v5.3.0 F-NEW-3) are appended automatically
         // here AND enforced by validateTask() / archiveTask(): a task cannot be
         // closed unless docs are updated, tests are written, and tests pass.
-        await writeFileAsync(join(taskPath, 'tasks.md'), renderTasksTemplate());
-
-        // Create .metadata.json with initial status
+        const tasks = renderTasks(content.items);
         const now = new Date().toISOString();
-        const metadata = {
-            status: 'pending' as const,
-            createdAt: now,
-            updatedAt: now,
-        };
-        await writeFileAsync(join(taskPath, '.metadata.json'), JSON.stringify(metadata, null, 2));
+        const metadata = { status: 'pending' as const, createdAt: now, updatedAt: now };
+
+        // The temp dir sits beside tasks/ (same volume, so the rename is atomic)
+        // rather than inside it, so listTasks() never sees a half-written task.
+        const tempPath = join(
+            this.rulebookPath,
+            `.creating-${taskId}-${process.pid}-${Date.now()}`
+        );
+        try {
+            mkdirSync(join(tempPath, SPECS_DIR), { recursive: true });
+            await writeFileAsync(join(tempPath, 'proposal.md'), proposal);
+            await writeFileAsync(join(tempPath, 'tasks.md'), tasks);
+            await writeFileAsync(
+                join(tempPath, '.metadata.json'),
+                JSON.stringify(metadata, null, 2)
+            );
+
+            const check = validateLoadedTask(
+                { id: taskId, title: taskId, proposal, tasks, ...metadata },
+                taskId
+            );
+            if (!check.valid) {
+                throw new Error(`Task ${taskId} not created: ${check.errors.join('; ')}`);
+            }
+            renameSync(tempPath, taskPath);
+        } catch (err) {
+            rmSync(tempPath, { recursive: true, force: true });
+            throw err;
+        }
 
         // Update tasks README index + STATE.md
         await this.updateReadme();
@@ -881,6 +967,45 @@ export class TaskManager implements TaskBackend {
         // Update tasks README index
         await this.updateReadme();
     }
+}
+
+/** What the Jev gate needs from a task: no proposal, checklist, design or specs. */
+export type TaskSummary = Pick<RulebookTask, 'id' | 'title' | 'status' | 'questions'>;
+
+/**
+ * Active tasks of the file backend from their `.metadata.json` alone (id from
+ * the folder name, status and decision requests from the metadata), for the
+ * per-prompt gate. Read-only: never creates folders and never runs
+ * migrateArchive. A missing or invalid metadata file reads as `pending`.
+ */
+export async function listTaskSummaries(
+    projectRoot: string,
+    rulebookDir: string = '.rulebook'
+): Promise<TaskSummary[]> {
+    const tasksPath = join(projectRoot, rulebookDir, TASKS_DIR);
+    let entries: Dirent[];
+    try {
+        entries = await readdir(tasksPath, { withFileTypes: true });
+    } catch {
+        return [];
+    }
+    const dirs = entries.filter((e) => e.isDirectory() && e.name !== ARCHIVE_DIR);
+    return Promise.all(
+        dirs.map(async ({ name }): Promise<TaskSummary> => {
+            const task: TaskSummary = { id: name, title: name, status: 'pending' };
+            try {
+                const metadata = JSON.parse(
+                    await readFile(join(tasksPath, name, '.metadata.json'), 'utf-8')
+                );
+                if (metadata.status) task.status = metadata.status;
+                const questions = parseQuestions(metadata.questions);
+                if (questions.length > 0) task.questions = questions;
+            } catch {
+                // no metadata, or invalid: pending
+            }
+            return task;
+        })
+    );
 }
 
 export function createTaskManager(

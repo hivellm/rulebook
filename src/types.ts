@@ -144,6 +144,8 @@ export interface ProjectConfig {
     modular?: boolean; // Enable modular /.rulebook directory structure
     rulebookDir?: string; // Custom rulebook directory (default: '.rulebook')
     agentsMode?: 'full' | 'lean'; // AGENTS.md generation mode: full (default) or lean (index-only)
+    // Orchestration text to render (v7.5); defaults to rulebook.json, else 'judgment'.
+    orchestration?: 'judgment' | 'orchestrator';
 }
 
 export interface RuleConfig {
@@ -196,6 +198,11 @@ export interface RulebookConfig {
     // `rulebook update` regenerates the spec with the project's chosen mode
     // instead of silently resetting it to 'manual'.
     gitPushMode?: 'manual' | 'prompt' | 'auto';
+    // Orchestration directive (v7.5). 'judgment' (default): the main session does
+    // small, local work itself and delegates when it pays. 'orchestrator' (opt-in):
+    // the v7.4 protocol — every task goes to a model-routed subagent. Rendered into
+    // CLAUDE.md, the lean AGENTS.md and specs/orchestration.md by init/update.
+    orchestration?: 'judgment' | 'orchestrator';
     // Monorepo configuration (v4.0)
     monorepo?: {
         detected?: boolean;
@@ -222,10 +229,10 @@ export interface RulebookConfig {
     // Jev gate hooks (v7.4). promptHook and scope are resolved (defaults + clamps) by
     // resolvePromptHookConfig() and resolveScopeConfig() in src/core/typesafe/prompt-hook.ts.
     gate?: {
-        // UserPromptSubmit hook that runs the entry gate on every prompt.
+        // UserPromptSubmit hook that runs the entry gate on every prompt (opt-in since v7.5).
         promptHook?: {
-            enabled?: boolean; // default true; always off when integrations.typesafe.enabled === false
-            deadlineMs?: number; // default 5000, clamped 1000–8500
+            enabled?: boolean; // default false; always off when integrations.typesafe.enabled === false
+            deadlineMs?: number; // default 1500, clamped 1000–8500
             blockThreshold?: number; // risk_os_scheduling ≥ this blocks; default 0.9, clamped 0.5–1
         };
         // Project-scope question (in_project_scope) and the prompt hook's off-topic action.
@@ -245,6 +252,12 @@ export interface RulebookConfig {
             deadlineMs?: number; // default 2000, clamped 500–5000
             cacheTtlMs?: number; // default 900000 (15 min), clamped 0–86400000
         };
+    };
+    // Claude Code permissions (v7.5). Until 7.4 the PreToolUse guards answered
+    // "allow" on every passing call, auto-approving Bash/Edit/Write; that is now
+    // explicit `permissions.allow` rules written while autoApprove is true.
+    permissions?: {
+        autoApprove?: boolean; // default true; `rulebook update` asks once (interactive) and records it
     };
     // MCP server configuration
     mcp?: {
@@ -328,6 +341,8 @@ export type SkillCategory =
     | 'workflows'
     | 'ides'
     | 'core'
+    /** Opt-in development skills (`templates/skills/dev/`); never auto-enabled. */
+    | 'dev'
     | 'cli'
     | 'git'
     | 'hooks'

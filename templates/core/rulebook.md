@@ -87,8 +87,10 @@ Then <outcome>
 
 ## Workflow
 
-1. `rulebook_task {action:"create"}` (or `rulebook task create <task-id>`) BEFORE coding
-2. Fill proposal.md, tasks.md, and spec deltas
+1. `rulebook_task {action:"create", taskId, why, what, items, impact}` (or
+   `rulebook task create <task-id> --why .. --what .. --item ..`) BEFORE coding —
+   the task is created complete (proposal.md + numbered tasks.md) in one call
+2. Add spec deltas (`specs/<module>/spec.md`) when the change has requirements
 3. `rulebook_task {action:"validate"}` — fix format errors before starting
 4. Implement item by item; run type-check + lint after each significant change
 5. `rulebook_task {action:"update"}` to move status: pending → in-progress → completed
@@ -98,7 +100,8 @@ Then <outcome>
 ## CLI quick reference
 
 ```bash
-rulebook task list | show <id> | create <id> | validate <id> [--strict]
+rulebook task list | show <id> | validate <id> [--strict]
+rulebook task create <id> --why .. --what .. --item .. [--item ..] [--from <file.json>]
 rulebook task update <id> --status <s> | --progress <n>
 rulebook task archive <id> [--yes]
 ```

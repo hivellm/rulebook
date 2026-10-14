@@ -14,6 +14,13 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
+/** v7.5: tasks are created with their content. */
+const TASK_CONTENT = {
+    why: 'Test task created with its content in one call',
+    what: 'Exercise the task store',
+    items: ['First step'],
+};
+
 // Skip on Windows due to module import hanging issues
 const isWindows = process.platform === 'win32';
 const describeOrSkip = isWindows ? describe.skip : describe;
@@ -99,7 +106,7 @@ describeOrSkip('MCP Server', () => {
             const taskManager = new TaskManager(testDir, 'rulebook');
             await taskManager.initialize();
 
-            await taskManager.createTask('phase1_test-task-1');
+            await taskManager.createTask('phase1_test-task-1', TASK_CONTENT);
             const tasks = await taskManager.listTasks();
 
             expect(tasks.length).toBe(1);
@@ -110,7 +117,7 @@ describeOrSkip('MCP Server', () => {
             const taskManager = new TaskManager(testDir, 'rulebook');
             await taskManager.initialize();
 
-            await taskManager.createTask('phase1_test-show-task');
+            await taskManager.createTask('phase1_test-show-task', TASK_CONTENT);
             const task = await taskManager.showTask('phase1_test-show-task');
 
             expect(task).toBeDefined();
@@ -122,7 +129,7 @@ describeOrSkip('MCP Server', () => {
             const taskManager = new TaskManager(testDir, 'rulebook');
             await taskManager.initialize();
 
-            await taskManager.createTask('phase1_test-update-task');
+            await taskManager.createTask('phase1_test-update-task', TASK_CONTENT);
             await taskManager.updateTaskStatus('phase1_test-update-task', 'in-progress');
 
             const task = await taskManager.showTask('phase1_test-update-task');
@@ -133,7 +140,7 @@ describeOrSkip('MCP Server', () => {
             const taskManager = new TaskManager(testDir, 'rulebook');
             await taskManager.initialize();
 
-            await taskManager.createTask('phase1_test-validate-task');
+            await taskManager.createTask('phase1_test-validate-task', TASK_CONTENT);
             const validation = await taskManager.validateTask('phase1_test-validate-task');
 
             expect(validation).toBeDefined();
@@ -144,7 +151,7 @@ describeOrSkip('MCP Server', () => {
             const taskManager = new TaskManager(testDir, 'rulebook');
             await taskManager.initialize();
 
-            await taskManager.createTask('phase1_test-archive-task');
+            await taskManager.createTask('phase1_test-archive-task', TASK_CONTENT);
             await taskManager.updateTaskStatus('phase1_test-archive-task', 'completed');
             await taskManager.archiveTask('phase1_test-archive-task', true);
 
@@ -159,7 +166,7 @@ describeOrSkip('MCP Server', () => {
             const taskManager = new TaskManager(testDir, 'rulebook');
             await taskManager.initialize();
 
-            await taskManager.createTask('phase1_test-delete-task');
+            await taskManager.createTask('phase1_test-delete-task', TASK_CONTENT);
             await taskManager.deleteTask('phase1_test-delete-task');
 
             const tasks = await taskManager.listTasks();
@@ -170,8 +177,8 @@ describeOrSkip('MCP Server', () => {
             const taskManager = new TaskManager(testDir, 'rulebook');
             await taskManager.initialize();
 
-            await taskManager.createTask('phase1_task-1');
-            await taskManager.createTask('phase1_task-2');
+            await taskManager.createTask('phase1_task-1', TASK_CONTENT);
+            await taskManager.createTask('phase1_task-2', TASK_CONTENT);
             await taskManager.updateTaskStatus('phase1_task-2', 'in-progress');
 
             const allTasks = await taskManager.listTasks();
@@ -263,7 +270,7 @@ describeOrSkip('MCP Server', () => {
             await taskManager.initialize();
 
             const taskId = 'phase1_simulated-task';
-            await taskManager.createTask(taskId);
+            await taskManager.createTask(taskId, TASK_CONTENT);
 
             const tasks = await taskManager.listTasks();
             expect(tasks.find((t) => t.id === taskId)).toBeDefined();
@@ -273,8 +280,8 @@ describeOrSkip('MCP Server', () => {
             const taskManager = new TaskManager(testDir, 'rulebook');
             await taskManager.initialize();
 
-            await taskManager.createTask('phase1_task-a');
-            await taskManager.createTask('phase1_task-b');
+            await taskManager.createTask('phase1_task-a', TASK_CONTENT);
+            await taskManager.createTask('phase1_task-b', TASK_CONTENT);
             await taskManager.updateTaskStatus('phase1_task-b', 'completed');
 
             const allTasks = await taskManager.listTasks(false);

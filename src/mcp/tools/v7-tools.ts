@@ -87,6 +87,7 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
             title: 'Rulebook Tasks',
             description:
                 'Manage rulebook tasks. action: create|list|show|update|archive|validate|delete|ask|answer|questions. ' +
+                'create needs why/what/items so the task is born complete. ' +
                 'ask = a decision the spec does not settle and you cannot make: blocks the task, returns an operator form. ' +
                 'blocked requires an open question or blockedBy.',
             inputSchema: {
@@ -107,6 +108,17 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 includeArchived: z.boolean().optional(),
                 skipValidation: z.boolean().optional(),
                 tailWaiver: z.string().optional().describe('archive: why the tail does not apply'),
+                why: z.string().optional().describe('create: >=20 chars'),
+                what: z.string().optional().describe('create'),
+                items: z.array(z.string()).optional().describe('create: checklist'),
+                impact: z
+                    .object({
+                        specs: z.string().optional(),
+                        code: z.string().optional(),
+                        breaking: z.union([z.boolean(), z.string()]).optional(),
+                        benefit: z.string().optional(),
+                    })
+                    .optional(),
                 question: z.string().optional().describe('ask: what must be decided'),
                 context: z.string().optional().describe('ask: why undecidable'),
                 options: z.array(z.string()).optional().describe('ask: "Label — trade-off"'),
@@ -116,6 +128,13 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 answer: z.string().optional().describe('answer: decision'),
                 path: z.string().optional().describe('file path → routes to its project'),
                 projectId: projectIdSchema,
+            },
+            // delete removes a task; other actions add or edit records under .rulebook/
+            annotations: {
+                readOnlyHint: false,
+                destructiveHint: true,
+                idempotentHint: false,
+                openWorldHint: false,
             },
         },
         async (args) => {
@@ -137,9 +156,24 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 const { ASK_INSTRUCTION, openQuestions, renderOperatorPrompt } =
                     await import('../../core/tasks/task-questions.js');
                 switch (args.action) {
-                    case 'create':
-                        await tm.createTask(args.taskId!);
-                        return ok({ taskId: args.taskId, message: 'created' });
+                    case 'create': {
+                        const items = (args.items ?? []).filter((i) => i.trim());
+                        const missing = [
+                            !args.why?.trim() && 'why',
+                            !args.what?.trim() && 'what',
+                            items.length === 0 && 'items',
+                        ].filter(Boolean);
+                        if (missing.length > 0) {
+                            return fail(`create requires ${missing.join(', ')}`);
+                        }
+                        await tm.createTask(args.taskId!, {
+                            why: args.why!,
+                            what: args.what!,
+                            items,
+                            impact: args.impact,
+                        });
+                        return ok({ taskId: args.taskId, message: 'created', items: items.length });
+                    }
                     case 'list': {
                         const tasks = await tm.listTasks(args.includeArchived || false);
                         const filtered = args.status
@@ -294,6 +328,13 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 path: z.string().optional().describe('file path → routes to its project'),
                 projectId: projectIdSchema,
             },
+            // update overwrites a decision; promote may overwrite a skill file
+            annotations: {
+                readOnlyHint: false,
+                destructiveHint: true,
+                idempotentHint: false,
+                openWorldHint: false,
+            },
         },
         async (args) => {
             try {
@@ -431,6 +472,13 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 action: z.enum(['start', 'end']),
                 summary: z.string().optional().describe('end: session summary'),
                 projectId: projectIdSchema,
+            },
+            // end prepends a summary to PLANS.md; rotated history is archived, not dropped
+            annotations: {
+                readOnlyHint: false,
+                destructiveHint: false,
+                idempotentHint: false,
+                openWorldHint: false,
             },
         },
         async (args) => {
@@ -611,6 +659,13 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 enabledOnly: z.boolean().optional(),
                 projectId: projectIdSchema,
             },
+            // enable/disable toggle rulebook.json; repeating one changes nothing
+            annotations: {
+                readOnlyHint: false,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: false,
+            },
         },
         async (args) => {
             try {
@@ -693,6 +748,8 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
             title: 'Rulebook Rules',
             description: 'List project rules (user-authored canonical + path-scoped language)',
             inputSchema: { projectId: projectIdSchema },
+            // reads rule files only
+            annotations: { readOnlyHint: true, openWorldHint: false },
         },
         async (args) => {
             try {
@@ -709,7 +766,7 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
         }
     );
 
-    // ── rulebook_gate (v7.4 Jev entry gate) ──────────────────────────────
+    // ── rulebook_gate (v7.4 Jev gate; v7.5: on demand, no "call first") ──
     // Advisory: failure is a state (`available:false`), never an error. The
     // gate's own 8.5 s deadline finishes inside the server's 10 s guard.
     server.registerTool(
@@ -717,12 +774,19 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
         {
             title: 'Rulebook Gate',
             description:
-                'Call FIRST with every operator prompt. Jev decides kind, task, model, agent, ' +
-                'skill, parallelism, risk. Act on routing; unavailable/undecided → CLAUDE.md rules.',
+                'On demand: Jev routing for an operator prompt (kind, task, model, agent, ' +
+                'skill, parallelism, risk). Advisory; unavailable/undecided → CLAUDE.md rules.',
             inputSchema: {
                 prompt: z.string().describe('operator prompt verbatim'),
                 notes: z.string().optional().describe('what you want decided'),
                 projectId: projectIdSchema,
+            },
+            // sends the prompt to TypeSafe (external) and appends to a local ledger
+            annotations: {
+                readOnlyHint: false,
+                destructiveHint: false,
+                idempotentHint: false,
+                openWorldHint: true,
             },
         },
         async (args) => {
@@ -731,19 +795,16 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 const { existsSync } = await import('fs');
                 const { join } = await import('path');
                 const { runGate } = await import('../../core/typesafe/gate.js');
-                // ConfigManager.loadConfig() writes a default rulebook.json and
-                // the file task backend creates tasks/ + archive/ when missing;
-                // the gate must create nothing in a project without them.
+                // ConfigManager.loadConfig() writes a default rulebook.json when
+                // missing; the gate must create nothing in a project without one.
+                // Tasks come from the gate's own read-only, metadata-only listing.
                 const hasConfig = existsSync(join(root, '.rulebook', 'rulebook.json'));
-                const hasRulebookDir = existsSync(join(root, '.rulebook'));
                 const result = await runGate({
                     projectRoot: root,
                     prompt: args.prompt,
                     notes: args.notes,
                     loadConfig: async () =>
                         hasConfig ? (await getConfigMgr(args.projectId)).loadConfig() : null,
-                    listTasks: async () =>
-                        hasRulebookDir ? (await getTaskMgr(args.projectId)).listTasks(false) : [],
                     source: 'mcp',
                 });
                 return ok({ ...result });
@@ -764,6 +825,8 @@ export function registerV7Tools(server: McpServer, ctx: ToolContext): void {
                 action: z.enum(['list', 'status', 'tasks']),
                 status: z.enum(['pending', 'in-progress', 'completed', 'blocked']).optional(),
             },
+            // reads workspace state only
+            annotations: { readOnlyHint: true, openWorldHint: false },
         },
         async (args) => {
             try {

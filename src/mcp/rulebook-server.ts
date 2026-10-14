@@ -300,7 +300,8 @@ export async function startRulebookMcpServer(): Promise<void> {
         configManager = new ConfigManager(projectRoot);
     }
 
-    // --- PID file lock: prevent multiple instances for the same project ---
+    // --- PID file: informational record of this instance (one per session).
+    // It enforces nothing; any number of instances may run per project. ---
     const pidFilePath = acquirePidLock(projectRoot);
 
     // --- Manager Resolution Helpers (workspace-aware) ---
@@ -369,7 +370,7 @@ export async function startRulebookMcpServer(): Promise<void> {
 
     registerV7Tools(server, ctx);
 
-    // Release the PID lock on shutdown so a restart can re-acquire it.
+    // Remove this instance's PID file on shutdown.
     const releaseLock = () => releasePidLock(pidFilePath);
     process.on('SIGINT', () => {
         releaseLock();
@@ -383,6 +384,13 @@ export async function startRulebookMcpServer(): Promise<void> {
 
     const transport = new StdioServerTransport();
     await server.connect(transport);
+
+    // The client closing our stdin ends the session. Exit explicitly instead
+    // of waiting for an empty event loop: any timer, socket or watcher would
+    // otherwise keep the server alive after its client is gone (F-016).
+    const exitOnStdinClose = () => process.exit(0);
+    process.stdin.once('end', exitOnStdinClose);
+    process.stdin.once('close', exitOnStdinClose);
 }
 
 // If running directly, start the server

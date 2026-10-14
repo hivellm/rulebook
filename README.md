@@ -13,9 +13,10 @@
 
 **v7 — built to assist frontier models, never to anchor them.** ~3.4k tokens of
 session overhead (was ~15k in v6, −77%), 6 consolidated MCP tools, one
-path-only guard hook, zero permission prompts for routine work, and (v7.4) an
-orchestrator main session that delegates every task to a model-routed subagent,
-routed by the TypeSafe (Jev) entry gate on every prompt.
+path-only guard hook, zero permission prompts for routine work, and (v7.5) a
+main session that does small work itself and delegates the rest to model-routed
+subagents, with the TypeSafe (Jev) entry gate on demand (its per-prompt hook is
+opt-in).
 Measured, budgeted in CI, and documented in
 [`docs/analysis/v7-performance/`](docs/analysis/v7-performance/README.md).
 Upgrading from v6? See the
@@ -58,7 +59,7 @@ AI coding agents produce inconsistent, error-prone code without clear guidelines
 | **Universal rules** | `AGENTS.md` + `CLAUDE.md` generated from one source — read natively by any AGENTS.md-aware agent |
 | **Quality gates** | Pre-commit (lint, type-check, format) + pre-push (build, tests) hooks — language-aware, cross-platform |
 | **Spec-driven tasks** | OpenSpec-compatible tasks with a docs + tests tail — check it or archive with a one-line waiver |
-| **6 MCP tools** | `rulebook_task` / `_memory` / `_session` / `_skill` / `_rules` / `_gate` (+ `_workspace` in workspace mode) — action-parameterized, ~4.9 KB of schemas total |
+| **6 MCP tools** | `rulebook_task` / `_memory` / `_session` / `_skill` / `_rules` / `_gate` (+ `_workspace` in workspace mode) — action-parameterized, ~5.5 KB of schemas total |
 | **Lean by design** | One path-only guard hook, full-autonomy permissions, no content regexes, no ceremony for small fixes |
 | **28 languages** | Auto-detected with confidence scores; language-specific templates and CI/CD workflows |
 
@@ -66,15 +67,32 @@ AI coding agents produce inconsistent, error-prone code without clear guidelines
 
 ## Core Features
 
-### Orchestrator main session (v7.4)
+### Orchestration by judgment (v7.5)
 
-The generated rules make the main session plan, delegate and monitor — it
-never does the work itself. Each task goes to one subagent (independent ones in
-parallel), and every agent call names its model: **Fable 5.1** for
-architecture, hard bugs and review; **Opus 5.5** for edits, tests, docs and
-refactors; **Haiku 4.5** for research and summaries. The TypeSafe (Jev)
-[entry gate](#typesafe-jev-integration--on-by-default) routes each prompt
-first. Details: [Multi-Agent Workflows](#multi-agent-workflows).
+By default (`"orchestration": "judgment"`) the main session does small, local
+work itself — files already in context, about 3 or fewer to change — and
+delegates when it pays: independent parts with disjoint files (in parallel),
+broad exploration, long work, or a main context past ~150k tokens. Delegation
+buys context protection and parallelism, not speed. Every agent call names its
+model: **Fable 5.1** for architecture, hard bugs and review; **Opus 5.5** for
+edits, tests and docs; **Haiku 4.5** for research. The v7.4 protocol, where the
+main session delegates every task, stays available as an opt-in
+(`"orchestration": "orchestrator"`). Details:
+[Multi-Agent Workflows](#multi-agent-workflows).
+
+### Codex
+
+Codex reads `AGENTS.override.md` *instead of* `AGENTS.md` when both exist in a
+folder, so `init`/`update` keep a small rulebook block (~300 tokens) at the top
+of `AGENTS.override.md`, between `RULEBOOK-CODEX:START/END` markers; your own
+rules below it are never touched. The block is one HTML comment: Codex reads the
+file raw and sees it, while Claude Code, which imports the override from
+`CLAUDE.md`, strips HTML comments and so doesn't load the same rules twice.
+Rulebook's `.claude/hooks` guards do not run in Codex:
+Codex runs project hooks only after you trust them, and its tools are named
+differently (`exec_command`, `apply_patch`, … rather than `Bash`, `Edit`,
+`Write`), so a hook matcher written for Claude never fires there. Check what
+Codex loads with `codex debug prompt-input "x"`.
 
 ### Modular rules
 
@@ -95,7 +113,7 @@ CLAUDE.md (thin, ~100 lines)
 Spec-driven development in an OpenSpec-compatible format — phase-prefixed task IDs, a mandatory tail (docs + tests + verify), and automatic archival.
 
 ```bash
-rulebook task create phase1_add-auth    # Create task with structure
+rulebook task create phase1_add-auth --why "<why, 20+ chars>" --what "<what>" --item "<step>"   # Create a complete task
 rulebook task list                       # See pending work
 rulebook task validate phase1_add-auth   # Check format
 rulebook task archive phase1_add-auth    # Archive when done
@@ -186,13 +204,28 @@ harness on demand. Promotion never overwrites an existing skill.
 
 A single `PreToolUse` hook blocks forbidden patterns at the tool level — before edits reach disk: `deferred`/`skip`/`later`/`TODO` in tasks.md, stubs/placeholders/`HACK`/`FIXME` in source, and manual task-file creation in `.rulebook/tasks/`. Cross-platform (Node.js, no `jq` dependency), and short-circuits in pure bash so a normal edit costs ~one process spawn.
 
-A second guard, `no-os-scheduling`, enforces Tier 1 prohibition #7: scheduling
-lives in the application, never in the OS. It denies `Bash` commands that
-create or install OS schedules (`crontab -e`, `at`, `systemctl enable … .timer`,
-`launchctl load`, `schtasks /create`, `Register-ScheduledTask`) and
-`Edit`/`Write` targets under scheduler directories (`/etc/cron*`,
-`LaunchAgents/`, `*.timer`). Reads like `crontab -l` or `systemctl status`
-pass; a keyword prefilter keeps everything else on the fast path.
+Tier 1 prohibition #7 — scheduling lives in the application, never in the OS —
+is enforced by `permissions.deny` rules in `.claude/settings.json` (since 7.5),
+which Claude Code checks in-process, so ordinary calls spawn nothing: `Bash`
+(`crontab`, `at`, `batch`, `systemctl … .timer`, `systemd-run --on-…`,
+`launchctl load|bootstrap|enable|submit|kickstart`, `schtasks`), `PowerShell`
+(`Register-/New-/Set-/Enable-ScheduledTask`, `Register-ScheduledJob`,
+`schtasks`) and `Edit` path rules for scheduler files (`/etc/cron*`,
+`/var/spool/cron`, `LaunchAgents/*.plist`, systemd `*.timer`), which Claude Code
+also applies to `Write`, `>` redirects and `tee`. Rules match each subcommand
+from its start, so prose never trips them; they also block read-only forms
+(`crontab -l`, `schtasks /query`) and do not see `sudo …`, `sh -c '…'` or
+`cp` into a scheduler directory. The `no-os-scheduling.sh` script, which covers
+those forms, is installed only with the opt-in tool gate, which runs it first.
+
+The task-scaffolding guard only spawns for files under `.rulebook/tasks/`
+(hook `if` rules), and neither guard approves anything: a passing call prints
+no decision. Until 7.4 both answered `allow`, which auto-approved Bash, Edit
+and Write; that is now explicit — `permissions.autoApprove` in
+`.rulebook/rulebook.json` (default `true`) writes `Bash(*)`, `Edit(*)` and
+`Write(*)` allow rules (deny rules still win). `rulebook update` asks once,
+interactively, when the field is absent; `--yes` keeps `true`. Set it to
+`false` to get Claude Code's permission prompts back.
 
 ### Multi-project workspace
 
@@ -210,10 +243,26 @@ Auto-discovers from `pnpm-workspace.yaml`, `turbo.json`, `nx.json`, `lerna.json`
 
 ## Multi-Agent Workflows
 
-**Orchestrator model (v7.4).** The generated rules make the main session an
-orchestrator: it never does the work itself. It plans, then delegates each task
-to one subagent — independent ones in parallel — and reads their reports, not
-the files. Every agent call names its model:
+**Orchestration mode (v7.5).** `orchestration` in `.rulebook/rulebook.json`
+picks the generated text for `CLAUDE.md`, `AGENTS.md` and
+`.rulebook/specs/orchestration.md`; `rulebook update` re-renders it. If you
+edited the `## Orchestration` section inside the generated `CLAUDE.md` block,
+`update` keeps your text and says so.
+
+- `judgment` (default) — the main session does small, local work itself and
+  delegates independent parts, broad exploration, long work, or work in a main
+  context past ~150k tokens. A subagent starts cold (~20–40k tokens), so briefs
+  are complete and hand-backs are short: outcome, files changed, checks run,
+  open risks. One progress line follows each dispatch and each hand-back.
+- `orchestrator` (opt-in, the v7.4 behaviour) — the main session never does the
+  work itself. It plans, then delegates each task to one subagent —
+  independent ones in parallel — and reads their reports, not the files. Its
+  own edits are the close-out: CHANGELOG and commits.
+
+Close-out is the same in both modes: CHANGELOG per PR or release, one full diff
+review per PR (`review-fanout`), task archive only for tracked multi-session
+tasks, targeted tests per subagent and the full gate before a commit batch and
+before push. Every agent call names its model:
 
 | Model | Use for |
 |-------|---------|
@@ -221,10 +270,10 @@ the files. Every agent call names its model:
 | **Opus 5.5** | Edits, tests, documentation, refactoring (simple work never goes to Fable) |
 | **Haiku 4.5** | Research, summaries |
 
-Each subagent owns one rulebook task: it checks items off as it goes and drives
-the task through the quality gate to archive. The main session monitors the
-agents, pauses or restarts one that stalls or drifts, reviews each archived
-task, and updates the CHANGELOG. Full protocol: `.rulebook/specs/orchestration.md`.
+A subagent given a tracked rulebook task owns it: it checks items off as it goes
+and drives the task through the quality gate to archive. The main session
+monitors the agents and pauses or restarts one that stalls or drifts. Full
+protocol: `.rulebook/specs/orchestration.md`.
 
 Orchestrated [Claude Code Workflow](https://code.claude.com/docs/en/workflows) scripts are **opt-in** (agents and workflows no longer install by default — native harness agents cover the roles). When installed into `.claude/workflows/`, each fans work across bundled agents with the same routing — `haiku` for research, `opus` for implementation, tests, and docs, `fable` for design and review gates.
 
@@ -261,12 +310,13 @@ It installs the MCP server entry and the Rulebook-specific skills, then layers t
 
 | Applied | Detail |
 |---------|--------|
-| Hooks | Path-only `PreToolUse` guards (task scaffolding, `no-os-scheduling`); with TypeSafe on, the fail-open Jev prompt hook on `UserPromptSubmit` (and the opt-in tool-call gate) — nothing on Stop/SessionStart, no content regexes |
-| Full-autonomy permissions | `defaultMode: acceptEdits` + broad allow list (Bash/Edit/Write/Agent/WebFetch/…) — ~0 permission prompts for routine work |
+| Hooks | Path-only `PreToolUse` task-scaffolding guard, spawned only for `.rulebook/tasks/**` (hook `if` rules); with TypeSafe on, the opt-in, fail-open Jev prompt hook on `UserPromptSubmit` and tool-call gate on `PreToolUse` — nothing on Stop/SessionStart, no content regexes |
+| Full-autonomy permissions | `defaultMode: acceptEdits` + broad allow list (Read/Agent/WebFetch/…, plus Bash/Edit/Write while `permissions.autoApprove` is `true`) — ~0 permission prompts for routine work |
+| Deny rules | OS-level scheduling (Tier 1 #7) as `permissions.deny` — `Bash`, `PowerShell` and `Edit` path rules |
 | `statusLine` | project dir + git branch + context meter (`ctx NN%`) |
 | `model` | cost-aware default (`opus`) |
 
-All settings are **additive and non-clobbering** — existing `permissions.allow`, a user-authored `statusLine`, and an explicit `model` are preserved. Requires Claude Code installed (`~/.claude`); otherwise it no-ops with a notice.
+All settings are **additive and non-clobbering** — existing `permissions.allow`/`deny` entries, a user-authored `statusLine`, and an explicit `model` are preserved; rulebook only ever removes its own exact rule strings (when `permissions.autoApprove` is turned off). Requires Claude Code installed (`~/.claude`); otherwise it no-ops with a notice.
 
 ---
 
@@ -305,11 +355,12 @@ tool call through unchanged. Full reference:
   (CLI) sends the prompt and a short project description to Jev and returns a
   `routing`: request kind, task, model, subagent type, skill, and risk flags.
   Advisory, never blocking; `rulebook gate --check` tests the key.
-- **Prompt hook** (`UserPromptSubmit`, on by default) — runs the gate on every
-  prompt and hands the routing to the model as context. It blocks only a
-  high-confidence OS-scheduling request (`gate.promptHook.blockThreshold`,
-  default 0.9); destructive git and secrets only warn. Turn it off with
-  `"gate": {"promptHook": {"enabled": false}}` and `rulebook update`.
+- **Prompt hook** (`UserPromptSubmit`, opt-in since v7.5) — runs the gate on
+  every typed prompt (agent notifications are skipped) and hands the routing
+  to the model as context. It blocks only a high-confidence OS-scheduling
+  request (`gate.promptHook.blockThreshold`, default 0.9); destructive git and
+  secrets only warn. Turn it on with `"gate": {"promptHook": {"enabled": true}}`
+  and `rulebook update`.
 - **Project scope** (`gate.scope`) — the gate also asks whether the prompt
   belongs to this project (description from `gate.scope.description`,
   `package.json`, or this README). When it looks off-topic
@@ -327,7 +378,11 @@ MCP tools over stdio transport. Zero configuration after `rulebook mcp init`.
 
 ```bash
 rulebook mcp init    # One-time setup — configures .mcp.json automatically
+rulebook mcp init --fast   # Optional: machine-local `node` entry, 1 process, ~0.1–0.3 s start
 ```
+
+The `.mcp.json` entry pins the installed version (`rulebook update` moves it).
+See [MCP Server Setup](docs/guides/MCP_SERVER_SETUP.md) for the fast path.
 
 | Tool | Actions |
 |------|---------|
@@ -353,12 +408,13 @@ rulebook init --minimal          # Essentials only
 rulebook init --lean             # AGENTS.md as a <3KB index
 rulebook update                  # Update to the latest rules
 rulebook doctor                  # Health checks (file sizes, broken imports, stale state)
+rulebook doctor --perf           # Read-only cost report: hooks (p50/p90), CLI, MCP, leftovers, Codex (--json, --days N)
 rulebook claude                  # Apply the recommended Claude Code setup
 rulebook gate "<prompt>"         # Jev routing for a prompt (--json for the full result)
 rulebook gate --check            # Key found? One cheap live call (--strict exits 2 if unavailable)
 
 # Tasks
-rulebook task create <task-id>   # Create (phase-prefixed: phase1_add-auth)
+rulebook task create <task-id> --why .. --what .. --item ..   # Create a complete task (or --from <file.json>)
 rulebook task list               # List active tasks
 rulebook task archive <task-id>  # Archive a completed task
 rulebook task ask <task-id> -q "<question>" -o "<A — trade-off>" -r "<A>"   # File a decision request (task → blocked)
@@ -397,6 +453,7 @@ All config lives in `.rulebook/rulebook.json`:
 {
   "version": "6.0.0",
   "mode": "full",
+  "orchestration": "judgment",
   "features": {
     "gitHooks": true,
     "templates": true,
@@ -406,12 +463,24 @@ All config lives in `.rulebook/rulebook.json`:
 }
 ```
 
+`orchestration` is `"judgment"` (default) or `"orchestrator"` — see
+[Multi-Agent Workflows](#multi-agent-workflows); run `rulebook update` after
+changing it.
+
+`rulebook update` re-detects the project and saves the result: `languages`
+and `modules` follow what is detected now, and newly detected skills are
+added to `skills.enabled`. A skill listed in `skills.disabled` stays off, and
+a custom `rulebookDir` is kept. It backs up `CLAUDE.md` to `.rulebook/backup/`
+only when the text outside the generated block changed since rulebook last
+wrote it, or when a legacy `CLAUDE.md` without the block is migrated; a
+refresh of the block alone leaves no backup.
+
 **Key files generated by Rulebook:**
 
 | File | Purpose |
 |------|---------|
 | `AGENTS.md` | Team-shared, tool-agnostic AI rules (regenerated on update) |
-| `AGENTS.override.md` | Your project overrides (survives updates) |
+| `AGENTS.override.md` | Your project overrides (survive updates), below rulebook's small Codex block |
 | `CLAUDE.md` | Claude Code entry point with `@imports` |
 | `.claude/rules/` | Path-scoped rules (language-specific + always-on) |
 | `.claude/settings.json` | The quality-enforcement hook + permissions for Claude Code |

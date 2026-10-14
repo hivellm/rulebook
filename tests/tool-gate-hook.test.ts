@@ -663,8 +663,16 @@ describe.skipIf(!hasBash())('jev-gate.sh fail-open (wrapper)', () => {
         await fs.chmod(file, 0o755);
     }
 
-    function runWrapper(arg: string, extraPath?: string) {
-        const env: NodeJS.ProcessEnv = { ...process.env, CLAUDE_PROJECT_DIR: root };
+    function runWrapper(
+        arg: string,
+        extraPath?: string,
+        payload: Record<string, unknown> = { session_id: 'sess-1' },
+        projectDir: string | undefined = root
+    ) {
+        // Session markers go to the test's own temp dir.
+        const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root.replace(/\\/g, '/') };
+        if (projectDir === undefined) delete env.CLAUDE_PROJECT_DIR;
+        else env.CLAUDE_PROJECT_DIR = projectDir;
         const pathKey = Object.keys(env).find((k) => k.toUpperCase() === 'PATH') ?? 'PATH';
         const entries = (env[pathKey] ?? '')
             .split(path.delimiter)
@@ -677,28 +685,52 @@ describe.skipIf(!hasBash())('jev-gate.sh fail-open (wrapper)', () => {
             );
         env[pathKey] = [extraPath, ...entries].filter(Boolean).join(path.delimiter);
         return spawnSync('bash', [WRAPPER, arg], {
-            input: JSON.stringify({ prompt: 'hello', tool_name: 'Bash', tool_input: {} }),
+            input: JSON.stringify({
+                prompt: 'hello',
+                tool_name: 'Bash',
+                tool_input: {},
+                ...payload,
+            }),
             encoding: 'utf-8',
             env,
         });
     }
 
-    it('prompt with no CLI → exit 0, no output', () => {
-        const r = runWrapper('prompt');
-        expect(r.status).toBe(0);
-        expect(r.stdout).toBe('');
+    const warning = (stdout: string) => JSON.parse(stdout.trim()).systemMessage as string;
+
+    it('no CLI → exit 0 and one systemMessage per session, never per prompt', () => {
+        const first = runWrapper('prompt');
+        expect(first.status).toBe(0);
+        expect(warning(first.stdout)).toMatch(/rulebook CLI was not found.*off for this session/);
+        const again = runWrapper('prompt');
+        expect(again.status).toBe(0);
+        expect(again.stdout).toBe('');
+        const otherSession = runWrapper('tool', undefined, { session_id: 'sess-2' });
+        expect(warning(otherSession.stdout)).toMatch(/not found/);
     });
 
-    it('a CLI that fails with a stack trace → exit 0, no output', async () => {
+    it('a CLI that fails with a stack trace → exit 0, one systemMessage, no stack', async () => {
         await fakeCli(
             path.join(root, 'bin', 'rulebook'),
             "echo 'Error: Cannot find module x (MODULE_NOT_FOUND)' >&2\nexit 1"
         );
-        for (const arg of ['prompt', 'tool']) {
-            const r = runWrapper(arg, path.join(root, 'bin'));
-            expect(r.status).toBe(0);
-            expect(r.stdout).toBe('');
-        }
+        const r = runWrapper('prompt', path.join(root, 'bin'));
+        expect(r.status).toBe(0);
+        expect(warning(r.stdout)).toMatch(/rulebook CLI failed to run/);
+        expect(r.stdout).not.toContain('MODULE_NOT_FOUND');
+        const again = runWrapper('tool', path.join(root, 'bin'));
+        expect(again.status).toBe(0);
+        expect(again.stdout).toBe('');
+    });
+
+    it('without CLAUDE_PROJECT_DIR (Codex) the project comes from the payload cwd', async () => {
+        await fakeCli(
+            path.join(root, 'node_modules', '.bin', 'rulebook'),
+            'echo "{\\"from\\":\\"local\\",\\"args\\":\\"$*\\"}"'
+        );
+        const r = runWrapper('prompt', undefined, { session_id: 's', cwd: root }, undefined);
+        expect(r.status).toBe(0);
+        expect(JSON.parse(r.stdout.trim())).toEqual({ from: 'local', args: 'hook prompt-gate' });
     });
 
     it('the project node_modules/.bin CLI wins over one on PATH', async () => {
@@ -740,7 +772,8 @@ describe.skipIf(!hasBash())('jev-gate.sh fail-open (wrapper)', () => {
         const nodeBin = await rulebookRepo('some-other-app');
         const r = runWrapper('prompt', nodeBin);
         expect(r.status).toBe(0);
-        expect(r.stdout).toBe('');
+        expect(r.stdout).not.toContain('dist');
+        expect(warning(r.stdout)).toMatch(/rulebook CLI was not found/);
     });
 
     it('node_modules/.bin still wins over the rulebook repo dist', async () => {

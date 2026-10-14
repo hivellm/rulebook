@@ -5,6 +5,12 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { DecisionManager } from '../tasks/decision-manager.js';
 import { KnowledgeManager } from '../tasks/knowledge-manager.js';
+import {
+    applyOrchestrationMode,
+    DEFAULT_ORCHESTRATION_MODE,
+    readOrchestrationMode,
+    type OrchestrationMode,
+} from './orchestration-mode.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,13 +24,17 @@ export function getTemplatesDir(): string {
 }
 
 // Helper to read core template files (v7 naming: lowercase kebab-case, e.g.
-// templates/core/rulebook.md, quality.md, prohibitions.md)
-export async function generateCoreRules(name: string): Promise<string> {
+// templates/core/rulebook.md, quality.md, prohibitions.md). Templates with
+// orchestration-mode variants (orchestration.md) render the requested mode.
+export async function generateCoreRules(
+    name: string,
+    orchestration: OrchestrationMode = DEFAULT_ORCHESTRATION_MODE
+): Promise<string> {
     const templatesDir = path.join(getTemplatesDir(), 'core');
     const templatePath = path.join(templatesDir, `${name.toLowerCase().replace(/_/g, '-')}.md`);
 
     if (await fileExists(templatePath)) {
-        return await readFile(templatePath);
+        return applyOrchestrationMode(await readFile(templatePath), orchestration);
     }
 
     return `<!-- ${name.toUpperCase()}:START -->\n# ${name.charAt(0).toUpperCase() + name.slice(1)} Rules\n\nCore rules for ${name}.\n<!-- ${name.toUpperCase()}:END -->\n`;
@@ -634,6 +644,9 @@ async function loadProjectConfigFromRulebook(
             modules: rulebookConfig.modules || [],
             modular: rulebookConfig.modular !== false, // Default to true
             rulebookDir: rulebookConfig.rulebookDir || '.rulebook',
+            ...(rulebookConfig.orchestration
+                ? { orchestration: rulebookConfig.orchestration }
+                : {}),
         };
 
         return projectConfig;
@@ -763,6 +776,33 @@ export function generateDelegationSection(config: ProjectConfig): string {
     return lines.join('\n');
 }
 
+/** Proper names for detected language ids, used in agent text. */
+const LANGUAGE_DISPLAY_NAMES: Record<string, string> = {
+    typescript: 'TypeScript',
+    javascript: 'JavaScript',
+    python: 'Python',
+    rust: 'Rust',
+    go: 'Go',
+    java: 'Java',
+    csharp: 'C#',
+    cpp: 'C++',
+    c: 'C',
+    ruby: 'Ruby',
+    php: 'PHP',
+    swift: 'Swift',
+    kotlin: 'Kotlin',
+    dart: 'Dart',
+    elixir: 'Elixir',
+    scala: 'Scala',
+    erlang: 'Erlang',
+    haskell: 'Haskell',
+    julia: 'Julia',
+    lua: 'Lua',
+    r: 'R',
+    solidity: 'Solidity',
+    zig: 'Zig',
+};
+
 /**
  * Resolve placeholder values from project config.
  */
@@ -811,7 +851,9 @@ export function resolveAgentPlaceholders(
     const langKey = primaryLang.toLowerCase();
 
     return {
-        '{{language}}': primaryLang,
+        // Detection yields lowercase ids ("typescript"); agents read better
+        // with the language's proper name ("TypeScript").
+        '{{language}}': LANGUAGE_DISPLAY_NAMES[langKey] ?? primaryLang,
         '{{framework}}': 'none',
         '{{test_framework}}': testFrameworkMap[langKey] || 'the project test framework',
         '{{file_naming}}': fileNamingMap[langKey] || 'kebab-case',
@@ -895,6 +937,7 @@ export async function generateModularAgents(
         modular: savedConfig.modular !== undefined ? savedConfig.modular : config.modular !== false,
         // rulebookDir: provided config takes precedence if explicitly set, otherwise use saved or default
         rulebookDir: config.rulebookDir || savedConfig.rulebookDir || '.rulebook',
+        orchestration: config.orchestration ?? savedConfig.orchestration,
     };
 
     const rulebookDir = mergedConfig.rulebookDir || '.rulebook';
@@ -921,8 +964,12 @@ export async function generateModularAgents(
     }
 
     // v7.4: orchestration protocol + model routing (always included — CLAUDE.md
-    // and the lean AGENTS.md point here for the full rules).
-    const orchestrationContent = await generateCoreRules('orchestration');
+    // and the lean AGENTS.md point here for the full rules). v7.5: rendered for
+    // the project's orchestration mode (judgment by default).
+    const orchestrationContent = await generateCoreRules(
+        'orchestration',
+        mergedConfig.orchestration ?? (await readOrchestrationMode(projectRoot, rulebookDir))
+    );
     await writeModularFile(projectRoot, 'ORCHESTRATION', orchestrationContent.trim(), rulebookDir);
 
     // v7: TOKEN_OPTIMIZATION is retired (F-010) — verbosity is the harness's job.
@@ -1167,6 +1214,11 @@ export async function generateLeanAgents(
         })
         .join('\n');
     template = template.replace('LANGUAGE_REFS', langRefs || '_None configured_');
+
+    template = applyOrchestrationMode(
+        template,
+        config.orchestration ?? (await readOrchestrationMode(projectRoot, rulebookDir))
+    );
 
     // Git workflow spec is opt-out: drop its index line when explicitly disabled.
     if (config.includeGitWorkflow === false) {

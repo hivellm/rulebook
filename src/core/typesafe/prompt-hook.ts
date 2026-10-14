@@ -39,7 +39,7 @@ export interface ScopeConfig {
 }
 
 export const PROMPT_HOOK_DEFAULTS = {
-    deadlineMs: 5_000,
+    deadlineMs: 1_500,
     blockThreshold: 0.9,
     offTopicBelow: 0.15,
     onOffTopic: 'ask',
@@ -58,7 +58,29 @@ export const PROMPT_HOOK_HEADER =
     'Jev routing (rulebook prompt hook) — do not call rulebook_gate again for this prompt';
 
 /** Extra seconds between the hook's own deadline and Claude Code's `timeout` (CLI start-up). */
-const TIMEOUT_MARGIN_SEC = 3;
+const TIMEOUT_MARGIN_SEC = 1;
+
+/**
+ * Leading tags of inputs no person typed, seen in real UserPromptSubmit
+ * payloads: background agent and task notifications, agent and
+ * cross-session messages, local command output.
+ */
+const MACHINE_INPUT =
+    /^<(task-notification|agent-message|cross-session-message|local-command-(?:stdout|stderr|caveat))[\s>]/;
+
+/** Blocks the IDE and the harness add around a typed prompt; never part of the request. */
+const CONTEXT_BLOCK =
+    /<(ide_opened_file|ide_selection|system-reminder|browser_instruction)\b[^>]*>[\s\S]*?<\/\1>/g;
+
+/**
+ * The text the gate should classify: the prompt without IDE and system
+ * blocks, or null when nothing is left or the input is machine-generated —
+ * then the hook answers nothing and makes no Jev call.
+ */
+export function classifiablePrompt(prompt: string): string | null {
+    const text = prompt.replace(CONTEXT_BLOCK, '').trim();
+    return text && !MACHINE_INPUT.test(text) ? text : null;
+}
 
 function clamp(value: unknown, fallback: number, range: { min: number; max: number }): number {
     const n = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -66,16 +88,17 @@ function clamp(value: unknown, fallback: number, range: { min: number; max: numb
 }
 
 /**
- * `gate.promptHook` with defaults applied and values clamped. The hook is on
- * unless it is turned off explicitly, and always off when the operator opted
- * out of TypeSafe (`integrations.typesafe.enabled: false`).
+ * `gate.promptHook` with defaults applied and values clamped. Opt-in since
+ * v7.5: the hook is on only when `enabled` is explicitly true (the
+ * `rulebook_gate` tool stays available on demand), and always off when the
+ * operator opted out of TypeSafe (`integrations.typesafe.enabled: false`).
  */
 export function resolvePromptHookConfig(
     config: Partial<RulebookConfig> | null | undefined
 ): PromptHookConfig {
     const raw = config?.gate?.promptHook ?? {};
     return {
-        enabled: config?.integrations?.typesafe?.enabled !== false && raw.enabled !== false,
+        enabled: config?.integrations?.typesafe?.enabled !== false && raw.enabled === true,
         deadlineMs: Math.round(
             clamp(raw.deadlineMs, PROMPT_HOOK_DEFAULTS.deadlineMs, PROMPT_HOOK_LIMITS.deadlineMs)
         ),
@@ -183,7 +206,7 @@ function quoteProject(description: string): string {
  * (`in_project_scope` ≤ `offTopicBelow`) blocks under `onOffTopic: "block"`
  * or gets a leading confirm line under `ask`, and a borderline one (up to
  * 0.3) a warning line; otherwise the routing as `context`; `none` when the
- * gate was unavailable.
+ * gate was unavailable, or when it rendered no routing and raised no warning.
  */
 export function promptHookAnswer(
     result: GateResult,
@@ -209,6 +232,8 @@ export function promptHookAnswer(
     const warnings = warningLines(result);
     const offTopic = scope ? offTopicProbability(result) : null;
     if (!scope || offTopic === null) {
+        // An empty instruction: too much was undecided to route (renderInstruction).
+        if (!result.instruction && warnings.length === 0) return { kind: 'none' };
         return { kind: 'context', additionalContext: buildContext(result.instruction, warnings) };
     }
 

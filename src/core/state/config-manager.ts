@@ -5,6 +5,10 @@ import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
 import { cp, rm, mkdir } from 'fs/promises';
 import type { RulebookConfig } from '../../types.js';
+import {
+    DEFAULT_ORCHESTRATION_MODE,
+    normalizeOrchestrationMode,
+} from '../generators/orchestration-mode.js';
 
 const readFileAsync = promisify(readFile);
 const writeFileAsync = promisify(writeFile);
@@ -29,6 +33,8 @@ export const RULEBOOK_GITIGNORE_BLOCK = [
     '!/.rulebook/knowledge/',
     '!/.rulebook/learnings/',
     '!/.rulebook/rulebook.json',
+    // Claude Code creates agent worktrees here (full repo copies): never commit or scan them.
+    '/.claude/worktrees/',
 ];
 
 /**
@@ -213,6 +219,7 @@ export class ConfigManager {
                 testRun: 120000, // 2 minutes
             },
             agentsMode: 'lean',
+            orchestration: DEFAULT_ORCHESTRATION_MODE,
             monorepo: {
                 detected: false,
                 tool: null,
@@ -255,6 +262,10 @@ export class ConfigManager {
         if (!migrated.mode) {
             migrated.mode = 'full';
         }
+
+        // v7.5: orchestration mode. Absent (every config written before 7.5) or
+        // unknown → 'judgment'; an explicit 'orchestrator' is kept.
+        migrated.orchestration = normalizeOrchestrationMode(migrated.orchestration);
 
         // Add missing top-level properties
         if (!migrated.outputLanguage) {
@@ -615,5 +626,6 @@ export function getDefaultConfig(): RulebookConfig {
             cliResponse: 60000,
             testRun: 120000,
         },
+        orchestration: DEFAULT_ORCHESTRATION_MODE,
     };
 }

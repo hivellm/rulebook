@@ -37,13 +37,8 @@ Worktrees live outside the repo tree and come out via `git worktree remove` —
 never `rm -rf` a worktree, never delete or move a `.git`.
 
 ## Orchestration
-Gate first: act on Jev `routing` from the prompt hook, else from
-`rulebook_gate {prompt}`; unavailable or undecided → these rules. Main session never does the work itself — delegate each task to one subagent, model set
-per call: Fable 5.1 architecture, hard bugs, review; Opus 5.5 edits, tests, docs,
-refactors (never Fable for simple work); Haiku 4.5 research, summaries. Plan first;
-parallelize independent agents; read reports, not files. Subagents archive their task.
-Monitor; pause/restart stalled agents; review, then update CHANGELOG.
-See `.rulebook/specs/orchestration.md`.
+Do small, local work yourself (files in context, ~3 or fewer to change). Delegate 2+ independent parts with disjoint files (in parallel), broad exploration, long work, or past ~150k context — for context and parallelism, not speed; a spawn costs ~20–40k tokens. Brief fully (files, decisions); ask back outcome, files changed, checks run, open risks. Prefer narrow agents to general-purpose; one progress line per dispatch and hand-back. Model per call: Fable 5.1 architecture, hard bugs, review; Opus 5.5 edits, tests, docs; Haiku 4.5 research.
+CHANGELOG per PR/release, not per task. See `.rulebook/specs/orchestration.md`.
 
 ## Rulebook (on demand — no ceremony for small fixes)
 - Multi-session or multi-phase work: track via the `rulebook` MCP (`rulebook_task`).

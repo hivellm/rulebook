@@ -377,6 +377,13 @@ export async function initCommand(options: {
                 if (result.backupPath) {
                     console.log(chalk.gray(`  - backup: ${path.relative(cwd, result.backupPath)}`));
                 }
+                if (result.keptOrchestration) {
+                    console.log(
+                        chalk.yellow(
+                            '  ! Kept your edited "## Orchestration" section in CLAUDE.md (not regenerated).'
+                        )
+                    );
+                }
                 if (result.mode === 'migrate' && result.overridePath) {
                     console.log(
                         chalk.yellow(
@@ -404,20 +411,10 @@ export async function initCommand(options: {
                 const { ensureGitignoreEntries } = await import('../../utils/gitignore.js');
                 const localMdPath = path.join(cwd, 'CLAUDE.local.md');
                 if (!existsSync(localMdPath)) {
-                    const stub = [
-                        '# CLAUDE.local.md',
-                        '',
-                        '<!-- Personal per-project overrides. Not committed to version control. -->',
-                        '<!-- Loaded alongside CLAUDE.md with the same priority. -->',
-                        '',
-                        '# Add your personal preferences below. Examples:',
-                        '# - Preferred test data or sandbox URLs',
-                        '# - Personal tooling shortcuts',
-                        '# - Debugging tips specific to your machine',
-                        '',
-                    ].join('\n');
+                    const { CLAUDE_LOCAL_MD_STUB } =
+                        await import('../../core/claude/claude-md-generator.js');
                     const { writeFile: wf } = await import('../../utils/file-system.js');
-                    await wf(localMdPath, stub);
+                    await wf(localMdPath, CLAUDE_LOCAL_MD_STUB);
                     console.log(
                         chalk.gray('  • created CLAUDE.local.md (personal overrides, gitignored)')
                     );
@@ -428,7 +425,7 @@ export async function initCommand(options: {
             }
 
             try {
-                const { applyClaudeSettings } =
+                const { applyClaudeSettings, decideAutoApprove } =
                     await import('../../core/claude/claude-settings-manager.js');
                 const { resolvePromptHookConfig } =
                     await import('../../core/typesafe/prompt-hook.js');
@@ -436,15 +433,18 @@ export async function initCommand(options: {
                     await import('../../core/typesafe/tool-gate.js');
                 // v7: two optional PreToolUse guards + full-autonomy permissions.
                 // v7.4: plus the fail-open Jev prompt hook (UserPromptSubmit)
-                // while TypeSafe is on and gate.promptHook.enabled is not false,
+                // while TypeSafe is on and gate.promptHook.enabled is true (opt-in, v7.5),
                 // and the opt-in Jev tool gate (PreToolUse, gate.toolHook.enabled).
                 // No Stop/SessionStart hooks, no orchestration enforcement (P0).
-                // Stale v5/v6 entries are stripped on sync.
+                // Stale v5/v6 entries are stripped on sync. v7.5: OS scheduling
+                // as permissions.deny rules; Bash/Edit/Write auto-approval per
+                // permissions.autoApprove (recorded as true when absent).
+                const autoApprove = await decideAutoApprove(configManager);
                 const rulebookCfg = await configManager.loadConfig();
                 const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
                 const promptHook = resolvePromptHookConfig(rulebookCfg);
                 const toolHook = resolveToolHookConfig(rulebookCfg);
-                await applyClaudeSettings(cwd, {
+                const settingsResult = await applyClaudeSettings(cwd, {
                     taskScaffoldingGuard: true,
                     osSchedulingGuard: true,
                     jevPromptGate: options.typesafe !== false && promptHook.enabled,
@@ -457,8 +457,19 @@ export async function initCommand(options: {
                               }
                             : undefined,
                     fullAutonomyPermissions: true,
+                    autoApprove,
                     teamsEnv: multiAgentEnabled,
                 });
+                for (const script of settingsResult.removedScripts) {
+                    console.log(
+                        chalk.gray(
+                            `  • removed ${script} (used only by the tool gate, which is off)`
+                        )
+                    );
+                }
+                for (const warning of settingsResult.warnings) {
+                    console.log(chalk.yellow(`  ⚠ ${warning}`));
+                }
             } catch (err) {
                 console.log(
                     chalk.gray(
@@ -585,13 +596,16 @@ export async function initCommand(options: {
         }
 
         try {
-            const { initOverride } = await import('../../core/state/override-manager.js');
+            const { initOverride, syncCodexBlock } =
+                await import('../../core/state/override-manager.js');
             const created = await initOverride(cwd);
             if (created) {
                 console.log(
                     chalk.gray('  • AGENTS.override.md created (add project-specific rules here)')
                 );
             }
+            // Codex reads the override instead of AGENTS.md (F-034).
+            await syncCodexBlock(cwd);
         } catch {
             // Non-blocking
         }

@@ -26,6 +26,24 @@ function getRulebookVersion(): string {
     }
 }
 
+/**
+ * What this release ships, for the legacy cleanup: the package templates, the
+ * default skills, and agent rendering for the project's primary language.
+ */
+async function legacyCleanupOptions(
+    language: string | undefined
+): Promise<import('../../core/migration/v6-cleanup.js').V6CleanupOptions> {
+    const { getTemplatesDir, resolveAgentPlaceholders, substituteAgentPlaceholders } =
+        await import('../../core/generators/generator.js');
+    const { DEFAULT_DEV_SKILLS } = await import('../../core/claude/claude-mcp.js');
+    const placeholders = resolveAgentPlaceholders(language);
+    return {
+        templatesDir: getTemplatesDir(),
+        shippedSkills: DEFAULT_DEV_SKILLS,
+        renderAgent: (template) => substituteAgentPlaceholders(template, placeholders),
+    };
+}
+
 /** Update a single project at the given root directory. */
 export interface ConfigRebuildInput {
     version: string;
@@ -34,23 +52,94 @@ export interface ConfigRebuildInput {
     leanMode: boolean;
     features: RulebookConfig['features'];
     gitPushMode: RulebookConfig['gitPushMode'];
-    /** `integrations` as persisted after the TypeSafe decision of this update. */
-    integrations?: RulebookConfig['integrations'];
+    /** What this update detected (languages and modules as configured for generation). */
+    detected: {
+        languages: LanguageDetection['language'][];
+        modules: ModuleDetection['module'][];
+        skills: string[];
+    };
     now?: string;
 }
 
 /**
- * The config `rulebook update` saves. It REPLACES the persisted config, so
- * anything that must survive an update is carried forward explicitly here —
- * `installedAt` (now only when absent) and `integrations` among them.
+ * Every top-level key of RulebookConfig. `satisfies` makes the compiler reject
+ * this list when the interface gains or loses a key, so a new setting cannot be
+ * dropped by `rulebook update` without anyone noticing.
+ */
+const RULEBOOK_CONFIG_KEYS = {
+    version: true,
+    installedAt: true,
+    updatedAt: true,
+    projectId: true,
+    mode: true,
+    features: true,
+    coverageThreshold: true,
+    language: true,
+    outputLanguage: true,
+    cliTools: true,
+    maxParallelTasks: true,
+    timeouts: true,
+    languages: true,
+    modules: true,
+    modular: true,
+    rulebookDir: true,
+    agentsMode: true,
+    gitPushMode: true,
+    orchestration: true,
+    monorepo: true,
+    tasks: true,
+    integrations: true,
+    gate: true,
+    permissions: true,
+    mcp: true,
+    multiAgent: true,
+    skills: true,
+    agentFramework: true,
+    referenceSource: true,
+} as const satisfies Record<keyof RulebookConfig, true>;
+
+/** The known RulebookConfig keys set in `config`; keys no release reads any more are dropped. */
+function knownConfigKeys(config: Partial<RulebookConfig>): Partial<RulebookConfig> {
+    const kept: Record<string, unknown> = {};
+    for (const key of Object.keys(RULEBOOK_CONFIG_KEYS)) {
+        const value = (config as Record<string, unknown>)[key];
+        if (value !== undefined) kept[key] = value;
+    }
+    return kept as Partial<RulebookConfig>;
+}
+
+/**
+ * The project's enabled skills plus the detected ones it has not disabled; the
+ * rest of its `skills` settings is kept. Undefined when there are none.
+ */
+function mergeDetectedSkills(
+    existing: RulebookConfig['skills'],
+    detected: readonly string[]
+): RulebookConfig['skills'] {
+    const disabled = new Set(existing?.disabled ?? []);
+    const enabled = [
+        ...new Set([...(existing?.enabled ?? []), ...detected.filter((id) => !disabled.has(id))]),
+    ];
+    return existing || enabled.length > 0 ? { ...existing, enabled } : undefined;
+}
+
+/**
+ * The config `rulebook update` saves. It REPLACES the persisted config: every
+ * known key the project already set is carried forward (`gate`, `multiAgent`,
+ * `tasks`, `mcp`, `orchestration`, `rulebookDir`, `integrations`,
+ * `permissions`, ...), then the fields update owns are recomputed —
+ * `installedAt` only when absent, `languages` and `modules` from this update's
+ * detection — and the detected skills are added to `skills.enabled` (a skill in
+ * `skills.disabled` stays off). Keys that are not in RulebookConfig are dropped.
  */
 export function rebuildConfigOnUpdate(
     existing: Partial<RulebookConfig>,
     input: ConfigRebuildInput
 ): RulebookConfig {
     const now = input.now ?? new Date().toISOString();
-    const integrations = input.integrations ?? existing.integrations;
+    const skills = mergeDetectedSkills(existing.skills, input.detected.skills);
     return {
+        ...knownConfigKeys(existing),
         version: input.version,
         installedAt: existing.installedAt || now,
         updatedAt: now,
@@ -68,13 +157,10 @@ export function rebuildConfigOnUpdate(
             testRun: 600000,
         },
         gitPushMode: input.gitPushMode,
-        ...(existing.skills ? { skills: existing.skills } : {}),
-        ...(input.leanMode
-            ? { agentsMode: 'lean' as const }
-            : existing.agentsMode
-              ? { agentsMode: existing.agentsMode }
-              : {}),
-        ...(integrations ? { integrations } : {}),
+        languages: input.detected.languages,
+        modules: input.detected.modules,
+        ...(skills ? { skills } : {}),
+        ...(input.leanMode ? { agentsMode: 'lean' as const } : {}),
     };
 }
 
@@ -93,24 +179,40 @@ export async function updateSingleProject(
     // v7: --dry-run prints the migration plan and exits before ANY write.
     if (options.dryRun) {
         const { planV6Cleanup } = await import('../../core/migration/v6-cleanup.js');
-        const plan = await planV6Cleanup(cwd);
+        const dryDetection = await detectProject(cwd);
+        const plan = await planV6Cleanup(
+            cwd,
+            await legacyCleanupOptions(dryDetection.languages[0]?.language)
+        );
         console.log(chalk.bold.blue('\n🔎 rulebook update --dry-run (no files were changed)\n'));
         console.log(chalk.bold('Would regenerate (lean v7):'));
         console.log(chalk.gray('  • CLAUDE.md, AGENTS.md, .rulebook/specs/* (lowercase names)'));
         console.log(
-            chalk.gray('  • .claude/settings.json — strip retired hooks, apply autonomy profile')
+            chalk.gray(
+                '  • .claude/settings.json + settings.local.json — strip retired/broken rulebook hooks, apply autonomy profile'
+            )
         );
         console.log(chalk.gray('  • .mcp.json — slim rulebook-mcp entrypoint'));
         if (plan.remove.length > 0) {
-            console.log(chalk.bold(`\nWould remove ${plan.remove.length} retired file(s):`));
+            console.log(
+                chalk.bold(
+                    `\nWould move ${plan.remove.length} retired file(s) to .rulebook/backup/:`
+                )
+            );
             for (const p of plan.remove) console.log(chalk.gray(`  - ${p}`));
+        }
+        if (plan.refresh.length > 0) {
+            console.log(chalk.bold(`\nWould refresh ${plan.refresh.length} agent/skill file(s):`));
+            for (const r of plan.refresh) console.log(chalk.gray(`  - ${r.path}`));
         }
         if (plan.rename.length > 0) {
             console.log(chalk.bold(`\nWould rename ${plan.rename.length} spec(s) to lowercase:`));
             for (const r of plan.rename) console.log(chalk.gray(`  - ${r.from} → ${r.to}`));
         }
         if (plan.preserved.length > 0) {
-            console.log(chalk.bold(`\nKept (look user-authored — no rulebook marker):`));
+            console.log(
+                chalk.bold(`\nEdited, kept (content differs from every rulebook release):`)
+            );
             for (const p of plan.preserved) console.log(chalk.gray(`  · ${p}`));
         }
         console.log(chalk.gray('\nRun without --dry-run to apply.\n'));
@@ -263,44 +365,84 @@ export async function updateSingleProject(
         });
     }
 
-    const existingSkills = existingConfig.skills?.enabled || [];
-
+    const detectedLanguages = config.languages as LanguageDetection['language'][];
+    const detectedModules = config.modules as ModuleDetection['module'][];
     let detectedSkills: string[] = [];
     try {
         const skillsManager = new SkillsManager(getDefaultTemplatesPath(), cwd);
-
-        const rulebookConfigForSkills = {
-            languages: config.languages as LanguageDetection['language'][],
-            modules: config.modules as ModuleDetection['module'][],
-        };
-
-        detectedSkills = await skillsManager.autoDetectSkills(rulebookConfigForSkills);
-
-        const mergedSkills = [...new Set([...existingSkills, ...detectedSkills])];
-
-        if (detectedSkills.length > existingSkills.length) {
-            const newSkills = detectedSkills.filter((s) => !existingSkills.includes(s));
-            if (newSkills.length > 0) {
-                console.log(chalk.green('\n✓ New skills detected:'));
-                for (const skillId of newSkills) {
-                    console.log(chalk.gray(`  - ${skillId}`));
-                }
-            }
-        }
-
-        detectedSkills = mergedSkills;
+        detectedSkills = await skillsManager.autoDetectSkills({
+            languages: detectedLanguages,
+            modules: detectedModules,
+        });
     } catch {
-        detectedSkills = existingSkills;
+        // Skills system unavailable: the project's own skills are kept as they are.
     }
 
-    await configManager.updateConfig({
-        languages: config.languages as LanguageDetection['language'][],
-        modules: config.modules as ModuleDetection['module'][],
-        modular: config.modular ?? true,
-        rulebookDir: config.rulebookDir || '.rulebook',
+    if (installHooksOnUpdate) {
+        const hookLanguages: LanguageDetection[] =
+            detection.languages.length > 0
+                ? detection.languages
+                : config.languages.map((language) => ({
+                      language: language as LanguageDetection['language'],
+                      confidence: 1,
+                      indicators: [],
+                  }));
+        const hookSpinner = ora('Installing Git hooks (pre-commit & pre-push)...').start();
+        try {
+            await installGitHooks({ languages: hookLanguages, cwd });
+            hookSpinner.succeed('Git hooks installed successfully');
+            hooksInstalledOnUpdate = true;
+        } catch (error) {
+            hookSpinner.fail('Failed to install Git hooks');
+            console.error(chalk.red('  ➤'), error instanceof Error ? error.message : error);
+            console.log(
+                chalk.yellow(
+                    '  ⚠ Skipping automatic hook installation. You can rerun "rulebook update" later to retry or install manually.'
+                )
+            );
+        }
+    }
+
+    const gitHooksActiveAfterUpdate = hooksInstalledOnUpdate || (hasPreCommit && hasPrePush);
+    config.installGitHooks = gitHooksActiveAfterUpdate;
+
+    // The one config write of this update. It runs before the generators below
+    // because they read languages, skills and rulebookDir from rulebook.json;
+    // the TypeSafe and auto-approve steps then record their decisions on top.
+    const configSpinner = ora('Updating .rulebook configuration...').start();
+    const rulebookFeatures: RulebookConfig['features'] = {
+        logging: true,
+        gitHooks: gitHooksActiveAfterUpdate,
+        templates: true,
+        context: minimalMode ? false : true,
+        health: true,
+        parallel: minimalMode ? false : true,
+        smartContinue: minimalMode ? false : true,
+    };
+    const rulebookConfig = rebuildConfigOnUpdate(existingConfig, {
+        version: getRulebookVersion(),
+        projectId: path.basename(cwd),
+        minimalMode,
+        leanMode,
+        features: rulebookFeatures,
         gitPushMode: resolvedPushMode,
-        skills: detectedSkills.length > 0 ? { enabled: detectedSkills } : undefined,
+        detected: {
+            languages: detectedLanguages,
+            modules: detectedModules,
+            skills: detectedSkills,
+        },
     });
+    await configManager.saveConfig(rulebookConfig);
+    configSpinner.succeed('.rulebook configuration updated');
+
+    const knownSkills = new Set(existingConfig.skills?.enabled ?? []);
+    const newSkills = (rulebookConfig.skills?.enabled ?? []).filter((id) => !knownSkills.has(id));
+    if (newSkills.length > 0) {
+        console.log(chalk.green('\n✓ New skills detected:'));
+        for (const skillId of newSkills) {
+            console.log(chalk.gray(`  - ${skillId}`));
+        }
+    }
 
     await configManager.ensureGitignore();
 
@@ -351,6 +493,18 @@ export async function updateSingleProject(
         if (claudeResult.backupPath) {
             console.log(chalk.gray(`  • backup: ${path.relative(cwd, claudeResult.backupPath)}`));
         }
+        if (claudeResult.keptOrchestration) {
+            console.log(
+                chalk.yellow(
+                    '  ! Kept your edited "## Orchestration" section in CLAUDE.md (not regenerated).'
+                )
+            );
+            console.log(
+                chalk.gray(
+                    '    Delete that section and re-run `rulebook update` to get the text for your `orchestration` mode.'
+                )
+            );
+        }
         if (claudeResult.mode === 'migrate' && claudeResult.overridePath) {
             console.log(
                 chalk.yellow(
@@ -372,6 +526,18 @@ export async function updateSingleProject(
         claudeUpdateSpinner.warn(
             `CLAUDE.md update skipped: ${err instanceof Error ? err.message : String(err)}`
         );
+    }
+
+    // Codex reads AGENTS.override.md instead of AGENTS.md (F-034): keep a small
+    // rulebook block at its top; the user's content below it is untouched.
+    try {
+        const { syncCodexBlock } = await import('../../core/state/override-manager.js');
+        const codex = await syncCodexBlock(cwd);
+        if (codex === 'added' || codex === 'updated') {
+            console.log(chalk.gray(`  • AGENTS.override.md: rulebook block for Codex ${codex}`));
+        }
+    } catch {
+        // non-fatal
     }
 
     try {
@@ -404,16 +570,35 @@ export async function updateSingleProject(
     }
 
     try {
-        const { applyClaudeSettings } =
+        const { applyClaudeSettings, decideAutoApprove, AUTO_APPROVE_QUESTION } =
             await import('../../core/claude/claude-settings-manager.js');
         const { resolvePromptHookConfig } = await import('../../core/typesafe/prompt-hook.js');
         const { resolveToolHookConfig, toolHookTimeoutSec } =
             await import('../../core/typesafe/tool-gate.js');
-        // v7: two optional PreToolUse guards + full-autonomy permissions; v7.4
+        // v7: the scaffolding guard + full-autonomy permissions; v7.4
         // adds the fail-open Jev prompt hook (UserPromptSubmit) while TypeSafe
-        // is on and gate.promptHook.enabled is not false, and the opt-in Jev
-        // tool gate (PreToolUse) under gate.toolHook.enabled. Every retired
+        // is on and gate.promptHook.enabled is true (opt-in, v7.5), and the opt-in Jev
+        // tool gate (PreToolUse) under gate.toolHook.enabled. v7.5: OS
+        // scheduling as permissions.deny rules, and the Bash/Edit/Write
+        // auto-approval the guards used to grant asked once and recorded
+        // (permissions.autoApprove; --yes or no TTY keeps it). Every retired
         // v5/v6 hook entry is stripped on sync (LEGACY_SIGNATURES).
+        const ask =
+            !options.yes && process.stdin.isTTY
+                ? async (): Promise<boolean> => {
+                      const inquirer = (await import('inquirer')).default;
+                      const { keep } = await inquirer.prompt([
+                          {
+                              type: 'confirm',
+                              name: 'keep',
+                              message: AUTO_APPROVE_QUESTION,
+                              default: true,
+                          },
+                      ]);
+                      return keep === true;
+                  }
+                : undefined;
+        const autoApprove = await decideAutoApprove(configManager, ask);
         const rulebookCfg = await configManager.loadConfig();
         const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
         const promptHook = resolvePromptHookConfig(rulebookCfg);
@@ -431,6 +616,7 @@ export async function updateSingleProject(
                       }
                     : undefined,
             fullAutonomyPermissions: true,
+            autoApprove,
             teamsEnv: multiAgentEnabled,
         });
         if (settingsResult.changed) {
@@ -438,6 +624,22 @@ export async function updateSingleProject(
                 chalk.gray(`  • .claude/settings.json refreshed (v7 lean hooks + permissions)`)
             );
         }
+        if (settingsResult.removedHooks.length > 0) {
+            console.log(
+                chalk.gray(
+                    `  • removed ${settingsResult.removedHooks.length} retired/broken rulebook hook entr${settingsResult.removedHooks.length === 1 ? 'y' : 'ies'}:`
+                )
+            );
+            for (const entry of settingsResult.removedHooks) {
+                console.log(chalk.gray(`    - ${entry}`));
+            }
+        }
+        for (const script of settingsResult.removedScripts) {
+            console.log(
+                chalk.gray(`  • removed ${script} (used only by the tool gate, which is off)`)
+            );
+        }
+        for (const warning of settingsResult.warnings) console.log(chalk.yellow(`  ⚠ ${warning}`));
     } catch (err) {
         console.log(
             chalk.gray(
@@ -512,85 +714,42 @@ export async function updateSingleProject(
         }
     }
 
-    if (installHooksOnUpdate) {
-        const hookLanguages: LanguageDetection[] =
-            detection.languages.length > 0
-                ? detection.languages
-                : config.languages.map((language) => ({
-                      language: language as LanguageDetection['language'],
-                      confidence: 1,
-                      indicators: [],
-                  }));
-        const hookSpinner = ora('Installing Git hooks (pre-commit & pre-push)...').start();
-        try {
-            await installGitHooks({ languages: hookLanguages, cwd });
-            hookSpinner.succeed('Git hooks installed successfully');
-            hooksInstalledOnUpdate = true;
-        } catch (error) {
-            hookSpinner.fail('Failed to install Git hooks');
-            console.error(chalk.red('  ➤'), error instanceof Error ? error.message : error);
-            console.log(
-                chalk.yellow(
-                    '  ⚠ Skipping automatic hook installation. You can rerun "rulebook update" later to retry or install manually.'
-                )
-            );
-        }
-    }
-
-    const gitHooksActiveAfterUpdate = hooksInstalledOnUpdate || (hasPreCommit && hasPrePush);
-    config.installGitHooks = gitHooksActiveAfterUpdate;
-
-    const configSpinner = ora('Updating .rulebook configuration...').start();
-    const rulebookFeatures: RulebookConfig['features'] = {
-        logging: true,
-        gitHooks: gitHooksActiveAfterUpdate,
-        templates: true,
-        context: minimalMode ? false : true,
-        health: true,
-        parallel: minimalMode ? false : true,
-        smartContinue: minimalMode ? false : true,
-    };
-
-    // Fresh read: the TypeSafe step above persisted its decision after
-    // `existingConfig` was loaded.
-    const persistedConfig = await configManager.loadConfig();
-    const rulebookConfig = rebuildConfigOnUpdate(existingConfig, {
-        version: getRulebookVersion(),
-        projectId: path.basename(cwd),
-        minimalMode,
-        leanMode,
-        features: rulebookFeatures,
-        gitPushMode: resolvedPushMode,
-        integrations: persistedConfig.integrations,
-    });
-
-    await configManager.saveConfig(rulebookConfig);
-    configSpinner.succeed('.rulebook configuration updated');
-
-    // v6 → v7 cleanup: remove rulebook-owned retired files, normalize spec names.
+    // Legacy cleanup: move unedited v5/v6 leftovers (legacy catalogue) to
+    // .rulebook/backup/, refresh shipped agents/skills, normalize spec names.
     try {
         const { planV6Cleanup, applyV6Cleanup } =
             await import('../../core/migration/v6-cleanup.js');
-        const plan = await planV6Cleanup(cwd);
-        if (plan.remove.length > 0 || plan.rename.length > 0) {
-            const { removed, renamed } = await applyV6Cleanup(cwd, plan);
-            if (removed.length > 0) {
-                console.log(
-                    chalk.gray(`  • v7 cleanup: removed ${removed.length} retired file(s)`)
-                );
-            }
-            if (renamed.length > 0) {
-                console.log(
-                    chalk.gray(`  • v7 cleanup: normalized ${renamed.length} spec name(s)`)
-                );
-            }
-            if (plan.preserved.length > 0) {
-                console.log(
-                    chalk.gray(
-                        `  · ${plan.preserved.length} retired-name file(s) kept (user-authored)`
-                    )
-                );
-            }
+        const plan = await planV6Cleanup(
+            cwd,
+            await legacyCleanupOptions(detection.languages[0]?.language)
+        );
+        const { removed, renamed, refreshed, backupDir } = await applyV6Cleanup(cwd, plan);
+        if (removed.length > 0) {
+            console.log(
+                chalk.gray(
+                    `  • legacy cleanup: moved ${removed.length} retired rulebook file(s) to ${backupDir}/`
+                )
+            );
+            for (const p of removed) console.log(chalk.gray(`    - ${p}`));
+        }
+        if (refreshed.length > 0) {
+            console.log(
+                chalk.gray(`  • legacy cleanup: refreshed ${refreshed.length} agent/skill file(s)`)
+            );
+            for (const p of refreshed) console.log(chalk.gray(`    - ${p}`));
+        }
+        if (renamed.length > 0) {
+            console.log(
+                chalk.gray(`  • legacy cleanup: normalized ${renamed.length} spec name(s)`)
+            );
+        }
+        if (plan.preserved.length > 0) {
+            console.log(
+                chalk.yellow(
+                    `  · ${plan.preserved.length} rulebook file(s) edited, kept (review and delete by hand if obsolete):`
+                )
+            );
+            for (const p of plan.preserved) console.log(chalk.yellow(`    - ${p} (edited, kept)`));
         }
     } catch {
         // cleanup is best-effort — never block an update
@@ -628,6 +787,15 @@ export async function updateSingleProject(
                         `  • ${result.workflowDefinitionsInstalled.length} workflows updated in .claude/workflows/`
                     )
                 );
+            }
+            // Machine-local fast-path entry (`rulebook mcp init --fast`): re-point
+            // it when its server file is gone or belongs to another version.
+            const { refreshLocalFastEntry } = await import('../../core/claude/mcp-fast-path.js');
+            const fast = await refreshLocalFastEntry(cwd);
+            if (fast.status === 'updated') {
+                console.log(chalk.gray(`  • MCP fast path re-pointed to ${fast.serverPath}`));
+            } else if (fast.status === 'manual') {
+                console.log(chalk.yellow(`  • MCP fast path is stale; run: ${fast.manualCommand}`));
             }
         } else {
             claudeSpinner.info('Claude Code not detected (skipped)');

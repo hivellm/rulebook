@@ -45,15 +45,64 @@ S=SessionStart, St=Stop, U=UserPromptSubmit); files = installed by default init.
 | 2026-07-14 | phase1b | **Template unification** (parallel agent fleet ×7): 19 language templates lean (208→37 KB), 11 agents + 12 commands slimmed (~52 KB→~22 KB), hook docs 64→10.5 KB, libraries + module-skills + retired-subsystem skills eliminated, 17 retired rule templates removed, ALL filenames lowercase kebab-case, this repo's .claude/.rulebook cleaned. templates/ total **1,219 KB → 564 KB (−54%)** | 6,786 | 26/13,965B/~420ms | P:1 S:0 St:0 U:0 | 60 |
 | 2026-07-14 | phase1a | **Spec diet**: on-demand `.rulebook/specs/` **29,942 → 3,787 tok (−87%)** — RULEBOOK.md 51 KB→~600 tok, GIT.md 7,546→~450 tok, TOKEN_OPT/AGENT_AUTOMATION/MULTI_AGENT + all 9 MCP-module specs retired, language specs unified with lean rule templates (16–18 KB→~500 tok for the 8 core languages), 8 dead templates deleted. Dogfooded on this repo (17 always-on rules deleted, CLAUDE.md/AGENTS.md regenerated lean) | 6,515 | 26/13,965B/~290ms | P:1 S:0 St:0 U:0 | 66 |
 
+### v7.1 → v7.5 (7.5 measurement method)
+
+The rows above estimate MCP schemas into "static tok" and count files as
+written. From 7.5 the benchmark counts what Claude Code actually injects
+(docs/analysis/multi-session-performance/04, F-029), so these rows are
+comparable with each other, not with the rows above:
+
+- **Always-on** (Claude Code, tiktoken cl100k): CLAUDE.md with HTML comments
+  stripped and `@imports` expanded (AGENTS.override.md comes in through the
+  import), CLAUDE.local.md, every `.claude/rules/*.md` without `paths:`, the
+  listing lines for installed skills/commands/agents, and the deferred MCP
+  tool names. MCP schemas load on first use and are not counted here.
+- **Codex**: AGENTS.override.md when present (Codex reads it instead of
+  AGENTS.md), else AGENTS.md.
+- **Hot-path hooks**: rulebook hook handlers that spawn on an ordinary tool
+  call or prompt — PreToolUse without an `if` rule, PostToolUse,
+  UserPromptSubmit, Stop, SubagentStop.
+- **Fixture**: a TypeScript project after `init --yes` then `update --yes`,
+  with Claude Code detected and the TypeSafe plugin present (temp HOME); MCP
+  init is the median of three cold starts of `node dist/mcp/rulebook-server.js`;
+  files exclude `.rulebook/backup/` and the `.rulebook/.update-check` cache.
+
+v7.1.0–v7.4.0 were measured from the published npm packages
+(`node scripts/measure-overhead.mjs --rulebook <package root>`); v7.5.0 from
+the `release/v7.5.0` build (package.json still reads 7.4.0 before the version
+bump). Measured 2026-10-14 on Windows 11. The Files column was re-measured
+for every row once the count left out `.rulebook/.update-check` (one fewer
+file each).
+
+| Version | Change | Always-on tok | Codex tok | MCP tools/schema/init | Hot-path hooks | Files |
+|---|---|---:|---:|---|---|---:|
+| v7.1.0 | GitHub-issues task backend (opt-in). MCP entry `npx … @latest` | 957 | 42 | 5/3,562B/176ms | 1 (PreToolUse task guard) | 18 |
+| v7.2.0 | Decision requests on `rulebook_task` (ask/answer/questions): +727 B schema; CLAUDE.md +66 | 1,023 | 42 | 5/4,289B/181ms | 1 | 18 |
+| v7.3.0 | No-OS-scheduling guard (second PreToolUse hook, no `if`); TypeSafe opt-in | 1,021 | 42 | 5/4,289B/188ms | 2 | 19 |
+| v7.4.0 | `rulebook_gate` (+820 B schema), TypeSafe on by default (typesafe.md +92 always-on), Jev prompt hook on every prompt | 1,160 | 42 | 6/5,109B/239ms | 3 (2 PreToolUse + UserPromptSubmit) | 22 |
+| v7.5.0 | Prompt hook opt-in; guards as `permissions.deny` / `if`-gated; pinned MCP entry; RULEBOOK-CODEX block in AGENTS.override.md (+309 Codex, and ~290 in Claude Code through `@AGENTS.override.md`); task content on create + tool annotations (+1,016 B schema); `jev-gate.sh` and `no-os-scheduling.sh` installed only with the opt-in tool gate | **1,449** | 351 | 6/6,125B/233ms | **0** (2 PreToolUse handlers, both `if`-gated) | **20** |
+
+Against the budgets: always-on 1,449 ≤ 1,600 and Codex 351 ≤ 390
+(`tests/context-budget.test.ts`), schema 6,125 ≤ 6,260 B and 6 ≤ 8 tools
+(`tests/v7-budgets.test.ts`), 0 hot-path spawns (`tests/hook-spawn-budget.test.ts`).
+Installed files are 20, at the target (21 before `no-os-scheduling.sh` was
+limited to projects with the opt-in tool gate, the only hook that runs it). With
+the 11 opt-in agents installed (projects upgraded from
+v5/v6 keep them) the always-on total is 1,911, under the 2,100 target for an
+upgraded project.
+
 ## Acceptance checks (CI)
 
-1. **Token budget check**: tiktoken count over generated CLAUDE.md + AGENTS.md +
-   rules + agent/skill descriptions + MCP tools/list of a fixture `init` project;
-   fail CI if > 2,500.
-2. **Hook audit**: assert generated settings.json contains no Stop,
-   UserPromptSubmit, SessionStart, or PreToolUse-Agent entries; at most one
-   PreToolUse Edit|Write entry.
-3. **MCP schema budget**: tools/list ≤ 8 tools and ≤ 3,600 bytes.
+1. **Token budget check** (`tests/context-budget.test.ts`, v7.5 method above):
+   Claude Code always-on ≤ 1,600 tokens (≤ 2,100 with the opt-in agents),
+   the prompt hook's per-prompt context ≤ 260 at its 1,024-byte cap, Codex
+   ≤ 390 (AGENTS.override.md) and ≤ 870 (AGENTS.md without an override).
+2. **Hook audit** (`tests/hook-spawn-budget.test.ts`, on a project the built
+   CLI generates): every rulebook PreToolUse handler carries an `if` rule, no
+   other rulebook hook event, and no UserPromptSubmit entry unless
+   `gate.promptHook.enabled` is true — 0 rulebook spawns per ordinary call.
+3. **MCP schema budget** (`tests/v7-budgets.test.ts`, spawning the generated
+   launch command): tools/list ≤ 8 tools and ≤ 6,260 bytes.
 4. **Orchestration freedom (P0)**: no generated file (hook, rule, CLAUDE.md,
    AGENTS.md) contains a directive that denies or mandates subagent/team usage —
    enforced by a fixture-based generator test, not by grep.

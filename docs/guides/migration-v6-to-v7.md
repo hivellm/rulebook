@@ -31,18 +31,30 @@ The update, in one pass:
    index). `AGENTS.override.md` is never touched and wins on conflict.
    Sentinels are version-tolerant: blocks stamped by any v5/v6 release are
    recognized and replaced in place; content outside them is preserved.
-2. **Strips every retired hook** from `.claude/settings.json` via signatures
-   (handoff, terse, compact-reinject, update-check, team-enforcement, the old
-   content-regex guard) and wires the single v7 path-only scaffolding guard.
+2. **Strips every retired hook** on every event (PreToolUse, PostToolUse,
+   PreCompact, SubagentStop, SessionEnd, …) in `.claude/settings.json` and
+   `.claude/settings.local.json` — by script name (handoff, terse,
+   compact-reinject, update-check, team-enforcement, the old content-regex
+   guard) and any rulebook entry whose script file is gone — then wires the
+   v7 guards. Entries that do not call a rulebook hook script are never
+   touched; each removed entry is listed in the output.
 3. **Applies the full-autonomy permission profile** — `defaultMode:
    acceptEdits` + a broad allow list. Additive only: your own permissions and
    an existing `defaultMode` are never removed or tightened.
-4. **Removes rulebook-owned retired files** — old always-on rules, retired
-   hook scripts, terse/handoff skills, retired spec docs — and renames spec
-   files to the lowercase convention (`rulebook.md`, `quality.md`, …).
-   Anything without a rulebook generation marker is treated as user-authored
-   and left alone (the dry-run lists these as "kept").
-5. **Upgrades `.mcp.json`** to the slim `rulebook-mcp` entrypoint (no CLI
+4. **Moves rulebook-owned retired files to `.rulebook/backup/<timestamp>/`**
+   — old always-on rules, v5/v6 agents, generic skills and commands, retired
+   hook scripts, retired specs (`quality_enforcement.md`,
+   `tier1_prohibitions.md`, …) — and renames spec files to the lowercase
+   convention (`rulebook.md`, `quality.md`, …). Ownership is decided by
+   content: a hash catalogue of every file each release since v5.0.0
+   installed (`src/core/migration/legacy-catalogue.json`, rebuilt from the git
+   tags with `npm run build:catalogue`). A file at a rulebook path whose
+   content matches no release was edited by you; it stays where it is and the
+   output lists it as "edited, kept".
+5. **Refreshes the agents and skills rulebook still ships** when they are
+   unedited (e.g. an old `implementer.md` gets the current text in the
+   project's language); edited copies are kept and reported.
+6. **Upgrades `.mcp.json`** to the slim `rulebook-mcp` entrypoint (no CLI
    dependencies in the server process).
 
 ## Breaking changes to be aware of
@@ -53,10 +65,13 @@ The update, in one pass:
   `rulebook_task_create({taskId})` → `rulebook_task({action:"create", taskId})`.
 - **Agents and workflows are opt-in**: nothing installs `.claude/agents/` or
   `.claude/workflows/` by default — native harness agents cover the roles.
-  Your existing installed agents/workflows are not deleted.
+  Installed copies of the agents rulebook still ships are refreshed; unedited
+  agents it no longer ships (v5's 19-agent set) move to `.rulebook/backup/`.
+  Shipped agents no longer set `maxTurns` — the harness limits apply.
 - **Generic dev skills are opt-in**: only `analysis` and `spec` ship by
-  default. Previously installed generic skills keep working; retired-subsystem
-  skills (terse, handoff) are removed since their hooks no longer exist.
+  default. Unedited copies of the other generic skills and the
+  retired-subsystem skills (terse, handoff) move to `.rulebook/backup/`;
+  skills you edited or wrote yourself are kept.
 - **Spec filenames are lowercase**: update any hardcoded references to
   `.rulebook/specs/RULEBOOK.md` → `rulebook.md`, etc.
 - **Config keys removed**: `handoff` and `terse` sections of `rulebook.json`

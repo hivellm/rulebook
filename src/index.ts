@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
+import type { TaskCreateOptions } from './cli/commands/task.js';
 import {
     initCommand,
     validateCommand,
@@ -139,7 +140,13 @@ program
 program
     .command('doctor')
     .description('Run rulebook health checks (file sizes, broken imports, stale state)')
-    .action(doctorCommand);
+    .option(
+        '--perf',
+        'Read-only per-call cost report: hooks with p50/p90 from transcripts, CLI resolution, MCP launch and live servers, leftovers, Codex'
+    )
+    .option('--json', 'Print the full report as JSON')
+    .option('--days <n>', 'Transcript window for hook timing (with --perf)', '3')
+    .action((options) => doctorCommand(options));
 
 program
     .command('config')
@@ -163,10 +170,22 @@ const taskCommand = program.command('task').description('Manage Rulebook tasks')
 
 taskCommand
     .command('create <task-id>')
-    .description('Create a new task')
+    .description('Create a new task with its content (why, what, checklist items)')
+    .option('--why <text>', 'Why the change is needed (20+ characters)')
+    .option('--what <text>', 'What will change')
+    .option(
+        '--item <text>',
+        'Checklist item (repeatable)',
+        (value: string, previous: string[] = []) => [...previous, value]
+    )
+    .option('--impact-specs <text>', 'Affected specs')
+    .option('--impact-code <text>', 'Affected code')
+    .option('--impact-breaking <yes|no|text>', 'Breaking change')
+    .option('--impact-benefit <text>', 'User benefit')
+    .option('--from <file>', 'JSON file with { why, what, items, impact }; flags override it')
     .option('--project <name>', 'Target a specific workspace project')
-    .action((taskId: string, options: { project?: string }) =>
-        taskCreateCommand(taskId, { project: options.project })
+    .action((taskId: string, options: TaskCreateOptions & { project?: string }) =>
+        taskCreateCommand(taskId, options, { project: options.project })
     );
 
 taskCommand
@@ -404,7 +423,11 @@ mcpCommand
     .command('init')
     .description('Initialize MCP configuration in .rulebook and .cursor/mcp.json')
     .option('--workspace', 'Configure MCP for workspace mode (multi-project)')
-    .action((options: { workspace?: boolean }) => mcpInitCommand(options));
+    .option(
+        '--fast',
+        'Register `node <installed server>` in Claude Code local scope (this machine only) and print the Codex snippet'
+    )
+    .action((options: { workspace?: boolean; fast?: boolean }) => mcpInitCommand(options));
 
 program
     .command('mcp-server')

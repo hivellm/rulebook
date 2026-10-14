@@ -33,4 +33,5 @@ Steps:
 5. When the analysis proposes work, design the phased plan in the final `NN-execution-plan.md`
 6. Consolidate the executive summary + index of numbered files in `README.md`
 7. Capture key findings/learnings: `rulebook_memory {action:"add"}` tagged `analysis:<slug>`
-8. Offer to materialize implementation tasks via `rulebook_task {action:"create"}`
+8. Offer to materialize implementation tasks via `rulebook_task {action:"create"}`, passing each task's
+   `why`, `what`, `items` (and `impact`) from the plan so it is created complete

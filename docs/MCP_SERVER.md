@@ -15,48 +15,47 @@ The Rulebook MCP Server provides programmatic access to task management function
 
 ### `rulebook_task_create`
 
-Create a new Rulebook task with OpenSpec-compatible format.
+Create a new Rulebook task, complete, in one call (v7.5: there is no empty scaffold).
+In the consolidated v7 tool this is `rulebook_task {action:"create", ...}`.
 
 **Input Schema:**
 ```typescript
 {
-  taskId: string;                    // Task ID in kebab-case (e.g., add-feature-name)
-  proposal?: {                        // Optional proposal content
-    why: string;                      // Why this change is needed (minimum 20 characters)
-    whatChanges: string;              // Description of what will change
-    impact?: {                        // Optional impact analysis
-      affectedSpecs?: string[];       // List of affected specifications
-      affectedCode?: string[];        // List of affected code files/modules
-      breakingChange: boolean;        // Whether this is a breaking change
-      userBenefit: string;           // User benefit description
-    };
+  taskId: string;                     // phase-prefixed, e.g. phase1_add-auth
+  why: string;                        // Why this change is needed (minimum 20 characters)
+  what: string;                       // What will change
+  items: string[];                    // Checklist items → tasks.md 1.1…1.N (at least one)
+  impact?: {
+    specs?: string;                   // Affected specs (default "none")
+    code?: string;                    // Affected code (default "none")
+    breaking?: boolean | string;      // true → YES, false/absent → NO, text used as written
+    benefit?: string;                 // User benefit (default "none")
   };
 }
 ```
 
-**Output Schema:**
+Missing `why`/`what`/`items` fails with every missing field named; nothing is written.
+proposal.md gets Why / What Changes / Impact; tasks.md gets `## 1. Implementation`
+plus the mandatory `## 2. Tail` items.
+
+**Output:**
 ```typescript
-{
-  success: boolean;                   // Whether task creation succeeded
-  taskId: string;                    // Created task ID
-  message: string;                    // Success or error message
-  path?: string;                      // Path to created task directory
-}
+{ taskId: string; message: 'created'; items: number }
 ```
 
 **Example:**
 ```json
 {
-  "taskId": "add-user-authentication",
-  "proposal": {
-    "why": "Users need secure authentication to access protected resources",
-    "whatChanges": "Add JWT-based authentication system with login and registration endpoints",
-    "impact": {
-      "affectedSpecs": ["auth/spec.md"],
-      "affectedCode": ["src/auth/", "src/middleware/"],
-      "breakingChange": false,
-      "userBenefit": "Secure user authentication and session management"
-    }
+  "action": "create",
+  "taskId": "phase1_add-user-authentication",
+  "why": "Users need secure authentication to access protected resources",
+  "what": "Add JWT-based authentication with login and registration endpoints",
+  "items": ["Login endpoint", "Registration endpoint", "Auth middleware"],
+  "impact": {
+    "specs": "auth/spec.md",
+    "code": "src/auth/, src/middleware/",
+    "breaking": false,
+    "benefit": "Secure user authentication and session management"
   }
 }
 ```
@@ -308,7 +307,7 @@ CLI equivalents: `rulebook learn promote <id> skill`, `rulebook skills list --ca
 
 ## Entry gate (v7.4, `rulebook_gate`)
 
-The main session calls `rulebook_gate` first with every operator prompt. Rulebook sends Jev (TypeSafe's System One model) one request: a JSON description of the project plus the prompt, and up to 12 questions — one per decision the session would otherwise guess. The answers come back as a `routing` to act on. The gate is advisory: it never throws and never blocks, and it is called once per operator prompt, never by subagents.
+`rulebook_gate` is an on-demand tool (v7.5): the main session calls it when it wants Jev's routing for an operator prompt; no generated rule asks it to call the gate first or as a fallback. Rulebook sends Jev (TypeSafe's System One model) one request: a JSON description of the project plus the prompt, and up to 12 questions — one per decision the session would otherwise guess. The answers come back as a `routing` to act on. The gate is advisory: it never throws and never blocks, and it is called once per operator prompt, never by subagents.
 
 | Input | Meaning |
 |-------|---------|
@@ -347,26 +346,36 @@ The main session calls `rulebook_gate` first with every operator prompt. Ruleboo
 
 **Key and network**: the key is read from `process.env.TYPESAFE_API_KEY`, else from the single `TYPESAFE_API_KEY=` line of `<project>/.env` (other variables are never read, `process.env` is never modified). It is sent only as `Authorization: Bearer …`, and never appears in results, errors or logs. Each attempt times out after 10 s (capped by the deadline); 429, 529 and connection errors are retried at most twice with exponential backoff plus jitter; other errors fail at once.
 
-**Decision log**: when `features.logging` is true in `rulebook.json`, each call appends one line to `.rulebook/logs/gate.jsonl` — a 16-hex prompt hash, `routing`, `undecided`, `usage`, `elapsedMs`, `stateBytes` (never the prompt text or the key); the newest 500 lines are kept.
+**Decision log**: when `features.logging` is true in `rulebook.json`, each call appends one line to `.rulebook/logs/gate.jsonl` — a 16-hex prompt hash, `routing`, `undecided`, `usage`, `elapsedMs`, `stateBytes` (never the prompt text or the key). Lines are appended without reading the file; once it passes 500 KiB it is cut back to the newest 500 lines.
+
+**Tasks**: the gate lists the active tasks from each task's `.metadata.json` (id, status, open questions) — no proposal, checklist, design or spec files — and never migrates a legacy `tasks/archive` on this read path. A GitHub task backend is listed through `gh`.
+
+**Operator questions**: the instruction says "Ask the operator before acting" only when Jev decided `needs_operator_decision` is true; an undecided or `unclear` kind is no reason to stop.
 
 **CLI**: `rulebook gate "<prompt>" [--notes <text>] [--json]` prints the routing as a readable block (or the full result as JSON) and exits 0 even when unavailable. `rulebook gate --check [--json] [--strict]` reports where the key was found (`env`, `.env`, or not found — never the value) and makes one cheap live call (`state: "ping"`, one yes/no question) with its latency and token usage; it exits 0 either way, or 2 with `--strict` when the gate is unavailable.
 
-### Prompt hook (v7.4, `UserPromptSubmit`)
+### Prompt hook (v7.4, `UserPromptSubmit`, opt-in since v7.5)
 
-The main session no longer has to remember to call the gate: a Claude Code `UserPromptSubmit` hook runs it on every operator prompt and hands the routing to the model as context. The model calls `rulebook_gate` by hand only when no hook routing is in its context.
+A Claude Code `UserPromptSubmit` hook can run the gate on every operator prompt and hand the routing to the model as context. Off by default since v7.5 (operator decision): it adds a Jev round trip to every prompt, and the model rarely used its routing. Without the hook there is no manual fallback: the model calls `rulebook_gate` only when it wants a routing. Turn the hook on with `"gate": {"promptHook": {"enabled": true}}` in `.rulebook/rulebook.json`, then `rulebook update`.
 
-**Install**: `rulebook init`, `rulebook update` and `rulebook claude` copy `templates/hooks/jev-gate.sh` to `.claude/hooks/jev-gate.sh` and add one entry to `.claude/settings.json`:
+**Install**: `rulebook init`, `rulebook update` and `rulebook claude` add one exec-form entry to `.claude/settings.json` — Claude Code spawns `node` directly on the slim hook entry `dist/cli/hook-main.js` (bin `rulebook-hook`), with no shell and without loading the full CLI:
 
 ```json
 { "hooks": { "UserPromptSubmit": [
-  { "hooks": [ { "type": "command",
-                 "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/jev-gate.sh prompt",
-                 "timeout": 8 } ] } ] } }
+  { "hooks": [ { "type": "command", "command": "node",
+                 "args": ["${CLAUDE_PROJECT_DIR}/node_modules/@hivehub/rulebook/dist/cli/hook-main.js", "prompt-gate"],
+                 "timeout": 3 } ] } ] } }
 ```
 
-The entry is identified by its command (`jev-gate.sh prompt`): it is upserted once (a second run leaves the file byte-identical), user hooks on the same event stay untouched and in order, and the entry is removed when the hook is turned off. The wrapper finds the CLI (`$CLAUDE_PROJECT_DIR/node_modules/.bin/rulebook` first, so the project's own version wins over a stale global one; then, in the rulebook repo itself — `package.json` named `@hivehub/rulebook` with a built `dist/index.js` — `node dist/index.js`; then `rulebook` on `PATH`) and runs `rulebook hook prompt-gate` with the hook JSON on stdin; without a CLI it exits 0 silently, and a CLI that fails (for example a broken global shim) has its error output dropped — the wrapper always exits 0.
+The entry's path is resolved and validated when settings are written, first hit wins: the project's `node_modules/@hivehub/rulebook` (named through `${CLAUDE_PROJECT_DIR}`, so a committed settings file stays portable), the rulebook repo's own build (`package.json` named `@hivehub/rulebook`), then the global npm install (`npm root -g`, absolute path). A candidate counts only when `node <entry> --check` loads the hook module. When none does, the hook is not installed (an existing entry is removed) and the command prints how to fix it — nothing falls back at runtime. The entry is identified by `hook-main.js prompt-gate`: it is upserted once (a second run leaves the file byte-identical), user hooks on the same event stay untouched and in order, a v7.4 `jev-gate.sh prompt` entry is replaced, and the entry is removed when the hook is turned off. The project is `CLAUDE_PROJECT_DIR`, else the payload's `cwd` (Codex sets no `CLAUDE_PROJECT_DIR`).
 
-**What the model sees**: `{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"…"}}`, where the context (at most 1024 bytes) is the line `Jev routing (rulebook prompt hook) — do not call rulebook_gate again for this prompt`, the gate's `instruction`, and one warning line per risk flag at or above 0.5 that does not block.
+Measured on Windows, median of 3, rulebook repo, real Jev calls: 499 ms end to end with the gate on (v7.4: 929 ms) and 91 ms start-up with `RULEBOOK_GATE=off` (v7.4: 401 ms).
+
+`.claude/hooks/jev-gate.sh` now serves only the opt-in tool gate (and `prompt` for settings written by v7.4): it finds the CLI (`node_modules/.bin/rulebook`, then the rulebook repo's `dist/index.js`, then `rulebook` on `PATH`), runs `rulebook hook <event>`, and without a CLI, or with one that fails, prints one `systemMessage` per session; it always exits 0.
+
+**What it classifies**: inputs no person typed — prompts that start with `<task-notification>`, `<agent-message`, `<cross-session-message` or `<local-command-…>` — get no answer and cost no Jev call. `<ide_opened_file>`, `<ide_selection>`, `<system-reminder>` and `<browser_instruction>` blocks are removed before the prompt is sent. The hook asks a smaller question set than the tool: `kind`, `needs_task`, `existing_task`, `needs_operator_decision`, `in_project_scope` and the three risks — no `model`, `agent`, `skill` or `parallel` questions, and no skills, agents or routing table in the state.
+
+**What the model sees**: `{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"…"}}`, where the context (at most 1024 bytes) is the line `Jev routing (rulebook prompt hook) — do not call rulebook_gate again for this prompt`, the gate's `instruction` (`kind` and `needsTask` only), and one warning line per risk flag at or above 0.5 that does not block. When three or more of the hook's fields are undecided there is no routing line: the hook answers nothing unless a risk warning or the off-topic rule applies.
 
 **Block rule**: when Jev is available and `risk_os_scheduling` is at or above `gate.promptHook.blockThreshold`, the hook answers `{"decision":"block","reason":…}` — OS-level scheduling is never allowed (Tier 1); the reason names the rule and how to turn the hook off. Destructive git and secrets never block here: the operator's own prompt is the authorization, so they become warnings that point to the Git safety and secrets rules. The MCP tool and `rulebook gate` never block.
 
@@ -376,19 +385,19 @@ The entry is identified by its command (`jev-gate.sh prompt`): it is upserted on
 
 | Key | Default | Meaning |
 |-----|---------|---------|
-| `gate.promptHook.enabled` | `true` | install and run the hook; always off when `integrations.typesafe.enabled` is `false` |
-| `gate.promptHook.deadlineMs` | `5000` | deadline for the whole gate call inside the hook, clamped to 1000–8500 ms; the settings `timeout` is `ceil(deadlineMs / 1000) + 3` seconds |
+| `gate.promptHook.enabled` | `false` | `true` installs and runs the hook; any other value removes a rulebook-owned entry on the next `init`/`update`/`claude`; always off when `integrations.typesafe.enabled` is `false` |
+| `gate.promptHook.deadlineMs` | `1500` | deadline for the whole gate call inside the hook, clamped to 1000–8500 ms; the settings `timeout` is `ceil(deadlineMs / 1000) + 1` seconds (3 s by default) |
 | `gate.promptHook.blockThreshold` | `0.9` | `risk_os_scheduling` probability that blocks, clamped to 0.5–1 |
 | `gate.scope.enabled` | `true` | ask `in_project_scope` when a description exists; `false` never asks it |
 | `gate.scope.description` | — | project description for the scope question; overrides `package.json` and `README.md` |
 | `gate.scope.offTopicBelow` | `0.15` | `in_project_scope` probability at or below which `onOffTopic` applies, clamped to 0–0.3 |
 | `gate.scope.onOffTopic` | `ask` | `ask`: confirm-with-the-operator line first in the context; `block`: stop the prompt |
 
-**Fail-open**: no key, `RULEBOOK_GATE=off`, TypeSafe opted out, the hook disabled, a timeout, a network or HTTP error, a bad response, unreadable or non-JSON stdin, an empty prompt, a missing CLI, or any thrown error → exit 0 with no output, and the prompt goes through unchanged. The hook always exits 0.
+**Fail-open**: no key, `RULEBOOK_GATE=off`, TypeSafe opted out, the hook disabled, a timeout, a network or HTTP error, a bad response, unreadable or non-JSON stdin, an empty prompt, or any thrown error → exit 0 with no output, and the prompt goes through unchanged. A missing or broken CLI is not silent: the hook prints one `systemMessage` per session saying the gate is off and how to fix it (a marker file named after the `session_id` under the OS temp directory keeps it from repeating on every prompt).
 
 **Decision log**: with `features.logging` on, hook calls are logged to `.rulebook/logs/gate.jsonl` like any other gate call, with `"source": "hook"` (the MCP tool writes `"mcp"`, the CLI `"cli"`).
 
-**Turn it off**: set `"gate": {"promptHook": {"enabled": false}}` in `rulebook.json` and run `rulebook update` (the entry is removed), or opt out of TypeSafe with `--no-typesafe` (also removes it). `RULEBOOK_GATE=off` silences it for one environment without touching settings.
+**Turn it on or off**: set `"gate": {"promptHook": {"enabled": true}}` in `rulebook.json` and run `rulebook update` to install the entry; remove the key or set it to `false` and run `rulebook update` again to remove it. Opting out of TypeSafe with `--no-typesafe` also removes it. `RULEBOOK_GATE=off` silences it for one environment without touching settings.
 
 ### Tool-call gate (v7.4, `PreToolUse`, opt-in)
 
@@ -403,7 +412,9 @@ The prompt hook judges what the operator asked for; the tool-call gate judges wh
                "timeout": 4 } ] }
 ```
 
-Each Jev entry is identified by its command (`jev-gate.sh prompt`, `jev-gate.sh tool`), so turning one on or off never touches the other; the entry is upserted once (a second run leaves the file byte-identical), user hooks stay untouched, and it is removed when the gate is turned off or TypeSafe is opted out.
+Each Jev entry is identified by its command (`hook-main.js prompt-gate`, `jev-gate.sh tool`), so turning one on or off never touches the other; the entry is upserted once (a second run leaves the file byte-identical), user hooks stay untouched, and it is removed when the gate is turned off or TypeSafe is opted out.
+
+**Scripts**: `.claude/hooks/jev-gate.sh` and `.claude/hooks/no-os-scheduling.sh` are installed only with the tool gate — nothing else runs them (the prompt hook runs `hook-main.js`, and `permissions.deny` rules cover OS scheduling). With the gate off, `rulebook init`, `update` and `claude` delete an unedited copy of each (the shipped script, or one a past release installed) and print `removed .claude/hooks/<file>`; a copy you edited is kept.
 
 **Order, cheapest first** (Claude Code runs matching hooks in parallel, so the order lives inside this one hook):
 
@@ -462,27 +473,17 @@ Common error scenarios:
 
 ```typescript
 // Using MCP client
-const result = await mcpClient.callTool('rulebook_task_create', {
-  taskId: 'add-feature-x',
-  proposal: {
-    why: 'Users need feature X to improve productivity',
-    whatChanges: 'Add feature X with Y and Z capabilities',
-    impact: {
-      affectedSpecs: ['features/spec.md'],
-      affectedCode: ['src/features/'],
-      breakingChange: false,
-      userBenefit: 'Improved productivity and user experience'
-    }
-  }
+const result = await mcpClient.callTool('rulebook_task', {
+  action: 'create',
+  taskId: 'phase1_add-feature-x',
+  why: 'Users need feature X to improve productivity',
+  what: 'Add feature X with Y and Z capabilities',
+  items: ['Implement Y', 'Implement Z'],
+  impact: { specs: 'features/spec.md', code: 'src/features/', breaking: false }
 });
 
 console.log(result.structuredContent);
-// {
-//   success: true,
-//   taskId: 'add-feature-x',
-//   message: 'Task add-feature-x created successfully',
-//   path: 'rulebook/tasks/add-feature-x'
-// }
+// { taskId: 'phase1_add-feature-x', message: 'created', items: 2 }
 ```
 
 ### Listing Tasks with Filters

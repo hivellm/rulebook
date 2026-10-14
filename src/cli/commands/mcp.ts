@@ -1,15 +1,25 @@
 import chalk from 'chalk';
 import { WorkspaceManager } from '../../core/workspace/workspace-manager.js';
+import type { ClaudeRunner } from '../../core/claude/mcp-fast-path.js';
 
 /**
  * Initialize MCP configuration in .rulebook file
  * Adds mcp block to .rulebook and creates/updates .cursor/mcp.json
  */
-export async function mcpInitCommand(options?: { workspace?: boolean }): Promise<void> {
+export async function mcpInitCommand(options?: {
+    workspace?: boolean;
+    fast?: boolean;
+}): Promise<void> {
+    if (options?.fast) {
+        process.exitCode = await mcpFastInitCommand({ workspace: options.workspace });
+        return;
+    }
     const { findRulebookConfig } = await import('../../mcp/rulebook-server.js');
     const { existsSync, readFileSync, writeFileSync, statSync } = await import('fs');
     const { join, dirname } = await import('path');
     const { createConfigManager } = await import('../../core/state/config-manager.js');
+    // One writer for every rulebook MCP entry (pinned version, never @latest).
+    const { configureMcpJson } = await import('../../core/claude/claude-mcp.js');
 
     try {
         const cwd = process.cwd();
@@ -23,31 +33,14 @@ export async function mcpInitCommand(options?: { workspace?: boolean }): Promise
                 process.exit(1);
             }
 
-            const mcpArgs = ['-y', '@hivehub/rulebook@latest', 'mcp-server', '--workspace'];
-            const mcpEntry = { command: 'npx', args: mcpArgs };
-
             const cursorDir = join(cwd, '.cursor');
             if (existsSync(cursorDir)) {
-                const mcpJsonPath = join(cursorDir, 'mcp.json');
-                let mcpConfig: any = { mcpServers: {} };
-                if (existsSync(mcpJsonPath)) {
-                    mcpConfig = JSON.parse(readFileSync(mcpJsonPath, 'utf8'));
-                }
-                mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
-                mcpConfig.mcpServers.rulebook = mcpEntry;
-                writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+                await configureMcpJson(cwd, true, join(cursorDir, 'mcp.json'));
                 console.log(chalk.green('✓ Workspace MCP initialized'));
                 console.log(chalk.gray(`  • Updated .cursor/mcp.json with --workspace flag`));
             }
 
-            const mcpJsonPath = join(cwd, '.mcp.json');
-            let mcpConfig: any = { mcpServers: {} };
-            if (existsSync(mcpJsonPath)) {
-                mcpConfig = JSON.parse(readFileSync(mcpJsonPath, 'utf8'));
-            }
-            mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
-            mcpConfig.mcpServers.rulebook = mcpEntry;
-            writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+            await configureMcpJson(cwd, true);
 
             console.log(chalk.green('✓ Workspace MCP initialized'));
             console.log(
@@ -91,21 +84,7 @@ export async function mcpInitCommand(options?: { workspace?: boolean }): Promise
 
         const cursorDir = join(projectRoot, '.cursor');
         if (existsSync(cursorDir)) {
-            const mcpJsonPath = join(cursorDir, 'mcp.json');
-            let mcpConfig: any = { mcpServers: {} };
-
-            if (existsSync(mcpJsonPath)) {
-                const raw = readFileSync(mcpJsonPath, 'utf8');
-                mcpConfig = JSON.parse(raw);
-            }
-
-            mcpConfig.mcpServers = mcpConfig.mcpServers ?? {};
-            mcpConfig.mcpServers.rulebook = {
-                command: 'npx',
-                args: ['-y', '@hivehub/rulebook@latest', 'mcp-server'],
-            };
-
-            writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2) + '\n');
+            await configureMcpJson(projectRoot, false, join(cursorDir, 'mcp.json'));
             console.log(chalk.green('✓ Rulebook MCP initialized'));
             console.log(chalk.gray(`  • Updated .rulebook with MCP configuration`));
             console.log(chalk.gray(`  • Updated .cursor/mcp.json`));
@@ -120,6 +99,64 @@ export async function mcpInitCommand(options?: { workspace?: boolean }): Promise
         console.error(error.stack);
         process.exit(1);
     }
+}
+
+/**
+ * `rulebook mcp init --fast`: register `node <absolute path to the installed
+ * server>` in Claude Code's local scope (this machine and project only; the
+ * checked-in .mcp.json keeps the pinned npx entry) and print the Codex
+ * equivalent. Returns the process exit code.
+ */
+export async function mcpFastInitCommand(
+    /** `serverPath` overrides the installed server (tests; the CLI never sets it). */
+    options: { workspace?: boolean; serverPath?: string } = {},
+    runner?: ClaudeRunner
+): Promise<number> {
+    const { existsSync } = await import('fs');
+    const { sep } = await import('path');
+    const { buildFastMcpEntry, codexTomlSnippet, getInstalledServerPath, registerLocalMcpEntry } =
+        await import('../../core/claude/mcp-fast-path.js');
+
+    const serverPath = options.serverPath ?? getInstalledServerPath();
+    if (!existsSync(serverPath)) {
+        console.error(chalk.red(`MCP server not found at ${serverPath}.`));
+        console.error(
+            chalk.gray('  Reinstall @hivehub/rulebook, or run `npm run build` in a checkout.')
+        );
+        return 1;
+    }
+
+    const entry = buildFastMcpEntry(serverPath, options.workspace);
+    const result = await registerLocalMcpEntry(process.cwd(), entry, runner);
+    if (result.registered) {
+        console.log(chalk.green('✓ MCP fast path registered in Claude Code local scope'));
+        console.log(chalk.gray(`  • ${entry.command} ${entry.args.join(' ')}`));
+        console.log(
+            chalk.gray(
+                '  • This machine and project only; overrides the rulebook entry in .mcp.json'
+            )
+        );
+        console.log(chalk.gray('  • Undo: claude mcp remove --scope local rulebook'));
+    } else {
+        console.log(
+            chalk.yellow(
+                `Claude CLI not available or failed${result.error ? ` (${result.error})` : ''}.`
+            )
+        );
+        console.log('Register the fast path by hand:');
+        console.log(`  ${result.manualCommand}`);
+    }
+    if (serverPath.includes(`${sep}_npx${sep}`)) {
+        console.log(
+            chalk.yellow(
+                '  ! This path is in npx’s cache, which npm may clear. For a stable path: npm i -g @hivehub/rulebook'
+            )
+        );
+    }
+
+    console.log('\nCodex: add to ~/.codex/config.toml (rulebook does not edit it):');
+    console.log(codexTomlSnippet(entry));
+    return 0;
 }
 
 export async function mcpServerCommand(): Promise<void> {

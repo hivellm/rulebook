@@ -119,14 +119,14 @@ When workspace is detected, `rulebook update`:
 rulebook mcp init --workspace
 ```
 
-Generates `.mcp.json` with `--workspace` flag:
+Generates `.mcp.json` with `--workspace` flag, pinned to the installed rulebook version:
 
 ```json
 {
   "mcpServers": {
     "rulebook": {
       "command": "npx",
-      "args": ["-y", "@hivehub/rulebook@latest", "mcp-server", "--workspace"]
+      "args": ["-y", "--package=@hivehub/rulebook@7.5.0", "rulebook-mcp", "--workspace"]
     }
   }
 }

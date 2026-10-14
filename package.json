@@ -1,16 +1,19 @@
 {
   "name": "@hivehub/rulebook",
-  "version": "7.4.0",
+  "version": "7.5.0",
   "description": "Tool-agnostic AI development framework. Standardize projects across Claude Code, Cursor, Gemini, Codex, Windsurf, Copilot with automated templates, quality gates, persistent memory, and framework detection for 28 languages, 17 frameworks, 13 MCP modules, and 20 services",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
     "rulebook": "./dist/index.js",
+    "rulebook-hook": "./dist/cli/hook-main.js",
     "rulebook-mcp": "./dist/mcp/rulebook-server.js"
   },
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
-    "build": "npm run clean && tsc",
+    "build": "npm run clean && tsc && node -e \"require('fs').copyFileSync('src/core/migration/legacy-catalogue.json','dist/core/migration/legacy-catalogue.json')\" && npm run build:mcp-bundle",
+    "build:mcp-bundle": "node scripts/build-mcp-bundle.mjs",
+    "build:catalogue": "node scripts/build-legacy-catalogue.mjs",
     "dev": "tsx src/index.ts",
     "test": "vitest run --no-watch",
     "test:watch": "vitest",
@@ -84,6 +87,7 @@
     "@typescript-eslint/eslint-plugin": "^8.70.0",
     "@typescript-eslint/parser": "^8.70.0",
     "@vitest/coverage-v8": "^4.1.11",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "globals": "^17.12.0",
     "prettier": "^3.9.7",

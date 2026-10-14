@@ -14,6 +14,7 @@
 
 import { readdir } from 'fs/promises';
 import { join, dirname, relative } from 'path';
+import { fileURLToPath } from 'url';
 import { fileExists, readFile, writeFile } from '../../utils/file-system.js';
 import type {
     Skill,
@@ -38,6 +39,7 @@ const CATEGORY_MAPPINGS: Record<string, SkillCategory> = {
     workflows: 'workflows',
     ides: 'ides',
     core: 'core',
+    dev: 'dev',
     cli: 'cli',
     git: 'git',
     hooks: 'hooks',
@@ -213,19 +215,23 @@ export class SkillsManager {
             workflows: [],
             ides: [],
             core: [],
+            dev: [],
             cli: [],
             git: [],
             hooks: [],
             project: [],
         };
 
-        // First, check if new skills directory exists
+        // Skills live in `<templates>/skills/<category>/<name>/SKILL.md`. Only a
+        // templates root without that directory (the pre-v2 layout) is scanned
+        // for legacy `<category>/*.md` files: in the bundled templates those
+        // folders hold generator inputs (core/claude-md.md, hooks/pre-push.md…),
+        // not skills.
         if (await fileExists(this.skillsPath)) {
             await this.scanSkillsDirectory(this.skillsPath, skills, categories);
+        } else {
+            await this.scanLegacyTemplates(skills, categories);
         }
-
-        // Also scan legacy template directories for backward compatibility
-        await this.scanLegacyTemplates(skills, categories);
 
         // v7.2: the project's own skills — hand-written or promoted from a
         // recurring learning. Listed next to packaged skills; opt-in for
@@ -366,7 +372,9 @@ export class SkillsManager {
                 metadata.category ||
                 'core') as SkillCategory;
 
-            const skillId = this.generateSkillId(metadata.name || dirName, category);
+            // The directory name is the stable, unique id (`languages/cpp`, not the
+            // display name "C++", which collides with C and C#).
+            const skillId = this.generateSkillId(dirName || metadata.name, category);
 
             return {
                 id: skillId,
@@ -815,11 +823,9 @@ export function createSkillsManager(templatesPath: string, projectPath?: string)
 }
 
 /**
- * Get the default templates path
+ * The package's `templates/` directory. This module sits three levels below
+ * the package root in both src/core/skills/ and dist/core/skills/.
  */
 export function getDefaultTemplatesPath(): string {
-    // In production, templates are in the package's templates directory
-    // In development, they're in the project root
-    const packagePath = dirname(dirname(dirname(import.meta.url.replace('file:///', ''))));
-    return join(packagePath, 'templates');
+    return join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'templates');
 }

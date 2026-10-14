@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync } from 'fs';
+import path from 'path';
 import {
     hasLegacyAbsolutePaths,
     migrateMcpJson,
@@ -22,6 +24,9 @@ const mockFileExists = vi.mocked(fileExists);
 const mockReadFile = vi.mocked(readFile);
 const mockWriteFile = vi.mocked(writeFile);
 const mockGlob = vi.mocked(glob);
+
+const { version } = JSON.parse(readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8'));
+const PINNED = ['-y', `--package=@hivehub/rulebook@${version}`, 'rulebook-mcp'];
 
 beforeEach(() => {
     vi.resetAllMocks();
@@ -234,11 +239,8 @@ describe('migrateMcpJson', () => {
         const writtenContent = mockWriteFile.mock.calls[1][1];
         const parsed = JSON.parse(writtenContent);
 
-        expect(parsed.mcpServers.rulebook.args).toEqual([
-            '-y',
-            '@hivehub/rulebook@latest',
-            'mcp-server',
-        ]);
+        // Same pinned entry init/update write (one writer).
+        expect(parsed.mcpServers.rulebook).toEqual({ command: 'npx', args: PINNED });
 
         // Should preserve other entries
         expect(parsed.mcpServers['other-server']).toEqual({
@@ -284,16 +286,9 @@ describe('migrateMcpJson', () => {
         const writtenContent = mockWriteFile.mock.calls[1][1];
         const parsed = JSON.parse(writtenContent);
 
-        expect(parsed.mcpServers.rulebook.args).toEqual([
-            '-y',
-            '@hivehub/rulebook@latest',
-            'mcp-server',
-        ]);
-        expect(parsed.mcpServers['rulebook-memory'].args).toEqual([
-            '-y',
-            '@hivehub/rulebook@latest',
-            'mcp-server',
-        ]);
+        // Same pinned entry init/update write (one writer).
+        expect(parsed.mcpServers.rulebook).toEqual({ command: 'npx', args: PINNED });
+        expect(parsed.mcpServers['rulebook-memory']).toEqual({ command: 'npx', args: PINNED });
     });
 
     it('should not migrate --project-root with relative path', async () => {

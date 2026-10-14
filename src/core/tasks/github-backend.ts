@@ -1,10 +1,12 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import {
-    renderProposalTemplate,
-    renderTasksTemplate,
+    renderProposal,
+    renderTasks,
     validateLoadedTask,
+    validateTaskContent,
     type RulebookTask,
+    type TaskContent,
     type TaskValidationResult,
 } from './task-manager.js';
 import {
@@ -238,10 +240,15 @@ export class GitHubTaskBackend implements TaskBackend {
         return { phase: parseInt(match[1], 10), subletter: match[2] || '' };
     }
 
-    async createTask(taskId: string): Promise<void> {
+    async createTask(taskId: string, content: TaskContent): Promise<void> {
         const nameValidation = this.validateTaskId(taskId);
         if (!nameValidation.valid) {
             throw new Error(nameValidation.error);
+        }
+
+        const problems = validateTaskContent(content);
+        if (problems.length > 0) {
+            throw new Error(`Task ${taskId} not created: ${problems.join('; ')}`);
         }
 
         if (await this.findIssue(taskId)) {
@@ -249,8 +256,8 @@ export class GitHubTaskBackend implements TaskBackend {
         }
 
         const body = GitHubTaskBackend.encodeBody({
-            proposal: renderProposalTemplate(taskId),
-            tasks: renderTasksTemplate(),
+            proposal: renderProposal(taskId, content),
+            tasks: renderTasks(content.items),
         });
 
         await this.gh([

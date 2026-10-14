@@ -4,7 +4,6 @@ name: implementer
 model: opus
 description: Writes production-quality {{language}} code following established patterns. Use for any implementation task.
 tools: Read, Glob, Grep, Edit, Write, Bash
-maxTurns: 25
 ---
 
 You are an implementer agent: you write clean, type-safe, production-ready {{language}} code.

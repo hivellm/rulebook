@@ -1,17 +1,30 @@
 <!-- ORCHESTRATION:START -->
 # Orchestration & Model Routing
 
-The main session is an orchestrator. It plans, delegates, monitors, and closes
-out. It never executes the work itself.
+Mode: `judgment` (the default). The main session does small, local work itself
+and delegates when delegation pays. Set `"orchestration": "orchestrator"` in
+`.rulebook/rulebook.json` and run `rulebook update` for the opt-in orchestrator
+mode, where every task goes to a subagent.
 
 ## 1. Main-session role
 
-- Never edit code, write tests, or dig through files in the main session.
-  Delegate every task to a subagent — including small ones. A small fix goes
-  out as a brief and comes back as a report, with no task ceremony.
-- Keep the main context for coordination: plans, agent reports, decisions.
-- Plan before executing: split the request into tasks, note which depend on
-  each other, and pick a model for each.
+- Do the work yourself when it is small and local: the files are already in
+  context and about 3 or fewer will change. A one-line fix done directly takes
+  ~4–5 model turns; delegated, ~10–12.
+- Delegate when it pays:
+  - 2+ independent parts with disjoint files — run them in parallel;
+  - broad exploration whose raw output you don't need (wide searches, many-file
+    reads);
+  - long work (roughly 10+ edits or 50+ tool calls);
+  - a main context past ~150k tokens.
+- Why: delegation protects the main context and runs independent work in
+  parallel; it does not make work faster. A spawn starts cold — ~20–40k tokens of
+  fresh context — and re-reads files you already read. When none of the cases
+  above applies, the round trip costs more than it saves.
+- These thresholds are starting points, not rules; when a case is unclear, pick
+  the cheaper path.
+- Plan multi-part work before executing it: split it, note which parts depend on
+  each other, and pick a model for each part.
 
 ## 2. Model routing
 
@@ -26,19 +39,24 @@ Specify the model in every agent call. Never rely on the default.
 Never use Fable for simple work — simple tasks go to Opus 5.5. In Claude Code,
 set the Agent tool's `model` to `fable`, `opus`, or `haiku`.
 
-## 3. Entry gate (Jev)
+## 3. Jev gate (opt-in, on demand)
 
-Before planning anything, every operator prompt goes through the gate. A
-`UserPromptSubmit` hook (`.claude/hooks/jev-gate.sh prompt` → `rulebook hook
-prompt-gate`) runs it on each prompt and injects the result into the context
-under "Jev routing (rulebook prompt hook)": act on that routing and do not call
-the gate again. Only when no hook routing is in context, send the prompt —
-verbatim — through `rulebook_gate {prompt, notes?}` yourself. Either way,
-rulebook sends Jev (TypeSafe's System One model) a short project description
-(config; a one-line summary from `gate.scope.description`, else `package.json`,
-else the README's first prose paragraph; tasks, open questions, installed
-skills, subagent types, the routing table in section 2) plus the prompt, and
-asks one question per decision the main session would otherwise guess:
+Nothing here runs by default. `rulebook_gate {prompt, notes?}` is an on-demand
+MCP tool: call it when you want Jev's (TypeSafe's System One model) routing for
+an operator prompt — send the prompt verbatim. An opt-in `UserPromptSubmit` hook
+(off by default; `gate.promptHook.enabled: true` in `rulebook.json`, then
+`rulebook update`) runs `node <rulebook>/dist/cli/hook-main.js prompt-gate` in
+exec form (no shell) on each operator prompt. It skips machine inputs (agent and
+task notifications, agent messages, local command output), asks Jev only
+`kind`, `needs_task`, `existing_task`, `needs_operator_decision`,
+`in_project_scope` and the risks, and injects the result under "Jev routing
+(rulebook prompt hook)": act on that routing and do not call the gate again. It
+tells you to ask the operator only when `needsOperatorDecision` is true. Either
+way, rulebook sends Jev a short project description (config; a one-line summary
+from `gate.scope.description`, else `package.json`, else the README's first
+prose paragraph; tasks, open questions; for the tool, also installed skills,
+subagent types and the routing table in section 2) plus the prompt, and asks one
+question per decision the main session would otherwise guess:
 
 | Decision | Question | Routing field |
 |----------|----------|---------------|
@@ -63,18 +81,20 @@ goes to the task that owns the first open question; a decided existing task
 means a task; an undecided `model` with a decided `agent` is derived from
 section 2.
 
-Act on `routing` directly:
-- `kind` — small-fix: brief a subagent, no task. task-work: create or reuse a
-  task (`existingTaskId`). question-or-analysis: a researcher/architect
-  subagent reports; no edits. answer-to-open-question: `rulebook_task
-  {action:"answer"}`. setup-or-config: implementer or build-engineer.
+Act on `routing`:
+- `kind` — small-fix: no task; handle it per section 1. task-work: create or
+  reuse a task (`existingTaskId`). question-or-analysis: answer or report; no
+  edits. answer-to-open-question: `rulebook_task {action:"answer"}`.
+  setup-or-config: per section 1 (implementer or build-engineer when delegated).
 - `needsTask`, `existingTaskId` — create a task only when `needsTask` is true
   and there is no existing id; otherwise reuse the existing task.
-- `model`, `agentType`, `skill` — pass them into the subagent brief and the
-  Agent call; the subagent loads the skill.
-- `parallel` — true: split into independent subagents with disjoint files.
+- `model`, `agentType`, `skill` — when you delegate, pass them into the
+  subagent brief and the Agent call; the subagent loads the skill.
+- `parallel` — true: the work splits into independent parts with disjoint
+  files; run them as parallel subagents.
 - `needsOperatorDecision` — true: ask before acting (`rulebook_task
-  {action:"ask"}` when a task exists; otherwise one direct question).
+  {action:"ask"}` when a task exists; otherwise one direct question). This is
+  the only routing field that asks the operator.
 - `inProjectScope` — false: the prompt looks off-topic for this project;
   confirm with the operator before acting.
 - `risk.destructiveGit` / `risk.osScheduling` / `risk.secrets` — true: the
@@ -83,26 +103,29 @@ Act on `routing` directly:
   authorization before it.
 
 Undecided fields (listed in `undecided`) fall back to sections 1, 2 and 4 of
-this spec; `kind` undecided or `unclear` means ask. `available:false` means Jev
-could not be reached, has no key, or is disabled: proceed under this spec and,
-once, show the operator the `instructions` for `TYPESAFE_API_KEY`. The gate is
-advisory — it never blocks. Call it once per operator prompt, from the main
-session only: subagents do not call the gate; they receive `routing` in their
-brief. Disable it with `RULEBOOK_GATE=off`.
+this spec: decide them yourself — an undecided or `unclear` `kind` is not a
+reason to ask. `available:false` means Jev could not be reached, has no key, or
+is disabled: proceed under this spec and, once, show the operator the
+`instructions` for `TYPESAFE_API_KEY`. The gate is advisory — it never blocks.
+Call it at most once per operator prompt, from the main session only:
+subagents do not call the gate; they receive `routing` in their brief. Disable
+it with `RULEBOOK_GATE=off`.
 
-The prompt hook always blocks one case: Jev puts `risk_os_scheduling` at or
-above `gate.promptHook.blockThreshold` (default 0.9) — OS-level scheduling is
-never allowed — and the prompt stops with a reason. An off-topic prompt
-(`in_project_scope` at or below `gate.scope.offTopicBelow`, default 0.15)
-follows `gate.scope.onOffTopic`: `ask` (default) opens the context with a line
-to confirm with the operator before acting, `block` stops the prompt; above
-that and up to 0.3 it is only a warning line. Destructive git and secrets
-never block there (the operator's own prompt is the authorization); they, and
-any risk from 0.5 up that does not block, arrive as warning lines in the
-context. The hook is fail-open: no key, gate disabled, timeout
-(`gate.promptHook.deadlineMs`, default 5000 ms), an error, or a missing CLI →
-no output, and the prompt goes through unchanged. Turn it off with
-`gate.promptHook.enabled: false` in `rulebook.json` or `--no-typesafe`.
+When the prompt hook is on, it always blocks one case: Jev puts
+`risk_os_scheduling` at or above `gate.promptHook.blockThreshold` (default 0.9)
+— OS-level scheduling is never allowed — and the prompt stops with a reason. An
+off-topic prompt (`in_project_scope` at or below `gate.scope.offTopicBelow`,
+default 0.15) follows `gate.scope.onOffTopic`: `ask` (default) opens the
+context with a line to confirm with the operator before acting, `block` stops
+the prompt; above that and up to 0.3 it is only a warning line. Destructive git
+and secrets never block there (the operator's own prompt is the authorization);
+they, and any risk from 0.5 up that does not block, arrive as warning lines in
+the context. The hook is fail-open: no key, gate disabled, timeout
+(`gate.promptHook.deadlineMs`), or an error → no output, and the prompt goes
+through unchanged. A missing or broken hook entry is not silent: it prints one
+`systemMessage` per session saying the gate is off and how to fix it. Turn the
+hook on with `gate.promptHook.enabled: true` and `rulebook update`;
+`--no-typesafe` turns TypeSafe off entirely.
 
 An opt-in tool-call gate (`gate.toolHook.enabled: true`) is a `PreToolUse`
 hook (`jev-gate.sh tool` → `rulebook hook tool-gate`) on `Bash|Edit|Write`
@@ -122,12 +145,22 @@ prompt text, no key.
 
 ## 4. Delegation
 
-- One subagent per task. Do not bundle unrelated tasks into one agent.
-- Run independent subagents in parallel; run dependent ones in order.
-- Give each subagent a complete brief: the rulebook task id, the goal, the
-  files or areas involved, the constraints, and what to report back.
-- Read the subagent's report, never the files it touched. If the report is
-  unclear, ask the agent — do not re-read its work yourself.
+When you delegate:
+
+- One subagent per independent part. Run independent subagents in parallel;
+  run dependent ones in order.
+- Brief completely: the rulebook task id (if any), the goal, the files or areas
+  involved, decisions already made, the constraints, and the report format. A
+  complete brief saves the subagent from re-reading what you already know.
+- Prefer a narrow installed agent (implementer, researcher, tester, …) over
+  general-purpose: its fixed context is about half (~20k vs ~38k tokens).
+- Ask for a short structured report: outcome, files changed, checks run, open
+  risks. No prose dump.
+- Read the report rather than re-reading the files it covers. If it is unclear,
+  ask the agent (`SendMessage`) before re-doing its work.
+- Progress: one line to the operator after each dispatch (what went out, to
+  which agent and model) and after each hand-back (the outcome). Background
+  work is otherwise invisible.
 
 ## 5. Subagent contract
 
@@ -136,31 +169,38 @@ subagent owns that ONE task and drives it through the full cycle:
 
 1. Fill or update the task's `proposal.md`, `tasks.md`, and `specs/`.
 2. Set the task in progress; check each `tasks.md` item as it is completed.
-3. Run the quality gate: type-check → lint → tests. All green.
+3. Run type-check → lint → the tests covering the change as it works; run the
+   full quality gate (type-check → lint → tests, full suite) before archiving.
+   All green.
 4. Archive the task via `rulebook_task {action:"archive"}` when everything is
    checked and the gate is green.
-5. Report back concisely: what changed (files), gate results, and anything left
-   undone with the concrete reason.
+5. Report back: outcome, files changed, checks run, open risks (anything left
+   undone, with the concrete reason).
 
 A small fix has no rulebook task: the subagent works from the brief, runs the
-quality gate, and reports back — no proposal, tasks, specs, or archive.
+tests covering its change, and reports back — no proposal, tasks, specs, or
+archive.
 
 ## 6. Monitoring
-
-The main session is responsible for progress until every task is archived:
 
 - Track each running agent and read each report as it arrives.
 - Pause or restart an agent that stalls, loops, stops for any reason, or drifts
   from its task. In Claude Code: `TaskStop` to stop it, `SendMessage` to correct
   it, or re-spawn it with a corrected brief.
-- Never finish an abandoned task in the main session — hand it to a fresh
-  subagent.
+- Finish a small leftover yourself when it meets section 1; re-dispatch anything
+  larger with a corrected brief.
 
 ## 7. Close-out
 
-When a task is archived, the main session:
+Close-out follows the release, not each task:
 
-1. Reviews the archived task and its diff against the brief.
-2. Updates `CHANGELOG.md` so the record is kept.
-3. Commits the task's changes together with the CHANGELOG entry.
+- **CHANGELOG** — per PR or release, for user-visible changes. Not per task.
+- **Diff review** — once per PR, over the full diff (the `review-fanout`
+  workflow when installed). Not per task; per task, the report is the record.
+- **Task archive** — only for tracked multi-session tasks (section 5). Small
+  fixes have none.
+- **Tests** — subagents run the tests covering their change; the full quality
+  gate (type-check → lint → full suite) runs before a commit batch and before
+  push.
+- **Commits** — commit a batch of related work once the full gate is green.
 <!-- ORCHESTRATION:END -->

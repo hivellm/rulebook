@@ -4,8 +4,10 @@ import type { RulebookConfig } from '../src/types';
 
 /**
  * `rulebook update` replaces rulebook.json with a rebuilt config. The rebuild
- * must carry forward what the operator (or an earlier install) decided:
- * `installedAt` and `integrations` — a stored TypeSafe "no" included.
+ * must carry forward what the operator (or an earlier install) decided —
+ * `installedAt`, `integrations` (a stored TypeSafe "no" included),
+ * `permissions` (the v7.5 auto-approve answer), disabled skills — and save
+ * what this update detected.
  */
 
 const FEATURES: RulebookConfig['features'] = {
@@ -26,6 +28,7 @@ function input(over: Partial<ConfigRebuildInput> = {}): ConfigRebuildInput {
         leanMode: true,
         features: FEATURES,
         gitPushMode: 'manual',
+        detected: { languages: [], modules: [], skills: [] },
         now: '2026-09-26T12:00:00.000Z',
         ...over,
     };
@@ -58,19 +61,143 @@ describe('rebuildConfigOnUpdate', () => {
         expect(c.integrations).toEqual(EXISTING.integrations);
     });
 
-    it('takes integrations from the fresh read after the TypeSafe decision', () => {
-        const fresh = { typesafe: { enabled: true, askedAt: '2026-09-26T11:59:00.000Z' } };
-        const c = rebuildConfigOnUpdate(
-            { ...EXISTING, integrations: undefined },
-            input({
-                integrations: fresh,
-            })
-        );
-        expect(c.integrations).toEqual(fresh);
-    });
-
     it('adds no integrations key when there are none', () => {
         const c = rebuildConfigOnUpdate({ installedAt: EXISTING.installedAt }, input());
         expect('integrations' in c).toBe(false);
+    });
+
+    it('keeps a stored permissions.autoApprove answer (v7.5)', () => {
+        const c = rebuildConfigOnUpdate(
+            { ...EXISTING, permissions: { autoApprove: false } },
+            input()
+        );
+        expect(c.permissions).toEqual({ autoApprove: false });
+    });
+
+    // Regression (v7.5): the rebuild listed its keys by hand and dropped gate,
+    // multiAgent, tasks, mcp and orchestration — an update silently turned the
+    // opt-in Jev prompt hook (gate.promptHook.enabled) off again.
+    it('carries forward every key the project set', () => {
+        const userSet: Partial<RulebookConfig> = {
+            ...EXISTING,
+            orchestration: 'orchestrator',
+            gate: {
+                promptHook: { enabled: true, deadlineMs: 2000, blockThreshold: 0.8 },
+                scope: { enabled: false, onOffTopic: 'block' },
+                toolHook: { enabled: true, matcher: 'Bash' },
+            },
+            multiAgent: { enabled: true },
+            tasks: { backend: 'github', repo: 'acme/demo', label: 'rb' },
+            mcp: { enabled: true, tasksDir: 'work/tasks', archiveDir: 'work/archive' },
+            permissions: { autoApprove: false },
+            integrations: { typesafe: { enabled: true, askedAt: '2026-02-01T00:00:00.000Z' } },
+            rulebookDir: '.rb',
+            languages: ['typescript'],
+            modular: false,
+            skills: { enabled: ['languages/typescript'], disabled: ['core/rulebook'] },
+            monorepo: { detected: true, tool: 'pnpm', packages: ['packages/a'] },
+            agentFramework: { projectType: 'web-app', modelAssignment: { core: 'fable' } },
+            referenceSource: { enabled: true, path: '../ref' },
+        };
+        const c = rebuildConfigOnUpdate(userSet, input());
+        for (const key of [
+            'orchestration',
+            'gate',
+            'multiAgent',
+            'tasks',
+            'mcp',
+            'permissions',
+            'integrations',
+            'rulebookDir',
+            'modular',
+            'skills',
+            'monorepo',
+            'agentFramework',
+            'referenceSource',
+        ] as const) {
+            expect(c[key], key).toEqual(userSet[key]);
+        }
+        expect(c.gate?.promptHook?.enabled).toBe(true);
+    });
+
+    it('still recomputes the fields update owns', () => {
+        const c = rebuildConfigOnUpdate(
+            { ...EXISTING, mode: 'minimal', gitPushMode: 'auto', agentsMode: 'full' },
+            input({ gitPushMode: 'prompt' })
+        );
+        expect(c.mode).toBe('full');
+        expect(c.gitPushMode).toBe('prompt');
+        expect(c.agentsMode).toBe('lean');
+        expect(c.features).toEqual(FEATURES);
+        expect(
+            rebuildConfigOnUpdate({ agentsMode: 'full' }, input({ leanMode: false })).agentsMode
+        ).toBe('full');
+    });
+
+    // Regression: update wrote its detection in an early updateConfig that this
+    // rebuild then replaced, so newly detected languages and skills were never saved.
+    it('saves the detection of this update: languages, modules, new skills', () => {
+        const c = rebuildConfigOnUpdate(
+            {
+                ...EXISTING,
+                languages: ['typescript'],
+                modules: ['github'],
+                skills: {
+                    enabled: ['languages/typescript', 'core/rulebook'],
+                    order: ['core/rulebook'],
+                },
+            },
+            input({
+                detected: {
+                    languages: ['typescript', 'rust'],
+                    modules: [],
+                    skills: ['languages/typescript', 'languages/rust', 'core/rulebook'],
+                },
+            })
+        );
+        expect(c.languages).toEqual(['typescript', 'rust']);
+        expect(c.modules).toEqual([]);
+        expect(c.skills).toEqual({
+            enabled: ['languages/typescript', 'core/rulebook', 'languages/rust'],
+            order: ['core/rulebook'],
+        });
+    });
+
+    it('keeps a skill the user disabled off', () => {
+        const c = rebuildConfigOnUpdate(
+            {
+                ...EXISTING,
+                skills: { enabled: ['languages/typescript'], disabled: ['core/rulebook'] },
+            },
+            input({
+                detected: {
+                    languages: ['typescript'],
+                    modules: [],
+                    skills: ['languages/typescript', 'core/rulebook'],
+                },
+            })
+        );
+        expect(c.skills).toEqual({
+            enabled: ['languages/typescript'],
+            disabled: ['core/rulebook'],
+        });
+    });
+
+    it('keeps a user-set rulebookDir and writes none when the project has none', () => {
+        expect(
+            rebuildConfigOnUpdate({ ...EXISTING, rulebookDir: '.rb' }, input()).rulebookDir
+        ).toBe('.rb');
+        expect('rulebookDir' in rebuildConfigOnUpdate(EXISTING, input())).toBe(false);
+    });
+
+    it('adds no skills key when nothing is enabled or detected', () => {
+        expect('skills' in rebuildConfigOnUpdate(EXISTING, input())).toBe(false);
+    });
+
+    it('drops keys that are not part of RulebookConfig', () => {
+        const legacy = { ...EXISTING, lightMode: true, ralph: { enabled: true } };
+        const c = rebuildConfigOnUpdate(legacy as Partial<RulebookConfig>, input());
+        expect('lightMode' in c).toBe(false);
+        expect('ralph' in c).toBe(false);
     });
 });

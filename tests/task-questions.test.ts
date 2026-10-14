@@ -28,6 +28,13 @@ import {
 } from '../src/core/tasks/task-questions.js';
 import { writeState } from '../src/core/state/state-writer.js';
 
+/** v7.5: tasks are created with their content. */
+const TASK_CONTENT = {
+    why: 'Test task created with its content in one call',
+    what: 'Exercise the task store',
+    items: ['First step'],
+};
+
 const TASK = 'phase1_demo';
 
 describe('task-questions helpers', () => {
@@ -132,7 +139,7 @@ describe('TaskManager decision requests (file backend)', () => {
         );
         mkdirSync(root, { recursive: true });
         tm = new TaskManager(root, '.rulebook');
-        await tm.createTask(TASK);
+        await tm.createTask(TASK, TASK_CONTENT);
         await tm.updateTaskStatus(TASK, 'in-progress');
     });
 
@@ -234,7 +241,7 @@ describe('TaskManager decision requests (file backend)', () => {
     });
 
     it('listOpenQuestions spans tasks, oldest first', async () => {
-        await tm.createTask('phase2_other');
+        await tm.createTask('phase2_other', TASK_CONTENT);
         await tm.askQuestion(TASK, { question: 'first' });
         await new Promise((r) => setTimeout(r, 5));
         await tm.askQuestion('phase2_other', { question: 'second' });

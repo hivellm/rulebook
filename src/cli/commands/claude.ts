@@ -9,7 +9,10 @@
 
 import chalk from 'chalk';
 import { setupClaudeCodeIntegration } from '../../core/claude/claude-mcp.js';
-import { applyClaudeSettings } from '../../core/claude/claude-settings-manager.js';
+import {
+    applyClaudeSettings,
+    resolveAutoApprove,
+} from '../../core/claude/claude-settings-manager.js';
 
 /**
  * Model written to .claude/settings.json (`model`) when none is set.
@@ -46,7 +49,7 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
 
         // v7: two optional PreToolUse guards + the full-autonomy permission
         // profile; v7.4 adds the fail-open Jev prompt hook (UserPromptSubmit)
-        // while TypeSafe is on and gate.promptHook.enabled is not false, and the
+        // while TypeSafe is on and gate.promptHook.enabled is true (opt-in, v7.5), and the
         // opt-in Jev tool gate (PreToolUse) under gate.toolHook.enabled. No
         // hooks on Stop/SessionStart, no orchestration enforcement (P0). Stale
         // v5/v6 entries self-heal on sync via LEGACY_SIGNATURES.
@@ -57,7 +60,7 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
         const rulebookCfg = await readConfigFile(cwd);
         const promptHook = resolvePromptHookConfig(rulebookCfg);
         const toolHook = resolveToolHookConfig(rulebookCfg);
-        await applyClaudeSettings(cwd, {
+        const settingsResult = await applyClaudeSettings(cwd, {
             taskScaffoldingGuard: true,
             osSchedulingGuard: true,
             jevPromptGate: options.typesafe !== false && promptHook.enabled,
@@ -70,9 +73,16 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
                       }
                     : undefined,
             fullAutonomyPermissions: true,
+            autoApprove: resolveAutoApprove(rulebookCfg),
             statusLine: true,
             defaultModel,
         });
+        for (const script of settingsResult.removedScripts) {
+            console.log(
+                chalk.gray(`  • removed ${script} (used only by the tool gate, which is off)`)
+            );
+        }
+        for (const warning of settingsResult.warnings) console.log(chalk.yellow(`⚠ ${warning}`));
 
         // TypeSafe (Jev) — offered by default since v7.4; --no-typesafe opts out;
         // a stored answer is honoured.

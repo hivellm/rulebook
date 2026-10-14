@@ -69,24 +69,78 @@ async function resolveTaskManager(
     return { taskManager: await resolveTaskBackend(cwd, rulebookDir) };
 }
 
+/** Flags of `rulebook task create` (commander camel-cases `--impact-*`). */
+export interface TaskCreateOptions {
+    why?: string;
+    what?: string;
+    item?: string[];
+    impactSpecs?: string;
+    impactCode?: string;
+    impactBreaking?: string;
+    impactBenefit?: string;
+    /** JSON file with { why, what, items, impact }; flags override it. */
+    from?: string;
+}
+
+export const TASK_CREATE_USAGE =
+    'Usage: rulebook task create <task-id> --why "<why, 20+ chars>" --what "<what changes>" ' +
+    '--item "<step>" [--item ...] [--impact-specs ..] [--impact-code ..] ' +
+    '[--impact-breaking yes|no|<text>] [--impact-benefit ..] [--from <file.json>]';
+
+/** Merge `--from <file.json>` with the flags (flags win) into a TaskContent. */
+export async function buildTaskContent(
+    options: TaskCreateOptions
+): Promise<import('../../core/tasks/task-manager.js').TaskContent> {
+    let base: Partial<import('../../core/tasks/task-manager.js').TaskContent> = {};
+    if (options.from) {
+        const { readFile } = await import('fs/promises');
+        base = JSON.parse(await readFile(options.from, 'utf-8'));
+    }
+    const breaking = options.impactBreaking;
+    const impact = {
+        ...base.impact,
+        ...(options.impactSpecs !== undefined && { specs: options.impactSpecs }),
+        ...(options.impactCode !== undefined && { code: options.impactCode }),
+        ...(breaking !== undefined && {
+            breaking: /^(yes|true)$/i.test(breaking)
+                ? true
+                : /^(no|false)$/i.test(breaking)
+                  ? false
+                  : breaking,
+        }),
+        ...(options.impactBenefit !== undefined && { benefit: options.impactBenefit }),
+    };
+    return {
+        why: options.why ?? base.why ?? '',
+        what: options.what ?? base.what ?? '',
+        items: options.item && options.item.length > 0 ? options.item : (base.items ?? []),
+        impact,
+    };
+}
+
 export async function taskCreateCommand(
     taskId: string,
+    options: TaskCreateOptions = {},
     wsOptions?: WorkspaceTaskOptions
 ): Promise<void> {
     try {
+        const { validateTaskContent } = await import('../../core/tasks/task-manager.js');
+        const content = await buildTaskContent(options);
+        const problems = validateTaskContent(content);
+        if (problems.length > 0) {
+            console.error(chalk.red(`❌ Failed to create task: ${problems.join('; ')}`));
+            console.error(chalk.gray(TASK_CREATE_USAGE));
+            process.exit(1);
+        }
+
         const cwd = process.cwd();
         const { taskManager, projectLabel } = await resolveTaskManager(cwd, wsOptions);
-        await taskManager.createTask(taskId);
+        await taskManager.createTask(taskId, content);
 
         const prefix = projectLabel ? `[${projectLabel}] ` : '';
         console.log(chalk.green(`✅ ${prefix}Task ${taskId} created successfully`));
-        console.log(chalk.yellow('\n⚠️  Remember to:'));
-        console.log(
-            chalk.gray('  1. Fill in proposal.md (minimum 20 characters in "Why" section)')
-        );
-        console.log(chalk.gray('  3. Add tasks to tasks.md'));
-        console.log(chalk.gray('  4. Create spec deltas in specs/*/spec.md'));
-        console.log(chalk.gray('  5. Validate with: rulebook task validate ' + taskId));
+        console.log(chalk.gray('  Optional: add spec deltas in specs/*/spec.md'));
+        console.log(chalk.gray('  Validate with: rulebook task validate ' + taskId));
     } catch (error: any) {
         console.error(chalk.red(`❌ Failed to create task: ${error.message}`));
         process.exit(1);
@@ -321,7 +375,7 @@ export async function tasksCommand(options: {
     );
     console.log(chalk.gray('  - rulebook task list'));
     console.log(chalk.gray('  - rulebook task show <task-id>'));
-    console.log(chalk.gray('  - rulebook task create <task-id>'));
+    console.log(chalk.gray('  - rulebook task create <task-id> --why .. --what .. --item ..'));
     console.log(chalk.gray('  - rulebook task validate <task-id>'));
     console.log(chalk.gray('  - rulebook task archive <task-id>'));
 

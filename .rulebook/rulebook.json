@@ -1,7 +1,7 @@
 {
-  "version": "7.4.0",
+  "version": "7.5.0",
   "installedAt": "2026-09-26T02:17:12.538Z",
-  "updatedAt": "2026-09-26T03:12:40.191Z",
+  "updatedAt": "2026-10-14T09:54:55.340Z",
   "projectId": "Rulebook",
   "mode": "full",
   "features": {
@@ -23,20 +23,29 @@
     "cliResponse": 180000,
     "testRun": 600000
   },
-  "gitPushMode": "auto",
-  "skills": {
-    "enabled": [
-      "languages/typescript",
-      "core/rulebook"
-    ],
-    "disabled": [],
-    "order": []
-  },
   "agentsMode": "lean",
+  "gitPushMode": "auto",
+  "orchestration": "judgment",
   "integrations": {
     "typesafe": {
       "enabled": true,
       "askedAt": "2026-09-26T02:33:00.783Z"
     }
-  }
+  },
+  "permissions": {
+    "autoApprove": true
+  },
+  "skills": {
+    "enabled": [
+      "languages/typescript",
+      "core/rulebook",
+      "core/karpathy-guidelines"
+    ],
+    "disabled": [],
+    "order": []
+  },
+  "languages": [
+    "typescript"
+  ],
+  "modules": []
 }

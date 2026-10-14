@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { afterAll, describe, expect, it } from 'vitest';
 import {
     generateAgentsContent,
     generateFullAgents,
@@ -8,6 +11,10 @@ import {
 import type { ProjectConfig } from '../src/types';
 
 describe('generator', () => {
+    // generateFullAgents writes specs under its project root; never let it default to the repo (cwd).
+    const projectRoot = mkdtempSync(join(tmpdir(), 'rulebook-generator-'));
+    afterAll(() => rmSync(projectRoot, { recursive: true, force: true }));
+
     const baseConfig: ProjectConfig = {
         languages: ['rust'],
         modules: ['vectorizer'],
@@ -72,7 +79,7 @@ describe('generator', () => {
                 modular: true,
             };
 
-            const content = await generateFullAgents(config, '/tmp/test');
+            const content = await generateFullAgents(config, projectRoot);
 
             // Should include RULEBOOK block
             expect(content).toContain('<!-- RULEBOOK:START -->');
@@ -91,7 +98,7 @@ describe('generator', () => {
 
         it('should generate content for single language (modular mode)', async () => {
             const config = { ...baseConfig, modular: true };
-            const content = await generateFullAgents(config, '/tmp/test');
+            const content = await generateFullAgents(config, projectRoot);
 
             expect(content).toContain('.claude/rules/rust.md');
             expect(content).not.toContain('.claude/rules/typescript.md');
@@ -103,7 +110,7 @@ describe('generator', () => {
                 modules: ['vectorizer', 'synap', 'context7'],
                 modular: true,
             };
-            const content = await generateFullAgents(config, '/tmp/test');
+            const content = await generateFullAgents(config, projectRoot);
 
             expect(content).not.toContain('/.rulebook/specs/vectorizer.md');
             expect(content).not.toContain('/.rulebook/specs/synap.md');
@@ -122,7 +129,7 @@ describe('generator', () => {
                 modular: false, // Legacy mode flag is ignored — lean always wins
             };
 
-            const content = await generateFullAgents(config);
+            const content = await generateFullAgents(config, projectRoot);
 
             // Lean template — no embedded blocks, only references
             expect(content).toContain('<!-- RULEBOOK:START -->');
@@ -138,7 +145,7 @@ describe('generator', () => {
                 gitPushMode: 'manual',
                 modular: true,
             };
-            const content = await generateFullAgents(config, '/tmp/test');
+            const content = await generateFullAgents(config, projectRoot);
 
             // Lean template mentions git.md in the Detailed Specs section
             expect(content).toContain('git.md');
@@ -149,7 +156,7 @@ describe('generator', () => {
                 ...baseConfig,
                 includeGitWorkflow: false,
             };
-            const content = await generateFullAgents(config, '/tmp/test');
+            const content = await generateFullAgents(config, projectRoot);
 
             // Lean template is static — always includes the specs index
             expect(content).toContain('<!-- RULEBOOK:START -->');
@@ -229,7 +236,7 @@ describe('generator', () => {
 
                 modular: true,
             };
-            const content = await generateFullAgents(config, '/tmp/test');
+            const content = await generateFullAgents(config, projectRoot);
 
             // Lean template always produces condensed output
             expect(content).toContain('<!-- RULEBOOK:START -->');
@@ -249,7 +256,7 @@ describe('generator', () => {
             const config: ProjectConfig = {
                 ...baseConfig,
             };
-            const content = await generateFullAgents(config);
+            const content = await generateFullAgents(config, projectRoot);
 
             expect(content).not.toContain('<!-- NESTJS:START -->');
             expect(content).not.toContain('<!-- REACT:START -->');
@@ -259,7 +266,7 @@ describe('generator', () => {
             const config: ProjectConfig = {
                 ...baseConfig,
             };
-            const content = await generateFullAgents(config);
+            const content = await generateFullAgents(config, projectRoot);
 
             expect(content).toBeDefined();
             expect(content.length).toBeGreaterThan(0);
@@ -272,7 +279,7 @@ describe('generator', () => {
                 gitPushMode: 'manual',
                 modular: true,
             };
-            const content = await generateFullAgents(config, '/tmp/test');
+            const content = await generateFullAgents(config, projectRoot);
 
             // Lean template always includes the GIT spec reference
             expect(content).toContain('/.rulebook/specs/');
@@ -284,7 +291,7 @@ describe('generator', () => {
                 includeGitWorkflow: false,
                 modular: true,
             };
-            const content = await generateFullAgents(config, '/tmp/test');
+            const content = await generateFullAgents(config, projectRoot);
 
             // Git workflow should not be referenced
             expect(content).not.toContain('/.rulebook/specs/git.md');
@@ -297,7 +304,7 @@ describe('generator', () => {
                 modular: true,
                 // gitPushMode not specified
             };
-            const content = await generateFullAgents(config, '/tmp/test');
+            const content = await generateFullAgents(config, projectRoot);
 
             // Lean template always produces valid output
             expect(content).toContain('<!-- RULEBOOK:START -->');
@@ -401,7 +408,7 @@ describe('generator', () => {
                 includeGitWorkflow: false,
                 lightMode: true,
             };
-            const content = await generateFullAgents(config);
+            const content = await generateFullAgents(config, projectRoot);
 
             // Always lean — no embedded blocks
             expect(content).toContain('<!-- RULEBOOK:START -->');
@@ -415,7 +422,7 @@ describe('generator', () => {
                 modular: false,
                 minimal: true,
             };
-            const content = await generateFullAgents(config);
+            const content = await generateFullAgents(config, projectRoot);
 
             expect(content).toBeDefined();
             expect(content).toContain('<!-- RULEBOOK:START -->');
@@ -428,7 +435,7 @@ describe('generator', () => {
                 includeGitWorkflow: true,
                 gitPushMode: 'auto',
             };
-            const content = await generateFullAgents(config);
+            const content = await generateFullAgents(config, projectRoot);
 
             // Lean template — no embedded GIT blocks
             expect(content).toContain('<!-- RULEBOOK:START -->');
@@ -453,7 +460,7 @@ describe('generator', () => {
                 ...baseConfig,
                 projectType: 'library',
             };
-            const content = await generateFullAgents(config);
+            const content = await generateFullAgents(config, projectRoot);
 
             expect(content).toBeDefined();
             expect(content.length).toBeGreaterThan(0);
@@ -464,7 +471,7 @@ describe('generator', () => {
                 ...baseConfig,
                 projectType: 'cli',
             };
-            const content = await generateFullAgents(config);
+            const content = await generateFullAgents(config, projectRoot);
 
             expect(content).toBeDefined();
             expect(content.length).toBeGreaterThan(0);
@@ -475,7 +482,7 @@ describe('generator', () => {
                 ...baseConfig,
                 projectType: 'monorepo',
             };
-            const content = await generateFullAgents(config);
+            const content = await generateFullAgents(config, projectRoot);
 
             expect(content).toBeDefined();
             expect(content.length).toBeGreaterThan(0);

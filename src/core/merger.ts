@@ -1,3 +1,5 @@
+import { createHash } from 'crypto';
+import path from 'path';
 import type { ExistingAgentsInfo, ProjectConfig, AgentBlock } from '../types.js';
 import {
     generateAgentsContent,
@@ -10,9 +12,11 @@ import {
     replaceEmbeddedWithReferences,
 } from './migrator.js';
 import {
+    findUserOrchestrationSection,
     generateClaudeMd,
     getClaudeMdPath,
     hasV2Sentinels,
+    replaceOrchestrationSection,
     writeClaudeMd,
     CLAUDE_MD_SENTINEL_END,
 } from './claude/claude-md-generator.js';
@@ -163,6 +167,11 @@ export interface MergeClaudeMdResult {
      * Null when mode !== 'migrate'.
      */
     overridePath: string | null;
+    /**
+     * True when the existing block's `## Orchestration` section was edited by
+     * the user and was kept instead of regenerated (mode 'replace' only).
+     */
+    keptOrchestration?: boolean;
 }
 
 /**
@@ -173,6 +182,9 @@ export interface MergeClaudeMdResult {
  * - **create**: file does not exist → write the generated block.
  * - **replace**: file already has `RULEBOOK:START v5.3.0` sentinels → in-place
  *   block replacement, preserving everything outside the sentinels verbatim.
+ *   An `## Orchestration` section the user edited inside the block is kept
+ *   (v7.5, F-031); a section rulebook shipped is regenerated for the
+ *   project's orchestration mode.
  * - **migrate**: file exists without sentinels (legacy v5.2) → the entire
  *   legacy file is appended into `AGENTS.override.md` inside the existing
  *   `OVERRIDE:START/END` sentinels (so it survives every future
@@ -183,8 +195,10 @@ export interface MergeClaudeMdResult {
  *   "expanded and loaded into context at launch alongside the CLAUDE.md
  *   that references them").
  *
- * In all modes a `.backup-<timestamp>` snapshot of any pre-existing
- * CLAUDE.md is created before overwrite.
+ * A `.backup-<timestamp>` snapshot of the pre-existing CLAUDE.md is created
+ * before overwrite in migrate mode, and in replace mode only when the text
+ * outside the block differs from what rulebook last wrote there — a refresh
+ * of the generated block alone leaves no backup.
  */
 export async function mergeClaudeMd(projectRoot: string): Promise<MergeClaudeMdResult> {
     const target = getClaudeMdPath(projectRoot);
@@ -192,6 +206,7 @@ export async function mergeClaudeMd(projectRoot: string): Promise<MergeClaudeMdR
     if (!(await fileExists(target))) {
         const generated = await generateClaudeMd(projectRoot);
         const written = await writeClaudeMd(projectRoot, generated);
+        await recordOutsideBlock(projectRoot, generated);
         return { ...written, mode: 'create', overridePath: null };
     }
 
@@ -199,13 +214,23 @@ export async function mergeClaudeMd(projectRoot: string): Promise<MergeClaudeMdR
 
     if (hasV2Sentinels(existing)) {
         // In-place block replacement: keep everything outside the sentinels.
-        // Version-tolerant (matches blocks stamped by any v5/v6/v7 release) —
-        // must stay aligned with CLAUDE_MD_SENTINEL_START's prefix semantics.
         const generated = await generateClaudeMd(projectRoot);
-        const blockRegex = /<!--\s*RULEBOOK:START v[\s\S]*?<!--\s*RULEBOOK:END\s*-->/;
-        const merged = existing.replace(blockRegex, extractGeneratedBlock(generated));
-        const written = await writeClaudeMd(projectRoot, merged);
-        return { ...written, mode: 'replace', overridePath: null };
+        const userSection = await findUserOrchestrationSection(
+            existing.match(CLAUDE_MD_BLOCK)?.[0] ?? ''
+        );
+        let block = extractGeneratedBlock(generated);
+        if (userSection) block = replaceOrchestrationSection(block, userSection);
+        const merged = existing.replace(CLAUDE_MD_BLOCK, () => block);
+        const written = await writeClaudeMd(projectRoot, merged, {
+            backup: await editedOutsideBlock(projectRoot, existing),
+        });
+        await recordOutsideBlock(projectRoot, merged);
+        return {
+            ...written,
+            mode: 'replace',
+            overridePath: null,
+            keptOrchestration: userSection !== null,
+        };
     }
 
     // Legacy v5.2 CLAUDE.md without sentinels.
@@ -221,7 +246,44 @@ export async function mergeClaudeMd(projectRoot: string): Promise<MergeClaudeMdR
     const overridePath = await migrateLegacyClaudeMdToOverride(projectRoot, existing);
     const generated = await generateClaudeMd(projectRoot);
     const written = await writeClaudeMd(projectRoot, generated);
+    await recordOutsideBlock(projectRoot, generated);
     return { ...written, mode: 'migrate', overridePath };
+}
+
+/**
+ * The rulebook block of a CLAUDE.md. Version-tolerant (matches blocks stamped
+ * by any v5/v6/v7 release) — must stay aligned with CLAUDE_MD_SENTINEL_START's
+ * prefix semantics.
+ */
+const CLAUDE_MD_BLOCK = /<!--\s*RULEBOOK:START v[\s\S]*?<!--\s*RULEBOOK:END\s*-->/;
+
+/**
+ * Hash of the text rulebook last wrote outside the CLAUDE.md block.
+ * Machine-local: `/.rulebook/*` is git-ignored.
+ */
+const OUTSIDE_BLOCK_RECORD = path.join('.rulebook', '.claude-md-outside');
+
+/** Hash of a CLAUDE.md's text outside the block; line endings and edge whitespace are ignored. */
+function outsideBlockHash(content: string): string {
+    const outside = content.replace(CLAUDE_MD_BLOCK, '').replace(/\r\n/g, '\n').trim();
+    return createHash('sha256').update(outside).digest('hex');
+}
+
+/**
+ * True when the text outside the block differs from what rulebook last wrote
+ * there. With no record (first update after upgrading, a fresh clone) any
+ * non-blank text outside the block counts: rulebook itself writes none.
+ */
+async function editedOutsideBlock(projectRoot: string, existing: string): Promise<boolean> {
+    const recordPath = path.join(projectRoot, OUTSIDE_BLOCK_RECORD);
+    const recorded = (await fileExists(recordPath))
+        ? (await readFile(recordPath)).trim()
+        : outsideBlockHash('');
+    return outsideBlockHash(existing) !== recorded;
+}
+
+async function recordOutsideBlock(projectRoot: string, written: string): Promise<void> {
+    await writeFile(path.join(projectRoot, OUTSIDE_BLOCK_RECORD), `${outsideBlockHash(written)}\n`);
 }
 
 /**
