@@ -506,6 +506,7 @@ export async function updateSingleProject(
                 console.log(chalk.gray(`    - ${entry}`));
             }
         }
+        for (const warning of settingsResult.warnings) console.log(chalk.yellow(`  ⚠ ${warning}`));
     } catch (err) {
         console.log(
             chalk.gray(

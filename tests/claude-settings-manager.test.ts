@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
@@ -9,9 +9,17 @@ import {
     GUARD_SCRIPT,
     JEV_GATE_SCRIPT,
     removeJevPromptGate,
+    resolveHookMain,
+    type HookMainTarget,
 } from '../src/core/claude/claude-settings-manager';
 
 const V7_DESIRE = { taskScaffoldingGuard: true, fullAutonomyPermissions: true };
+/** A resolved prompt-hook entry, so these tests never look for a real install. */
+const HOOK_MAIN: HookMainTarget = {
+    arg: '${CLAUDE_PROJECT_DIR}/node_modules/@hivehub/rulebook/dist/cli/hook-main.js',
+    path: '/unused',
+    source: 'project',
+};
 
 describe('claude-settings-manager (v7)', () => {
     let projectRoot: string;
@@ -158,23 +166,56 @@ describe('claude-settings-manager (v7)', () => {
         });
     });
 
-    describe('Jev prompt hook (UserPromptSubmit, v7.4)', () => {
-        const JEV_DESIRE = { ...V7_DESIRE, jevPromptGate: true };
-        const JEV_COMMAND = `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${JEV_GATE_SCRIPT} prompt`;
+    describe('Jev prompt hook (UserPromptSubmit, exec form since v7.5)', () => {
+        const JEV_DESIRE = { ...V7_DESIRE, jevPromptGate: true, hookMain: HOOK_MAIN };
+        const JEV_HOOK = {
+            type: 'command',
+            command: 'node',
+            args: [HOOK_MAIN.arg, 'prompt-gate'],
+            timeout: 3,
+        };
 
         async function readSettings() {
             return JSON.parse(await fs.readFile(getClaudeSettingsPath(projectRoot), 'utf-8'));
         }
 
-        it('upserts exactly one UserPromptSubmit entry with a timeout and installs the LF script', async () => {
-            await applyClaudeSettings(projectRoot, JEV_DESIRE);
+        it('upserts exactly one exec-form entry (node + hook-main.js, no shell) with a timeout', async () => {
+            const result = await applyClaudeSettings(projectRoot, JEV_DESIRE);
+            expect(result.warnings).toEqual([]);
             const content = await readSettings();
-            expect(content.hooks.UserPromptSubmit).toEqual([
-                { hooks: [{ type: 'command', command: JEV_COMMAND, timeout: 3 }] },
-            ]);
-            const buf = await fs.readFile(path.join(projectRoot, '.claude/hooks', JEV_GATE_SCRIPT));
-            expect(buf.length).toBeGreaterThan(0);
-            expect(buf.includes(0x0d)).toBe(false);
+            expect(content.hooks.UserPromptSubmit).toEqual([{ hooks: [JEV_HOOK] }]);
+            // The bash wrapper is installed only for the tool gate now.
+            await expect(
+                fs.access(path.join(projectRoot, '.claude/hooks', JEV_GATE_SCRIPT))
+            ).rejects.toThrow();
+        });
+
+        it('replaces a v7.4 wrapper entry with the exec-form entry', async () => {
+            const target = getClaudeSettingsPath(projectRoot);
+            await fs.mkdir(path.dirname(target), { recursive: true });
+            const legacy = {
+                hooks: [
+                    {
+                        type: 'command',
+                        command: `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${JEV_GATE_SCRIPT} prompt`,
+                        timeout: 8,
+                    },
+                ],
+            };
+            await fs.writeFile(target, JSON.stringify({ hooks: { UserPromptSubmit: [legacy] } }));
+            await applyClaudeSettings(projectRoot, JEV_DESIRE);
+            expect((await readSettings()).hooks.UserPromptSubmit).toEqual([{ hooks: [JEV_HOOK] }]);
+        });
+
+        it('no loadable hook entry → no hook, an existing one removed, and a warning', async () => {
+            await applyClaudeSettings(projectRoot, JEV_DESIRE);
+            const result = await applyClaudeSettings(projectRoot, {
+                ...JEV_DESIRE,
+                hookMain: null,
+            });
+            expect((await readSettings()).hooks.UserPromptSubmit).toBeUndefined();
+            expect(result.warnings).toHaveLength(1);
+            expect(result.warnings[0]).toMatch(/Jev prompt hook not installed.*npm i -D/);
         });
 
         it('derives the timeout from the configured deadline', async () => {
@@ -208,7 +249,7 @@ describe('claude-settings-manager (v7)', () => {
             const list = (await readSettings()).hooks.UserPromptSubmit;
             expect(list).toHaveLength(2);
             expect(list[0]).toEqual(userEntry);
-            expect(list[1].hooks[0].command).toBe(JEV_COMMAND);
+            expect(list[1].hooks[0]).toEqual(JEV_HOOK);
         });
 
         it('removes the entry when the toggle is off and drops an empty event key', async () => {
@@ -236,11 +277,93 @@ describe('claude-settings-manager (v7)', () => {
         });
     });
 
+    describe('resolveHookMain (install-time hook entry resolution)', () => {
+        const ENTRY = ['dist', 'cli', 'hook-main.js'];
+        const PKG = ['node_modules', '@hivehub', 'rulebook'];
+        const anyValid = async () => true;
+
+        async function touch(...parts: string[]): Promise<string> {
+            const file = path.join(...parts);
+            await fs.mkdir(path.dirname(file), { recursive: true });
+            await fs.writeFile(file, '');
+            return file;
+        }
+
+        it("prefers the project's node_modules, named via ${CLAUDE_PROJECT_DIR}", async () => {
+            const file = await touch(projectRoot, ...PKG, ...ENTRY);
+            const global = vi.fn(async () => null);
+            expect(
+                await resolveHookMain(projectRoot, { validate: anyValid, globalRoot: global })
+            ).toEqual({
+                arg: '${CLAUDE_PROJECT_DIR}/node_modules/@hivehub/rulebook/dist/cli/hook-main.js',
+                path: file,
+                source: 'project',
+            });
+            expect(global).not.toHaveBeenCalled();
+        });
+
+        it("uses the rulebook repo's own build only when package.json is @hivehub/rulebook", async () => {
+            const file = await touch(projectRoot, ...ENTRY);
+            const none = async () => null;
+            await fs.writeFile(
+                path.join(projectRoot, 'package.json'),
+                JSON.stringify({ name: 'other-app' })
+            );
+            expect(
+                await resolveHookMain(projectRoot, { validate: anyValid, globalRoot: none })
+            ).toBeNull();
+            await fs.writeFile(
+                path.join(projectRoot, 'package.json'),
+                JSON.stringify({ name: '@hivehub/rulebook' })
+            );
+            expect(
+                await resolveHookMain(projectRoot, { validate: anyValid, globalRoot: none })
+            ).toEqual({
+                arg: '${CLAUDE_PROJECT_DIR}/dist/cli/hook-main.js',
+                path: file,
+                source: 'self',
+            });
+        });
+
+        it('falls back to the global install, by absolute path', async () => {
+            const globalRoot = path.join(projectRoot, 'global-root');
+            const file = await touch(globalRoot, '@hivehub', 'rulebook', ...ENTRY);
+            expect(
+                await resolveHookMain(projectRoot, {
+                    validate: anyValid,
+                    globalRoot: async () => globalRoot,
+                })
+            ).toEqual({ arg: file, path: file, source: 'global' });
+        });
+
+        it('skips a candidate that does not load (node <entry> --check fails)', async () => {
+            const globalRoot = path.join(projectRoot, 'global-root');
+            await touch(projectRoot, ...PKG, ...ENTRY);
+            const good = await touch(globalRoot, '@hivehub', 'rulebook', ...ENTRY);
+            await fs.writeFile(good, "if (process.argv[2] !== '--check') process.exit(2);\n");
+            const broken = path.join(projectRoot, ...PKG, ...ENTRY);
+            await fs.writeFile(broken, "throw new Error('Cannot find module x');\n");
+            const target = await resolveHookMain(projectRoot, {
+                globalRoot: async () => globalRoot,
+            });
+            expect(target).toMatchObject({ source: 'global', path: good });
+        });
+
+        it('nothing found → null', async () => {
+            expect(
+                await resolveHookMain(projectRoot, {
+                    validate: anyValid,
+                    globalRoot: async () => null,
+                })
+            ).toBeNull();
+        });
+    });
+
     describe('Jev tool gate (PreToolUse, v7.4)', () => {
         const TOOL = { matcher: 'Bash|Edit|Write', timeoutSec: 4 };
         const ALL_DESIRE = { ...V7_DESIRE, osSchedulingGuard: true, jevToolGate: TOOL };
         const TOOL_COMMAND = `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${JEV_GATE_SCRIPT} tool`;
-        const PROMPT_COMMAND = `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${JEV_GATE_SCRIPT} prompt`;
+        const PROMPT_ARGS = [HOOK_MAIN.arg, 'prompt-gate'];
 
         async function readSettings() {
             return JSON.parse(await fs.readFile(getClaudeSettingsPath(projectRoot), 'utf-8'));
@@ -304,15 +427,15 @@ describe('claude-settings-manager (v7)', () => {
         });
 
         it('prompt and tool entries are independent: toggling one never removes the other', async () => {
-            const both = { ...ALL_DESIRE, jevPromptGate: true };
+            const both = { ...ALL_DESIRE, jevPromptGate: true, hookMain: HOOK_MAIN };
             await applyClaudeSettings(projectRoot, both);
             let s = await readSettings();
-            expect(s.hooks.UserPromptSubmit[0].hooks[0].command).toBe(PROMPT_COMMAND);
+            expect(s.hooks.UserPromptSubmit[0].hooks[0].args).toEqual(PROMPT_ARGS);
             expect(toolEntries(s.hooks.PreToolUse)).toHaveLength(1);
 
             await applyClaudeSettings(projectRoot, { ...both, jevToolGate: undefined });
             s = await readSettings();
-            expect(s.hooks.UserPromptSubmit[0].hooks[0].command).toBe(PROMPT_COMMAND);
+            expect(s.hooks.UserPromptSubmit[0].hooks[0].args).toEqual(PROMPT_ARGS);
             expect(toolEntries(s.hooks.PreToolUse)).toHaveLength(0);
 
             await applyClaudeSettings(projectRoot, { ...both, jevPromptGate: false });
@@ -325,7 +448,12 @@ describe('claude-settings-manager (v7)', () => {
 
         it('an existing phase-2 install (prompt entry only) stays idempotent', async () => {
             const target = getClaudeSettingsPath(projectRoot);
-            const promptOnly = { ...V7_DESIRE, osSchedulingGuard: true, jevPromptGate: true };
+            const promptOnly = {
+                ...V7_DESIRE,
+                osSchedulingGuard: true,
+                jevPromptGate: true,
+                hookMain: HOOK_MAIN,
+            };
             await applyClaudeSettings(projectRoot, promptOnly);
             const before = await fs.readFile(target, 'utf-8');
             const r2 = await applyClaudeSettings(projectRoot, promptOnly);
@@ -335,7 +463,11 @@ describe('claude-settings-manager (v7)', () => {
         });
 
         it('removeJevPromptGate (TypeSafe opted out) drops both Jev entries only', async () => {
-            await applyClaudeSettings(projectRoot, { ...ALL_DESIRE, jevPromptGate: true });
+            await applyClaudeSettings(projectRoot, {
+                ...ALL_DESIRE,
+                jevPromptGate: true,
+                hookMain: HOOK_MAIN,
+            });
             expect(await removeJevPromptGate(projectRoot)).toBe(true);
             const s = await readSettings();
             expect(s.hooks.UserPromptSubmit).toBeUndefined();

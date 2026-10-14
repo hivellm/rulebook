@@ -1,5 +1,7 @@
+import { exec, execFile } from 'child_process';
 import path from 'path';
 import { existsSync } from 'fs';
+import { promisify } from 'util';
 import {
     readFile,
     writeFile,
@@ -9,6 +11,9 @@ import {
 } from '../../utils/file-system.js';
 import { getTemplatesDir } from '../generators/generator.js';
 import { PROMPT_HOOK_DEFAULTS, promptHookTimeoutSec } from '../typesafe/prompt-hook.js';
+
+const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 /**
  * v7 `.claude/settings.json` manager.
@@ -26,6 +31,8 @@ import { PROMPT_HOOK_DEFAULTS, promptHookTimeoutSec } from '../typesafe/prompt-h
  *   reverses F-002 ("zero hot-path hooks") on purpose: it is fail-open, bounded
  *   by a deadline plus a settings `timeout`, and blocks only a high-confidence
  *   OS-scheduling request. It still never denies or reroutes orchestration.
+ *   v7.5: it runs `node <@hivehub/rulebook>/dist/cli/hook-main.js prompt-gate`
+ *   in exec form (no shell), with the entry resolved and validated here.
  * - v7.4: one opt-in PreToolUse hook (`jev-gate.sh tool`) that asks Jev about
  *   risky tool calls after cheap deterministic checks. Fail-open, bounded by a
  *   deadline plus a settings `timeout`; answers deny/ask, never allow.
@@ -52,9 +59,12 @@ export interface ClaudeSettingsDesire {
     osSchedulingGuard?: boolean;
     /**
      * v7.4: install the UserPromptSubmit hook that runs the Jev entry gate on
-     * every prompt (`.claude/hooks/jev-gate.sh prompt`). False/absent removes it.
+     * every prompt (v7.5: `node <hook-main.js> prompt-gate`, exec form).
+     * False/absent removes it.
      */
     jevPromptGate?: boolean;
+    /** The entry the prompt hook runs; resolved with resolveHookMain() when absent, `null` = none found. */
+    hookMain?: HookMainTarget | null;
     /** Deadline the prompt hook runs with (`gate.promptHook.deadlineMs`); sets its `timeout`. Default 1500. */
     jevPromptGateDeadlineMs?: number;
     /**
@@ -105,6 +115,8 @@ export const STATUS_LINE_COMMAND =
 interface HookCommand {
     type: 'command';
     command: string;
+    /** Exec form: `command` is spawned directly with these arguments, no shell. */
+    args?: string[];
     /** Seconds before Claude Code cancels the hook. */
     timeout?: number;
 }
@@ -136,8 +148,110 @@ export const OS_SCHEDULING_GUARD_MATCHER = 'Bash|Edit|Write';
  * never strips the other.
  */
 export const JEV_GATE_SCRIPT = 'jev-gate.sh';
+/** The v7.4 prompt hook entry (bash wrapper); removed on sync, replaced by JEV_PROMPT_HOOK_SIGNATURE. */
 export const JEV_GATE_SIGNATURE = `${JEV_GATE_SCRIPT} prompt`;
 export const JEV_TOOL_GATE_SIGNATURE = `${JEV_GATE_SCRIPT} tool`;
+
+/**
+ * v7.5: the prompt hook runs the slim entry `dist/cli/hook-main.js` in exec
+ * form — `node <path> prompt-gate`, no shell — with the path resolved and
+ * validated when settings are written (resolveHookMain).
+ */
+export const HOOK_MAIN_FILE = 'hook-main.js';
+export const JEV_PROMPT_HOOK_SIGNATURE = `${HOOK_MAIN_FILE} prompt-gate`;
+const RULEBOOK_PACKAGE = '@hivehub/rulebook';
+const HOOK_MAIN_IN_PACKAGE = ['dist', 'cli', HOOK_MAIN_FILE];
+
+/** Where the prompt hook's entry was found: how settings.json names it, and its validated absolute path. */
+export interface HookMainTarget {
+    /** `${CLAUDE_PROJECT_DIR}/…` for a copy inside the project (portable when committed), else absolute. */
+    arg: string;
+    path: string;
+    source: 'project' | 'self' | 'global';
+}
+
+export interface ResolveHookMainOptions {
+    /** The global node_modules directory; defaults to `npm root -g`. */
+    globalRoot?: () => Promise<string | null>;
+    /** Whether `file` is a loadable hook entry; defaults to running `node <file> --check`. */
+    validate?: (file: string) => Promise<boolean>;
+}
+
+async function npmGlobalRoot(): Promise<string | null> {
+    try {
+        // A shell command: npm is a .cmd shim on Windows.
+        const { stdout } = await execAsync('npm root -g', { timeout: 15_000, windowsHide: true });
+        return stdout.trim() || null;
+    } catch {
+        return null;
+    }
+}
+
+async function loadsHookModule(file: string): Promise<boolean> {
+    try {
+        await execFileAsync(process.execPath, [file, '--check'], {
+            timeout: 15_000,
+            windowsHide: true,
+        });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Find the `@hivehub/rulebook` hook entry the prompt hook will run, first hit
+ * wins: the project's `node_modules`, the rulebook repo's own build (a
+ * project whose package.json is `@hivehub/rulebook`), then the global npm
+ * install. A candidate counts only when it exists and `node <it> --check`
+ * loads the hook module. Null when none does: the caller skips the hook and
+ * says so — nothing falls back at runtime.
+ */
+export async function resolveHookMain(
+    projectRoot: string,
+    options: ResolveHookMainOptions = {}
+): Promise<HookMainTarget | null> {
+    const validate = options.validate ?? loadsHookModule;
+    const usable = async (file: string) => (await fileExists(file)) && (await validate(file));
+
+    const local = path.join(projectRoot, 'node_modules', RULEBOOK_PACKAGE, ...HOOK_MAIN_IN_PACKAGE);
+    if (await usable(local)) {
+        return {
+            arg: [
+                '${CLAUDE_PROJECT_DIR}',
+                'node_modules',
+                RULEBOOK_PACKAGE,
+                ...HOOK_MAIN_IN_PACKAGE,
+            ].join('/'),
+            path: local,
+            source: 'project',
+        };
+    }
+
+    let isRulebookRepo = false;
+    try {
+        isRulebookRepo =
+            JSON.parse(await readFile(path.join(projectRoot, 'package.json'))).name ===
+            RULEBOOK_PACKAGE;
+    } catch {
+        // no package.json, or not JSON
+    }
+    const own = path.join(projectRoot, ...HOOK_MAIN_IN_PACKAGE);
+    if (isRulebookRepo && (await usable(own))) {
+        return {
+            arg: ['${CLAUDE_PROJECT_DIR}', ...HOOK_MAIN_IN_PACKAGE].join('/'),
+            path: own,
+            source: 'self',
+        };
+    }
+
+    const globalRoot = await (options.globalRoot ?? npmGlobalRoot)();
+    if (globalRoot) {
+        const global = path.join(globalRoot, RULEBOOK_PACKAGE, ...HOOK_MAIN_IN_PACKAGE);
+        if (await usable(global)) return { arg: global, path: global, source: 'global' };
+    }
+    return null;
+}
 
 /**
  * Every hook signature rulebook has ever wired. All are removed on sync
@@ -173,6 +287,7 @@ const CURRENT_SIGNATURES = [
     GUARD_SIGNATURE,
     OS_SCHEDULING_GUARD_SIGNATURE,
     JEV_GATE_SIGNATURE,
+    JEV_PROMPT_HOOK_SIGNATURE,
     JEV_TOOL_GATE_SIGNATURE,
 ];
 
@@ -187,12 +302,14 @@ export function isRetiredRulebookHook(command: string): boolean {
 }
 
 /**
- * True when `command` is a rulebook hook: a retired one, or one that runs a
- * script rulebook ships today from `.claude/hooks/`. Anything else is the
- * user's and is never touched.
+ * True when `command` is a rulebook hook: a retired one, one that runs a
+ * script rulebook ships today from `.claude/hooks/`, or the v7.5 exec-form
+ * prompt hook (`command` here is the command plus its `args`). Anything else
+ * is the user's and is never touched.
  */
 export function isRulebookHook(command: string): boolean {
     if (isRetiredRulebookHook(command)) return true;
+    if (command.includes(JEV_PROMPT_HOOK_SIGNATURE)) return true;
     for (const m of command.matchAll(HOOK_SCRIPT_REF)) {
         if (CURRENT_HOOK_SCRIPTS.includes(m[1])) return true;
     }
@@ -230,9 +347,10 @@ export function getHookScriptPath(projectRoot: string, scriptName: string): stri
 export async function applyClaudeSettings(
     projectRoot: string,
     desire: ClaudeSettingsDesire
-): Promise<{ path: string; changed: boolean; removedHooks: string[] }> {
+): Promise<{ path: string; changed: boolean; removedHooks: string[]; warnings: string[] }> {
     const settingsPath = getClaudeSettingsPath(projectRoot);
     await ensureDir(path.dirname(settingsPath));
+    const warnings: string[] = [];
 
     if (desire.taskScaffoldingGuard) {
         await installGuardScript(projectRoot, GUARD_SCRIPT);
@@ -240,9 +358,15 @@ export async function applyClaudeSettings(
     if (desire.osSchedulingGuard) {
         await installGuardScript(projectRoot, OS_SCHEDULING_GUARD_SCRIPT);
     }
-    if (desire.jevPromptGate || desire.jevToolGate) {
+    // The bash wrapper now serves only the tool gate (it orders the OS-scheduling guard first).
+    if (desire.jevToolGate) {
         await installGuardScript(projectRoot, JEV_GATE_SCRIPT);
     }
+    const hookMain = desire.jevPromptGate
+        ? desire.hookMain !== undefined
+            ? desire.hookMain
+            : await resolveHookMain(projectRoot)
+        : null;
 
     let existing: SettingsShape = {};
     let beforeOnDisk: string | null = null;
@@ -261,7 +385,8 @@ export async function applyClaudeSettings(
     const ownedBefore = rulebookHookCommands(existing.hooks);
 
     // Strip every retired rulebook hook and every current one (re-upserted
-    // below when desired) from every event.
+    // below when desired) from every event. A v7.4 `jev-gate.sh prompt` entry
+    // goes too: the prompt hook is the exec-form entry since v7.5.
     stripHooks(
         existing.hooks,
         (command) =>
@@ -295,14 +420,22 @@ export async function applyClaudeSettings(
     // Optional UserPromptSubmit hook: the Jev entry gate on every prompt.
     // Its `timeout` outlives the hook's own deadline, so Claude Code never
     // cancels a call the hook would have finished (fail-open either way).
-    if (desire.jevPromptGate) {
+    // v7.5: exec form — `node` spawned directly on the validated entry, no
+    // shell. No entry found → no hook, and the caller reports it.
+    if (desire.jevPromptGate && hookMain) {
         upsertHook(
             existing.hooks,
             'UserPromptSubmit',
             undefined,
-            JEV_GATE_SIGNATURE,
-            `bash $CLAUDE_PROJECT_DIR/.claude/hooks/${JEV_GATE_SCRIPT} prompt`,
-            promptHookTimeoutSec(desire.jevPromptGateDeadlineMs ?? PROMPT_HOOK_DEFAULTS.deadlineMs)
+            JEV_PROMPT_HOOK_SIGNATURE,
+            'node',
+            promptHookTimeoutSec(desire.jevPromptGateDeadlineMs ?? PROMPT_HOOK_DEFAULTS.deadlineMs),
+            [hookMain.arg, 'prompt-gate']
+        );
+    } else if (desire.jevPromptGate) {
+        warnings.push(
+            `Jev prompt hook not installed: no loadable ${RULEBOOK_PACKAGE} found in the project's ` +
+                `node_modules or the global npm root. Install it (npm i -D ${RULEBOOK_PACKAGE}), then run rulebook update.`
         );
     }
 
@@ -376,7 +509,7 @@ export async function applyClaudeSettings(
     const local = await stripLocalRulebookHooks(projectRoot);
     removedHooks.push(...local.map((entry) => `settings.local.json ${entry}`));
 
-    return { path: settingsPath, changed, removedHooks };
+    return { path: settingsPath, changed, removedHooks, warnings };
 }
 
 /**
@@ -415,8 +548,8 @@ function rulebookHookCommands(hooks: NonNullable<SettingsShape['hooks']>): strin
         if (!Array.isArray(list)) continue;
         for (const entry of list) {
             for (const h of entry?.hooks ?? []) {
-                if (typeof h?.command === 'string' && isRulebookHook(h.command)) {
-                    out.push(`${event}: ${h.command}`);
+                if (typeof h?.command === 'string' && isRulebookHook(hookText(h))) {
+                    out.push(`${event}: ${hookText(h)}`);
                 }
             }
         }
@@ -426,7 +559,8 @@ function rulebookHookCommands(hooks: NonNullable<SettingsShape['hooks']>): strin
 
 /**
  * Remove every command hook matching `predicate` from every event (entries
- * left empty are dropped). Returns `<event>: <command>` per removal.
+ * left empty are dropped). The predicate sees the command plus its exec-form
+ * `args` (hookText). Returns `<event>: <command>` per removal.
  */
 function stripHooks(
     hooks: NonNullable<SettingsShape['hooks']>,
@@ -439,8 +573,10 @@ function stripHooks(
             if (!entry || !Array.isArray(entry.hooks)) continue;
             entry.hooks = entry.hooks.filter((h) => {
                 const drop =
-                    h?.type === 'command' && typeof h.command === 'string' && predicate(h.command);
-                if (drop) removed.push(`${event}: ${h.command}`);
+                    h?.type === 'command' &&
+                    typeof h.command === 'string' &&
+                    predicate(hookText(h));
+                if (drop) removed.push(`${event}: ${hookText(h)}`);
                 return !drop;
             });
         }
@@ -451,21 +587,29 @@ function stripHooks(
     return removed;
 }
 
+/** A command hook as one string — command plus exec-form args — for signature matching. */
+function hookText(h: HookCommand): string {
+    return [h.command, ...(Array.isArray(h.args) ? h.args : [])].join(' ');
+}
+
 function upsertHook(
     hooks: NonNullable<SettingsShape['hooks']>,
     event: string,
     matcher: string | undefined,
     signature: string,
     command: string,
-    timeout?: number
+    timeout?: number,
+    args?: string[]
 ): void {
     const list = (hooks[event] ?? []) as HookEntry[];
     hooks[event] = list;
 
     for (const entry of list) {
         for (const h of entry.hooks) {
-            if (h.type === 'command' && h.command.includes(signature)) {
+            if (h.type === 'command' && hookText(h).includes(signature)) {
                 h.command = command;
+                if (args !== undefined) h.args = args;
+                else delete h.args;
                 if (timeout !== undefined) h.timeout = timeout;
                 if (matcher !== undefined) entry.matcher = matcher;
                 return;
@@ -475,7 +619,14 @@ function upsertHook(
 
     list.push({
         ...(matcher !== undefined ? { matcher } : {}),
-        hooks: [{ type: 'command', command, ...(timeout !== undefined ? { timeout } : {}) }],
+        hooks: [
+            {
+                type: 'command',
+                command,
+                ...(args !== undefined ? { args } : {}),
+                ...(timeout !== undefined ? { timeout } : {}),
+            },
+        ],
     });
 }
 
@@ -496,10 +647,10 @@ export async function removeJevPromptGate(projectRoot: string): Promise<boolean>
         throw new Error(`Existing ${settingsPath} is not valid JSON`);
     }
     if (!settings.hooks) return false;
-    const removed = stripHooks(
-        settings.hooks,
-        (command) =>
-            command.includes(JEV_GATE_SIGNATURE) || command.includes(JEV_TOOL_GATE_SIGNATURE)
+    const removed = stripHooks(settings.hooks, (command) =>
+        [JEV_GATE_SIGNATURE, JEV_PROMPT_HOOK_SIGNATURE, JEV_TOOL_GATE_SIGNATURE].some((s) =>
+            command.includes(s)
+        )
     );
     if (removed.length === 0) return false; // no entry: leave the file alone
     pruneEmptyHooks(settings.hooks);

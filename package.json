@@ -6,6 +6,7 @@
   "main": "dist/index.js",
   "bin": {
     "rulebook": "./dist/index.js",
+    "rulebook-hook": "./dist/cli/hook-main.js",
     "rulebook-mcp": "./dist/mcp/rulebook-server.js"
   },
   "scripts": {

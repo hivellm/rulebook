@@ -45,7 +45,7 @@
     ".claude/hooks/enforce-pre-tool.sh": "6b47ea1ac2eeb4177b92391b",
     ".claude/hooks/enforce-team-for-background-agents.ps1": "1d983d35905f",
     ".claude/hooks/enforce-team-for-background-agents.sh": "e02975c306be",
-    ".claude/hooks/jev-gate.sh": "a429a31e47f2",
+    ".claude/hooks/jev-gate.sh": "9987972dc184a429a31e47f2",
     ".claude/hooks/no-os-scheduling.sh": "ca4bbe16478d",
     ".claude/hooks/on-compact-reinject.sh": "d7b56c3ae037",
     ".claude/hooks/protect-task-scaffolding.sh": "70c79e0e255bf2f6ba22b184",

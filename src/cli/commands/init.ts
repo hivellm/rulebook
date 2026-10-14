@@ -451,7 +451,7 @@ export async function initCommand(options: {
                 const multiAgentEnabled = rulebookCfg?.multiAgent?.enabled ?? false;
                 const promptHook = resolvePromptHookConfig(rulebookCfg);
                 const toolHook = resolveToolHookConfig(rulebookCfg);
-                await applyClaudeSettings(cwd, {
+                const settingsResult = await applyClaudeSettings(cwd, {
                     taskScaffoldingGuard: true,
                     osSchedulingGuard: true,
                     jevPromptGate: options.typesafe !== false && promptHook.enabled,
@@ -466,6 +466,9 @@ export async function initCommand(options: {
                     fullAutonomyPermissions: true,
                     teamsEnv: multiAgentEnabled,
                 });
+                for (const warning of settingsResult.warnings) {
+                    console.log(chalk.yellow(`  ⚠ ${warning}`));
+                }
             } catch (err) {
                 console.log(
                     chalk.gray(

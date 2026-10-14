@@ -57,7 +57,7 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
         const rulebookCfg = await readConfigFile(cwd);
         const promptHook = resolvePromptHookConfig(rulebookCfg);
         const toolHook = resolveToolHookConfig(rulebookCfg);
-        await applyClaudeSettings(cwd, {
+        const settingsResult = await applyClaudeSettings(cwd, {
             taskScaffoldingGuard: true,
             osSchedulingGuard: true,
             jevPromptGate: options.typesafe !== false && promptHook.enabled,
@@ -73,6 +73,7 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
             statusLine: true,
             defaultModel,
         });
+        for (const warning of settingsResult.warnings) console.log(chalk.yellow(`⚠ ${warning}`));
 
         // TypeSafe (Jev) — offered by default since v7.4; --no-typesafe opts out;
         // a stored answer is honoured.

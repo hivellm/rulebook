@@ -358,16 +358,20 @@ CLI equivalents: `rulebook learn promote <id> skill`, `rulebook skills list --ca
 
 The main session no longer has to remember to call the gate: a Claude Code `UserPromptSubmit` hook runs it on every operator prompt and hands the routing to the model as context. Without the hook there is no manual fallback: the model calls `rulebook_gate` only when it wants a routing.
 
-**Install**: `rulebook init`, `rulebook update` and `rulebook claude` copy `templates/hooks/jev-gate.sh` to `.claude/hooks/jev-gate.sh` and add one entry to `.claude/settings.json`:
+**Install**: `rulebook init`, `rulebook update` and `rulebook claude` add one exec-form entry to `.claude/settings.json` — Claude Code spawns `node` directly on the slim hook entry `dist/cli/hook-main.js` (bin `rulebook-hook`), with no shell and without loading the full CLI:
 
 ```json
 { "hooks": { "UserPromptSubmit": [
-  { "hooks": [ { "type": "command",
-                 "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/jev-gate.sh prompt",
+  { "hooks": [ { "type": "command", "command": "node",
+                 "args": ["${CLAUDE_PROJECT_DIR}/node_modules/@hivehub/rulebook/dist/cli/hook-main.js", "prompt-gate"],
                  "timeout": 3 } ] } ] } }
 ```
 
-The entry is identified by its command (`jev-gate.sh prompt`): it is upserted once (a second run leaves the file byte-identical), user hooks on the same event stay untouched and in order, and the entry is removed when the hook is turned off. The wrapper finds the CLI (`$CLAUDE_PROJECT_DIR/node_modules/.bin/rulebook` first, so the project's own version wins over a stale global one; then, in the rulebook repo itself — `package.json` named `@hivehub/rulebook` with a built `dist/index.js` — `node dist/index.js`; then `rulebook` on `PATH`) and runs `rulebook hook prompt-gate` with the hook JSON on stdin. Without `CLAUDE_PROJECT_DIR` (Codex) the project is the payload's `cwd`. Without a CLI, or with a CLI that fails (for example a broken global shim, whose error output is dropped), it prints one `systemMessage` per session — the wrapper always exits 0.
+The entry's path is resolved and validated when settings are written, first hit wins: the project's `node_modules/@hivehub/rulebook` (named through `${CLAUDE_PROJECT_DIR}`, so a committed settings file stays portable), the rulebook repo's own build (`package.json` named `@hivehub/rulebook`), then the global npm install (`npm root -g`, absolute path). A candidate counts only when `node <entry> --check` loads the hook module. When none does, the hook is not installed (an existing entry is removed) and the command prints how to fix it — nothing falls back at runtime. The entry is identified by `hook-main.js prompt-gate`: it is upserted once (a second run leaves the file byte-identical), user hooks on the same event stay untouched and in order, a v7.4 `jev-gate.sh prompt` entry is replaced, and the entry is removed when the hook is turned off. The project is `CLAUDE_PROJECT_DIR`, else the payload's `cwd` (Codex sets no `CLAUDE_PROJECT_DIR`).
+
+Measured on Windows, median of 3, rulebook repo, real Jev calls: 499 ms end to end with the gate on (v7.4: 929 ms) and 91 ms start-up with `RULEBOOK_GATE=off` (v7.4: 401 ms).
+
+`.claude/hooks/jev-gate.sh` now serves only the opt-in tool gate (and `prompt` for settings written by v7.4): it finds the CLI (`node_modules/.bin/rulebook`, then the rulebook repo's `dist/index.js`, then `rulebook` on `PATH`), runs `rulebook hook <event>`, and without a CLI, or with one that fails, prints one `systemMessage` per session; it always exits 0.
 
 **What it classifies**: inputs no person typed — prompts that start with `<task-notification>`, `<agent-message`, `<cross-session-message` or `<local-command-…>` — get no answer and cost no Jev call. `<ide_opened_file>`, `<ide_selection>`, `<system-reminder>` and `<browser_instruction>` blocks are removed before the prompt is sent. The hook asks a smaller question set than the tool: `kind`, `needs_task`, `existing_task`, `needs_operator_decision`, `in_project_scope` and the three risks — no `model`, `agent`, `skill` or `parallel` questions, and no skills, agents or routing table in the state.
 
@@ -408,7 +412,7 @@ The prompt hook judges what the operator asked for; the tool-call gate judges wh
                "timeout": 4 } ] }
 ```
 
-Each Jev entry is identified by its command (`jev-gate.sh prompt`, `jev-gate.sh tool`), so turning one on or off never touches the other; the entry is upserted once (a second run leaves the file byte-identical), user hooks stay untouched, and it is removed when the gate is turned off or TypeSafe is opted out.
+Each Jev entry is identified by its command (`hook-main.js prompt-gate`, `jev-gate.sh tool`), so turning one on or off never touches the other; the entry is upserted once (a second run leaves the file byte-identical), user hooks stay untouched, and it is removed when the gate is turned off or TypeSafe is opted out.
 
 **Order, cheapest first** (Claude Code runs matching hooks in parallel, so the order lives inside this one hook):
 
