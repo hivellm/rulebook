@@ -354,9 +354,9 @@ CLI equivalents: `rulebook learn promote <id> skill`, `rulebook skills list --ca
 
 **CLI**: `rulebook gate "<prompt>" [--notes <text>] [--json]` prints the routing as a readable block (or the full result as JSON) and exits 0 even when unavailable. `rulebook gate --check [--json] [--strict]` reports where the key was found (`env`, `.env`, or not found — never the value) and makes one cheap live call (`state: "ping"`, one yes/no question) with its latency and token usage; it exits 0 either way, or 2 with `--strict` when the gate is unavailable.
 
-### Prompt hook (v7.4, `UserPromptSubmit`)
+### Prompt hook (v7.4, `UserPromptSubmit`, opt-in since v7.5)
 
-The main session no longer has to remember to call the gate: a Claude Code `UserPromptSubmit` hook runs it on every operator prompt and hands the routing to the model as context. Without the hook there is no manual fallback: the model calls `rulebook_gate` only when it wants a routing.
+A Claude Code `UserPromptSubmit` hook can run the gate on every operator prompt and hand the routing to the model as context. Off by default since v7.5 (operator decision): it adds a Jev round trip to every prompt, and the model rarely used its routing. Without the hook there is no manual fallback: the model calls `rulebook_gate` only when it wants a routing. Turn the hook on with `"gate": {"promptHook": {"enabled": true}}` in `.rulebook/rulebook.json`, then `rulebook update`.
 
 **Install**: `rulebook init`, `rulebook update` and `rulebook claude` add one exec-form entry to `.claude/settings.json` — Claude Code spawns `node` directly on the slim hook entry `dist/cli/hook-main.js` (bin `rulebook-hook`), with no shell and without loading the full CLI:
 
@@ -385,7 +385,7 @@ Measured on Windows, median of 3, rulebook repo, real Jev calls: 499 ms end to e
 
 | Key | Default | Meaning |
 |-----|---------|---------|
-| `gate.promptHook.enabled` | `true` | install and run the hook; always off when `integrations.typesafe.enabled` is `false` |
+| `gate.promptHook.enabled` | `false` | `true` installs and runs the hook; any other value removes a rulebook-owned entry on the next `init`/`update`/`claude`; always off when `integrations.typesafe.enabled` is `false` |
 | `gate.promptHook.deadlineMs` | `1500` | deadline for the whole gate call inside the hook, clamped to 1000–8500 ms; the settings `timeout` is `ceil(deadlineMs / 1000) + 1` seconds (3 s by default) |
 | `gate.promptHook.blockThreshold` | `0.9` | `risk_os_scheduling` probability that blocks, clamped to 0.5–1 |
 | `gate.scope.enabled` | `true` | ask `in_project_scope` when a description exists; `false` never asks it |
@@ -397,7 +397,7 @@ Measured on Windows, median of 3, rulebook repo, real Jev calls: 499 ms end to e
 
 **Decision log**: with `features.logging` on, hook calls are logged to `.rulebook/logs/gate.jsonl` like any other gate call, with `"source": "hook"` (the MCP tool writes `"mcp"`, the CLI `"cli"`).
 
-**Turn it off**: set `"gate": {"promptHook": {"enabled": false}}` in `rulebook.json` and run `rulebook update` (the entry is removed), or opt out of TypeSafe with `--no-typesafe` (also removes it). `RULEBOOK_GATE=off` silences it for one environment without touching settings.
+**Turn it on or off**: set `"gate": {"promptHook": {"enabled": true}}` in `rulebook.json` and run `rulebook update` to install the entry; remove the key or set it to `false` and run `rulebook update` again to remove it. Opting out of TypeSafe with `--no-typesafe` also removes it. `RULEBOOK_GATE=off` silences it for one environment without touching settings.
 
 ### Tool-call gate (v7.4, `PreToolUse`, opt-in)
 

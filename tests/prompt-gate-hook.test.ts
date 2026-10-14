@@ -101,10 +101,18 @@ function gateResult(
 describe('resolvePromptHookConfig', () => {
     it('applies defaults', () => {
         expect(resolvePromptHookConfig(null)).toEqual({
-            enabled: true,
+            enabled: false,
             deadlineMs: 1500,
             blockThreshold: 0.9,
         });
+    });
+
+    it('is opt-in: on only when gate.promptHook.enabled is true', () => {
+        expect(resolvePromptHookConfig({}).enabled).toBe(false);
+        expect(resolvePromptHookConfig({ gate: { promptHook: {} } }).enabled).toBe(false);
+        expect(resolvePromptHookConfig({ gate: { promptHook: { enabled: true } } }).enabled).toBe(
+            true
+        );
     });
 
     it('clamps deadline to 1000–8500 ms and threshold to 0.5–1', () => {
@@ -123,7 +131,10 @@ describe('resolvePromptHookConfig', () => {
             false
         );
         expect(
-            resolvePromptHookConfig({ integrations: { typesafe: { enabled: false } } }).enabled
+            resolvePromptHookConfig({
+                gate: { promptHook: { enabled: true } },
+                integrations: { typesafe: { enabled: false } },
+            }).enabled
         ).toBe(false);
     });
 
@@ -367,15 +378,21 @@ describe('rulebook hook prompt-gate', () => {
 
     beforeEach(async () => {
         root = await fs.mkdtemp(path.join(os.tmpdir(), 'rb-prompt-hook-'));
+        await writeConfig({});
     });
 
     afterEach(async () => {
         await removeTempDir(root);
     });
 
-    async function writeConfig(cfg: Record<string, unknown>) {
+    /** Writes rulebook.json with the (opt-in) hook turned on unless `cfg` sets `enabled` itself. */
+    async function writeConfig(cfg: { gate?: { promptHook?: object } } & Record<string, unknown>) {
+        const config = {
+            ...cfg,
+            gate: { ...cfg.gate, promptHook: { enabled: true, ...cfg.gate?.promptHook } },
+        };
         await fs.mkdir(path.join(root, '.rulebook'), { recursive: true });
-        await fs.writeFile(path.join(root, '.rulebook', 'rulebook.json'), JSON.stringify(cfg));
+        await fs.writeFile(path.join(root, '.rulebook', 'rulebook.json'), JSON.stringify(config));
     }
 
     async function run(
@@ -471,6 +488,19 @@ describe('rulebook hook prompt-gate', () => {
         const fetchMock = vi.fn();
         const { lines } = await run('anything', { fetch: fetchMock });
         expect(lines).toEqual([]);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('off by default: a config without gate.promptHook → no output, no Jev call', async () => {
+        await fs.writeFile(
+            path.join(root, '.rulebook', 'rulebook.json'),
+            JSON.stringify({ projectId: 'demo' })
+        );
+        const fetchMock = vi.fn();
+        expect(await run('add a --json flag', { fetch: fetchMock })).toEqual({
+            code: 0,
+            lines: [],
+        });
         expect(fetchMock).not.toHaveBeenCalled();
     });
 

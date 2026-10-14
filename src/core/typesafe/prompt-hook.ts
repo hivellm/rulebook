@@ -88,16 +88,17 @@ function clamp(value: unknown, fallback: number, range: { min: number; max: numb
 }
 
 /**
- * `gate.promptHook` with defaults applied and values clamped. The hook is on
- * unless it is turned off explicitly, and always off when the operator opted
- * out of TypeSafe (`integrations.typesafe.enabled: false`).
+ * `gate.promptHook` with defaults applied and values clamped. Opt-in since
+ * v7.5: the hook is on only when `enabled` is explicitly true (the
+ * `rulebook_gate` tool stays available on demand), and always off when the
+ * operator opted out of TypeSafe (`integrations.typesafe.enabled: false`).
  */
 export function resolvePromptHookConfig(
     config: Partial<RulebookConfig> | null | undefined
 ): PromptHookConfig {
     const raw = config?.gate?.promptHook ?? {};
     return {
-        enabled: config?.integrations?.typesafe?.enabled !== false && raw.enabled !== false,
+        enabled: config?.integrations?.typesafe?.enabled !== false && raw.enabled === true,
         deadlineMs: Math.round(
             clamp(raw.deadlineMs, PROMPT_HOOK_DEFAULTS.deadlineMs, PROMPT_HOOK_LIMITS.deadlineMs)
         ),

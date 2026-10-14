@@ -469,7 +469,7 @@ export async function updateSingleProject(
             await import('../../core/typesafe/tool-gate.js');
         // v7: two optional PreToolUse guards + full-autonomy permissions; v7.4
         // adds the fail-open Jev prompt hook (UserPromptSubmit) while TypeSafe
-        // is on and gate.promptHook.enabled is not false, and the opt-in Jev
+        // is on and gate.promptHook.enabled is true (opt-in, v7.5), and the opt-in Jev
         // tool gate (PreToolUse) under gate.toolHook.enabled. Every retired
         // v5/v6 hook entry is stripped on sync (LEGACY_SIGNATURES).
         const rulebookCfg = await configManager.loadConfig();

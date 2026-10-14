@@ -229,10 +229,10 @@ export interface RulebookConfig {
     // Jev gate hooks (v7.4). promptHook and scope are resolved (defaults + clamps) by
     // resolvePromptHookConfig() and resolveScopeConfig() in src/core/typesafe/prompt-hook.ts.
     gate?: {
-        // UserPromptSubmit hook that runs the entry gate on every prompt.
+        // UserPromptSubmit hook that runs the entry gate on every prompt (opt-in since v7.5).
         promptHook?: {
-            enabled?: boolean; // default true; always off when integrations.typesafe.enabled === false
-            deadlineMs?: number; // default 5000, clamped 1000–8500
+            enabled?: boolean; // default false; always off when integrations.typesafe.enabled === false
+            deadlineMs?: number; // default 1500, clamped 1000–8500
             blockThreshold?: number; // risk_os_scheduling ≥ this blocks; default 0.9, clamped 0.5–1
         };
         // Project-scope question (in_project_scope) and the prompt hook's off-topic action.

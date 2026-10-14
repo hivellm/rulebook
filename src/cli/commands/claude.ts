@@ -46,7 +46,7 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
 
         // v7: two optional PreToolUse guards + the full-autonomy permission
         // profile; v7.4 adds the fail-open Jev prompt hook (UserPromptSubmit)
-        // while TypeSafe is on and gate.promptHook.enabled is not false, and the
+        // while TypeSafe is on and gate.promptHook.enabled is true (opt-in, v7.5), and the
         // opt-in Jev tool gate (PreToolUse) under gate.toolHook.enabled. No
         // hooks on Stop/SessionStart, no orchestration enforcement (P0). Stale
         // v5/v6 entries self-heal on sync via LEGACY_SIGNATURES.

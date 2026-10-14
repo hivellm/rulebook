@@ -443,7 +443,7 @@ export async function initCommand(options: {
                     await import('../../core/typesafe/tool-gate.js');
                 // v7: two optional PreToolUse guards + full-autonomy permissions.
                 // v7.4: plus the fail-open Jev prompt hook (UserPromptSubmit)
-                // while TypeSafe is on and gate.promptHook.enabled is not false,
+                // while TypeSafe is on and gate.promptHook.enabled is true (opt-in, v7.5),
                 // and the opt-in Jev tool gate (PreToolUse, gate.toolHook.enabled).
                 // No Stop/SessionStart hooks, no orchestration enforcement (P0).
                 // Stale v5/v6 entries are stripped on sync.

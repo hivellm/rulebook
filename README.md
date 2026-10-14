@@ -292,7 +292,7 @@ It installs the MCP server entry and the Rulebook-specific skills, then layers t
 
 | Applied | Detail |
 |---------|--------|
-| Hooks | Path-only `PreToolUse` guards (task scaffolding, `no-os-scheduling`); with TypeSafe on, the fail-open Jev prompt hook on `UserPromptSubmit` (and the opt-in tool-call gate) — nothing on Stop/SessionStart, no content regexes |
+| Hooks | Path-only `PreToolUse` guards (task scaffolding, `no-os-scheduling`); with TypeSafe on, the opt-in, fail-open Jev prompt hook on `UserPromptSubmit` and tool-call gate on `PreToolUse` — nothing on Stop/SessionStart, no content regexes |
 | Full-autonomy permissions | `defaultMode: acceptEdits` + broad allow list (Bash/Edit/Write/Agent/WebFetch/…) — ~0 permission prompts for routine work |
 | `statusLine` | project dir + git branch + context meter (`ctx NN%`) |
 | `model` | cost-aware default (`opus`) |
@@ -336,11 +336,12 @@ tool call through unchanged. Full reference:
   (CLI) sends the prompt and a short project description to Jev and returns a
   `routing`: request kind, task, model, subagent type, skill, and risk flags.
   Advisory, never blocking; `rulebook gate --check` tests the key.
-- **Prompt hook** (`UserPromptSubmit`, on by default) — runs the gate on every
-  prompt and hands the routing to the model as context. It blocks only a
-  high-confidence OS-scheduling request (`gate.promptHook.blockThreshold`,
-  default 0.9); destructive git and secrets only warn. Turn it off with
-  `"gate": {"promptHook": {"enabled": false}}` and `rulebook update`.
+- **Prompt hook** (`UserPromptSubmit`, opt-in since v7.5) — runs the gate on
+  every typed prompt (agent notifications are skipped) and hands the routing
+  to the model as context. It blocks only a high-confidence OS-scheduling
+  request (`gate.promptHook.blockThreshold`, default 0.9); destructive git and
+  secrets only warn. Turn it on with `"gate": {"promptHook": {"enabled": true}}`
+  and `rulebook update`.
 - **Project scope** (`gate.scope`) — the gate also asks whether the prompt
   belongs to this project (description from `gate.scope.description`,
   `package.json`, or this README). When it looks off-topic
