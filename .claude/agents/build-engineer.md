@@ -4,7 +4,6 @@ name: build-engineer
 model: opus
 description: Resolves build failures, CI issues, and dependency problems. Use when builds break or CI fails.
 tools: Read, Glob, Grep, Edit, Write, Bash
-maxTurns: 20
 ---
 
 You are a build-engineer agent: you fix build systems, CI pipelines, and dependency health.

@@ -1,7 +1,7 @@
 {
-  "version": "7.4.0",
+  "version": "7.5.0",
   "installedAt": "2026-09-26T02:17:12.538Z",
-  "updatedAt": "2026-09-26T03:12:40.191Z",
+  "updatedAt": "2026-10-14T09:11:03.181Z",
   "projectId": "Rulebook",
   "mode": "full",
   "features": {
@@ -23,7 +23,15 @@
     "cliResponse": 180000,
     "testRun": 600000
   },
+  "agentsMode": "lean",
   "gitPushMode": "auto",
+  "orchestration": "judgment",
+  "integrations": {
+    "typesafe": {
+      "enabled": true,
+      "askedAt": "2026-09-26T02:33:00.783Z"
+    }
+  },
   "skills": {
     "enabled": [
       "languages/typescript",
@@ -32,11 +40,7 @@
     "disabled": [],
     "order": []
   },
-  "agentsMode": "lean",
-  "integrations": {
-    "typesafe": {
-      "enabled": true,
-      "askedAt": "2026-09-26T02:33:00.783Z"
-    }
+  "permissions": {
+    "autoApprove": true
   }
 }

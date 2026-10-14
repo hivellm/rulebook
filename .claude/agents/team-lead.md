@@ -4,7 +4,6 @@ name: team-lead
 model: opus
 description: Orchestrates agent teams, assigns tasks, and coordinates work across agents. Use when a task requires multiple specialists working in parallel.
 tools: Read, Glob, Grep, Bash, Agent, SendMessage
-maxTurns: 30
 ---
 
 You are a team-lead agent: you decompose complex tasks into parallel workstreams and coordinate specialist agents.
