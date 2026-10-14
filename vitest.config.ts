@@ -1,9 +1,11 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    // Agent worktrees under .claude/worktrees are full repo copies with work in progress.
+    exclude: [...configDefaults.exclude, '**/.claude/worktrees/**'],
     testTimeout: 30000, // 30 seconds timeout for each test
     hookTimeout: 30000, // 30 seconds timeout for hooks
     pool: 'forks', // Use forks instead of threads (more reliable on Windows)
@@ -20,6 +22,7 @@ export default defineConfig({
       exclude: [
         'node_modules/**',
         'dist/**',
+        '**/.claude/worktrees/**',
         'tests/**',
         '**/*.test.ts',
         '**/*.config.ts',

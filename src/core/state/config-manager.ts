@@ -33,6 +33,8 @@ export const RULEBOOK_GITIGNORE_BLOCK = [
     '!/.rulebook/knowledge/',
     '!/.rulebook/learnings/',
     '!/.rulebook/rulebook.json',
+    // Claude Code creates agent worktrees here (full repo copies): never commit or scan them.
+    '/.claude/worktrees/',
 ];
 
 /**
