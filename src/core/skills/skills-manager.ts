@@ -39,6 +39,7 @@ const CATEGORY_MAPPINGS: Record<string, SkillCategory> = {
     workflows: 'workflows',
     ides: 'ides',
     core: 'core',
+    dev: 'dev',
     cli: 'cli',
     git: 'git',
     hooks: 'hooks',
@@ -214,19 +215,23 @@ export class SkillsManager {
             workflows: [],
             ides: [],
             core: [],
+            dev: [],
             cli: [],
             git: [],
             hooks: [],
             project: [],
         };
 
-        // First, check if new skills directory exists
+        // Skills live in `<templates>/skills/<category>/<name>/SKILL.md`. Only a
+        // templates root without that directory (the pre-v2 layout) is scanned
+        // for legacy `<category>/*.md` files: in the bundled templates those
+        // folders hold generator inputs (core/claude-md.md, hooks/pre-push.md…),
+        // not skills.
         if (await fileExists(this.skillsPath)) {
             await this.scanSkillsDirectory(this.skillsPath, skills, categories);
+        } else {
+            await this.scanLegacyTemplates(skills, categories);
         }
-
-        // Also scan legacy template directories for backward compatibility
-        await this.scanLegacyTemplates(skills, categories);
 
         // v7.2: the project's own skills — hand-written or promoted from a
         // recurring learning. Listed next to packaged skills; opt-in for
@@ -367,7 +372,9 @@ export class SkillsManager {
                 metadata.category ||
                 'core') as SkillCategory;
 
-            const skillId = this.generateSkillId(metadata.name || dirName, category);
+            // The directory name is the stable, unique id (`languages/cpp`, not the
+            // display name "C++", which collides with C and C#).
+            const skillId = this.generateSkillId(dirName || metadata.name, category);
 
             return {
                 id: skillId,

@@ -341,6 +341,8 @@ export type SkillCategory =
     | 'workflows'
     | 'ides'
     | 'core'
+    /** Opt-in development skills (`templates/skills/dev/`); never auto-enabled. */
+    | 'dev'
     | 'cli'
     | 'git'
     | 'hooks'

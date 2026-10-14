@@ -101,6 +101,10 @@ update. 7.5 removes each of these.
   v5/v6 assets and Codex override shadowing. `rulebook doctor --json` too.
 - Codex: `init`/`update` keep a small rulebook rules block at the top of
   `AGENTS.override.md`, because Codex reads the override instead of `AGENTS.md`.
+  The block is a single HTML comment: Codex sends the raw file to the model, while
+  Claude Code strips comments from the `@AGENTS.override.md` import, so Claude
+  sessions don't pay for it (always-on 1,448 → 1,192 tokens; budget lowered to
+  1,320). Verified with `codex debug prompt-input` and a real Claude Code session.
 
 ### Fixed — `rulebook update` cleans up for real
 
@@ -120,6 +124,27 @@ update. 7.5 removes each of these.
   `referenceSource` from rulebook.json (before, an update turned an opt-in
   prompt hook off again and reset `"orchestrator"` to the default). The kept
   keys are checked against `RulebookConfig` at compile time.
+- `rulebook update` saves what it detects: new languages, modules and their
+  skills land in `rulebook.json` (they used to be written early and then
+  overwritten by the config rebuild). Skills in `skills.disabled` stay off and a
+  custom `rulebookDir` is kept.
+- Skill discovery works again: the bundled templates path had stopped one
+  directory short since v5.7, so auto-detection, `rulebook skill` and the MCP
+  skill tool saw no shipped skills. Skills are read only from `SKILL.md` files
+  (generator templates such as `core/claude-md.md` are no longer listed as
+  skills), development skills have their own `dev` category and are never
+  auto-enabled, and ids come from the folder name (`languages/cpp` and
+  `languages/csharp` no longer collide with `languages/c`).
+- `CLAUDE.md` is backed up only when your text outside the generated block
+  changed since rulebook last wrote it, or when a legacy file is migrated; the
+  first update after `init` no longer leaves a backup.
+- `rulebook init` writes the shipped `AGENTS.override.md` template (the path was
+  resolved wrongly, a broken `/E:/…` path on Windows, so the inline fallback was
+  always used); the template no longer ships example rules agents would follow.
+- `.claude/hooks/no-os-scheduling.sh` and `jev-gate.sh` are installed only when
+  the opt-in tool gate (`gate.toolHook.enabled`) is on; otherwise `update`
+  removes an unedited copy and says so. A default install is back to 20 files
+  (`.rulebook/.update-check`, a cache, is no longer counted).
 - The generated `.gitignore` block ignores `/.claude/worktrees/` (Claude Code
   agent worktrees), and the test suite no longer scans them.
 
@@ -127,9 +152,9 @@ update. 7.5 removes each of these.
 
 - The context-budget test counts what Claude Code injects (CLAUDE.md without
   comments and with `@imports` expanded, always-on rules, rulebook listing
-  lines, deferred MCP names): 1,449 tokens at 7.5 against a 1,600 budget
+  lines, deferred MCP names): 1,192 tokens at 7.5 against a 1,320 budget
   (2,100 with the opt-in agents). Codex gets its own budgets
-  (`AGENTS.override.md` 390, `AGENTS.md` 870) and the per-prompt hook context
+  (`AGENTS.override.md` 425, `AGENTS.md` 870) and the per-prompt hook context
   has one (260).
 - A new test asserts 0 rulebook hook processes per ordinary Bash/Edit/Write call
   in a generated project. P0 now rejects generated text that mandates *or*

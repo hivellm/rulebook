@@ -29,6 +29,37 @@ describe('Skills Manager', () => {
             const detected = await manager.autoDetectSkills({ languages: ['rust'] });
             expect(detected).toEqual(expect.arrayContaining(['languages/rust', 'core/rulebook']));
         });
+
+        // Regression: with the path working again, the legacy `<category>/*.md`
+        // scan read the bundled generator templates (core/claude-md.md,
+        // hooks/pre-push.md…) as skills, dev skills fell into `core` (so every
+        // one was auto-enabled), and C / C++ / C# all got the id `languages/c`.
+        it('only reads SKILL.md skills from the bundled templates, with unique ids', async () => {
+            const manager = new SkillsManager(getDefaultTemplatesPath());
+            const ids = (await manager.getSkills()).map((s) => s.id);
+
+            expect(ids).not.toContain('core/claude-md');
+            expect(ids).not.toContain('core/orchestration');
+            expect(ids).not.toContain('hooks/pre-push');
+            expect(new Set(ids).size).toBe(ids.length);
+            expect(ids).toEqual(
+                expect.arrayContaining(['languages/c', 'languages/cpp', 'languages/csharp'])
+            );
+            expect(ids).toContain('dev/analysis');
+            expect(ids).not.toContain('core/analysis');
+        });
+
+        it('auto-enables only the real core skills, never the dev skills', async () => {
+            const manager = new SkillsManager(getDefaultTemplatesPath());
+            const detected = await manager.autoDetectSkills({ languages: ['typescript'] });
+
+            expect(detected).toContain('languages/typescript');
+            expect(detected.filter((id) => id.startsWith('dev/'))).toEqual([]);
+            expect(detected.filter((id) => id.startsWith('core/')).sort()).toEqual([
+                'core/karpathy-guidelines',
+                'core/rulebook',
+            ]);
+        });
     });
 
     afterEach(() => {
