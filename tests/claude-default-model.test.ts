@@ -14,6 +14,8 @@ const { applyClaudeSettingsMock } = vi.hoisted(() => ({
     applyClaudeSettingsMock: vi.fn(async (..._args: unknown[]) => ({
         path: '',
         changed: false,
+        removedHooks: [] as string[],
+        removedScripts: [] as string[],
         warnings: [] as string[],
     })),
 }));

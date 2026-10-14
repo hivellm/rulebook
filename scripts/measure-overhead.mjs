@@ -29,7 +29,9 @@
  * Codex: AGENTS.override.md when present (Codex reads it instead of AGENTS.md),
  * else AGENTS.md. Hot-path hooks: rulebook hook handlers that spawn on an
  * ordinary tool call or prompt — PreToolUse without an `if` rule, PostToolUse,
- * UserPromptSubmit, Stop, SubagentStop.
+ * UserPromptSubmit, Stop, SubagentStop. Installed files: `.claude/` and
+ * `.rulebook/` (minus `.rulebook/backup/` and the `.rulebook/.update-check`
+ * cache) plus the root memory files and `.mcp.json`.
  */
 import { spawn, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -251,14 +253,16 @@ function auditHooks(dir) {
 }
 
 function countInstalledFiles(dir) {
+  // Not part of the install: update's backups of replaced files and the
+  // update-check cache (.rulebook/.update-check).
+  const skip = [path.join('.rulebook', 'backup'), path.join('.rulebook', '.update-check')];
   let n = 0;
   const walk = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
-      // update's backups of replaced files are not part of the install.
-      if (e.isDirectory()) {
-        if (path.relative(dir, p) !== path.join('.rulebook', 'backup')) walk(p);
-      } else n++;
+      if (skip.includes(path.relative(dir, p))) continue;
+      if (e.isDirectory()) walk(p);
+      else n++;
     }
   };
   for (const top of ['.claude', '.rulebook']) if (fs.existsSync(path.join(dir, top))) walk(path.join(dir, top));

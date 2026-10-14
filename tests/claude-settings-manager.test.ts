@@ -17,6 +17,7 @@ import {
     resolveAutoApprove,
     resolveHookMain,
     TASK_SCAFFOLDING_IF_RULES,
+    TOOL_GATE_SCRIPTS,
     type HookMainTarget,
 } from '../src/core/claude/claude-settings-manager';
 import type { RulebookConfig } from '../src/types';
@@ -435,6 +436,73 @@ describe('claude-settings-manager (v7)', () => {
             const list = (await readSettings()).hooks.PreToolUse;
             expect(toolEntries(list)).toHaveLength(0);
             expect(list).toHaveLength(1);
+        });
+
+        describe('scripts only the gate runs (jev-gate.sh, no-os-scheduling.sh)', () => {
+            const hookFile = (name: string) => path.join(projectRoot, '.claude/hooks', name);
+            const exists = (name: string) =>
+                fs.access(hookFile(name)).then(
+                    () => true,
+                    () => false
+                );
+            const OFF = { ...ALL_DESIRE, jevToolGate: undefined };
+
+            it('installs neither without the gate', async () => {
+                const result = await applyClaudeSettings(projectRoot, OFF);
+                expect(result.removedScripts).toEqual([]);
+                for (const name of TOOL_GATE_SCRIPTS) expect(await exists(name), name).toBe(false);
+                expect(await exists(GUARD_SCRIPT)).toBe(true);
+            });
+
+            it('installs both with the gate (LF endings) next to its PreToolUse entry', async () => {
+                const result = await applyClaudeSettings(projectRoot, ALL_DESIRE);
+                expect(result.removedScripts).toEqual([]);
+                for (const name of TOOL_GATE_SCRIPTS) {
+                    const buf = await fs.readFile(hookFile(name));
+                    expect(buf.length, name).toBeGreaterThan(0);
+                    expect(buf.includes(0x0d), name).toBe(false);
+                }
+                expect(toolEntries((await readSettings()).hooks.PreToolUse)).toHaveLength(1);
+            });
+
+            it('skips the OS-scheduling guard when osSchedulingGuard is off', async () => {
+                await applyClaudeSettings(projectRoot, { ...ALL_DESIRE, osSchedulingGuard: false });
+                expect(await exists(JEV_GATE_SCRIPT)).toBe(true);
+                expect(await exists(OS_SCHEDULING_GUARD_SCRIPT)).toBe(false);
+            });
+
+            it('turning the gate off removes unedited copies and reports them, once', async () => {
+                await applyClaudeSettings(projectRoot, ALL_DESIRE);
+                // A copy with CRLF endings (a Windows checkout) is still unedited.
+                const guard = await fs.readFile(hookFile(OS_SCHEDULING_GUARD_SCRIPT), 'utf-8');
+                await fs.writeFile(
+                    hookFile(OS_SCHEDULING_GUARD_SCRIPT),
+                    guard.replace(/\n/g, '\r\n')
+                );
+
+                const result = await applyClaudeSettings(projectRoot, OFF);
+                expect(result.removedScripts).toEqual(
+                    TOOL_GATE_SCRIPTS.map((name) => `.claude/hooks/${name}`)
+                );
+                for (const name of TOOL_GATE_SCRIPTS) expect(await exists(name), name).toBe(false);
+                expect(toolEntries((await readSettings()).hooks.PreToolUse)).toHaveLength(0);
+
+                expect((await applyClaudeSettings(projectRoot, OFF)).removedScripts).toEqual([]);
+            });
+
+            it('keeps an edited copy', async () => {
+                await applyClaudeSettings(projectRoot, ALL_DESIRE);
+                const edited =
+                    (await fs.readFile(hookFile(OS_SCHEDULING_GUARD_SCRIPT), 'utf-8')) +
+                    '# my local tweak\n';
+                await fs.writeFile(hookFile(OS_SCHEDULING_GUARD_SCRIPT), edited);
+
+                const result = await applyClaudeSettings(projectRoot, OFF);
+                expect(result.removedScripts).toEqual([`.claude/hooks/${JEV_GATE_SCRIPT}`]);
+                expect(await fs.readFile(hookFile(OS_SCHEDULING_GUARD_SCRIPT), 'utf-8')).toBe(
+                    edited
+                );
+            });
         });
 
         it('prompt and tool entries are independent: toggling one never removes the other', async () => {

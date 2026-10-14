@@ -14,8 +14,8 @@ import {
  * v7.3 — Tier 1 #7: no OS-level scheduling.
  *
  * The guard script is exercised for real through bash (skipped where bash is
- * absent); the settings wiring (v7.5: permissions.deny rules, the script kept
- * for the tool gate) is exercised through applyClaudeSettings.
+ * absent); the settings wiring (v7.5: permissions.deny rules, the script
+ * installed only with the tool gate) is exercised through applyClaudeSettings.
  */
 
 const SCRIPT = path.join(process.cwd(), 'templates', 'hooks', OS_SCHEDULING_GUARD_SCRIPT);
@@ -146,11 +146,16 @@ describe('no-os-scheduling wiring (applyClaudeSettings, v7.5)', () => {
         expect(JSON.stringify(content.hooks)).not.toContain(OS_SCHEDULING_GUARD_SCRIPT);
     });
 
-    it('still installs the script (run by the opt-in tool gate) with LF endings', async () => {
+    it('installs the script only with the opt-in tool gate (which runs it), with LF endings', async () => {
+        const script = path.join(projectRoot, '.claude/hooks', OS_SCHEDULING_GUARD_SCRIPT);
         await applyClaudeSettings(projectRoot, BOTH);
-        const buf = await fs.readFile(
-            path.join(projectRoot, '.claude/hooks', OS_SCHEDULING_GUARD_SCRIPT)
-        );
+        await expect(fs.access(script)).rejects.toThrow();
+
+        await applyClaudeSettings(projectRoot, {
+            ...BOTH,
+            jevToolGate: { matcher: 'Bash|Edit|Write', timeoutSec: 4 },
+        });
+        const buf = await fs.readFile(script);
         expect(buf.length).toBeGreaterThan(0);
         expect(buf.includes(0x0d)).toBe(false);
     });

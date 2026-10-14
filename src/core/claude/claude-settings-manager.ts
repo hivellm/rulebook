@@ -1,6 +1,7 @@
 import { exec, execFile } from 'child_process';
 import path from 'path';
 import { existsSync } from 'fs';
+import { unlink } from 'fs/promises';
 import { promisify } from 'util';
 import {
     readFile,
@@ -10,6 +11,7 @@ import {
     ensureDir,
 } from '../../utils/file-system.js';
 import { getTemplatesDir } from '../generators/generator.js';
+import { isCatalogued, normalizeContent } from '../migration/legacy-catalogue.js';
 import { PROMPT_HOOK_DEFAULTS, promptHookTimeoutSec } from '../typesafe/prompt-hook.js';
 import type { RulebookConfig } from '../../types.js';
 
@@ -27,8 +29,8 @@ const execFileAsync = promisify(execFile);
  *   handler carries an `if` rule, so Claude Code spawns it only for task files.
  * - v7.3: no OS-level scheduling (Tier 1 #7). v7.5: enforced in-process by
  *   `permissions.deny` rules (OS_SCHEDULING_DENY_RULES) instead of a
- *   PreToolUse script on every Bash/Edit/Write call; the script stays
- *   installed for the opt-in tool gate.
+ *   PreToolUse script on every Bash/Edit/Write call; the script is installed
+ *   only with the opt-in tool gate, which runs it.
  * - v7.5: `permissions.allow` rules for Bash/Edit/Write (AUTO_APPROVE_PERMISSIONS)
  *   per `permissions.autoApprove` in rulebook.json. Until 7.4 the guards
  *   answered "allow" on every passing call, which auto-approved those tools;
@@ -62,8 +64,9 @@ export interface ClaudeSettingsDesire {
     /**
      * v7.3: deny OS-level scheduling (crontab/at, systemd timers, launchd,
      * Task Scheduler) on Bash/PowerShell and scheduler paths on Edit/Write.
-     * v7.5: written as `permissions.deny` rules; the guard script is still
-     * installed for the opt-in tool gate. False/absent removes the rules.
+     * v7.5: written as `permissions.deny` rules; the guard script is
+     * installed only together with `jevToolGate`, which runs it.
+     * False/absent removes the rules.
      */
     osSchedulingGuard?: boolean;
     /**
@@ -83,7 +86,8 @@ export interface ClaudeSettingsDesire {
     jevPromptGateDeadlineMs?: number;
     /**
      * v7.4: install the opt-in PreToolUse tool gate (`.claude/hooks/jev-gate.sh
-     * tool`) with this matcher and `timeout` (seconds). Absent removes it.
+     * tool`) with this matcher and `timeout` (seconds). Absent removes it,
+     * and an unedited copy of each script only it runs (TOOL_GATE_SCRIPTS).
      */
     jevToolGate?: { matcher: string; timeoutSec: number };
     /** Apply the full-autonomy permission profile (v7 default). */
@@ -398,6 +402,13 @@ export const LEGACY_SIGNATURES = [
 const CURRENT_HOOK_SCRIPTS = [GUARD_SCRIPT, OS_SCHEDULING_GUARD_SCRIPT, JEV_GATE_SCRIPT];
 
 /**
+ * v7.5: scripts only the opt-in tool gate runs — the wrapper, and the
+ * OS-scheduling guard it calls first. Installed with the gate; without it an
+ * unedited copy is removed.
+ */
+export const TOOL_GATE_SCRIPTS: readonly string[] = [JEV_GATE_SCRIPT, OS_SCHEDULING_GUARD_SCRIPT];
+
+/**
  * Signatures of current rulebook entries: stripped on every sync, then
  * re-upserted when desired (no-os-scheduling never is since 7.5 — listing it
  * strips the old entry).
@@ -460,13 +471,20 @@ export function getHookScriptPath(projectRoot: string, scriptName: string): stri
  * the file if absent. Every event is managed: retired rulebook entries and
  * rulebook entries whose script is missing are stripped from settings.json
  * and settings.local.json; non-rulebook entries are never touched. Returns
- * the final path, whether settings.json changed, and each removed rulebook
- * entry (`<file> <event>: <command>`; a re-upserted entry is not a removal).
+ * the final path, whether settings.json changed, each removed rulebook
+ * entry (`<file> <event>: <command>`; a re-upserted entry is not a removal)
+ * and each removed tool-gate script (`.claude/hooks/<file>`).
  */
 export async function applyClaudeSettings(
     projectRoot: string,
     desire: ClaudeSettingsDesire
-): Promise<{ path: string; changed: boolean; removedHooks: string[]; warnings: string[] }> {
+): Promise<{
+    path: string;
+    changed: boolean;
+    removedHooks: string[];
+    removedScripts: string[];
+    warnings: string[];
+}> {
     const settingsPath = getClaudeSettingsPath(projectRoot);
     await ensureDir(path.dirname(settingsPath));
     const warnings: string[] = [];
@@ -474,12 +492,17 @@ export async function applyClaudeSettings(
     if (desire.taskScaffoldingGuard) {
         await installGuardScript(projectRoot, GUARD_SCRIPT);
     }
-    if (desire.osSchedulingGuard) {
-        await installGuardScript(projectRoot, OS_SCHEDULING_GUARD_SCRIPT);
-    }
-    // The bash wrapper now serves only the tool gate (it orders the OS-scheduling guard first).
-    if (desire.jevToolGate) {
-        await installGuardScript(projectRoot, JEV_GATE_SCRIPT);
+    // Only the tool gate runs these: the bash wrapper, which calls the
+    // OS-scheduling guard first (permissions.deny covers scheduling otherwise).
+    const removedScripts: string[] = [];
+    for (const script of TOOL_GATE_SCRIPTS) {
+        const wanted =
+            desire.jevToolGate !== undefined &&
+            (script !== OS_SCHEDULING_GUARD_SCRIPT || desire.osSchedulingGuard === true);
+        if (wanted) await installGuardScript(projectRoot, script);
+        else if (await removeOwnedHookScript(projectRoot, script)) {
+            removedScripts.push(`.claude/hooks/${script}`);
+        }
     }
     const hookMain = desire.jevPromptGate
         ? desire.hookMain !== undefined
@@ -629,7 +652,7 @@ export async function applyClaudeSettings(
     const local = await stripLocalRulebookHooks(projectRoot);
     removedHooks.push(...local.map((entry) => `settings.local.json ${entry}`));
 
-    return { path: settingsPath, changed, removedHooks, warnings };
+    return { path: settingsPath, changed, removedHooks, removedScripts, warnings };
 }
 
 /**
@@ -811,6 +834,25 @@ function pruneEmptyHooks(hooks: NonNullable<SettingsShape['hooks']>): void {
         const list = hooks[key];
         if (!list || list.length === 0) delete hooks[key];
     }
+}
+
+/**
+ * Delete `.claude/hooks/<scriptName>` when it is unedited rulebook output —
+ * the shipped template or a copy some release installed (legacy catalogue).
+ * An edited copy is kept. Returns whether the file was removed.
+ */
+async function removeOwnedHookScript(projectRoot: string, scriptName: string): Promise<boolean> {
+    const file = getHookScriptPath(projectRoot, scriptName);
+    if (!(await fileExists(file))) return false;
+    const content = await readFile(file);
+    const template = path.join(getTemplatesDir(), 'hooks', scriptName);
+    const shipped = (await fileExists(template)) ? await readFile(template) : null;
+    const unedited =
+        (shipped !== null && normalizeContent(content) === normalizeContent(shipped)) ||
+        isCatalogued(`.claude/hooks/${scriptName}`, content);
+    if (!unedited) return false;
+    await unlink(file);
+    return true;
 }
 
 /** Copy a guard script from templates into `.claude/hooks/`. Rulebook-owned. */

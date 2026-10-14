@@ -214,7 +214,7 @@ also applies to `Write`, `>` redirects and `tee`. Rules match each subcommand
 from its start, so prose never trips them; they also block read-only forms
 (`crontab -l`, `schtasks /query`) and do not see `sudo …`, `sh -c '…'` or
 `cp` into a scheduler directory. The `no-os-scheduling.sh` script, which covers
-those forms, stays installed for the opt-in tool gate.
+those forms, is installed only with the opt-in tool gate, which runs it first.
 
 The task-scaffolding guard only spawns for files under `.rulebook/tasks/`
 (hook `if` rules), and neither guard approves anything: a passing call prints

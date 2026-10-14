@@ -103,6 +103,10 @@ describe.skipIf(!existsSync(CLI))('hot-path hook budget (C7)', () => {
         }
         expect((await hooks()).UserPromptSubmit).toBeUndefined();
         expect((await readConfig()).gate).toBeUndefined();
+        // The scripts only the opt-in tool gate runs are not installed.
+        expect(await fs.readdir(path.join(project, '.claude', 'hooks'))).toEqual([
+            'protect-task-scaffolding.sh',
+        ]);
     });
 
     it('installs the prompt hook only once gate.promptHook.enabled is true, and update keeps it', async () => {
@@ -125,5 +129,36 @@ describe.skipIf(!existsSync(CLI))('hot-path hook budget (C7)', () => {
             // The setting itself survives the update that installed the hook.
             expect((await readConfig()).gate).toEqual({ promptHook: { enabled: true } });
         }
+    }, 120_000);
+
+    it('installs the tool-gate scripts with gate.toolHook.enabled and removes them when it is off', async () => {
+        const hooksDir = path.join(project, '.claude', 'hooks');
+        const setToolHook = async (enabled: boolean) => {
+            const config = await readConfig();
+            const gate = { ...(config.gate as object), toolHook: { enabled } };
+            await fs.writeFile(
+                path.join(project, '.rulebook', 'rulebook.json'),
+                JSON.stringify({ ...config, gate }, null, 2)
+            );
+        };
+        const toolEntries = async () =>
+            (await rulebookHandlers()).filter(
+                ([e, h]) => e === 'PreToolUse' && h.command.endsWith('jev-gate.sh tool')
+            );
+
+        await setToolHook(true);
+        await rulebook('update', '--yes');
+        expect((await fs.readdir(hooksDir)).sort()).toEqual([
+            'jev-gate.sh',
+            'no-os-scheduling.sh',
+            'protect-task-scaffolding.sh',
+        ]);
+        expect(await toolEntries()).toHaveLength(1);
+
+        await setToolHook(false);
+        const { stdout } = await rulebook('update', '--yes');
+        expect(await fs.readdir(hooksDir)).toEqual(['protect-task-scaffolding.sh']);
+        expect(await toolEntries()).toHaveLength(0);
+        expect(stdout).toContain('removed .claude/hooks/no-os-scheduling.sh');
     }, 120_000);
 });

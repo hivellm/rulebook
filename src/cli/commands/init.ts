@@ -460,6 +460,13 @@ export async function initCommand(options: {
                     autoApprove,
                     teamsEnv: multiAgentEnabled,
                 });
+                for (const script of settingsResult.removedScripts) {
+                    console.log(
+                        chalk.gray(
+                            `  • removed ${script} (used only by the tool gate, which is off)`
+                        )
+                    );
+                }
                 for (const warning of settingsResult.warnings) {
                     console.log(chalk.yellow(`  ⚠ ${warning}`));
                 }

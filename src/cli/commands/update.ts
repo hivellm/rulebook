@@ -575,6 +575,11 @@ export async function updateSingleProject(
                 console.log(chalk.gray(`    - ${entry}`));
             }
         }
+        for (const script of settingsResult.removedScripts) {
+            console.log(
+                chalk.gray(`  • removed ${script} (used only by the tool gate, which is off)`)
+            );
+        }
         for (const warning of settingsResult.warnings) console.log(chalk.yellow(`  ⚠ ${warning}`));
     } catch (err) {
         console.log(

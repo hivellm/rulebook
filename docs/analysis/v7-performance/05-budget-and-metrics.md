@@ -65,27 +65,29 @@ comparable with each other, not with the rows above:
 - **Fixture**: a TypeScript project after `init --yes` then `update --yes`,
   with Claude Code detected and the TypeSafe plugin present (temp HOME); MCP
   init is the median of three cold starts of `node dist/mcp/rulebook-server.js`;
-  files exclude `.rulebook/backup/`.
+  files exclude `.rulebook/backup/` and the `.rulebook/.update-check` cache.
 
 v7.1.0–v7.4.0 were measured from the published npm packages
 (`node scripts/measure-overhead.mjs --rulebook <package root>`); v7.5.0 from
 the `release/v7.5.0` build (package.json still reads 7.4.0 before the version
-bump). Measured 2026-10-14 on Windows 11.
+bump). Measured 2026-10-14 on Windows 11. The Files column was re-measured
+for every row once the count left out `.rulebook/.update-check` (one fewer
+file each).
 
 | Version | Change | Always-on tok | Codex tok | MCP tools/schema/init | Hot-path hooks | Files |
 |---|---|---:|---:|---|---|---:|
-| v7.1.0 | GitHub-issues task backend (opt-in). MCP entry `npx … @latest` | 957 | 42 | 5/3,562B/176ms | 1 (PreToolUse task guard) | 19 |
-| v7.2.0 | Decision requests on `rulebook_task` (ask/answer/questions): +727 B schema; CLAUDE.md +66 | 1,023 | 42 | 5/4,289B/181ms | 1 | 19 |
-| v7.3.0 | No-OS-scheduling guard (second PreToolUse hook, no `if`); TypeSafe opt-in | 1,021 | 42 | 5/4,289B/188ms | 2 | 20 |
-| v7.4.0 | `rulebook_gate` (+820 B schema), TypeSafe on by default (typesafe.md +92 always-on), Jev prompt hook on every prompt | 1,160 | 42 | 6/5,109B/239ms | 3 (2 PreToolUse + UserPromptSubmit) | 23 |
-| v7.5.0 | Prompt hook opt-in; guards as `permissions.deny` / `if`-gated; pinned MCP entry; RULEBOOK-CODEX block in AGENTS.override.md (+309 Codex, and ~290 in Claude Code through `@AGENTS.override.md`); task content on create + tool annotations (+1,016 B schema) | **1,449** | 351 | 6/6,125B/233ms | **0** (2 PreToolUse handlers, both `if`-gated) | 22 |
+| v7.1.0 | GitHub-issues task backend (opt-in). MCP entry `npx … @latest` | 957 | 42 | 5/3,562B/176ms | 1 (PreToolUse task guard) | 18 |
+| v7.2.0 | Decision requests on `rulebook_task` (ask/answer/questions): +727 B schema; CLAUDE.md +66 | 1,023 | 42 | 5/4,289B/181ms | 1 | 18 |
+| v7.3.0 | No-OS-scheduling guard (second PreToolUse hook, no `if`); TypeSafe opt-in | 1,021 | 42 | 5/4,289B/188ms | 2 | 19 |
+| v7.4.0 | `rulebook_gate` (+820 B schema), TypeSafe on by default (typesafe.md +92 always-on), Jev prompt hook on every prompt | 1,160 | 42 | 6/5,109B/239ms | 3 (2 PreToolUse + UserPromptSubmit) | 22 |
+| v7.5.0 | Prompt hook opt-in; guards as `permissions.deny` / `if`-gated; pinned MCP entry; RULEBOOK-CODEX block in AGENTS.override.md (+309 Codex, and ~290 in Claude Code through `@AGENTS.override.md`); task content on create + tool annotations (+1,016 B schema); `jev-gate.sh` and `no-os-scheduling.sh` installed only with the opt-in tool gate | **1,449** | 351 | 6/6,125B/233ms | **0** (2 PreToolUse handlers, both `if`-gated) | **20** |
 
 Against the budgets: always-on 1,449 ≤ 1,600 and Codex 351 ≤ 390
 (`tests/context-budget.test.ts`), schema 6,125 ≤ 6,260 B and 6 ≤ 8 tools
 (`tests/v7-budgets.test.ts`), 0 hot-path spawns (`tests/hook-spawn-budget.test.ts`).
-Installed files (22) stay above the 20 target: `no-os-scheduling.sh` is
-installed although only the opt-in tool gate runs it, and `.rulebook/.update-check`
-is a cache file. With the 11 opt-in agents installed (projects upgraded from
+Installed files are 20, at the target (21 before `no-os-scheduling.sh` was
+limited to projects with the opt-in tool gate, the only hook that runs it). With
+the 11 opt-in agents installed (projects upgraded from
 v5/v6 keep them) the always-on total is 1,911, under the 2,100 target for an
 upgraded project.
 

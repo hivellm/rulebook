@@ -414,6 +414,8 @@ The prompt hook judges what the operator asked for; the tool-call gate judges wh
 
 Each Jev entry is identified by its command (`hook-main.js prompt-gate`, `jev-gate.sh tool`), so turning one on or off never touches the other; the entry is upserted once (a second run leaves the file byte-identical), user hooks stay untouched, and it is removed when the gate is turned off or TypeSafe is opted out.
 
+**Scripts**: `.claude/hooks/jev-gate.sh` and `.claude/hooks/no-os-scheduling.sh` are installed only with the tool gate — nothing else runs them (the prompt hook runs `hook-main.js`, and `permissions.deny` rules cover OS scheduling). With the gate off, `rulebook init`, `update` and `claude` delete an unedited copy of each (the shipped script, or one a past release installed) and print `removed .claude/hooks/<file>`; a copy you edited is kept.
+
 **Order, cheapest first** (Claude Code runs matching hooks in parallel, so the order lives inside this one hook):
 
 1. The wrapper runs the installed `no-os-scheduling.sh` guard on the same payload; its `deny` is printed as-is and the CLI is never called.

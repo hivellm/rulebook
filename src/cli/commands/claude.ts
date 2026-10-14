@@ -77,6 +77,11 @@ export async function claudeSetupCommand(options: ClaudeSetupOptions = {}): Prom
             statusLine: true,
             defaultModel,
         });
+        for (const script of settingsResult.removedScripts) {
+            console.log(
+                chalk.gray(`  • removed ${script} (used only by the tool gate, which is off)`)
+            );
+        }
         for (const warning of settingsResult.warnings) console.log(chalk.yellow(`⚠ ${warning}`));
 
         // TypeSafe (Jev) — offered by default since v7.4; --no-typesafe opts out;
