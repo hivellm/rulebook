@@ -108,7 +108,8 @@ export async function mcpInitCommand(options?: {
  * equivalent. Returns the process exit code.
  */
 export async function mcpFastInitCommand(
-    options: { workspace?: boolean } = {},
+    /** `serverPath` overrides the installed server (tests; the CLI never sets it). */
+    options: { workspace?: boolean; serverPath?: string } = {},
     runner?: ClaudeRunner
 ): Promise<number> {
     const { existsSync } = await import('fs');
@@ -116,7 +117,7 @@ export async function mcpFastInitCommand(
     const { buildFastMcpEntry, codexTomlSnippet, getInstalledServerPath, registerLocalMcpEntry } =
         await import('../../core/claude/mcp-fast-path.js');
 
-    const serverPath = getInstalledServerPath();
+    const serverPath = options.serverPath ?? getInstalledServerPath();
     if (!existsSync(serverPath)) {
         console.error(chalk.red(`MCP server not found at ${serverPath}.`));
         console.error(

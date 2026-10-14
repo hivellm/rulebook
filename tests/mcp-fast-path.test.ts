@@ -201,7 +201,9 @@ describe('MCP fast path (opt-in node + absolute path)', () => {
                 logs.push(a.join(' '));
             });
 
-            const code = await mcpFastInitCommand({}, runner);
+            // A fake install: CI runs the tests without `npm run build`, so dist/ may not exist.
+            const serverPath = await fakeInstall('rb-installed', VERSION);
+            const code = await mcpFastInitCommand({ serverPath }, runner);
 
             expect(code).toBe(0);
             expect(calls.at(-1)?.args).toEqual([
@@ -212,11 +214,24 @@ describe('MCP fast path (opt-in node + absolute path)', () => {
                 'rulebook',
                 '--',
                 'node',
-                getInstalledServerPath(),
+                serverPath,
             ]);
             const out = logs.join('\n');
             expect(out).toContain('~/.codex/config.toml');
             expect(out).toContain('[mcp_servers.rulebook]');
+        });
+
+        it('fails with exit code 1 when the installed server is missing', async () => {
+            const { calls, runner } = recordingRunner();
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            const code = await mcpFastInitCommand(
+                { serverPath: path.join(dir, 'missing', 'rulebook-server.js') },
+                runner
+            );
+
+            expect(code).toBe(1);
+            expect(calls).toEqual([]);
         });
     });
 });
