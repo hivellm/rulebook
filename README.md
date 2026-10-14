@@ -13,9 +13,10 @@
 
 **v7 — built to assist frontier models, never to anchor them.** ~3.4k tokens of
 session overhead (was ~15k in v6, −77%), 6 consolidated MCP tools, one
-path-only guard hook, zero permission prompts for routine work, and (v7.4) an
-orchestrator main session that delegates every task to a model-routed subagent,
-routed by the TypeSafe (Jev) entry gate on every prompt.
+path-only guard hook, zero permission prompts for routine work, and (v7.5) a
+main session that does small work itself and delegates the rest to model-routed
+subagents, with the TypeSafe (Jev) entry gate on demand (its per-prompt hook is
+opt-in).
 Measured, budgeted in CI, and documented in
 [`docs/analysis/v7-performance/`](docs/analysis/v7-performance/README.md).
 Upgrading from v6? See the

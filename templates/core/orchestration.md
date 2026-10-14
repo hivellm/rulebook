@@ -63,15 +63,19 @@ set the Agent tool's `model` to `fable`, `opus`, or `haiku`.
 Nothing here runs by default. `rulebook_gate {prompt, notes?}` is an on-demand
 MCP tool: call it when you want Jev's (TypeSafe's System One model) routing for
 an operator prompt — send the prompt verbatim. An opt-in `UserPromptSubmit` hook
-(`gate.promptHook.enabled: true` in `rulebook.json`; `.claude/hooks/jev-gate.sh
-prompt` → `rulebook hook prompt-gate`) runs the same gate on each operator prompt
-and injects the result under "Jev routing (rulebook prompt hook)": act on that
-routing and do not call the gate again. Either way, rulebook sends Jev a short
-project description (config; a one-line summary from `gate.scope.description`,
-else `package.json`, else the README's first prose paragraph; tasks, open
-questions, installed skills, subagent types, the routing table in section 2)
-plus the prompt, and asks one question per decision the main session would
-otherwise guess:
+(off by default; `gate.promptHook.enabled: true` in `rulebook.json`, then
+`rulebook update`) runs `node <rulebook>/dist/cli/hook-main.js prompt-gate` in
+exec form (no shell) on each operator prompt. It skips machine inputs (agent and
+task notifications, agent messages, local command output), asks Jev only
+`kind`, `needs_task`, `existing_task`, `needs_operator_decision`,
+`in_project_scope` and the risks, and injects the result under "Jev routing
+(rulebook prompt hook)": act on that routing and do not call the gate again. It
+tells you to ask the operator only when `needsOperatorDecision` is true. Either
+way, rulebook sends Jev a short project description (config; a one-line summary
+from `gate.scope.description`, else `package.json`, else the README's first
+prose paragraph; tasks, open questions; for the tool, also installed skills,
+subagent types and the routing table in section 2) plus the prompt, and asks one
+question per decision the main session would otherwise guess:
 
 | Decision | Question | Routing field |
 |----------|----------|---------------|
@@ -136,8 +140,10 @@ the prompt; above that and up to 0.3 it is only a warning line. Destructive git
 and secrets never block there (the operator's own prompt is the authorization);
 they, and any risk from 0.5 up that does not block, arrive as warning lines in
 the context. The hook is fail-open: no key, gate disabled, timeout
-(`gate.promptHook.deadlineMs`), an error, or a missing CLI → no output, and the
-prompt goes through unchanged. Turn it on with `gate.promptHook.enabled: true`;
+(`gate.promptHook.deadlineMs`), or an error → no output, and the prompt goes
+through unchanged. A missing or broken hook entry is not silent: it prints one
+`systemMessage` per session saying the gate is off and how to fix it. Turn the
+hook on with `gate.promptHook.enabled: true` and `rulebook update`;
 `--no-typesafe` turns TypeSafe off entirely.
 
 An opt-in tool-call gate (`gate.toolHook.enabled: true`) is a `PreToolUse`

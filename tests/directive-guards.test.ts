@@ -356,7 +356,14 @@ describe('directive guards', () => {
             expect(spec).toContain('RULEBOOK_GATE=off');
             // Prompt hook: opt-in, injects routing, one blocking case, fail-open.
             expect(spec).toMatch(/`gate\.promptHook\.enabled: true` in `rulebook\.json`/);
-            expect(spec).toMatch(/`\.claude\/hooks\/jev-gate\.sh\s+prompt`/);
+            expect(spec).toMatch(
+                /`node <rulebook>\/dist\/cli\/hook-main\.js prompt-gate` in\s+exec form/
+            );
+            expect(spec).not.toMatch(/jev-gate\.sh\s+prompt/);
+            expect(spec).toMatch(/skips machine inputs/);
+            expect(spec).toMatch(/ask the operator only when `needsOperatorDecision` is true/);
+            expect(spec).toMatch(/one\s+`systemMessage` per session/);
+            expect(spec).not.toMatch(/missing CLI/);
             expect(spec).toMatch(/act on that\s+routing and do not call the gate again/);
             expect(spec).not.toMatch(/Only when no hook routing is in context/);
             expect(spec).toMatch(
