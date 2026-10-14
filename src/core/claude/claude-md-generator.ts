@@ -179,17 +179,18 @@ function resolveImports(
 }
 
 /**
- * Write the CLAUDE.md file to disk. Creates a backup snapshot in
- * `.rulebook/backup/` before overwriting. Returns the absolute path
- * to the written file and the backup (if created).
+ * Write the CLAUDE.md file to disk. Unless `backup` is false, creates a backup
+ * snapshot in `.rulebook/backup/` before overwriting. Returns the absolute
+ * path to the written file and the backup (if created).
  */
 export async function writeClaudeMd(
     projectRoot: string,
-    content: string
+    content: string,
+    { backup = true }: { backup?: boolean } = {}
 ): Promise<{ path: string; backupPath: string | null }> {
     const target = getClaudeMdPath(projectRoot);
     let backupPath: string | null = null;
-    if (await fileExists(target)) {
+    if (backup && (await fileExists(target))) {
         const backupDir = path.join(projectRoot, '.rulebook', 'backup');
         await ensureDir(backupDir);
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');

@@ -201,6 +201,50 @@ describe('claude-md-generator (v5.3.0)', () => {
             expect(occurrences).toBe(1);
         });
 
+        // Regression: every replace wrote a backup, so the first update after
+        // init (and every later one) left a CLAUDE.md.backup-* nobody needed.
+        it('writes no backup when only the generated block changes', async () => {
+            await mergeClaudeMd(projectRoot);
+            const target = getClaudeMdPath(projectRoot);
+            const created = await fs.readFile(target, 'utf-8');
+            await fs.writeFile(
+                target,
+                created.replace('few rules, all deliberate', 'an older release wording')
+            );
+
+            const result = await mergeClaudeMd(projectRoot);
+            expect(result.mode).toBe('replace');
+            expect(result.backupPath).toBeNull();
+            expect(await fs.readFile(target, 'utf-8')).toBe(created);
+        });
+
+        it('backs up once when the text outside the block was edited', async () => {
+            await mergeClaudeMd(projectRoot);
+            const target = getClaudeMdPath(projectRoot);
+            await fs.appendFile(target, '\n## Mine\nkeep me\n');
+
+            const first = await mergeClaudeMd(projectRoot);
+            expect(first.backupPath).not.toBeNull();
+            expect(await fs.readFile(first.backupPath!, 'utf-8')).toContain('keep me');
+
+            const second = await mergeClaudeMd(projectRoot);
+            expect(second.backupPath).toBeNull();
+            expect(await fs.readFile(target, 'utf-8')).toContain('keep me');
+        });
+
+        it('with nothing recorded, backs up only when there is text outside the block', async () => {
+            const target = getClaudeMdPath(projectRoot);
+            const block =
+                '<!-- RULEBOOK:START v6.5.0 — old release -->\n# Old\n<!-- RULEBOOK:END -->\n';
+
+            await fs.writeFile(target, block);
+            expect((await mergeClaudeMd(projectRoot)).backupPath).toBeNull();
+
+            await fs.rm(path.join(projectRoot, '.rulebook'), { recursive: true, force: true });
+            await fs.writeFile(target, `${block}\n## User tail\nkeep me\n`);
+            expect((await mergeClaudeMd(projectRoot)).backupPath).not.toBeNull();
+        });
+
         it('is idempotent: a second replace produces no drift outside the block', async () => {
             // Create with user tail
             await mergeClaudeMd(projectRoot);

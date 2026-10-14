@@ -29,6 +29,10 @@ describe('rulebook update after init', () => {
         JSON.parse(await fs.readFile(configPath(), 'utf-8'));
     const writeConfig = (config: RulebookConfig) =>
         fs.writeFile(configPath(), JSON.stringify(config, null, 2));
+    const claudeBackups = async () =>
+        (await fs.readdir(path.join(projectRoot, '.rulebook', 'backup')).catch(() => [])).filter(
+            (name) => name.startsWith('CLAUDE.md.backup-')
+        );
 
     beforeEach(async () => {
         projectRoot = await fs.realpath(
@@ -93,5 +97,46 @@ describe('rulebook update after init', () => {
         const updated = await readConfig();
         expect(updated.permissions?.autoApprove).toBe(true);
         expect(updated.integrations?.typesafe?.enabled).toBe(false);
+    });
+
+    // Regression: the first update after init backed up CLAUDE.md although the
+    // user had changed nothing (only the generated block differed).
+    it('writes no CLAUDE.md backup on the first or a later unchanged update', async () => {
+        await init();
+        const afterInit = await fs.readFile(path.join(projectRoot, 'CLAUDE.md'), 'utf-8');
+
+        await update();
+        const afterUpdate = await fs.readFile(path.join(projectRoot, 'CLAUDE.md'), 'utf-8');
+        expect(afterUpdate).not.toBe(afterInit); // the generated block did change
+        expect(await claudeBackups()).toEqual([]);
+
+        await update();
+        expect(await claudeBackups()).toEqual([]);
+    });
+
+    it('backs up CLAUDE.md once after the user edits outside the generated block', async () => {
+        await init();
+        await fs.appendFile(path.join(projectRoot, 'CLAUDE.md'), '\n## Mine\nkeep me\n');
+
+        await update();
+        const backups = await claudeBackups();
+        expect(backups).toHaveLength(1);
+        const backup = path.join(projectRoot, '.rulebook', 'backup', backups[0]);
+        expect(await fs.readFile(backup, 'utf-8')).toContain('keep me');
+
+        await update();
+        expect(await claudeBackups()).toHaveLength(1);
+    });
+
+    it('backs up a legacy CLAUDE.md without the generated block before migrating it', async () => {
+        await init();
+        await fs.writeFile(path.join(projectRoot, 'CLAUDE.md'), '# CLAUDE.md\n\nLegacy rules.\n');
+
+        await update();
+
+        const backups = await claudeBackups();
+        expect(backups).toHaveLength(1);
+        const backup = path.join(projectRoot, '.rulebook', 'backup', backups[0]);
+        expect(await fs.readFile(backup, 'utf-8')).toContain('Legacy rules.');
     });
 });
