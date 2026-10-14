@@ -45,7 +45,7 @@ Rust builds, operator idle and permission prompts (F-005, F-006, F-035, F-038, F
 | [01-measured-overhead.md](01-measured-overhead.md) | Hook cost per tool call | F-001..F-006 |
 | [02-jev-gate.md](02-jev-gate.md) | The Jev prompt gate | F-007..F-012 |
 | [03-mcp-lifecycle.md](03-mcp-lifecycle.md) | MCP launch, processes, startup, exit | F-013..F-019 |
-| [04-context-and-orchestration.md](04-context-and-orchestration.md) | Where session time goes; tokens; the delegation mandate | F-020..F-031 |
+| [04-context-and-orchestration.md](04-context-and-orchestration.md) | Where session time goes; tokens; the delegation mandate | F-020..F-031, F-043 |
 | [05-codex-and-9router.md](05-codex-and-9router.md) | The Codex and 9router side | F-032..F-038 |
 | [06-model-panel.md](06-model-panel.md) | Codex, gpt-6.1-sol, Claude Opus review; findings they raised | F-039..F-042 |
 | [07-recommendations.md](07-recommendations.md) | Changes C1–C9, what is dropped, decisions needed | — |

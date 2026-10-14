@@ -170,6 +170,18 @@ Moved: per-tool-call guard and cortex costs are in [01](01-measured-overhead.md)
   opposing orchestration instructions.
 - **Confidence:** high. **Rulebook-attributable:** yes.
 
+### F-043 — Every shipped agent caps itself at 15–30 turns, below what a typical subagent needs
+
+- **Evidence:** `templates/agents/*.md` frontmatter: implementer, tester, architect, quality-gatekeeper
+  `maxTurns: 25`; researcher, code-reviewer, build-engineer, security-reviewer, performance-engineer 20;
+  docs-writer 15; team-lead 30. A v7.4 subagent makes p50 63 model calls (F-025).
+- **Observed 2026-10-14:** the `implementer` agent given task `phase1_task-create-with-content` used all
+  25 turns reading the code (29 tool calls) and stopped with no edit and no report; the work had to be
+  re-dispatched to a general-purpose agent, losing ~3 min and ~95 k tokens.
+- **Impact:** the whitelisted rulebook agents are the cheap choice (19.5 k vs 38.2 k first call, F-025), but
+  on medium tasks they stop mid-work, which pushes the model toward general-purpose and costs a re-dispatch.
+- **Confidence:** high (config + one observed failure). **Rulebook-attributable:** yes.
+
 ## Recommendations from these two investigations
 
 These feed `07-recommendations.md`; the panel reviews them before anything is decided.
