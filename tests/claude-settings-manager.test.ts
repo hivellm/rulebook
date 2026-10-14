@@ -253,9 +253,13 @@ describe('claude-settings-manager (v7)', () => {
         });
 
         it('removes the entry when the toggle is off and drops an empty event key', async () => {
-            await applyClaudeSettings(projectRoot, JEV_DESIRE);
-            await applyClaudeSettings(projectRoot, V7_DESIRE);
+            const on = await applyClaudeSettings(projectRoot, JEV_DESIRE);
+            expect(on.removedHooks).toEqual([]);
+            const off = await applyClaudeSettings(projectRoot, V7_DESIRE);
             expect((await readSettings()).hooks.UserPromptSubmit).toBeUndefined();
+            expect(off.removedHooks).toEqual([
+                `settings.json UserPromptSubmit: node ${HOOK_MAIN.arg} prompt-gate`,
+            ]);
         });
 
         it('removeJevPromptGate drops only the jev-gate entry', async () => {
