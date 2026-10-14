@@ -14,6 +14,7 @@
 
 import { readdir } from 'fs/promises';
 import { join, dirname, relative } from 'path';
+import { fileURLToPath } from 'url';
 import { fileExists, readFile, writeFile } from '../../utils/file-system.js';
 import type {
     Skill,
@@ -815,11 +816,9 @@ export function createSkillsManager(templatesPath: string, projectPath?: string)
 }
 
 /**
- * Get the default templates path
+ * The package's `templates/` directory. This module sits three levels below
+ * the package root in both src/core/skills/ and dist/core/skills/.
  */
 export function getDefaultTemplatesPath(): string {
-    // In production, templates are in the package's templates directory
-    // In development, they're in the project root
-    const packagePath = dirname(dirname(dirname(import.meta.url.replace('file:///', ''))));
-    return join(packagePath, 'templates');
+    return join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'templates');
 }

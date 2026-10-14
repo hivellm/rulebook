@@ -1,14 +1,34 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import {
     parseSkillFrontmatter,
     generateSkillFrontmatter,
     convertLegacyTemplateToSkill,
+    getDefaultTemplatesPath,
+    SkillsManager,
 } from '../src/core/skills/skills-manager.js';
 import type { SkillMetadata, SkillCategory } from '../src/types.js';
 
 describe('Skills Manager', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+    });
+
+    // Regression: since skills-manager.ts moved into core/skills/ the path
+    // stopped one level short (src/templates, dist/templates), so no built-in
+    // skill was ever found and auto-detection always returned [].
+    describe('getDefaultTemplatesPath', () => {
+        it("is the package's templates/ directory", () => {
+            const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+            expect(getDefaultTemplatesPath()).toBe(path.join(packageRoot, 'templates'));
+        });
+
+        it('lets auto-detection find the shipped language and core skills', async () => {
+            const manager = new SkillsManager(getDefaultTemplatesPath());
+            const detected = await manager.autoDetectSkills({ languages: ['rust'] });
+            expect(detected).toEqual(expect.arrayContaining(['languages/rust', 'core/rulebook']));
+        });
     });
 
     afterEach(() => {
