@@ -29,6 +29,8 @@ sessions open at once, all on rulebook); goal: what the next rulebook version mu
 | Rulebook tokens per session, upgraded project | 4.5–5.7 k | ≤ 2.1 k |
 | Jev "ask the operator" rate | 64 % | ≤ 15 % |
 
+**Validation (09):** on 6 historic small fixes, judgment mode took p50 19 model calls and 3.5 min vs 31 calls and 4.4 min in orchestrator mode, with the same tests passing and 46 % lower cost. The call margin against the ≤ 20 target is thin (n = 6).
+
 ## Not rulebook's fault, but on the same path
 
 User-level `cortex-hook` on every tool call (mean 234 + 172 ms, always answers `{}`), UzEngine's own
@@ -50,6 +52,7 @@ Rust builds, operator idle and permission prompts (F-005, F-006, F-035, F-038, F
 | [06-model-panel.md](06-model-panel.md) | Codex, gpt-6.1-sol, Claude Opus review; findings they raised | F-039..F-042 |
 | [07-recommendations.md](07-recommendations.md) | Changes C1–C9, what is dropped, decisions needed | — |
 | [08-execution-plan.md](08-execution-plan.md) | Phased rulebook tasks and CI budgets for 7.5.0 | — |
+| [09-replay-ab.md](09-replay-ab.md) | Replay A/B of 6 historic small fixes: judgment vs orchestrator mode (Q5) | — |
 
 
 ## Decisions needed
