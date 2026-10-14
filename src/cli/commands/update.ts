@@ -52,10 +52,12 @@ export interface ConfigRebuildInput {
     leanMode: boolean;
     features: RulebookConfig['features'];
     gitPushMode: RulebookConfig['gitPushMode'];
-    /** `integrations` as persisted after the TypeSafe decision of this update. */
-    integrations?: RulebookConfig['integrations'];
-    /** `permissions` as persisted after the auto-approve decision of this update. */
-    permissions?: RulebookConfig['permissions'];
+    /** What this update detected (languages and modules as configured for generation). */
+    detected: {
+        languages: LanguageDetection['language'][];
+        modules: ModuleDetection['module'][];
+        skills: string[];
+    };
     now?: string;
 }
 
@@ -107,19 +109,35 @@ function knownConfigKeys(config: Partial<RulebookConfig>): Partial<RulebookConfi
 }
 
 /**
+ * The project's enabled skills plus the detected ones it has not disabled; the
+ * rest of its `skills` settings is kept. Undefined when there are none.
+ */
+function mergeDetectedSkills(
+    existing: RulebookConfig['skills'],
+    detected: readonly string[]
+): RulebookConfig['skills'] {
+    const disabled = new Set(existing?.disabled ?? []);
+    const enabled = [
+        ...new Set([...(existing?.enabled ?? []), ...detected.filter((id) => !disabled.has(id))]),
+    ];
+    return existing || enabled.length > 0 ? { ...existing, enabled } : undefined;
+}
+
+/**
  * The config `rulebook update` saves. It REPLACES the persisted config: every
  * known key the project already set is carried forward (`gate`, `multiAgent`,
- * `tasks`, `mcp`, `orchestration`, ...), then the fields update owns are
- * recomputed — `installedAt` only when absent, `integrations` and `permissions`
- * from this update's decisions. Keys that are not in RulebookConfig are dropped.
+ * `tasks`, `mcp`, `orchestration`, `rulebookDir`, `integrations`,
+ * `permissions`, ...), then the fields update owns are recomputed —
+ * `installedAt` only when absent, `languages` and `modules` from this update's
+ * detection — and the detected skills are added to `skills.enabled` (a skill in
+ * `skills.disabled` stays off). Keys that are not in RulebookConfig are dropped.
  */
 export function rebuildConfigOnUpdate(
     existing: Partial<RulebookConfig>,
     input: ConfigRebuildInput
 ): RulebookConfig {
     const now = input.now ?? new Date().toISOString();
-    const integrations = input.integrations ?? existing.integrations;
-    const permissions = input.permissions ?? existing.permissions;
+    const skills = mergeDetectedSkills(existing.skills, input.detected.skills);
     return {
         ...knownConfigKeys(existing),
         version: input.version,
@@ -139,9 +157,10 @@ export function rebuildConfigOnUpdate(
             testRun: 600000,
         },
         gitPushMode: input.gitPushMode,
+        languages: input.detected.languages,
+        modules: input.detected.modules,
+        ...(skills ? { skills } : {}),
         ...(input.leanMode ? { agentsMode: 'lean' as const } : {}),
-        ...(integrations ? { integrations } : {}),
-        ...(permissions ? { permissions } : {}),
     };
 }
 
@@ -346,44 +365,84 @@ export async function updateSingleProject(
         });
     }
 
-    const existingSkills = existingConfig.skills?.enabled || [];
-
+    const detectedLanguages = config.languages as LanguageDetection['language'][];
+    const detectedModules = config.modules as ModuleDetection['module'][];
     let detectedSkills: string[] = [];
     try {
         const skillsManager = new SkillsManager(getDefaultTemplatesPath(), cwd);
-
-        const rulebookConfigForSkills = {
-            languages: config.languages as LanguageDetection['language'][],
-            modules: config.modules as ModuleDetection['module'][],
-        };
-
-        detectedSkills = await skillsManager.autoDetectSkills(rulebookConfigForSkills);
-
-        const mergedSkills = [...new Set([...existingSkills, ...detectedSkills])];
-
-        if (detectedSkills.length > existingSkills.length) {
-            const newSkills = detectedSkills.filter((s) => !existingSkills.includes(s));
-            if (newSkills.length > 0) {
-                console.log(chalk.green('\n✓ New skills detected:'));
-                for (const skillId of newSkills) {
-                    console.log(chalk.gray(`  - ${skillId}`));
-                }
-            }
-        }
-
-        detectedSkills = mergedSkills;
+        detectedSkills = await skillsManager.autoDetectSkills({
+            languages: detectedLanguages,
+            modules: detectedModules,
+        });
     } catch {
-        detectedSkills = existingSkills;
+        // Skills system unavailable: the project's own skills are kept as they are.
     }
 
-    await configManager.updateConfig({
-        languages: config.languages as LanguageDetection['language'][],
-        modules: config.modules as ModuleDetection['module'][],
-        modular: config.modular ?? true,
-        rulebookDir: config.rulebookDir || '.rulebook',
+    if (installHooksOnUpdate) {
+        const hookLanguages: LanguageDetection[] =
+            detection.languages.length > 0
+                ? detection.languages
+                : config.languages.map((language) => ({
+                      language: language as LanguageDetection['language'],
+                      confidence: 1,
+                      indicators: [],
+                  }));
+        const hookSpinner = ora('Installing Git hooks (pre-commit & pre-push)...').start();
+        try {
+            await installGitHooks({ languages: hookLanguages, cwd });
+            hookSpinner.succeed('Git hooks installed successfully');
+            hooksInstalledOnUpdate = true;
+        } catch (error) {
+            hookSpinner.fail('Failed to install Git hooks');
+            console.error(chalk.red('  ➤'), error instanceof Error ? error.message : error);
+            console.log(
+                chalk.yellow(
+                    '  ⚠ Skipping automatic hook installation. You can rerun "rulebook update" later to retry or install manually.'
+                )
+            );
+        }
+    }
+
+    const gitHooksActiveAfterUpdate = hooksInstalledOnUpdate || (hasPreCommit && hasPrePush);
+    config.installGitHooks = gitHooksActiveAfterUpdate;
+
+    // The one config write of this update. It runs before the generators below
+    // because they read languages, skills and rulebookDir from rulebook.json;
+    // the TypeSafe and auto-approve steps then record their decisions on top.
+    const configSpinner = ora('Updating .rulebook configuration...').start();
+    const rulebookFeatures: RulebookConfig['features'] = {
+        logging: true,
+        gitHooks: gitHooksActiveAfterUpdate,
+        templates: true,
+        context: minimalMode ? false : true,
+        health: true,
+        parallel: minimalMode ? false : true,
+        smartContinue: minimalMode ? false : true,
+    };
+    const rulebookConfig = rebuildConfigOnUpdate(existingConfig, {
+        version: getRulebookVersion(),
+        projectId: path.basename(cwd),
+        minimalMode,
+        leanMode,
+        features: rulebookFeatures,
         gitPushMode: resolvedPushMode,
-        skills: detectedSkills.length > 0 ? { enabled: detectedSkills } : undefined,
+        detected: {
+            languages: detectedLanguages,
+            modules: detectedModules,
+            skills: detectedSkills,
+        },
     });
+    await configManager.saveConfig(rulebookConfig);
+    configSpinner.succeed('.rulebook configuration updated');
+
+    const knownSkills = new Set(existingConfig.skills?.enabled ?? []);
+    const newSkills = (rulebookConfig.skills?.enabled ?? []).filter((id) => !knownSkills.has(id));
+    if (newSkills.length > 0) {
+        console.log(chalk.green('\n✓ New skills detected:'));
+        for (const skillId of newSkills) {
+            console.log(chalk.gray(`  - ${skillId}`));
+        }
+    }
 
     await configManager.ensureGitignore();
 
@@ -654,62 +713,6 @@ export async function updateSingleProject(
             );
         }
     }
-
-    if (installHooksOnUpdate) {
-        const hookLanguages: LanguageDetection[] =
-            detection.languages.length > 0
-                ? detection.languages
-                : config.languages.map((language) => ({
-                      language: language as LanguageDetection['language'],
-                      confidence: 1,
-                      indicators: [],
-                  }));
-        const hookSpinner = ora('Installing Git hooks (pre-commit & pre-push)...').start();
-        try {
-            await installGitHooks({ languages: hookLanguages, cwd });
-            hookSpinner.succeed('Git hooks installed successfully');
-            hooksInstalledOnUpdate = true;
-        } catch (error) {
-            hookSpinner.fail('Failed to install Git hooks');
-            console.error(chalk.red('  ➤'), error instanceof Error ? error.message : error);
-            console.log(
-                chalk.yellow(
-                    '  ⚠ Skipping automatic hook installation. You can rerun "rulebook update" later to retry or install manually.'
-                )
-            );
-        }
-    }
-
-    const gitHooksActiveAfterUpdate = hooksInstalledOnUpdate || (hasPreCommit && hasPrePush);
-    config.installGitHooks = gitHooksActiveAfterUpdate;
-
-    const configSpinner = ora('Updating .rulebook configuration...').start();
-    const rulebookFeatures: RulebookConfig['features'] = {
-        logging: true,
-        gitHooks: gitHooksActiveAfterUpdate,
-        templates: true,
-        context: minimalMode ? false : true,
-        health: true,
-        parallel: minimalMode ? false : true,
-        smartContinue: minimalMode ? false : true,
-    };
-
-    // Fresh read: the TypeSafe step above persisted its decision after
-    // `existingConfig` was loaded.
-    const persistedConfig = await configManager.loadConfig();
-    const rulebookConfig = rebuildConfigOnUpdate(existingConfig, {
-        version: getRulebookVersion(),
-        projectId: path.basename(cwd),
-        minimalMode,
-        leanMode,
-        features: rulebookFeatures,
-        gitPushMode: resolvedPushMode,
-        integrations: persistedConfig.integrations,
-        permissions: persistedConfig.permissions,
-    });
-
-    await configManager.saveConfig(rulebookConfig);
-    configSpinner.succeed('.rulebook configuration updated');
 
     // Legacy cleanup: move unedited v5/v6 leftovers (legacy catalogue) to
     // .rulebook/backup/, refresh shipped agents/skills, normalize spec names.
